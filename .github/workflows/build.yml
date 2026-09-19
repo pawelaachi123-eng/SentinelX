@@ -21,21 +21,21 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-- name: Setup .NET 9
+      - name: Setup .NET 9
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "9.0.x"
 
-- name: Show .NET information
+      - name: Show .NET information
         run: dotnet --info
 
-- name: Restore
+      - name: Restore
         run: dotnet restore SENTINEL-X.csproj
 
-- name: Build Release
+      - name: Build Release
         run: dotnet build SENTINEL-X.csproj --configuration Release --no-restore --verbosity normal
 
-- name: Upload build output
+      - name: Upload build output
         if: always()
         uses: actions/upload-artifact@v4
         with:
