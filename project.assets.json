@@ -1,0 +1,1435 @@
+{
+  "version": 3,
+  "targets": {
+    "net9.0-windows7.0": {
+      "Microsoft.Extensions.AI.Abstractions/10.2.0": {
+        "type": "package",
+        "dependencies": {
+          "System.Text.Json": "10.0.2"
+        },
+        "compile": {
+          "lib/net9.0/Microsoft.Extensions.AI.Abstractions.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net9.0/Microsoft.Extensions.AI.Abstractions.dll": {
+            "related": ".xml"
+          }
+        }
+      },
+      "NAudio/3.1.0": {
+        "type": "package",
+        "dependencies": {
+          "NAudio.Asio": "3.1.0",
+          "NAudio.Core": "3.1.0",
+          "NAudio.Dmo": "3.1.0",
+          "NAudio.Midi": "3.1.0",
+          "NAudio.Wasapi": "3.1.0",
+          "NAudio.WinForms": "3.1.0",
+          "NAudio.WinMM": "3.1.0"
+        },
+        "compile": {
+          "lib/net9.0-windows7.0/NAudio.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net9.0-windows7.0/NAudio.dll": {
+            "related": ".xml"
+          }
+        }
+      },
+      "NAudio.Asio/3.1.0": {
+        "type": "package",
+        "dependencies": {
+          "NAudio.Core": "3.1.0"
+        },
+        "compile": {
+          "lib/net9.0-windows7.0/NAudio.Asio.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net9.0-windows7.0/NAudio.Asio.dll": {
+            "related": ".xml"
+          }
+        }
+      },
+      "NAudio.Core/3.1.0": {
+        "type": "package",
+        "dependencies": {
+          "System.Numerics.Tensors": "9.0.0"
+        },
+        "compile": {
+          "lib/net9.0/NAudio.Core.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net9.0/NAudio.Core.dll": {
+            "related": ".xml"
+          }
+        }
+      },
+      "NAudio.Dmo/3.1.0": {
+        "type": "package",
+        "dependencies": {
+          "NAudio.Core": "3.1.0"
+        },
+        "compile": {
+          "lib/net9.0-windows7.0/NAudio.Dmo.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net9.0-windows7.0/NAudio.Dmo.dll": {
+            "related": ".xml"
+          }
+        }
+      },
+      "NAudio.Midi/3.1.0": {
+        "type": "package",
+        "dependencies": {
+          "NAudio.Core": "3.1.0"
+        },
+        "compile": {
+          "lib/net9.0/NAudio.Midi.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net9.0/NAudio.Midi.dll": {
+            "related": ".xml"
+          }
+        }
+      },
+      "NAudio.Wasapi/3.1.0": {
+        "type": "package",
+        "dependencies": {
+          "NAudio.Core": "3.1.0"
+        },
+        "compile": {
+          "lib/net9.0/NAudio.Wasapi.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net9.0/NAudio.Wasapi.dll": {
+            "related": ".xml"
+          }
+        }
+      },
+      "NAudio.WinForms/3.1.0": {
+        "type": "package",
+        "dependencies": {
+          "NAudio.WinMM": "3.1.0"
+        },
+        "compile": {
+          "lib/net9.0-windows7.0/NAudio.WinForms.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net9.0-windows7.0/NAudio.WinForms.dll": {
+            "related": ".xml"
+          }
+        },
+        "frameworkReferences": [
+          "Microsoft.WindowsDesktop.App.WindowsForms"
+        ]
+      },
+      "NAudio.WinMM/3.1.0": {
+        "type": "package",
+        "dependencies": {
+          "NAudio.Core": "3.1.0",
+          "NAudio.Midi": "3.1.0"
+        },
+        "compile": {
+          "lib/net9.0-windows7.0/NAudio.WinMM.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net9.0-windows7.0/NAudio.WinMM.dll": {
+            "related": ".xml"
+          }
+        }
+      },
+      "org.k2fsa.sherpa.onnx/1.13.5": {
+        "type": "package",
+        "dependencies": {
+          "org.k2fsa.sherpa.onnx.runtime.android-arm64": "1.13.5",
+          "org.k2fsa.sherpa.onnx.runtime.android-x64": "1.13.5",
+          "org.k2fsa.sherpa.onnx.runtime.linux-arm64": "1.13.5",
+          "org.k2fsa.sherpa.onnx.runtime.linux-x64": "1.13.5",
+          "org.k2fsa.sherpa.onnx.runtime.osx-arm64": "1.13.5",
+          "org.k2fsa.sherpa.onnx.runtime.osx-x64": "1.13.5",
+          "org.k2fsa.sherpa.onnx.runtime.win-arm64": "1.13.5",
+          "org.k2fsa.sherpa.onnx.runtime.win-x64": "1.13.5",
+          "org.k2fsa.sherpa.onnx.runtime.win-x86": "1.13.5"
+        },
+        "compile": {
+          "lib/net8.0/sherpa-onnx.dll": {}
+        },
+        "runtime": {
+          "lib/net8.0/sherpa-onnx.dll": {}
+        }
+      },
+      "org.k2fsa.sherpa.onnx.runtime.android-arm64/1.13.5": {
+        "type": "package",
+        "runtimeTargets": {
+          "runtimes/android-arm64/native/libonnxruntime.so": {
+            "assetType": "native",
+            "rid": "android-arm64"
+          },
+          "runtimes/android-arm64/native/libsherpa-onnx-c-api.so": {
+            "assetType": "native",
+            "rid": "android-arm64"
+          }
+        }
+      },
+      "org.k2fsa.sherpa.onnx.runtime.android-x64/1.13.5": {
+        "type": "package",
+        "runtimeTargets": {
+          "runtimes/android-x64/native/libonnxruntime.so": {
+            "assetType": "native",
+            "rid": "android-x64"
+          },
+          "runtimes/android-x64/native/libsherpa-onnx-c-api.so": {
+            "assetType": "native",
+            "rid": "android-x64"
+          }
+        }
+      },
+      "org.k2fsa.sherpa.onnx.runtime.linux-arm64/1.13.5": {
+        "type": "package",
+        "runtimeTargets": {
+          "runtimes/linux-arm64/native/libonnxruntime.so": {
+            "assetType": "native",
+            "rid": "linux-arm64"
+          },
+          "runtimes/linux-arm64/native/libsherpa-onnx-c-api.so": {
+            "assetType": "native",
+            "rid": "linux-arm64"
+          }
+        }
+      },
+      "org.k2fsa.sherpa.onnx.runtime.linux-x64/1.13.5": {
+        "type": "package",
+        "runtimeTargets": {
+          "runtimes/linux-x64/native/libonnxruntime.so": {
+            "assetType": "native",
+            "rid": "linux-x64"
+          },
+          "runtimes/linux-x64/native/libsherpa-onnx-c-api.so": {
+            "assetType": "native",
+            "rid": "linux-x64"
+          }
+        }
+      },
+      "org.k2fsa.sherpa.onnx.runtime.osx-arm64/1.13.5": {
+        "type": "package",
+        "runtimeTargets": {
+          "runtimes/osx-arm64/native/libonnxruntime.dylib": {
+            "assetType": "native",
+            "rid": "osx-arm64"
+          },
+          "runtimes/osx-arm64/native/libsherpa-onnx-c-api.dylib": {
+            "assetType": "native",
+            "rid": "osx-arm64"
+          }
+        }
+      },
+      "org.k2fsa.sherpa.onnx.runtime.osx-x64/1.13.5": {
+        "type": "package",
+        "runtimeTargets": {
+          "runtimes/osx-x64/native/libonnxruntime.dylib": {
+            "assetType": "native",
+            "rid": "osx-x64"
+          },
+          "runtimes/osx-x64/native/libsherpa-onnx-c-api.dylib": {
+            "assetType": "native",
+            "rid": "osx-x64"
+          }
+        }
+      },
+      "org.k2fsa.sherpa.onnx.runtime.win-arm64/1.13.5": {
+        "type": "package",
+        "runtimeTargets": {
+          "runtimes/win-arm64/native/onnxruntime.dll": {
+            "assetType": "native",
+            "rid": "win-arm64"
+          },
+          "runtimes/win-arm64/native/sherpa-onnx-c-api.dll": {
+            "assetType": "native",
+            "rid": "win-arm64"
+          }
+        }
+      },
+      "org.k2fsa.sherpa.onnx.runtime.win-x64/1.13.5": {
+        "type": "package",
+        "runtimeTargets": {
+          "runtimes/win-x64/native/onnxruntime.dll": {
+            "assetType": "native",
+            "rid": "win-x64"
+          },
+          "runtimes/win-x64/native/sherpa-onnx-c-api.dll": {
+            "assetType": "native",
+            "rid": "win-x64"
+          }
+        }
+      },
+      "org.k2fsa.sherpa.onnx.runtime.win-x86/1.13.5": {
+        "type": "package",
+        "runtimeTargets": {
+          "runtimes/win-x86/native/onnxruntime.dll": {
+            "assetType": "native",
+            "rid": "win-x86"
+          },
+          "runtimes/win-x86/native/sherpa-onnx-c-api.dll": {
+            "assetType": "native",
+            "rid": "win-x86"
+          }
+        }
+      },
+      "SharpCompress/0.50.4": {
+        "type": "package",
+        "compile": {
+          "lib/net8.0/SharpCompress.dll": {}
+        },
+        "runtime": {
+          "lib/net8.0/SharpCompress.dll": {}
+        }
+      },
+      "System.Configuration.ConfigurationManager/9.0.0": {
+        "type": "package",
+        "dependencies": {
+          "System.Diagnostics.EventLog": "9.0.0",
+          "System.Security.Cryptography.ProtectedData": "9.0.0"
+        },
+        "compile": {
+          "lib/net9.0/System.Configuration.ConfigurationManager.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net9.0/System.Configuration.ConfigurationManager.dll": {
+            "related": ".xml"
+          }
+        },
+        "build": {
+          "buildTransitive/net8.0/_._": {}
+        }
+      },
+      "System.Diagnostics.EventLog/9.0.0": {
+        "type": "package",
+        "compile": {
+          "lib/net9.0/System.Diagnostics.EventLog.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net9.0/System.Diagnostics.EventLog.dll": {
+            "related": ".xml"
+          }
+        },
+        "build": {
+          "buildTransitive/net8.0/_._": {}
+        },
+        "runtimeTargets": {
+          "runtimes/win/lib/net9.0/System.Diagnostics.EventLog.Messages.dll": {
+            "assetType": "runtime",
+            "rid": "win"
+          },
+          "runtimes/win/lib/net9.0/System.Diagnostics.EventLog.dll": {
+            "assetType": "runtime",
+            "rid": "win"
+          }
+        }
+      },
+      "System.Diagnostics.PerformanceCounter/9.0.0": {
+        "type": "package",
+        "dependencies": {
+          "System.Configuration.ConfigurationManager": "9.0.0"
+        },
+        "compile": {
+          "lib/net9.0/System.Diagnostics.PerformanceCounter.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net9.0/System.Diagnostics.PerformanceCounter.dll": {
+            "related": ".xml"
+          }
+        },
+        "build": {
+          "buildTransitive/net8.0/_._": {}
+        },
+        "runtimeTargets": {
+          "runtimes/win/lib/net9.0/System.Diagnostics.PerformanceCounter.dll": {
+            "assetType": "runtime",
+            "rid": "win"
+          }
+        }
+      },
+      "System.IO.Pipelines/10.0.2": {
+        "type": "package",
+        "compile": {
+          "lib/net9.0/System.IO.Pipelines.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net9.0/System.IO.Pipelines.dll": {
+            "related": ".xml"
+          }
+        },
+        "build": {
+          "buildTransitive/net8.0/_._": {}
+        }
+      },
+      "System.Numerics.Tensors/9.0.0": {
+        "type": "package",
+        "compile": {
+          "lib/net9.0/System.Numerics.Tensors.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net9.0/System.Numerics.Tensors.dll": {
+            "related": ".xml"
+          }
+        },
+        "build": {
+          "buildTransitive/net8.0/_._": {}
+        }
+      },
+      "System.Security.Cryptography.ProtectedData/9.0.0": {
+        "type": "package",
+        "compile": {
+          "lib/net9.0/System.Security.Cryptography.ProtectedData.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net9.0/System.Security.Cryptography.ProtectedData.dll": {
+            "related": ".xml"
+          }
+        },
+        "build": {
+          "buildTransitive/net8.0/_._": {}
+        }
+      },
+      "System.Speech/9.0.0": {
+        "type": "package",
+        "compile": {
+          "lib/net9.0/System.Speech.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net9.0/System.Speech.dll": {
+            "related": ".xml"
+          }
+        },
+        "build": {
+          "buildTransitive/net8.0/_._": {}
+        },
+        "runtimeTargets": {
+          "runtimes/win/lib/net9.0/System.Speech.dll": {
+            "assetType": "runtime",
+            "rid": "win"
+          }
+        }
+      },
+      "System.Text.Encodings.Web/10.0.2": {
+        "type": "package",
+        "compile": {
+          "lib/net9.0/System.Text.Encodings.Web.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net9.0/System.Text.Encodings.Web.dll": {
+            "related": ".xml"
+          }
+        },
+        "build": {
+          "buildTransitive/net8.0/_._": {}
+        },
+        "runtimeTargets": {
+          "runtimes/browser/lib/net8.0/System.Text.Encodings.Web.dll": {
+            "assetType": "runtime",
+            "rid": "browser"
+          },
+          "runtimes/win/lib/net9.0/System.Text.Encodings.Web.dll": {
+            "assetType": "runtime",
+            "rid": "win"
+          }
+        }
+      },
+      "System.Text.Json/10.0.2": {
+        "type": "package",
+        "dependencies": {
+          "System.IO.Pipelines": "10.0.2",
+          "System.Text.Encodings.Web": "10.0.2"
+        },
+        "compile": {
+          "lib/net9.0/System.Text.Json.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net9.0/System.Text.Json.dll": {
+            "related": ".xml"
+          }
+        },
+        "build": {
+          "buildTransitive/net8.0/System.Text.Json.targets": {}
+        }
+      },
+      "Whisper.net/1.9.1": {
+        "type": "package",
+        "dependencies": {
+          "Microsoft.Extensions.AI.Abstractions": "10.2.0"
+        },
+        "compile": {
+          "lib/net9.0/Whisper.net.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net9.0/Whisper.net.dll": {
+            "related": ".xml"
+          }
+        }
+      },
+      "Whisper.net.Runtime/1.9.1": {
+        "type": "package",
+        "dependencies": {
+          "Whisper.net.Runtime.Metal": "1.9.1"
+        },
+        "build": {
+          "build/Whisper.net.Runtime.targets": {}
+        }
+      },
+      "Whisper.net.Runtime.Metal/1.9.1": {
+        "type": "package",
+        "build": {
+          "build/Whisper.net.Runtime.Metal.targets": {}
+        }
+      }
+    }
+  },
+  "libraries": {
+    "Microsoft.Extensions.AI.Abstractions/10.2.0": {
+      "sha512": "ONGlIBht0ygEdKc0bCt9XWUiq19/460dAu7fCKzPM34OFJSMQIohEDTJwjCJ8vVp8znNakloc9xFF9+R/eDCYQ==",
+      "type": "package",
+      "path": "microsoft.extensions.ai.abstractions/10.2.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "Icon.png",
+        "README.md",
+        "lib/net10.0/Microsoft.Extensions.AI.Abstractions.dll",
+        "lib/net10.0/Microsoft.Extensions.AI.Abstractions.xml",
+        "lib/net462/Microsoft.Extensions.AI.Abstractions.dll",
+        "lib/net462/Microsoft.Extensions.AI.Abstractions.xml",
+        "lib/net8.0/Microsoft.Extensions.AI.Abstractions.dll",
+        "lib/net8.0/Microsoft.Extensions.AI.Abstractions.xml",
+        "lib/net9.0/Microsoft.Extensions.AI.Abstractions.dll",
+        "lib/net9.0/Microsoft.Extensions.AI.Abstractions.xml",
+        "lib/netstandard2.0/Microsoft.Extensions.AI.Abstractions.dll",
+        "lib/netstandard2.0/Microsoft.Extensions.AI.Abstractions.xml",
+        "microsoft.extensions.ai.abstractions.10.2.0.nupkg.sha512",
+        "microsoft.extensions.ai.abstractions.nuspec"
+      ]
+    },
+    "NAudio/3.1.0": {
+      "sha512": "wD5UttLb5Eu/caAYPy/siDg7xf3KVkdJfMLXr+cJfAvxgh6wDnWOBxXfhYNMUiIaQRr2VPDjgPH2QIzBSP6gqw==",
+      "type": "package",
+      "path": "naudio/3.1.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "README.md",
+        "_manifest/spdx_2.2/manifest.spdx.json",
+        "_manifest/spdx_2.2/manifest.spdx.json.sha256",
+        "lib/net9.0-windows10.0.19041/NAudio.dll",
+        "lib/net9.0-windows10.0.19041/NAudio.xml",
+        "lib/net9.0-windows7.0/NAudio.dll",
+        "lib/net9.0-windows7.0/NAudio.xml",
+        "lib/net9.0/NAudio.dll",
+        "lib/net9.0/NAudio.xml",
+        "naudio-icon.png",
+        "naudio.3.1.0.nupkg.sha512",
+        "naudio.nuspec"
+      ]
+    },
+    "NAudio.Asio/3.1.0": {
+      "sha512": "v+ZgbdCaE/XyhByYNC+xgNdRNWy43GHWYJ+fLrXwjOLXYUToq45G5EGzdqlY//3KsX1zuVn+mU+SBBZ744zK6g==",
+      "type": "package",
+      "path": "naudio.asio/3.1.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "README.md",
+        "_manifest/spdx_2.2/manifest.spdx.json",
+        "_manifest/spdx_2.2/manifest.spdx.json.sha256",
+        "lib/net9.0-windows7.0/NAudio.Asio.dll",
+        "lib/net9.0-windows7.0/NAudio.Asio.xml",
+        "naudio-icon.png",
+        "naudio.asio.3.1.0.nupkg.sha512",
+        "naudio.asio.nuspec"
+      ]
+    },
+    "NAudio.Core/3.1.0": {
+      "sha512": "8Hrd3Uqb2wEB64eZYF+0vl9xBadeSn6JnFDsHuGrw87ucJ+pB7u5NzVpHl8OlCNvIvH+sD9b2h4JOqXBuZGYwg==",
+      "type": "package",
+      "path": "naudio.core/3.1.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "README.md",
+        "_manifest/spdx_2.2/manifest.spdx.json",
+        "_manifest/spdx_2.2/manifest.spdx.json.sha256",
+        "lib/net9.0/NAudio.Core.dll",
+        "lib/net9.0/NAudio.Core.xml",
+        "naudio-icon.png",
+        "naudio.core.3.1.0.nupkg.sha512",
+        "naudio.core.nuspec"
+      ]
+    },
+    "NAudio.Dmo/3.1.0": {
+      "sha512": "XhVjBgIyj6qnZRfeGS2CkL6mffRLnT4WK/hAoNGZsqJK1p+XpWe0nFbUA+6Cmgj18oLoHYk2KouPw/Q94mTCnA==",
+      "type": "package",
+      "path": "naudio.dmo/3.1.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "README.md",
+        "_manifest/spdx_2.2/manifest.spdx.json",
+        "_manifest/spdx_2.2/manifest.spdx.json.sha256",
+        "lib/net9.0-windows7.0/NAudio.Dmo.dll",
+        "lib/net9.0-windows7.0/NAudio.Dmo.xml",
+        "naudio-icon.png",
+        "naudio.dmo.3.1.0.nupkg.sha512",
+        "naudio.dmo.nuspec"
+      ]
+    },
+    "NAudio.Midi/3.1.0": {
+      "sha512": "McIiQyY5o0Q3QlF5oRm+b0A8IE0SorA/9HvNi88bH3MdSnGp7cM/9sze/zqbS/9PFdKYVRZPtoLwqoAF4BgjeA==",
+      "type": "package",
+      "path": "naudio.midi/3.1.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "README.md",
+        "_manifest/spdx_2.2/manifest.spdx.json",
+        "_manifest/spdx_2.2/manifest.spdx.json.sha256",
+        "lib/net9.0-windows10.0.19041/NAudio.Midi.dll",
+        "lib/net9.0-windows10.0.19041/NAudio.Midi.xml",
+        "lib/net9.0/NAudio.Midi.dll",
+        "lib/net9.0/NAudio.Midi.xml",
+        "naudio-icon.png",
+        "naudio.midi.3.1.0.nupkg.sha512",
+        "naudio.midi.nuspec"
+      ]
+    },
+    "NAudio.Wasapi/3.1.0": {
+      "sha512": "iTG+oBJaiID344yz84PrTiVF98av5SsuOUu7ICskcUd6f5ShHDMskG9sE4XUM05Vdlwy88bMQDDC3e+85Mv8yw==",
+      "type": "package",
+      "path": "naudio.wasapi/3.1.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "README.md",
+        "_manifest/spdx_2.2/manifest.spdx.json",
+        "_manifest/spdx_2.2/manifest.spdx.json.sha256",
+        "lib/net9.0/NAudio.Wasapi.dll",
+        "lib/net9.0/NAudio.Wasapi.xml",
+        "naudio-icon.png",
+        "naudio.wasapi.3.1.0.nupkg.sha512",
+        "naudio.wasapi.nuspec"
+      ]
+    },
+    "NAudio.WinForms/3.1.0": {
+      "sha512": "oIjQu3bp9QtAB6wAf04pgeDUce+dIrSDcvNp689e/xYStyktG33nY2GwW7d1mS2zDAeA/YhUjY5DkakDWs9+1w==",
+      "type": "package",
+      "path": "naudio.winforms/3.1.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "README.md",
+        "_manifest/spdx_2.2/manifest.spdx.json",
+        "_manifest/spdx_2.2/manifest.spdx.json.sha256",
+        "lib/net9.0-windows7.0/NAudio.WinForms.dll",
+        "lib/net9.0-windows7.0/NAudio.WinForms.xml",
+        "naudio-icon.png",
+        "naudio.winforms.3.1.0.nupkg.sha512",
+        "naudio.winforms.nuspec"
+      ]
+    },
+    "NAudio.WinMM/3.1.0": {
+      "sha512": "2LXIZwBQKxDZP+GvTvC9zrHiF0LQ3lvTi5dqgS175hY/bOtqFlDRRhzEnVv/lLFlQ+a1I/ZQ3m6CclTvztkf6A==",
+      "type": "package",
+      "path": "naudio.winmm/3.1.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "README.md",
+        "_manifest/spdx_2.2/manifest.spdx.json",
+        "_manifest/spdx_2.2/manifest.spdx.json.sha256",
+        "lib/net9.0-windows7.0/NAudio.WinMM.dll",
+        "lib/net9.0-windows7.0/NAudio.WinMM.xml",
+        "naudio-icon.png",
+        "naudio.winmm.3.1.0.nupkg.sha512",
+        "naudio.winmm.nuspec"
+      ]
+    },
+    "org.k2fsa.sherpa.onnx/1.13.5": {
+      "sha512": "YCk9fwwlioQ2F9dQHhHpUyP96O+YWn3WTQJERWXdHqWgHOMzwKu+TKgW9Rx8hKA3ukDJwS1i5OqLdSCB4bUbvw==",
+      "type": "package",
+      "path": "org.k2fsa.sherpa.onnx/1.13.5",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "README.md",
+        "lib/net10.0/sherpa-onnx.dll",
+        "lib/net20/sherpa-onnx.dll",
+        "lib/net35/sherpa-onnx.dll",
+        "lib/net40/sherpa-onnx.dll",
+        "lib/net45/sherpa-onnx.dll",
+        "lib/net6.0/sherpa-onnx.dll",
+        "lib/net7.0/sherpa-onnx.dll",
+        "lib/net8.0/sherpa-onnx.dll",
+        "lib/netstandard2.0/sherpa-onnx.dll",
+        "org.k2fsa.sherpa.onnx.1.13.5.nupkg.sha512",
+        "org.k2fsa.sherpa.onnx.nuspec"
+      ]
+    },
+    "org.k2fsa.sherpa.onnx.runtime.android-arm64/1.13.5": {
+      "sha512": "mIGTtXxqK8UKOFAATAFUIO5WQeBVmmR0mPkFMLzHUKIb6Q7Wq6W106+g0k5zaI7S6zg9frrbn2OmDyqz53Nnvw==",
+      "type": "package",
+      "path": "org.k2fsa.sherpa.onnx.runtime.android-arm64/1.13.5",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "README.md",
+        "org.k2fsa.sherpa.onnx.runtime.android-arm64.1.13.5.nupkg.sha512",
+        "org.k2fsa.sherpa.onnx.runtime.android-arm64.nuspec",
+        "runtimes/android-arm64/native/libonnxruntime.so",
+        "runtimes/android-arm64/native/libsherpa-onnx-c-api.so"
+      ]
+    },
+    "org.k2fsa.sherpa.onnx.runtime.android-x64/1.13.5": {
+      "sha512": "Z1hYSe8W1yDH0kO2/Yd+e1xduJxz3laPXXm4dP/gIwJn+7CPGeVI95rJtVHqmGoLoDkoeWiuePM6m95jvZ1pUQ==",
+      "type": "package",
+      "path": "org.k2fsa.sherpa.onnx.runtime.android-x64/1.13.5",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "README.md",
+        "org.k2fsa.sherpa.onnx.runtime.android-x64.1.13.5.nupkg.sha512",
+        "org.k2fsa.sherpa.onnx.runtime.android-x64.nuspec",
+        "runtimes/android-x64/native/libonnxruntime.so",
+        "runtimes/android-x64/native/libsherpa-onnx-c-api.so"
+      ]
+    },
+    "org.k2fsa.sherpa.onnx.runtime.linux-arm64/1.13.5": {
+      "sha512": "eagmOCQZBmmLBsPK7ye4O2ByCvMDhA03Xb3ddzf7EF/i9jpAmlN6Bk55vZ7yeo2xhBzUZKDbcNm9t6rmzU4Ygg==",
+      "type": "package",
+      "path": "org.k2fsa.sherpa.onnx.runtime.linux-arm64/1.13.5",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "README.md",
+        "org.k2fsa.sherpa.onnx.runtime.linux-arm64.1.13.5.nupkg.sha512",
+        "org.k2fsa.sherpa.onnx.runtime.linux-arm64.nuspec",
+        "runtimes/linux-arm64/native/libonnxruntime.so",
+        "runtimes/linux-arm64/native/libsherpa-onnx-c-api.so"
+      ]
+    },
+    "org.k2fsa.sherpa.onnx.runtime.linux-x64/1.13.5": {
+      "sha512": "4ztIRWpJOnaJ2c4s/m3QkZ9fM3hdvVEDQoa5rRWgeL3ru9dJbmpHpha4ZQQBMn2cy2IgafKZjqne126XHJj0Ww==",
+      "type": "package",
+      "path": "org.k2fsa.sherpa.onnx.runtime.linux-x64/1.13.5",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "README.md",
+        "org.k2fsa.sherpa.onnx.runtime.linux-x64.1.13.5.nupkg.sha512",
+        "org.k2fsa.sherpa.onnx.runtime.linux-x64.nuspec",
+        "runtimes/linux-x64/native/libonnxruntime.so",
+        "runtimes/linux-x64/native/libsherpa-onnx-c-api.so"
+      ]
+    },
+    "org.k2fsa.sherpa.onnx.runtime.osx-arm64/1.13.5": {
+      "sha512": "r3PDv29Klz4P3r1iKORSXM0lcVS/O5EIiQ3kSf/XATRk6j76+TYJdLxkMlLIIEDxIYsH6KWxhIJSa+OsTtYXHA==",
+      "type": "package",
+      "path": "org.k2fsa.sherpa.onnx.runtime.osx-arm64/1.13.5",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "README.md",
+        "org.k2fsa.sherpa.onnx.runtime.osx-arm64.1.13.5.nupkg.sha512",
+        "org.k2fsa.sherpa.onnx.runtime.osx-arm64.nuspec",
+        "runtimes/osx-arm64/native/libonnxruntime.dylib",
+        "runtimes/osx-arm64/native/libsherpa-onnx-c-api.dylib"
+      ]
+    },
+    "org.k2fsa.sherpa.onnx.runtime.osx-x64/1.13.5": {
+      "sha512": "HIqaUkE8EHk0gL8RLWvIRe7ZMvFGjlG367ILe0sofXH/lNJ0z6F6eoJGy7cspPxzSop0aqCp/jJFfZqnADna0w==",
+      "type": "package",
+      "path": "org.k2fsa.sherpa.onnx.runtime.osx-x64/1.13.5",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "README.md",
+        "org.k2fsa.sherpa.onnx.runtime.osx-x64.1.13.5.nupkg.sha512",
+        "org.k2fsa.sherpa.onnx.runtime.osx-x64.nuspec",
+        "runtimes/osx-x64/native/libonnxruntime.dylib",
+        "runtimes/osx-x64/native/libsherpa-onnx-c-api.dylib"
+      ]
+    },
+    "org.k2fsa.sherpa.onnx.runtime.win-arm64/1.13.5": {
+      "sha512": "N65U3UChsvVQMFDAAMAGMVdlsZY2gNzVo7+28Cz4/AW9VmdnJjGkioPbZNca2wYUnuSPlJBn2JwJIGntty5mmA==",
+      "type": "package",
+      "path": "org.k2fsa.sherpa.onnx.runtime.win-arm64/1.13.5",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "README.md",
+        "org.k2fsa.sherpa.onnx.runtime.win-arm64.1.13.5.nupkg.sha512",
+        "org.k2fsa.sherpa.onnx.runtime.win-arm64.nuspec",
+        "runtimes/win-arm64/native/onnxruntime.dll",
+        "runtimes/win-arm64/native/sherpa-onnx-c-api.dll"
+      ]
+    },
+    "org.k2fsa.sherpa.onnx.runtime.win-x64/1.13.5": {
+      "sha512": "IeH3t8RFhBI+AifZksnG3yvetC3/K7KV2Uo7kVWILN0M67UqC1OHE3T9saDersFaRxCWFFz1pV9L+Hsngj2wCg==",
+      "type": "package",
+      "path": "org.k2fsa.sherpa.onnx.runtime.win-x64/1.13.5",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "README.md",
+        "org.k2fsa.sherpa.onnx.runtime.win-x64.1.13.5.nupkg.sha512",
+        "org.k2fsa.sherpa.onnx.runtime.win-x64.nuspec",
+        "runtimes/win-x64/native/onnxruntime.dll",
+        "runtimes/win-x64/native/sherpa-onnx-c-api.dll"
+      ]
+    },
+    "org.k2fsa.sherpa.onnx.runtime.win-x86/1.13.5": {
+      "sha512": "5pdNAFMm/2lzNvvEFlRi7XZttg1l8869EKczh21UFNN0qhHZld7iZhOQXsuopfFGXZvCnr+bGfWy9pqUA530pw==",
+      "type": "package",
+      "path": "org.k2fsa.sherpa.onnx.runtime.win-x86/1.13.5",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "README.md",
+        "org.k2fsa.sherpa.onnx.runtime.win-x86.1.13.5.nupkg.sha512",
+        "org.k2fsa.sherpa.onnx.runtime.win-x86.nuspec",
+        "runtimes/win-x86/native/onnxruntime.dll",
+        "runtimes/win-x86/native/sherpa-onnx-c-api.dll"
+      ]
+    },
+    "SharpCompress/0.50.4": {
+      "sha512": "/hxjUR7DEX6mky8/LQXyrnrKioOL6D6veAID1EZpro+q4s02x5dHEYBV3qjEN6lDYYilDoQQ76BcmQj+lRx51w==",
+      "type": "package",
+      "path": "sharpcompress/0.50.4",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "README.md",
+        "lib/net10.0/SharpCompress.dll",
+        "lib/net48/SharpCompress.dll",
+        "lib/net6.0/SharpCompress.dll",
+        "lib/net8.0/SharpCompress.dll",
+        "lib/netstandard2.0/SharpCompress.dll",
+        "lib/netstandard2.1/SharpCompress.dll",
+        "sharpcompress.0.50.4.nupkg.sha512",
+        "sharpcompress.nuspec"
+      ]
+    },
+    "System.Configuration.ConfigurationManager/9.0.0": {
+      "sha512": "PdkuMrwDhXoKFo/JxISIi9E8L+QGn9Iquj2OKDWHB6Y/HnUOuBouF7uS3R4Hw3FoNmwwMo6hWgazQdyHIIs27A==",
+      "type": "package",
+      "path": "system.configuration.configurationmanager/9.0.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "Icon.png",
+        "LICENSE.TXT",
+        "PACKAGE.md",
+        "THIRD-PARTY-NOTICES.TXT",
+        "buildTransitive/net461/System.Configuration.ConfigurationManager.targets",
+        "buildTransitive/net462/_._",
+        "buildTransitive/net8.0/_._",
+        "buildTransitive/netcoreapp2.0/System.Configuration.ConfigurationManager.targets",
+        "lib/net462/System.Configuration.ConfigurationManager.dll",
+        "lib/net462/System.Configuration.ConfigurationManager.xml",
+        "lib/net8.0/System.Configuration.ConfigurationManager.dll",
+        "lib/net8.0/System.Configuration.ConfigurationManager.xml",
+        "lib/net9.0/System.Configuration.ConfigurationManager.dll",
+        "lib/net9.0/System.Configuration.ConfigurationManager.xml",
+        "lib/netstandard2.0/System.Configuration.ConfigurationManager.dll",
+        "lib/netstandard2.0/System.Configuration.ConfigurationManager.xml",
+        "system.configuration.configurationmanager.9.0.0.nupkg.sha512",
+        "system.configuration.configurationmanager.nuspec",
+        "useSharedDesignerContext.txt"
+      ]
+    },
+    "System.Diagnostics.EventLog/9.0.0": {
+      "sha512": "qd01+AqPhbAG14KtdtIqFk+cxHQFZ/oqRSCoxU1F+Q6Kv0cl726sl7RzU9yLFGd4BUOKdN4XojXF0pQf/R6YeA==",
+      "type": "package",
+      "path": "system.diagnostics.eventlog/9.0.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "Icon.png",
+        "LICENSE.TXT",
+        "PACKAGE.md",
+        "THIRD-PARTY-NOTICES.TXT",
+        "buildTransitive/net461/System.Diagnostics.EventLog.targets",
+        "buildTransitive/net462/_._",
+        "buildTransitive/net8.0/_._",
+        "buildTransitive/netcoreapp2.0/System.Diagnostics.EventLog.targets",
+        "lib/net462/System.Diagnostics.EventLog.dll",
+        "lib/net462/System.Diagnostics.EventLog.xml",
+        "lib/net8.0/System.Diagnostics.EventLog.dll",
+        "lib/net8.0/System.Diagnostics.EventLog.xml",
+        "lib/net9.0/System.Diagnostics.EventLog.dll",
+        "lib/net9.0/System.Diagnostics.EventLog.xml",
+        "lib/netstandard2.0/System.Diagnostics.EventLog.dll",
+        "lib/netstandard2.0/System.Diagnostics.EventLog.xml",
+        "runtimes/win/lib/net8.0/System.Diagnostics.EventLog.Messages.dll",
+        "runtimes/win/lib/net8.0/System.Diagnostics.EventLog.dll",
+        "runtimes/win/lib/net8.0/System.Diagnostics.EventLog.xml",
+        "runtimes/win/lib/net9.0/System.Diagnostics.EventLog.Messages.dll",
+        "runtimes/win/lib/net9.0/System.Diagnostics.EventLog.dll",
+        "runtimes/win/lib/net9.0/System.Diagnostics.EventLog.xml",
+        "system.diagnostics.eventlog.9.0.0.nupkg.sha512",
+        "system.diagnostics.eventlog.nuspec",
+        "useSharedDesignerContext.txt"
+      ]
+    },
+    "System.Diagnostics.PerformanceCounter/9.0.0": {
+      "sha512": "1SSqHtWZUdAC0j0UCw2ZWV4iOWB7nPZFkseqPsjdaypVu7ue1xsUJMobXkpHEDFNTrL0DpOdT7k6qDfqmFkQ6g==",
+      "type": "package",
+      "path": "system.diagnostics.performancecounter/9.0.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "Icon.png",
+        "LICENSE.TXT",
+        "PACKAGE.md",
+        "THIRD-PARTY-NOTICES.TXT",
+        "buildTransitive/net461/System.Diagnostics.PerformanceCounter.targets",
+        "buildTransitive/net462/_._",
+        "buildTransitive/net8.0/_._",
+        "buildTransitive/netcoreapp2.0/System.Diagnostics.PerformanceCounter.targets",
+        "lib/net462/System.Diagnostics.PerformanceCounter.dll",
+        "lib/net462/System.Diagnostics.PerformanceCounter.xml",
+        "lib/net8.0/System.Diagnostics.PerformanceCounter.dll",
+        "lib/net8.0/System.Diagnostics.PerformanceCounter.xml",
+        "lib/net9.0/System.Diagnostics.PerformanceCounter.dll",
+        "lib/net9.0/System.Diagnostics.PerformanceCounter.xml",
+        "lib/netstandard2.0/System.Diagnostics.PerformanceCounter.dll",
+        "lib/netstandard2.0/System.Diagnostics.PerformanceCounter.xml",
+        "runtimes/win/lib/net8.0/System.Diagnostics.PerformanceCounter.dll",
+        "runtimes/win/lib/net8.0/System.Diagnostics.PerformanceCounter.xml",
+        "runtimes/win/lib/net9.0/System.Diagnostics.PerformanceCounter.dll",
+        "runtimes/win/lib/net9.0/System.Diagnostics.PerformanceCounter.xml",
+        "system.diagnostics.performancecounter.9.0.0.nupkg.sha512",
+        "system.diagnostics.performancecounter.nuspec",
+        "useSharedDesignerContext.txt"
+      ]
+    },
+    "System.IO.Pipelines/10.0.2": {
+      "sha512": "EqMsn9r18ABvTDxrDce4OWDhBE3y+rR23ilG7Y3BudDKrDKrLG/hkD/JmeFZbctAPxSkCjyJ/Ddwbn/g7ufRJA==",
+      "type": "package",
+      "path": "system.io.pipelines/10.0.2",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "Icon.png",
+        "PACKAGE.md",
+        "THIRD-PARTY-NOTICES.TXT",
+        "buildTransitive/net461/System.IO.Pipelines.targets",
+        "buildTransitive/net462/_._",
+        "buildTransitive/net8.0/_._",
+        "buildTransitive/netcoreapp2.0/System.IO.Pipelines.targets",
+        "lib/net10.0/System.IO.Pipelines.dll",
+        "lib/net10.0/System.IO.Pipelines.xml",
+        "lib/net462/System.IO.Pipelines.dll",
+        "lib/net462/System.IO.Pipelines.xml",
+        "lib/net8.0/System.IO.Pipelines.dll",
+        "lib/net8.0/System.IO.Pipelines.xml",
+        "lib/net9.0/System.IO.Pipelines.dll",
+        "lib/net9.0/System.IO.Pipelines.xml",
+        "lib/netstandard2.0/System.IO.Pipelines.dll",
+        "lib/netstandard2.0/System.IO.Pipelines.xml",
+        "system.io.pipelines.10.0.2.nupkg.sha512",
+        "system.io.pipelines.nuspec",
+        "useSharedDesignerContext.txt"
+      ]
+    },
+    "System.Numerics.Tensors/9.0.0": {
+      "sha512": "hyJB4UlpAi19Xr9AXzu2NuagKC4lPfHObNMEAA0HmqFz2rX7wKgzeYzO/jM/eBHDhnUGFFEjk5cOoJaxqg5J4A==",
+      "type": "package",
+      "path": "system.numerics.tensors/9.0.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "Icon.png",
+        "LICENSE.TXT",
+        "PACKAGE.md",
+        "THIRD-PARTY-NOTICES.TXT",
+        "buildTransitive/net461/System.Numerics.Tensors.targets",
+        "buildTransitive/net462/_._",
+        "buildTransitive/net8.0/_._",
+        "buildTransitive/netcoreapp2.0/System.Numerics.Tensors.targets",
+        "lib/net462/System.Numerics.Tensors.dll",
+        "lib/net462/System.Numerics.Tensors.xml",
+        "lib/net8.0/System.Numerics.Tensors.dll",
+        "lib/net8.0/System.Numerics.Tensors.xml",
+        "lib/net9.0/System.Numerics.Tensors.dll",
+        "lib/net9.0/System.Numerics.Tensors.xml",
+        "lib/netstandard2.0/System.Numerics.Tensors.dll",
+        "lib/netstandard2.0/System.Numerics.Tensors.xml",
+        "system.numerics.tensors.9.0.0.nupkg.sha512",
+        "system.numerics.tensors.nuspec",
+        "useSharedDesignerContext.txt"
+      ]
+    },
+    "System.Security.Cryptography.ProtectedData/9.0.0": {
+      "sha512": "CJW+x/F6fmRQ7N6K8paasTw9PDZp4t7G76UjGNlSDgoHPF0h08vTzLYbLZpOLEJSg35d5wy2jCXGo84EN05DpQ==",
+      "type": "package",
+      "path": "system.security.cryptography.protecteddata/9.0.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "Icon.png",
+        "LICENSE.TXT",
+        "PACKAGE.md",
+        "THIRD-PARTY-NOTICES.TXT",
+        "buildTransitive/net461/System.Security.Cryptography.ProtectedData.targets",
+        "buildTransitive/net462/_._",
+        "buildTransitive/net8.0/_._",
+        "buildTransitive/netcoreapp2.0/System.Security.Cryptography.ProtectedData.targets",
+        "lib/MonoAndroid10/_._",
+        "lib/MonoTouch10/_._",
+        "lib/net462/System.Security.Cryptography.ProtectedData.dll",
+        "lib/net462/System.Security.Cryptography.ProtectedData.xml",
+        "lib/net8.0/System.Security.Cryptography.ProtectedData.dll",
+        "lib/net8.0/System.Security.Cryptography.ProtectedData.xml",
+        "lib/net9.0/System.Security.Cryptography.ProtectedData.dll",
+        "lib/net9.0/System.Security.Cryptography.ProtectedData.xml",
+        "lib/netstandard2.0/System.Security.Cryptography.ProtectedData.dll",
+        "lib/netstandard2.0/System.Security.Cryptography.ProtectedData.xml",
+        "lib/xamarinios10/_._",
+        "lib/xamarinmac20/_._",
+        "lib/xamarintvos10/_._",
+        "lib/xamarinwatchos10/_._",
+        "system.security.cryptography.protecteddata.9.0.0.nupkg.sha512",
+        "system.security.cryptography.protecteddata.nuspec",
+        "useSharedDesignerContext.txt"
+      ]
+    },
+    "System.Speech/9.0.0": {
+      "sha512": "z8mvEVBfWSi0692vPOra8MougSEJCDzlaLj4g0aA87XDZpJoJD3BJTcJ0MuFbbN1fOT9Cr2ZFqXhZc+zzX0Gwg==",
+      "type": "package",
+      "path": "system.speech/9.0.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "Icon.png",
+        "LICENSE.TXT",
+        "PACKAGE.md",
+        "THIRD-PARTY-NOTICES.TXT",
+        "buildTransitive/net8.0/_._",
+        "buildTransitive/netcoreapp2.0/System.Speech.targets",
+        "lib/net462/_._",
+        "lib/net8.0/System.Speech.dll",
+        "lib/net8.0/System.Speech.xml",
+        "lib/net9.0/System.Speech.dll",
+        "lib/net9.0/System.Speech.xml",
+        "lib/netstandard2.0/System.Speech.dll",
+        "lib/netstandard2.0/System.Speech.xml",
+        "runtimes/win/lib/net8.0/System.Speech.dll",
+        "runtimes/win/lib/net8.0/System.Speech.xml",
+        "runtimes/win/lib/net9.0/System.Speech.dll",
+        "runtimes/win/lib/net9.0/System.Speech.xml",
+        "system.speech.9.0.0.nupkg.sha512",
+        "system.speech.nuspec",
+        "useSharedDesignerContext.txt"
+      ]
+    },
+    "System.Text.Encodings.Web/10.0.2": {
+      "sha512": "Ro4cLT4qpRy64crfLAy3ekihtXckeXrD5eI6qb6NDSEVyHcHsmH7KgN4dbnIuiBmXIoaCslx4SynLYxag1SLSQ==",
+      "type": "package",
+      "path": "system.text.encodings.web/10.0.2",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "Icon.png",
+        "PACKAGE.md",
+        "THIRD-PARTY-NOTICES.TXT",
+        "buildTransitive/net461/System.Text.Encodings.Web.targets",
+        "buildTransitive/net462/_._",
+        "buildTransitive/net8.0/_._",
+        "buildTransitive/netcoreapp2.0/System.Text.Encodings.Web.targets",
+        "lib/net10.0/System.Text.Encodings.Web.dll",
+        "lib/net10.0/System.Text.Encodings.Web.xml",
+        "lib/net462/System.Text.Encodings.Web.dll",
+        "lib/net462/System.Text.Encodings.Web.xml",
+        "lib/net8.0/System.Text.Encodings.Web.dll",
+        "lib/net8.0/System.Text.Encodings.Web.xml",
+        "lib/net9.0/System.Text.Encodings.Web.dll",
+        "lib/net9.0/System.Text.Encodings.Web.xml",
+        "lib/netstandard2.0/System.Text.Encodings.Web.dll",
+        "lib/netstandard2.0/System.Text.Encodings.Web.xml",
+        "runtimes/browser/lib/net10.0/System.Text.Encodings.Web.dll",
+        "runtimes/browser/lib/net10.0/System.Text.Encodings.Web.xml",
+        "runtimes/browser/lib/net8.0/System.Text.Encodings.Web.dll",
+        "runtimes/browser/lib/net8.0/System.Text.Encodings.Web.xml",
+        "runtimes/wasi/lib/net10.0/System.Text.Encodings.Web.dll",
+        "runtimes/wasi/lib/net10.0/System.Text.Encodings.Web.xml",
+        "runtimes/win/lib/net9.0/System.Text.Encodings.Web.dll",
+        "runtimes/win/lib/net9.0/System.Text.Encodings.Web.xml",
+        "system.text.encodings.web.10.0.2.nupkg.sha512",
+        "system.text.encodings.web.nuspec",
+        "useSharedDesignerContext.txt"
+      ]
+    },
+    "System.Text.Json/10.0.2": {
+      "sha512": "zy8ey7I16G9neZ6uzxrnYwS7pidElzN8XarsBjGu7lE2m7afTKMEe18KbY3ZSmh/z/bR40oxjd6hlUcmOEaMHw==",
+      "type": "package",
+      "path": "system.text.json/10.0.2",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "Icon.png",
+        "PACKAGE.md",
+        "THIRD-PARTY-NOTICES.TXT",
+        "analyzers/dotnet/roslyn3.11/cs/System.Text.Json.SourceGeneration.dll",
+        "analyzers/dotnet/roslyn3.11/cs/cs/System.Text.Json.SourceGeneration.resources.dll",
+        "analyzers/dotnet/roslyn3.11/cs/de/System.Text.Json.SourceGeneration.resources.dll",
+        "analyzers/dotnet/roslyn3.11/cs/es/System.Text.Json.SourceGeneration.resources.dll",
+        "analyzers/dotnet/roslyn3.11/cs/fr/System.Text.Json.SourceGeneration.resources.dll",
+        "analyzers/dotnet/roslyn3.11/cs/it/System.Text.Json.SourceGeneration.resources.dll",
+        "analyzers/dotnet/roslyn3.11/cs/ja/System.Text.Json.SourceGeneration.resources.dll",
+        "analyzers/dotnet/roslyn3.11/cs/ko/System.Text.Json.SourceGeneration.resources.dll",
+        "analyzers/dotnet/roslyn3.11/cs/pl/System.Text.Json.SourceGeneration.resources.dll",
+        "analyzers/dotnet/roslyn3.11/cs/pt-BR/System.Text.Json.SourceGeneration.resources.dll",
+        "analyzers/dotnet/roslyn3.11/cs/ru/System.Text.Json.SourceGeneration.resources.dll",
+        "analyzers/dotnet/roslyn3.11/cs/tr/System.Text.Json.SourceGeneration.resources.dll",
+        "analyzers/dotnet/roslyn3.11/cs/zh-Hans/System.Text.Json.SourceGeneration.resources.dll",
+        "analyzers/dotnet/roslyn3.11/cs/zh-Hant/System.Text.Json.SourceGeneration.resources.dll",
+        "analyzers/dotnet/roslyn4.0/cs/System.Text.Json.SourceGeneration.dll",
+        "analyzers/dotnet/roslyn4.0/cs/cs/System.Text.Json.SourceGeneration.resources.dll",
+        "analyzers/dotnet/roslyn4.0/cs/de/System.Text.Json.SourceGeneration.resources.dll",
+        "analyzers/dotnet/roslyn4.0/cs/es/System.Text.Json.SourceGeneration.resources.dll",
+        "analyzers/dotnet/roslyn4.0/cs/fr/System.Text.Json.SourceGeneration.resources.dll",
+        "analyzers/dotnet/roslyn4.0/cs/it/System.Text.Json.SourceGeneration.resources.dll",
+        "analyzers/dotnet/roslyn4.0/cs/ja/System.Text.Json.SourceGeneration.resources.dll",
+        "analyzers/dotnet/roslyn4.0/cs/ko/System.Text.Json.SourceGeneration.resources.dll",
+        "analyzers/dotnet/roslyn4.0/cs/pl/System.Text.Json.SourceGeneration.resources.dll",
+        "analyzers/dotnet/roslyn4.0/cs/pt-BR/System.Text.Json.SourceGeneration.resources.dll",
+        "analyzers/dotnet/roslyn4.0/cs/ru/System.Text.Json.SourceGeneration.resources.dll",
+        "analyzers/dotnet/roslyn4.0/cs/tr/System.Text.Json.SourceGeneration.resources.dll",
+        "analyzers/dotnet/roslyn4.0/cs/zh-Hans/System.Text.Json.SourceGeneration.resources.dll",
+        "analyzers/dotnet/roslyn4.0/cs/zh-Hant/System.Text.Json.SourceGeneration.resources.dll",
+        "analyzers/dotnet/roslyn4.4/cs/System.Text.Json.SourceGeneration.dll",
+        "analyzers/dotnet/roslyn4.4/cs/cs/System.Text.Json.SourceGeneration.resources.dll",
+        "analyzers/dotnet/roslyn4.4/cs/de/System.Text.Json.SourceGeneration.resources.dll",
+        "analyzers/dotnet/roslyn4.4/cs/es/System.Text.Json.SourceGeneration.resources.dll",
+        "analyzers/dotnet/roslyn4.4/cs/fr/System.Text.Json.SourceGeneration.resources.dll",
+        "analyzers/dotnet/roslyn4.4/cs/it/System.Text.Json.SourceGeneration.resources.dll",
+        "analyzers/dotnet/roslyn4.4/cs/ja/System.Text.Json.SourceGeneration.resources.dll",
+        "analyzers/dotnet/roslyn4.4/cs/ko/System.Text.Json.SourceGeneration.resources.dll",
+        "analyzers/dotnet/roslyn4.4/cs/pl/System.Text.Json.SourceGeneration.resources.dll",
+        "analyzers/dotnet/roslyn4.4/cs/pt-BR/System.Text.Json.SourceGeneration.resources.dll",
+        "analyzers/dotnet/roslyn4.4/cs/ru/System.Text.Json.SourceGeneration.resources.dll",
+        "analyzers/dotnet/roslyn4.4/cs/tr/System.Text.Json.SourceGeneration.resources.dll",
+        "analyzers/dotnet/roslyn4.4/cs/zh-Hans/System.Text.Json.SourceGeneration.resources.dll",
+        "analyzers/dotnet/roslyn4.4/cs/zh-Hant/System.Text.Json.SourceGeneration.resources.dll",
+        "buildTransitive/net461/System.Text.Json.targets",
+        "buildTransitive/net462/System.Text.Json.targets",
+        "buildTransitive/net8.0/System.Text.Json.targets",
+        "buildTransitive/netcoreapp2.0/System.Text.Json.targets",
+        "buildTransitive/netstandard2.0/System.Text.Json.targets",
+        "lib/net10.0/System.Text.Json.dll",
+        "lib/net10.0/System.Text.Json.xml",
+        "lib/net462/System.Text.Json.dll",
+        "lib/net462/System.Text.Json.xml",
+        "lib/net8.0/System.Text.Json.dll",
+        "lib/net8.0/System.Text.Json.xml",
+        "lib/net9.0/System.Text.Json.dll",
+        "lib/net9.0/System.Text.Json.xml",
+        "lib/netstandard2.0/System.Text.Json.dll",
+        "lib/netstandard2.0/System.Text.Json.xml",
+        "system.text.json.10.0.2.nupkg.sha512",
+        "system.text.json.nuspec",
+        "useSharedDesignerContext.txt"
+      ]
+    },
+    "Whisper.net/1.9.1": {
+      "sha512": "82WAKyyMun44cAXE80sP7vIra1oYhbVp2WrnqJm0CISTfMAvint1k/umt0SvsQH+IkDyekZ3BgMdS3Rag9SZ5A==",
+      "type": "package",
+      "path": "whisper.net/1.9.1",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "LICENSE",
+        "lib/net10.0-android36.0/Whisper.net.dll",
+        "lib/net10.0-android36.0/Whisper.net.xml",
+        "lib/net10.0-ios26.0/Whisper.net.dll",
+        "lib/net10.0-ios26.0/Whisper.net.xml",
+        "lib/net10.0-maccatalyst26.0/Whisper.net.dll",
+        "lib/net10.0-maccatalyst26.0/Whisper.net.xml",
+        "lib/net10.0-tvos26.0/Whisper.net.dll",
+        "lib/net10.0-tvos26.0/Whisper.net.xml",
+        "lib/net10.0/Whisper.net.dll",
+        "lib/net10.0/Whisper.net.xml",
+        "lib/net8.0/Whisper.net.dll",
+        "lib/net8.0/Whisper.net.xml",
+        "lib/net9.0-android35.0/Whisper.net.dll",
+        "lib/net9.0-android35.0/Whisper.net.xml",
+        "lib/net9.0-ios18.0/Whisper.net.dll",
+        "lib/net9.0-ios18.0/Whisper.net.xml",
+        "lib/net9.0-maccatalyst18.0/Whisper.net.dll",
+        "lib/net9.0-maccatalyst18.0/Whisper.net.xml",
+        "lib/net9.0-tvos18.0/Whisper.net.dll",
+        "lib/net9.0-tvos18.0/Whisper.net.xml",
+        "lib/net9.0/Whisper.net.dll",
+        "lib/net9.0/Whisper.net.xml",
+        "lib/netstandard2.0/Whisper.net.dll",
+        "lib/netstandard2.0/Whisper.net.xml",
+        "readme.md",
+        "whisper.net.1.9.1.nupkg.sha512",
+        "whisper.net.nuspec"
+      ]
+    },
+    "Whisper.net.Runtime/1.9.1": {
+      "sha512": "TipPJkry69VwJ3XL38U082QK5Trqte6NgSOoosuyj/C1eRHabmBbLQ3ujjcDryg5pkXT7wXwAKU5+PxGIJyxkQ==",
+      "type": "package",
+      "path": "whisper.net.runtime/1.9.1",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "build/Whisper.net.Runtime.targets",
+        "build/android-arm64-v8a/libggml-base-whisper.so",
+        "build/android-arm64-v8a/libggml-cpu-whisper.so",
+        "build/android-arm64-v8a/libggml-whisper.so",
+        "build/android-arm64-v8a/libwhisper.so",
+        "build/android-x86/libggml-base-whisper.so",
+        "build/android-x86/libggml-cpu-whisper.so",
+        "build/android-x86/libggml-whisper.so",
+        "build/android-x86/libwhisper.so",
+        "build/android-x86_64/libggml-base-whisper.so",
+        "build/android-x86_64/libggml-cpu-whisper.so",
+        "build/android-x86_64/libggml-whisper.so",
+        "build/android-x86_64/libwhisper.so",
+        "build/browser-wasm/libggml-base-whisper.a",
+        "build/browser-wasm/libggml-cpu-whisper.a",
+        "build/browser-wasm/libggml-whisper.a",
+        "build/browser-wasm/libwhisper.a",
+        "build/ios-device/libggml-base-whisper.a",
+        "build/ios-device/libggml-blas-whisper.a",
+        "build/ios-device/libggml-cpu-whisper.a",
+        "build/ios-device/libggml-metal-whisper.a",
+        "build/ios-device/libggml-whisper.a",
+        "build/ios-device/libwhisper.a",
+        "build/ios-simulator/libggml-base-whisper.a",
+        "build/ios-simulator/libggml-blas-whisper.a",
+        "build/ios-simulator/libggml-cpu-whisper.a",
+        "build/ios-simulator/libggml-whisper.a",
+        "build/ios-simulator/libwhisper.a",
+        "build/linux-arm/libggml-base-whisper.so",
+        "build/linux-arm/libggml-cpu-whisper.so",
+        "build/linux-arm/libggml-whisper.so",
+        "build/linux-arm/libwhisper.so",
+        "build/linux-arm64/libggml-base-whisper.so",
+        "build/linux-arm64/libggml-cpu-whisper.so",
+        "build/linux-arm64/libggml-whisper.so",
+        "build/linux-arm64/libwhisper.so",
+        "build/linux-x64/libggml-base-whisper.so",
+        "build/linux-x64/libggml-cpu-whisper.so",
+        "build/linux-x64/libggml-whisper.so",
+        "build/linux-x64/libwhisper.so",
+        "build/maccatalyst/libggml-base-whisper.a",
+        "build/maccatalyst/libggml-blas-whisper.a",
+        "build/maccatalyst/libggml-cpu-whisper.a",
+        "build/maccatalyst/libggml-whisper.a",
+        "build/maccatalyst/libwhisper.a",
+        "build/macos-arm64/libggml-base-whisper.dylib",
+        "build/macos-arm64/libggml-blas-whisper.dylib",
+        "build/macos-arm64/libggml-cpu-whisper.dylib",
+        "build/macos-arm64/libggml-metal-whisper.dylib",
+        "build/macos-arm64/libggml-whisper.dylib",
+        "build/macos-arm64/libwhisper.dylib",
+        "build/macos-x64/libggml-base-whisper.dylib",
+        "build/macos-x64/libggml-blas-whisper.dylib",
+        "build/macos-x64/libggml-cpu-whisper.dylib",
+        "build/macos-x64/libggml-whisper.dylib",
+        "build/macos-x64/libwhisper.dylib",
+        "build/tvos-device/libggml-base-whisper.a",
+        "build/tvos-device/libggml-blas-whisper.a",
+        "build/tvos-device/libggml-cpu-whisper.a",
+        "build/tvos-device/libggml-metal-whisper.a",
+        "build/tvos-device/libggml-whisper.a",
+        "build/tvos-device/libwhisper.a",
+        "build/tvos-simulator/libggml-base-whisper.a",
+        "build/tvos-simulator/libggml-blas-whisper.a",
+        "build/tvos-simulator/libggml-cpu-whisper.a",
+        "build/tvos-simulator/libggml-whisper.a",
+        "build/tvos-simulator/libwhisper.a",
+        "build/win-arm64/ggml-base-whisper.dll",
+        "build/win-arm64/ggml-cpu-whisper.dll",
+        "build/win-arm64/ggml-whisper.dll",
+        "build/win-arm64/whisper.dll",
+        "build/win-x64/ggml-base-whisper.dll",
+        "build/win-x64/ggml-cpu-whisper.dll",
+        "build/win-x64/ggml-whisper.dll",
+        "build/win-x64/whisper.dll",
+        "build/win-x86/ggml-base-whisper.dll",
+        "build/win-x86/ggml-cpu-whisper.dll",
+        "build/win-x86/ggml-whisper.dll",
+        "build/win-x86/whisper.dll",
+        "content/readme.md",
+        "whisper.net.runtime.1.9.1.nupkg.sha512",
+        "whisper.net.runtime.nuspec"
+      ]
+    },
+    "Whisper.net.Runtime.Metal/1.9.1": {
+      "sha512": "Ut5tZyCUwXMVdThoLvdvQ7GyLwjRMreR/p3LuMJvRiXidQ2AXxx2Tv8UOGtMxvL395AC3+IkHdN/kMfd+EPSEw==",
+      "type": "package",
+      "path": "whisper.net.runtime.metal/1.9.1",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "build/Whisper.net.Runtime.Metal.targets",
+        "build/ggml-metal.metal",
+        "content/readme.md",
+        "whisper.net.runtime.metal.1.9.1.nupkg.sha512",
+        "whisper.net.runtime.metal.nuspec"
+      ]
+    }
+  },
+  "projectFileDependencyGroups": {
+    "net9.0-windows7.0": [
+      "NAudio >= 3.1.0",
+      "SharpCompress >= 0.50.4",
+      "System.Diagnostics.PerformanceCounter >= 9.0.0",
+      "System.Speech >= 9.0.0",
+      "Whisper.net >= 1.9.1",
+      "Whisper.net.Runtime >= 1.9.1",
+      "org.k2fsa.sherpa.onnx >= 1.13.5"
+    ]
+  },
+  "packageFolders": {
+    "C:\\Users\\pawel\\.nuget\\packages\\": {},
+    "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
+  },
+  "project": {
+    "version": "0.83.0",
+    "restore": {
+      "projectUniqueName": "D:\\SENTINEL X\\SENTINEL-X\\SENTINEL X-1\\SENTINEL-X.csproj",
+      "projectName": "SentinelX",
+      "projectPath": "D:\\SENTINEL X\\SENTINEL-X\\SENTINEL X-1\\SENTINEL-X.csproj",
+      "packagesPath": "C:\\Users\\pawel\\.nuget\\packages\\",
+      "outputPath": "D:\\SENTINEL X\\SENTINEL-X\\SENTINEL X-1\\obj\\",
+      "projectStyle": "PackageReference",
+      "fallbackFolders": [
+        "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+      ],
+      "configFilePaths": [
+        "C:\\Users\\pawel\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+      ],
+      "originalTargetFrameworks": [
+        "net9.0-windows7.0"
+      ],
+      "sources": {
+        "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+        "https://api.nuget.org/v3/index.json": {}
+      },
+      "frameworks": {
+        "net9.0-windows7.0": {
+          "targetAlias": "net9.0-windows7.0",
+          "projectReferences": {}
+        }
+      },
+      "warningProperties": {
+        "warnAsError": [
+          "NU1605"
+        ]
+      },
+      "restoreAuditProperties": {
+        "enableAudit": "true",
+        "auditLevel": "low",
+        "auditMode": "direct"
+      },
+      "SdkAnalysisLevel": "9.0.300"
+    },
+    "frameworks": {
+      "net9.0-windows7.0": {
+        "targetAlias": "net9.0-windows7.0",
+        "dependencies": {
+          "NAudio": {
+            "target": "Package",
+            "version": "[3.1.0, )"
+          },
+          "SharpCompress": {
+            "target": "Package",
+            "version": "[0.50.4, )"
+          },
+          "System.Diagnostics.PerformanceCounter": {
+            "target": "Package",
+            "version": "[9.0.0, )"
+          },
+          "System.Speech": {
+            "target": "Package",
+            "version": "[9.0.0, )"
+          },
+          "Whisper.net": {
+            "target": "Package",
+            "version": "[1.9.1, )"
+          },
+          "Whisper.net.Runtime": {
+            "target": "Package",
+            "version": "[1.9.1, )"
+          },
+          "org.k2fsa.sherpa.onnx": {
+            "target": "Package",
+            "version": "[1.13.5, )"
+          }
+        },
+        "imports": [
+          "net461",
+          "net462",
+          "net47",
+          "net471",
+          "net472",
+          "net48",
+          "net481"
+        ],
+        "assetTargetFallback": true,
+        "warn": true,
+        "frameworkReferences": {
+          "Microsoft.NETCore.App": {
+            "privateAssets": "all"
+          },
+          "Microsoft.WindowsDesktop.App.WPF": {
+            "privateAssets": "none"
+          }
+        },
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.318/PortableRuntimeIdentifierGraph.json"
+      }
+    }
+  }
+}

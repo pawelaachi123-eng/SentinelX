@@ -1,0 +1,192 @@
+<Window x:Class="SentinelX.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Sentinel X • 0.83" Width="1260" Height="860" MinWidth="1000" MinHeight="720" WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource ShellBrush}" Foreground="{DynamicResource TextBrush}" FontFamily="Segoe UI" FontSize="14">
+<Window.Resources><ResourceDictionary><ResourceDictionary.MergedDictionaries><ResourceDictionary Source="UI/Theme.xaml"/></ResourceDictionary.MergedDictionaries></ResourceDictionary></Window.Resources>
+    <Grid Background="{DynamicResource ShellBrush}">
+        <Grid.ColumnDefinitions><ColumnDefinition Width="230"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+        <Border Background="{DynamicResource SidebarBrush}" Padding="18,20,18,14" BorderBrush="#2B3651" BorderThickness="0,0,1,0">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Top" Margin="0,0,0,16">
+                    <Border CornerRadius="18" Padding="13" Background="#10251F" BorderBrush="#4BCFA9" BorderThickness="1" Margin="0,0,0,10">
+                        <StackPanel>
+                            <TextBlock Text="SENTINEL X" FontSize="22" FontWeight="Black" Foreground="{DynamicResource Accent}"/>
+                            <TextBlock Text="lokalny asystent systemu" Foreground="{DynamicResource Muted}" FontSize="11" Margin="0,5,0,0"/>
+                        </StackPanel>
+                    </Border>
+                    <UniformGrid Columns="3" Margin="0,0,0,12">
+                        <Border Background="#203050" CornerRadius="12" Padding="7" Margin="0,0,5,0"><TextBlock x:Name="MiniCpuText" Text="CPU —" Foreground="#A98BFF" FontSize="10" FontWeight="Bold" HorizontalAlignment="Center"/></Border>
+                        <Border Background="#173C38" CornerRadius="12" Padding="7" Margin="0,0,5,0"><TextBlock x:Name="MiniRamText" Text="RAM —" Foreground="#66F2C2" FontSize="10" FontWeight="Bold" HorizontalAlignment="Center"/></Border>
+                        <Border Background="#422234" CornerRadius="12" Padding="7"><TextBlock x:Name="MiniGpuText" Text="GPU —" Foreground="#FF8DA6" FontSize="10" FontWeight="Bold" HorizontalAlignment="Center"/></Border>
+                    </UniformGrid>
+                </StackPanel>
+                <StackPanel DockPanel.Dock="Bottom">
+                    <TextBlock Text="LOKALNIE NA TWOIM PC" FontSize="10" Foreground="#FFC86B" FontWeight="Bold" Margin="0,0,0,8"/>
+                    <Button Content="Schowaj do zasobnika" Click="Tray_Click" FontSize="12" Padding="8,7"/>
+                    <Button Content="Zakończ program" Click="Exit_Click" FontSize="12" Padding="8,7"/>
+                    <TextBlock x:Name="ResourceUsageText" Text="Zasoby Sentinela: —" FontSize="10" Foreground="{DynamicResource Muted}" Margin="0,6,0,4"/><TextBlock Text="Wersja 0.82 • Windows x64" FontSize="10" Foreground="{DynamicResource Muted}" Margin="0,5,0,0"/>
+                </StackPanel>
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel x:Name="Navigation">
+                        <Button Style="{StaticResource Nav}" Content="✦   Command Center" Tag="Chat" Click="Navigate_Click"/>
+                        <Button Style="{StaticResource Nav}" Content="▦   Komputer" Tag="System" Click="Navigate_Click"/>
+                        <Button Style="{StaticResource Nav}" Content="⌁   Narzędzia" Tag="Tools" Click="Navigate_Click"/>
+                        <Button Style="{StaticResource Nav}" Content="◉   Głos i mikrofon" Tag="Voice" Click="Navigate_Click"/>
+                        <Button Style="{StaticResource Nav}" Content="◇   Gry i Watch" Tag="Gaming" Click="Navigate_Click"/>
+                        <Button Style="{StaticResource Nav}" Content="↻   Pamięć i historia" Tag="Memory" Click="Navigate_Click"/>
+                        <Button Style="{StaticResource Nav}" Content="✧   Lokalne AI" Tag="AI" Click="Navigate_Click"/><Button Style="{StaticResource Nav}" Content="▤   Akcje i zadania" Tag="Actions" Click="Navigate_Click"/><Button Style="{StaticResource Nav}" Content="⌘   Programy i pliki" Tag="Programs" Click="Navigate_Click"/><Button Style="{StaticResource Nav}" Content="⚙   Ustawienia" Tag="Settings" Click="Navigate_Click"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </DockPanel>
+        </Border>
+        <Grid Grid.Column="1" Margin="28,22,28,16">
+            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+            <Border Style="{StaticResource GlassCard}" Margin="0,0,0,18">
+                <Grid>
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                    <StackPanel>
+                        <TextBlock x:Name="PageTitle" Text="Rozmowa" Style="{StaticResource Title}"/>
+                        <TextBlock x:Name="AiStatusText" Text="Sprawdzanie lokalnego AI…" Foreground="{DynamicResource Muted}" FontSize="12"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button x:Name="StopButton" Content="■  Przerwij" Click="Stop_Click" ToolTip="Przerwij bieżące zadanie (Esc)"/>
+                        <Button Content="STOP awaryjny" Click="Emergency_Click" Style="{StaticResource DangerButton}"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+            <Grid Grid.Row="1">
+                <Grid x:Name="ChatPage">
+                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                    <UniformGrid Columns="4" Margin="0,0,0,10">
+                        <Button Content="RAM teraz" Tag="ile używam RAM" Click="Quick_Click" Background="#173C38" BorderBrush="#5EF0C2"/>
+                        <Button Content="YouTube" Tag="włącz YouTube" Click="Quick_Click" Background="#462335" BorderBrush="#FF6E91"/>
+                        <Button Content="Diagnoza PC" Tag="diagnostyka komputera" Click="Quick_Click" Background="#203050" BorderBrush="#8DA8FF"/>
+                        <Button Content="Nowa rozmowa" Click="NewSession_Click" Background="#3B2C12" BorderBrush="#FFC86B"/>
+                    </UniformGrid>
+                    <UniformGrid Grid.Row="1" Columns="6" Margin="0,0,0,12">
+                        <Button Content="..help" Tag="..help" Click="Quick_Click" Background="#182942" BorderBrush="#48D8FF"/>
+                        <Button Content="..clear" Tag="..clear" Click="Quick_Click" Background="#172D29" BorderBrush="#66F2C2"/>
+                        <Button Content="..status" Tag="..status" Click="Quick_Click" Background="#2B2450" BorderBrush="#A98BFF"/>
+                        <Button Content="..voice" Tag="..voice" Click="Quick_Click" Background="#26321E" BorderBrush="#B8F26B"/>
+                        <Button Content="..ai" Tag="..ai" Click="Quick_Click" Background="#3A2819" BorderBrush="#FFC86B"/>
+                        <Button Content="Discord" Tag="włącz Discorda" Click="Quick_Click" Background="#342345" BorderBrush="#C19CFF"/>
+                    </UniformGrid>
+                    <ScrollViewer x:Name="ChatScroll" Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="0,6,0,12">
+                        <ItemsControl x:Name="ChatItems">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border x:Name="Bubble" Style="{StaticResource GlassCard}" Margin="0,0,45,14" Padding="18" CornerRadius="18" Background="{DynamicResource AssistantBubble}">
+                                        <Grid>
+                                            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                                            <DockPanel Margin="0,0,0,8">
+                                                <Border x:Name="SpeakerBadge" CornerRadius="10" Padding="8,4" Background="#173C38">
+                                                    <TextBlock x:Name="SpeakerText" Text="{Binding Speaker}" Foreground="{DynamicResource Accent}" FontWeight="Bold"/>
+                                                </Border>
+                                                <Button Content="Kopiuj" Click="CopyMessage_Click" Tag="{Binding Text}" DockPanel.Dock="Right" FontSize="10" Padding="8,3" Margin="8,0,0,0"/><TextBlock Text="{Binding Time}" Foreground="{DynamicResource Muted}" HorizontalAlignment="Right" FontSize="11"/>
+                                            </DockPanel>
+                                            <TextBox Grid.Row="1" Text="{Binding Text, Mode=OneWay}" IsReadOnly="True" BorderThickness="0" Background="Transparent" Padding="0" FontSize="14" IsReadOnlyCaretVisible="True"/>
+                                        </Grid>
+                                    </Border>
+                                    <DataTemplate.Triggers>
+                                        <DataTrigger Binding="{Binding Speaker}" Value="TY"><Setter TargetName="Bubble" Property="Margin" Value="70,0,6,14"/>
+                                            <Setter TargetName="Bubble" Property="Background" Value="{DynamicResource UserBubble}"/>
+                                            <Setter TargetName="Bubble" Property="BorderBrush" Value="#4EDCFF"/>
+                                            <Setter TargetName="SpeakerBadge" Property="Background" Value="#12384A"/>
+                                            <Setter TargetName="SpeakerText" Property="Foreground" Value="#7DE6FF"/>
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding Speaker}" Value="SENTINEL"><Setter TargetName="Bubble" Property="Background" Value="{DynamicResource AssistantBubble}"/><Setter TargetName="Bubble" Property="BorderBrush" Value="{DynamicResource BorderBrush}"/></DataTrigger>
+                                    </DataTemplate.Triggers>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Grid>
+                <ScrollViewer x:Name="SystemPage" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
+                    <StackPanel>
+                        <UniformGrid Columns="3" Margin="0,0,0,18">
+                            <Border Style="{StaticResource GlassCard}" Margin="0,0,10,0"><StackPanel><TextBlock Text="CPU" Foreground="#48D8FF" FontWeight="Bold"/><TextBlock x:Name="CpuText" Text="—" FontSize="34" Foreground="#48D8FF" Margin="0,8,0,0"/><ProgressBar x:Name="CpuBar" Height="7" Maximum="100" Margin="0,12,0,0" Foreground="#48D8FF" Background="#253148"/></StackPanel></Border>
+                            <Border Style="{StaticResource GlassCard}" Margin="0,0,10,0"><StackPanel><TextBlock Text="PAMIĘĆ RAM" Foreground="#A98BFF" FontWeight="Bold"/><TextBlock x:Name="RamText" Text="—" FontSize="30" Foreground="#C9B8FF" Margin="0,8,0,0"/><ProgressBar x:Name="RamBar" Height="7" Maximum="100" Margin="0,16,0,0" Foreground="#A98BFF" Background="#253148"/></StackPanel></Border>
+                            <Border Style="{StaticResource GlassCard}"><StackPanel><TextBlock Text="CZAS DZIAŁANIA" Foreground="#FFC86B" FontWeight="Bold"/><TextBlock x:Name="UptimeText" Text="—" FontSize="25" Foreground="#FFE0A3" Margin="0,8,0,0"/></StackPanel></Border>
+                        </UniformGrid>
+                        <Border Style="{StaticResource Card}"><TextBox x:Name="HardwareText" IsReadOnly="True" BorderThickness="0" Background="Transparent" Padding="0" Text="Odczytywanie sprzętu…"/></Border>
+                        <WrapPanel Margin="0,18,0,0"><Button Content="Sprawdź zabezpieczenia" Tag="zabezpieczenia" Click="Quick_Click"/><Button Content="Wolne miejsce" Tag="dyski" Click="Quick_Click"/><Button Content="Największe procesy" Tag="top procesy" Click="Quick_Click"/><Button Content="Eksport raportu" Tag="eksportuj raport" Click="Quick_Click"/></WrapPanel>
+                    </StackPanel>
+                </ScrollViewer>
+                <Grid x:Name="ToolsPage" Visibility="Collapsed">
+                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                    <WrapPanel>
+                        <Button Content="Defender i zapora" Tag="zabezpieczenia" Click="Diagnostic_Click" Background="#173C38" BorderBrush="#66F2C2"/>
+                        <Button Content="Autostart" Tag="lista autostartu" Click="Diagnostic_Click" Background="#22385B" BorderBrush="#48D8FF"/>
+                        <Button Content="Usługi" Tag="usługi" Click="Diagnostic_Click" Background="#32295E" BorderBrush="#A98BFF"/>
+                        <Button Content="Błędy Windows" Tag="błędy windows" Click="Diagnostic_Click" Background="#4B2435" BorderBrush="#FF5F86"/>
+                        <Button Content="Sieć" Tag="status sieci" Click="Diagnostic_Click"/>
+                        <Button Content="Test internetu" Tag="test internetu" Click="Diagnostic_Click"/>
+                        <Button Content="Analiza pliku / SHA-256" Click="InspectFile_Click"/>
+                        <Button Content="Pełny raport" Tag="eksportuj raport" Click="Diagnostic_Click" Style="{StaticResource Primary}"/>
+                    </WrapPanel>
+                    <TextBox x:Name="DiagnosticOutput" Grid.Row="1" IsReadOnly="True" VerticalScrollBarVisibility="Auto" Margin="0,12,0,8" Text="Wynik wybranego narzędzia pojawi się tutaj." FontFamily="Cascadia Mono, Consolas" FontSize="13"/>
+                </Grid>
+                <ScrollViewer x:Name="VoicePage" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
+                    <StackPanel>
+                        <UniformGrid Columns="2" Margin="0,0,0,14">
+                            <Border Style="{StaticResource GlassCard}" Margin="0,0,10,0">
+                                <StackPanel>
+                                    <TextBlock Text="Mikrofon i ASR" Style="{StaticResource SectionTitle}" Foreground="#66F2C2"/>
+                                    <ComboBox x:Name="MicrophoneCombo" AutomationProperties.Name="Mikrofon" SelectionChanged="Microphone_Changed"/>
+                                    <WrapPanel><Button Content="Odśwież urządzenia" Click="RefreshDevices_Click"/><Button Content="Kalibruj szum" Click="Calibrate_Click"/><Button x:Name="VoiceStartButton" Content="Włącz nasłuch" Click="Voice_Click" Style="{StaticResource Primary}"/><Button Content="Wyłącz mikrofon" Click="MicOff_Click"/></WrapPanel>
+                                    <ProgressBar x:Name="VoiceMeter" Height="14" Maximum="100" Foreground="#66F2C2" Background="#253148" Margin="0,8,0,8"/>
+                                    <TextBlock Text="RAW • sygnał prosto z mikrofonu" FontSize="11" Foreground="{DynamicResource Muted}"/><ProgressBar x:Name="EnhancedVoiceMeter" Height="6" Maximum="100" Foreground="#A98BFF" Background="#253148" Margin="0,8"/><TextBlock Text="PROCESSED • po przetwarzaniu" FontSize="11" Foreground="{DynamicResource Muted}"/><TextBlock x:Name="VoiceDetailText" Text="Mikrofon wyłączony" Foreground="{DynamicResource Muted}"/>
+                                    <TextBlock x:Name="LastTranscriptText" Text="Ostatnia wypowiedź: —" Margin="0,12,0,0" Foreground="{DynamicResource Soft}"/><TextBlock x:Name="ModelStatusText" Margin="0,15,0,5" Text="Model nie został jeszcze sprawdzony." Foreground="#DCE7F7"/>
+                                    <WrapPanel><Button x:Name="InstallVoiceButton" Content="Pobierz model głosu (~488 MB)" Click="InstallVoice_Click"/><Button x:Name="InstallQwenButton" Content="Qwen ASR (opcjonalnie)" Click="InstallQwen_Click"/><Button Content="Sprawdź modele lokalne" Click="CheckVoice_Click"/></WrapPanel>
+                                </StackPanel>
+                            </Border>
+                            <Border Style="{StaticResource GlassCard}" Margin="10,0,0,0">
+                                <StackPanel>
+                                    <TextBlock Text="Odpowiedzi głosowe" Style="{StaticResource SectionTitle}" Foreground="#48D8FF"/>
+                                    <CheckBox x:Name="SpeakCheck" Content="Czytaj krótkie odpowiedzi na polecenia głosowe" Checked="Setting_Changed" Unchecked="Setting_Changed"/>
+                                    <TextBlock Text="Głos Windows" Foreground="{DynamicResource Muted}"/>
+                                    <ComboBox x:Name="SpeechVoiceCombo" AutomationProperties.Name="Głos syntezy" SelectionChanged="SpeechVoice_Changed"/>
+                                    <WrapPanel><Button Content="Test głosu" Click="TestSpeech_Click"/><Button Content="Przerwij czytanie" Click="StopSpeech_Click"/></WrapPanel>
+                                    <TextBlock x:Name="SpeechStatusText" Foreground="{DynamicResource Muted}"/>
+                                </StackPanel>
+                            </Border>
+                        </UniformGrid>
+                        <Border Style="{StaticResource Card}" Background="#16263A" BorderBrush="#48D8FF"><TextBlock Foreground="{DynamicResource Soft}" Text="Powiedz „Sentinel”, „Sentynel” albo typowe błędne „Centenel”, aby rozpocząć rozmowę. Po starcie zachowaj 2 sekundy ciszy. Podczas czytania odpowiedzi rozpoznawanie jest wstrzymane."/></Border>
+                    </StackPanel>
+                </ScrollViewer>
+                <ScrollViewer x:Name="GamingPage" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
+                    <StackPanel>
+                        <Border Style="{StaticResource GlassCard}"><StackPanel><TextBlock Text="Lekki podgląd podczas gry" Style="{StaticResource SectionTitle}" Foreground="#FFC86B"/><TextBlock x:Name="GamingText" Text="Sprawdzanie uruchomionych gier…" Margin="0,0,0,16" Foreground="{DynamicResource Muted}"/><WrapPanel><Button Content="Nakładka: tylko RAM" Tag="overlay ram" Click="Quick_Click"/><Button Content="Nakładka: tylko CPU" Tag="overlay cpu" Click="Quick_Click"/><Button Content="Ukryj nakładkę" Tag="ukryj overlay" Click="Quick_Click"/><Button Content="Diagnoza CS2" Tag="diagnoza cs2" Click="Quick_Click"/></WrapPanel><TextBlock Text="Nakładkę można przeciągać. Działa nad zwykłymi oknami i grami w trybie okienkowym bez ramek; pełny ekran wyłączny może ją zasłonić." Foreground="{DynamicResource Muted}"/></StackPanel></Border>
+                        <Border Style="{StaticResource GlassCard}" Margin="0,16,0,0"><StackPanel><TextBlock Text="Sentinel Watch" Style="{StaticResource SectionTitle}" Foreground="#FF5F86"/><CheckBox x:Name="WatchCheck" Content="Obserwuj długotrwałe wysokie użycie CPU i RAM" Checked="Setting_Changed" Unchecked="Setting_Changed"/><TextBlock Text="Progi i opóźnienie alertów ustawisz w Ustawienia → Watch. Monitor korzysta z rzeczywistych odczytów CPU i RAM." Foreground="{DynamicResource Muted}"/><TextBox x:Name="WatchOutput" IsReadOnly="True" MinHeight="140" MaxHeight="260" VerticalScrollBarVisibility="Auto" Margin="0,18,0,0" Text="Brak alertów w tej sesji."/></StackPanel></Border>
+                    </StackPanel>
+                </ScrollViewer>
+                <Grid x:Name="MemoryPage" Visibility="Collapsed">
+                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                    <WrapPanel><Button Content="Wspomnienia" Click="ShowMemory_Click"/><Button Content="Historia rozmów" Click="ShowHistory_Click"/><Button Content="Historia akcji" Tag="historia akcji" Click="MemoryCommand_Click"/><Button Content="Eksport pamięci" Tag="eksportuj pamięć" Click="MemoryCommand_Click"/><Button Content="Nowa rozmowa" Click="NewSession_Click" Style="{StaticResource Primary}"/></WrapPanel>
+                    <TextBox x:Name="MemoryOutput" Grid.Row="1" IsReadOnly="True" VerticalScrollBarVisibility="Auto" Margin="0,14,0,8" Text="Powiedz np. „Mam na imię Paweł” lub „Zapamiętaj: wolę krótkie odpowiedzi”."/>
+                </Grid>
+                                <ScrollViewer x:Name="AiPage" Visibility="Collapsed" VerticalScrollBarVisibility="Auto"><StackPanel>
+<Border Style="{StaticResource GlassCard}"><StackPanel><TextBlock Text="Lokalny model rozmowy" Style="{StaticResource SectionTitle}" Foreground="#A98BFF"/><TextBlock Text="Sentinel wybiera model, który faktycznie obsługuje rozmowę w lokalnej Ollama." Style="{StaticResource Hint}" Margin="0,0,0,10"/><ComboBox x:Name="ModelCombo" AutomationProperties.Name="Model lokalnego AI"/><WrapPanel><Button Content="Odśwież modele" Click="RefreshModels_Click"/><Button Content="Zastosuj model" Click="ApplyModel_Click" Style="{StaticResource Primary}"/><Button Content="Zwolnij model z pamięci" Click="UnloadModel_Click"/></WrapPanel><TextBlock x:Name="ModelDetailText" Foreground="{DynamicResource Muted}"/></StackPanel></Border>
+                    <Border Style="{StaticResource Card}" Margin="0,16,0,0"><StackPanel><TextBlock Text="Jak odpowiada Sentinel" Style="{StaticResource SectionTitle}"/><TextBlock Text="Odczyty komputera, obliczenia i znane komendy są obsługiwane lokalnie. Rozmowa trafia do wybranego modelu Ollama." Style="{StaticResource Hint}"/><TextBlock x:Name="AiRuntimeText" Text="Jeszcze nie użyto modelu w tej sesji."/><Button Content="Dopasuj modele i limity" Tag="Settings" Click="Navigate_Click" Margin="0,16,0,0"/></StackPanel></Border>
+                </StackPanel></ScrollViewer>
+                <ScrollViewer x:Name="ActionsPage" Visibility="Collapsed" VerticalScrollBarVisibility="Auto"><StackPanel>
+                    <Border Style="{StaticResource Card}"><StackPanel><TextBlock Text="Zadania i dowody wykonania" Style="{StaticResource SectionTitle}"/><TextBlock Text="VERIFIED oznacza sprawdzony wynik. UNVERIFIED oznacza, że brakuje dowodu końcowego." Style="{StaticResource Hint}"/><WrapPanel><Button Content="Odśwież" Click="RefreshTasks_Click"/><Button Content="Historia akcji" Tag="historia akcji" Click="ActionHistory_Click"/><Button Content="Przerwij zadania" Click="Stop_Click"/><Button Content="Sprawdź Sentinela" Tag="sprawdź siebie" Click="ActionHistory_Click"/></WrapPanel><TextBox x:Name="TasksOutput" IsReadOnly="True" MinHeight="100" Text="Brak aktywnych zadań." Margin="0,8"/><TextBox x:Name="ActionsOutput" IsReadOnly="True" MinHeight="220" VerticalScrollBarVisibility="Auto" Text="Wybierz historię lub diagnostykę, aby zobaczyć wynik."/></StackPanel></Border>
+                </StackPanel></ScrollViewer><ScrollViewer x:Name="ProgramsPage" Visibility="Collapsed" VerticalScrollBarVisibility="Auto"><StackPanel>
+<Border Style="{StaticResource Card}"><StackPanel><TextBlock Text="Zbuduj własny program" Style="{StaticResource SectionTitle}"/><TextBlock Text="Trzy lokalne szablony. Kreator zapisuje źródła, kompiluje plik .exe i uruchamia test. Wymaga zainstalowanego .NET SDK 9." Style="{StaticResource Hint}"/><WrapPanel><Button Content="Notatnik" Tag="zbuduj program notatnik" Click="BuildProgram_Click"/><Button Content="Kalkulator" Tag="zbuduj program kalkulator" Click="BuildProgram_Click"/><Button Content="Pomodoro" Tag="zbuduj program pomodoro" Click="BuildProgram_Click"/></WrapPanel><TextBox x:Name="ProgramOutput" IsReadOnly="True" MinHeight="140" Text="Wybierz program. Zobaczysz etapy oraz ścieżkę gotowego pliku .exe." VerticalScrollBarVisibility="Auto"/></StackPanel></Border>
+<Border Style="{StaticResource Card}" Margin="0,16,0,0"><StackPanel><TextBlock Text="Pliki z pamięcią ostatniej operacji" Style="{StaticResource SectionTitle}"/><TextBlock Text="Powiedz: stwórz plik test.txt na pulpicie. Następnie: wpisz do niego hello albo dopisz do niego kolejny wiersz. Przed edycją powstaje kopia .bak, a po zapisie treść jest odczytywana i sprawdzana." Style="{StaticResource Hint}"/><Button Content="Pokaż ostatni plik" Tag="pokaż ten plik" Click="Quick_Click"/></StackPanel></Border>
+</StackPanel></ScrollViewer><ScrollViewer x:Name="SettingsPage" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
+                    <StackPanel>
+                        <ContentControl x:Name="SettingsEditorHost" Margin="0,0,0,16"/>
+                        <Border Style="{StaticResource GlassCard}" Margin="0,16,0,0"><StackPanel><TextBlock Text="Zachowanie aplikacji" Style="{StaticResource SectionTitle}" Foreground="#66F2C2"/><CheckBox x:Name="TrayCheck" Content="Zamknięcie okna chowa aplikację do zasobnika" Checked="Setting_Changed" Unchecked="Setting_Changed"/><CheckBox x:Name="MinimizeCheck" Content="Minimalizacja chowa aplikację do zasobnika" Checked="Setting_Changed" Unchecked="Setting_Changed"/><CheckBox x:Name="StartMinimizedCheck" Content="Uruchamiaj z ukrytym oknem" Checked="Setting_Changed" Unchecked="Setting_Changed"/><CheckBox x:Name="StartVoiceCheck" Content="Włącz nasłuch po starcie, jeśli model jest gotowy" Checked="Setting_Changed" Unchecked="Setting_Changed"/><CheckBox x:Name="StartupCheck" Content="Uruchamiaj Sentinel wraz z Windows" Click="Startup_Click"/><TextBlock x:Name="SettingsStatusText" Foreground="{DynamicResource Muted}" Margin="0,12,0,0"/><TextBlock Text="Ctrl+Shift+S: otwórz okno / włącz czuwanie • Esc: przerwij • Ctrl+L: polecenie • Ctrl+Shift+X: STOP awaryjny" Foreground="{DynamicResource Muted}" Margin="0,16,0,0"/></StackPanel></Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </Grid>
+            <Border x:Name="PermissionPanel" Grid.Row="2" Visibility="Collapsed" Background="#3B2C12" BorderBrush="#FFC86B" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,8,0,8"><DockPanel><StackPanel DockPanel.Dock="Right" Orientation="Horizontal"><Button Content="Potwierdź" Click="Confirm_Click" Style="{StaticResource Primary}"/><Button Content="Anuluj" Click="CancelPermission_Click"/></StackPanel><TextBlock x:Name="PermissionText" VerticalAlignment="Center"/></DockPanel></Border>
+            <StackPanel Grid.Row="3" Margin="0,12,0,0">
+                <Grid Margin="0,0,0,8"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock x:Name="StatusText" Text="Uruchamianie…" Foreground="{DynamicResource Muted}" FontSize="12" VerticalAlignment="Center"/><Button x:Name="MicButton" Grid.Column="1" Content="○  Mikrofon wyłączony" Click="Voice_Click" Padding="10,6" FontSize="12" Margin="8,0,0,0"/></Grid>
+                <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBox x:Name="CommandInput" MinHeight="52" MaxHeight="112" AutomationProperties.Name="Wpisz polecenie dla Sentinel" AcceptsReturn="True" MaxLength="16000" VerticalScrollBarVisibility="Auto" KeyDown="Command_KeyDown" ToolTip="Enter wysyła, Shift+Enter dodaje nową linię"/><Button x:Name="SendButton" Grid.Column="1" Content="Wyślij  ↗" Style="{StaticResource Primary}" Margin="10,0,0,0" Click="Send_Click"/></Grid>
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Window>
+
+

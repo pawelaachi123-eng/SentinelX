@@ -1,0 +1,156 @@
+using System;
+using System.Globalization;
+using System.Text.RegularExpressions;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace SentinelX;
+
+public sealed class CommandRouter
+{
+    private readonly SystemMonitor systemMonitor;
+    private readonly SystemInfoService systemInfo;
+    private readonly LocalAiService localAi;
+    private readonly ConversationMemoryService memory;
+    private string lastTopic = "";
+    private DateTime lastTopicTime;
+    private DateTime? forgetAllRequestedAt;
+
+    public CommandRouter(SystemMonitor systemMonitor, SystemInfoService systemInfo, LocalAiService localAi, ConversationMemoryService memory)
+    { this.systemMonitor = systemMonitor; this.systemInfo = systemInfo; this.localAi = localAi; this.memory = memory; }
+
+    public async Task<string> ProcessAsync(string command, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (string.IsNullOrWhiteSpace(command)) return "";
+        string text = Normalize(command).TrimEnd('?', '!', '.', ' ');
+        string? memoryResponse = TryHandleMemoryCommand(command.Trim(), text);
+        if (memoryResponse != null) return memoryResponse;
+        if (text is "modele ai" or "lista modeli" or "status ai" or "test ai" or "sprawdz ai")
+            return await localAi.GetStatusAsync(cancellationToken);
+        Match model = Regex.Match(command.Trim(), @"^(?:ustaw\s+)?model\s+ai\s+(.+)$", RegexOptions.IgnoreCase);
+        if (model.Success)
+        {
+            try { return await localAi.SetPreferredModelAsync(model.Groups[1].Value.Trim(), cancellationToken); }
+            catch (System.Net.Http.HttpRequestException) { return "Nie udało się odczytać modeli. Uruchom lokalną Ollama."; }
+        }
+        if (text is "anuluj" or "przerwij" or "przerwij odpowiedz")
+        { localAi.CancelCurrentRequest(); forgetAllRequestedAt = null; return "Przerwano."; }
+        if (text is "ktora godzina" or "jaka jest godzina" or "godzina") return DateTime.Now.ToString("HH:mm");
+        if (text is "jaka dzis data" or "jaka jest data" or "dzisiejsza data") return DateTime.Now.ToString("dddd, d MMMM yyyy", CultureInfo.GetCultureInfo("pl-PL"));
+
+        // Follow-up state expires and only applies to an entire short follow-up, never another topic's question.
+        if (DateTime.Now - lastTopicTime > TimeSpan.FromMinutes(5)) lastTopic = "";
+        string followUp = Regex.Replace(text, @"^(?:a |to |a teraz )", "");
+        if (lastTopic is "RAM" or "CPU")
+        {
+            if (followUp is "ile uzywam" or "ile jest uzywane" or "ile zajete")
+                return lastTopic == "RAM" ? Number(systemMonitor.GetUsedRamGB(), "GB", 1) : Number(systemMonitor.GetCpuUsage(), "%");
+            if (followUp is "jaki procent" or "ile procent" or "procent")
+                return Number(lastTopic == "RAM" ? systemMonitor.GetRamUsagePercent() : systemMonitor.GetCpuUsage(), "%");
+        }
+
+        if (text is "ram" or "pokaz ram" or "status ram")
+        { return $"{Number(systemMonitor.GetUsedRamGB(), "GB", 1)} z {Number(systemMonitor.GetTotalRamGB(), "GB", 1)} ({Number(systemMonitor.GetRamUsagePercent(), "%")})."; }
+        if (Regex.IsMatch(text, @"^(?:(?:pokaz|podaj|wyswietl) )?(?:cpu (?:i )?ram|ram (?:i )?cpu|uzycie cpu i ram)$"))
+        { return $"CPU: {Number(systemMonitor.GetCpuUsage(), "%")}. RAM: {Number(systemMonitor.GetUsedRamGB(), "GB", 1)} z {Number(systemMonitor.GetTotalRamGB(), "GB", 1)}."; }
+        if (Regex.IsMatch(text, @"^(?:(?:pokaz|podaj|wyswietl) )?(?:cpu|uzycie cpu|zuzycie cpu|ile cpu|ile procent cpu|jakie jest uzycie cpu|uzycie procesora|ile uzywam cpu)$"))
+        { return Number(systemMonitor.GetCpuUsage(), "%"); }
+        if (Regex.IsMatch(text, @"^(?:ile mam (?:pamieci )?ramu?|calkowity ram|ile jest ramu|ile mam pamieci operacyjnej)$"))
+        { return Number(systemMonitor.GetTotalRamGB(), "GB", 1); }
+        if (Regex.IsMatch(text, @"^(?:(?:pokaz|podaj) )?(?:procent ram|jaki procent ram|ile procent ram|uzycie ram procent|zuzycie ram w procentach|uzycie ram w procentach)$"))
+        { return Number(systemMonitor.GetRamUsagePercent(), "%"); }
+        if (Regex.IsMatch(text, @"^(?:ile uzywam (?:pamieci )?ramu?|uzycie ramu?|zuzycie ramu?|ile ramu? jest uzywane|ile pamieci ram uzywam)$"))
+        { return Number(systemMonitor.GetUsedRamGB(), "GB", 1); }
+        if (text is "jaki mam procesor" or "jaki procesor" or "nazwa cpu") { return systemInfo.GetCpuName(); }
+        if (text is "jaki windows" or "wersja windows" or "jaka jest wersja windows") { return systemInfo.GetWindowsVersion(); }
+        if (text is "uptime" or "jak dlugo dziala komputer" or "ile dziala komputer") { return systemInfo.GetUptime(); }
+        if (text is "pokaz dyski" or "miejsce na dysku" or "dyski") { return systemInfo.GetDiskInfo(); }
+
+        string topicForContext = lastTopic;
+        bool includeRecentHistory = IsFollowUpQuestion(text, followUp, topicForContext);
+        bool includeSystemFacts = string.IsNullOrEmpty(topicForContext) ? MentionsComputerStateNoTopic(text, followUp) : topicForContext is "RAM" or "CPU" or "SYSTEM" or "DISK";
+        if (!Regex.IsMatch(followUp, @"^(?:czy to|czy jest|a |dlaczego|czemu|co z tym)")) lastTopic = "";
+        return await localAi.AskAsync(command, BuildSystemContext(topicForContext, includeSystemFacts, includeRecentHistory), cancellationToken);
+    }
+
+    private static bool MentionedComputerState(string text)
+    {
+        return Regex.IsMatch(text, @"\b(?:komputer|pc|windows|cpu|procesor|ram|pamiec|pamieci|dysk|internet|sie[cć]|gra|grania|lagi|scinki|fps|temperatur)");
+    }
+
+    private string? TryHandleMemoryCommand(string command, string text)
+    {
+        if (text is "nowa rozmowa" or "nowa sesja" or "zacznij nowa rozmowe")
+        { memory.StartNewSession(); lastTopic = ""; return StorageResult("Rozpoczęto nową rozmowę. Zapisane imię i wspomnienia są zachowane."); }
+        if (text is "co pamietasz" or "pokaz pamiec" or "lista wspomnien" or "moje preferencje") return memory.GetNotesSummary();
+        if (text is "jak mam na imie" or "pamietasz moje imie" or "jak sie nazywam")
+            return memory.UserName.Length > 0 ? $"Masz na imię {memory.UserName}." : "Nie mam zapisanego imienia. Możesz powiedzieć: mam na imię…";
+        if (Regex.IsMatch(text, @"^(?:mam na imie|nazywam sie|mow do mnie|zwracaj sie do mnie) "))
+        {
+            // MainWindow stores the user message before routing; this also supports standalone router use.
+            if (memory.UserName.Length > 0) return StorageResult($"Zapamiętam: {memory.UserName}.");
+        }
+        if (Regex.IsMatch(text, @"^(?:wole|preferuje) (?:krotkie|zwiezle|dlugie|dokladne|szczegolowe) odpowiedzi$")) return StorageResult("Zapamiętam tę preferencję odpowiedzi.");
+        if (text.StartsWith("zapamietaj ", StringComparison.Ordinal) || text.StartsWith("zapamietaj:", StringComparison.Ordinal))
+        { memory.AddNote(command[(command.IndexOf(' ') + 1)..]); return StorageResult("Zapamiętane lokalnie."); }
+        if (text is "status pamieci" or "ile pamietasz") return StorageResult($"Pamięć: {memory.Count} wpisów, w tym {memory.NoteCount} trwałych wspomnień.");
+        if (text is "wyczysc pamiec rozmowy") { memory.Clear(); lastTopic = ""; return StorageResult("Wyczyszczono historię rozmów. Trwałe wspomnienia i profil pozostały."); }
+        if (text is "usun wszystkie wspomnienia" or "wyczysc cala pamiec")
+        { forgetAllRequestedAt = DateTime.Now; return "To usunie lokalną historię rozmów, zapisane imię i wszystkie wspomnienia. Aby wykonać, wpisz „potwierdź usunięcie wspomnień” w ciągu 60 sekund."; }
+        if (text == "potwierdz usuniecie wspomnien")
+        {
+            if (!forgetAllRequestedAt.HasValue || DateTime.Now - forgetAllRequestedAt.Value > TimeSpan.FromSeconds(60))
+                return "Nie ma aktualnej prośby o usunięcie całej pamięci.";
+            forgetAllRequestedAt = null; memory.ClearAll(); lastTopic = "";
+            return StorageResult("Usunięto lokalną historię, profil i wspomnienia. Wcześniejsze eksporty pozostają w folderze eksportów.");
+        }
+        if (text.StartsWith("zapomnij ", StringComparison.Ordinal))
+        { int count = memory.Forget(command[(command.IndexOf(' ') + 1)..]); return StorageResult(count > 0 ? $"Usunięto pasujące zapisy: {count}." : "Nie znalazłem pasującego wspomnienia."); }
+        if (text is "eksportuj pamiec" or "eksportuj rozmowe")
+        {
+            try { return "Eksport lokalny zapisany: " + memory.Export(); }
+            catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException) { return "Nie udało się wyeksportować pamięci: " + ex.Message; }
+        }
+        if (text is "co powiedzialem wczesniej" or "co mowilem wczesniej" or "co powiedzialem przed chwila")
+            return memory.TryGetPreviousUserMessage(command, out string previous) ? previous : "Nie mam wcześniejszej wypowiedzi w tej rozmowie.";
+        var after = Regex.Match(text, @"^co (?:powiedzialem|mowilem) po (.+)$");
+        if (after.Success)
+            return memory.TryFindTextAfter(after.Groups[1].Value.Trim(' ', '„', '”', '"'), command, out string result) ? result : "Nie znalazłem pasującej wcześniejszej wypowiedzi.";
+        var minutes = Regex.Match(text, @"^co (?:powiedzialem|mowilem) (\d{1,6}) minut(?:y|e)? temu$");
+        if (minutes.Success && int.TryParse(minutes.Groups[1].Value, out int countMinutes))
+            return memory.TryGetUserMessageFromAgo(TimeSpan.FromMinutes(countMinutes), command, out string old) ? old : "Nie znalazłem wypowiedzi z tego przedziału czasu.";
+        return null;
+    }
+
+    private string BuildSystemContext(string topic, bool includeSystemFacts, bool includeRecentHistory)
+    {
+        var parts = new List<string>();
+        if (includeSystemFacts)
+        {
+            try
+            {
+                parts.Add($"Odczyt bieżący: {DateTime.Now:yyyy-MM-dd HH:mm:ss}. Procesor: {systemInfo.GetCpuName()}. CPU: {Number(systemMonitor.GetCpuUsage(), "%")}. RAM: {Number(systemMonitor.GetUsedRamGB(), "GB", 1)} / {Number(systemMonitor.GetTotalRamGB(), "GB", 1)} ({Number(systemMonitor.GetRamUsagePercent(), "%")}). Windows: {systemInfo.GetWindowsVersion()}. Czas działania: {systemInfo.GetUptime()}.");
+            }
+            catch { parts.Add("Bieżące odczyty komputera są niedostępne."); }
+        }
+
+        if (!string.IsNullOrWhiteSpace(topic))
+            parts.Add("Ostatni temat skrótu: " + topic + ".");
+
+        parts.Add(includeRecentHistory ? memory.GetRecentContext(12) : memory.GetStableContext());
+        return string.Join("\n", parts.Where(x => !string.IsNullOrWhiteSpace(x)));
+    }
+
+    private static bool IsFollowUpQuestion(string text, string followUp, string topic) =>
+        !string.IsNullOrWhiteSpace(topic) && Regex.IsMatch(followUp, @"^(?:czy to|czy jest|a |a teraz|dlaczego|czemu|co z tym|ile|jaki procent|procent)") ||
+        Regex.IsMatch(text, @"\b(?:wczesniej|przed chwila|tamto|to samo|ten temat|ostatni temat|historia rozmowy)\b");
+
+    private static bool MentionsComputerStateNoTopic(string text, string followUp) =>
+        MentionedComputerState(text + " " + followUp);
+
+    private void SetTopic(string topic) { lastTopic = topic; lastTopicTime = DateTime.Now; }
+    private string StorageResult(string success) => memory.LastStorageError == null ? success : memory.LastStorageError;
+    internal static string Number(double value, string unit, int decimals = 0) => double.IsFinite(value) && value >= 0 ? value.ToString("F" + decimals, CultureInfo.GetCultureInfo("pl-PL")) + (unit == "%" ? "" : " ") + unit : "odczyt niedostępny";
+    internal static string Normalize(string text) => ConversationMemoryService.Normalize(text);
+}
