@@ -17,8 +17,7 @@ jobs:
   build:
     name: Build WPF application
     runs-on: windows-latest
-
-steps:
+    steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         
