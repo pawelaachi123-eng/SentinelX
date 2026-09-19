@@ -34,15 +34,14 @@ steps:
         run: dotnet restore SENTINEL-X.csproj
 
 - name: Build Release
-        run: dotnet build SENTINEL-X.csproj --configuration Release --no-restore --verbosity normal -bl:build.binlog
+        run: dotnet build SENTINEL-X.csproj --configuration Release --no-restore --verbosity normal
 
-- name: Upload build log
+- name: Upload build output
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: sentinelx-build-logs
+          name: sentinelx-build-output
           path: |
-            build.binlog
-            **/bin/**/*.log
-            **/obj/**/*.log
+            **/bin/Release/**
+            **/obj/Release/**
           if-no-files-found: ignore
