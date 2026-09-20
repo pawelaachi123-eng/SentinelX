@@ -1,65 +1,65 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-<Color x:Key="SxBackgroundColor">#0D0F14</Color>
-<SolidColorBrush x:Key="SxBackground" Color="{DynamicResource SxBackgroundColor}"/>
-<Color x:Key="SxSurfaceColor">#141820</Color>
-<SolidColorBrush x:Key="SxSurface" Color="{DynamicResource SxSurfaceColor}"/>
-<Color x:Key="SxSurfaceHoverColor">#1A1F2B</Color>
-<SolidColorBrush x:Key="SxSurfaceHover" Color="{DynamicResource SxSurfaceHoverColor}"/>
-<Color x:Key="SxSurfaceActiveColor">#1E2433</Color>
-<SolidColorBrush x:Key="SxSurfaceActive" Color="{DynamicResource SxSurfaceActiveColor}"/>
-<Color x:Key="SxSidebarColor">#0F1118</Color>
-<SolidColorBrush x:Key="SxSidebar" Color="{DynamicResource SxSidebarColor}"/>
-<Color x:Key="SxSidebarHoverColor">#171B25</Color>
-<SolidColorBrush x:Key="SxSidebarHover" Color="{DynamicResource SxSidebarHoverColor}"/>
-<Color x:Key="SxSidebarActiveColor">#1C2030</Color>
-<SolidColorBrush x:Key="SxSidebarActive" Color="{DynamicResource SxSidebarActiveColor}"/>
-<Color x:Key="SxBorderColor">#2A2F3C</Color>
-<SolidColorBrush x:Key="SxBorder" Color="{DynamicResource SxBorderColor}"/>
-<Color x:Key="SxBorderSubtleColor">#1E222D</Color>
-<SolidColorBrush x:Key="SxBorderSubtle" Color="{DynamicResource SxBorderSubtleColor}"/>
-<Color x:Key="SxTextPrimaryColor">#E8ECF4</Color>
-<SolidColorBrush x:Key="SxTextPrimary" Color="{DynamicResource SxTextPrimaryColor}"/>
-<Color x:Key="SxTextSecondaryColor">#8B92A5</Color>
-<SolidColorBrush x:Key="SxTextSecondary" Color="{DynamicResource SxTextSecondaryColor}"/>
-<Color x:Key="SxTextMutedColor">#525868</Color>
-<SolidColorBrush x:Key="SxTextMuted" Color="{DynamicResource SxTextMutedColor}"/>
-<Color x:Key="SxTextDisabledColor">#3A3F4C</Color>
-<SolidColorBrush x:Key="SxTextDisabled" Color="{DynamicResource SxTextDisabledColor}"/>
-<Color x:Key="SxAccentCyanColor">#00D4FF</Color>
-<SolidColorBrush x:Key="SxAccentCyan" Color="{DynamicResource SxAccentCyanColor}"/>
-<Color x:Key="SxAccentCyanDimColor">#007A94</Color>
-<SolidColorBrush x:Key="SxAccentCyanDim" Color="{DynamicResource SxAccentCyanDimColor}"/>
-<Color x:Key="SxAccentVioletColor">#8B5CF6</Color>
-<SolidColorBrush x:Key="SxAccentViolet" Color="{DynamicResource SxAccentVioletColor}"/>
-<Color x:Key="SxAccentBlueColor">#3B82F6</Color>
-<SolidColorBrush x:Key="SxAccentBlue" Color="{DynamicResource SxAccentBlueColor}"/>
-<Color x:Key="SxAccentGradStartColor">#00D4FF</Color>
-<SolidColorBrush x:Key="SxAccentGradStart" Color="{DynamicResource SxAccentGradStartColor}"/>
-<Color x:Key="SxAccentGradEndColor">#8B5CF6</Color>
-<SolidColorBrush x:Key="SxAccentGradEnd" Color="{DynamicResource SxAccentGradEndColor}"/>
-<Color x:Key="SxSuccessColor">#22C55E</Color>
-<SolidColorBrush x:Key="SxSuccess" Color="{DynamicResource SxSuccessColor}"/>
-<Color x:Key="SxSuccessDimColor">#166534</Color>
-<SolidColorBrush x:Key="SxSuccessDim" Color="{DynamicResource SxSuccessDimColor}"/>
-<Color x:Key="SxWarningColor">#F59E0B</Color>
-<SolidColorBrush x:Key="SxWarning" Color="{DynamicResource SxWarningColor}"/>
-<Color x:Key="SxWarningDimColor">#92400E</Color>
-<SolidColorBrush x:Key="SxWarningDim" Color="{DynamicResource SxWarningDimColor}"/>
-<Color x:Key="SxErrorColor">#EF4444</Color>
-<SolidColorBrush x:Key="SxError" Color="{DynamicResource SxErrorColor}"/>
-<Color x:Key="SxErrorDimColor">#991B1B</Color>
-<SolidColorBrush x:Key="SxErrorDim" Color="{DynamicResource SxErrorDimColor}"/>
-<Color x:Key="SxVoiceActiveColor">#00D4FF</Color>
-<SolidColorBrush x:Key="SxVoiceActive" Color="{DynamicResource SxVoiceActiveColor}"/>
-<Color x:Key="SxVoiceStandbyColor">#F59E0B</Color>
-<SolidColorBrush x:Key="SxVoiceStandby" Color="{DynamicResource SxVoiceStandbyColor}"/>
-<Color x:Key="SxVoiceOffColor">#525868</Color>
-<SolidColorBrush x:Key="SxVoiceOff" Color="{DynamicResource SxVoiceOffColor}"/>
-<Color x:Key="SxWhiteColor">#FFFFFF</Color>
-<SolidColorBrush x:Key="SxWhite" Color="{DynamicResource SxWhiteColor}"/>
-<Color x:Key="SxTransparentColor">#00000000</Color>
-<SolidColorBrush x:Key="SxTransparent" Color="{DynamicResource SxTransparentColor}"/>
-<Color x:Key="SxUserBubbleColor">#263E5866</Color>
-<SolidColorBrush x:Key="SxUserBubble" Color="{DynamicResource SxUserBubbleColor}"/>
-<SolidColorBrush x:Key="SxOverlayBg" Color="#CC0D0F14"/>
+    <Color x:Key="SxBackgroundColor">#0D0F14</Color>
+    <SolidColorBrush x:Key="SxBackground" Color="{DynamicResource SxBackgroundColor}"/>
+    <Color x:Key="SxSurfaceColor">#141820</Color>
+    <SolidColorBrush x:Key="SxSurface" Color="{DynamicResource SxSurfaceColor}"/>
+    <Color x:Key="SxSurfaceHoverColor">#1A1F2B</Color>
+    <SolidColorBrush x:Key="SxSurfaceHover" Color="{DynamicResource SxSurfaceHoverColor}"/>
+    <Color x:Key="SxSurfaceActiveColor">#1E2433</Color>
+    <SolidColorBrush x:Key="SxSurfaceActive" Color="{DynamicResource SxSurfaceActiveColor}"/>
+    <Color x:Key="SxSidebarColor">#0F1118</Color>
+    <SolidColorBrush x:Key="SxSidebar" Color="{DynamicResource SxSidebarColor}"/>
+    <Color x:Key="SxSidebarHoverColor">#171B25</Color>
+    <SolidColorBrush x:Key="SxSidebarHover" Color="{DynamicResource SxSidebarHoverColor}"/>
+    <Color x:Key="SxSidebarActiveColor">#1C2030</Color>
+    <SolidColorBrush x:Key="SxSidebarActive" Color="{DynamicResource SxSidebarActiveColor}"/>
+    <Color x:Key="SxBorderColor">#2A2F3C</Color>
+    <SolidColorBrush x:Key="SxBorder" Color="{DynamicResource SxBorderColor}"/>
+    <Color x:Key="SxBorderSubtleColor">#1E222D</Color>
+    <SolidColorBrush x:Key="SxBorderSubtle" Color="{DynamicResource SxBorderSubtleColor}"/>
+    <Color x:Key="SxTextPrimaryColor">#E8ECF4</Color>
+    <SolidColorBrush x:Key="SxTextPrimary" Color="{DynamicResource SxTextPrimaryColor}"/>
+    <Color x:Key="SxTextSecondaryColor">#8B92A5</Color>
+    <SolidColorBrush x:Key="SxTextSecondary" Color="{DynamicResource SxTextSecondaryColor}"/>
+    <Color x:Key="SxTextMutedColor">#525868</Color>
+    <SolidColorBrush x:Key="SxTextMuted" Color="{DynamicResource SxTextMutedColor}"/>
+    <Color x:Key="SxTextDisabledColor">#3A3F4C</Color>
+    <SolidColorBrush x:Key="SxTextDisabled" Color="{DynamicResource SxTextDisabledColor}"/>
+    <Color x:Key="SxAccentCyanColor">#00D4FF</Color>
+    <SolidColorBrush x:Key="SxAccentCyan" Color="{DynamicResource SxAccentCyanColor}"/>
+    <Color x:Key="SxAccentCyanDimColor">#007A94</Color>
+    <SolidColorBrush x:Key="SxAccentCyanDim" Color="{DynamicResource SxAccentCyanDimColor}"/>
+    <Color x:Key="SxAccentVioletColor">#8B5CF6</Color>
+    <SolidColorBrush x:Key="SxAccentViolet" Color="{DynamicResource SxAccentVioletColor}"/>
+    <Color x:Key="SxAccentBlueColor">#3B82F6</Color>
+    <SolidColorBrush x:Key="SxAccentBlue" Color="{DynamicResource SxAccentBlueColor}"/>
+    <Color x:Key="SxAccentGradStartColor">#00D4FF</Color>
+    <SolidColorBrush x:Key="SxAccentGradStart" Color="{DynamicResource SxAccentGradStartColor}"/>
+    <Color x:Key="SxAccentGradEndColor">#8B5CF6</Color>
+    <SolidColorBrush x:Key="SxAccentGradEnd" Color="{DynamicResource SxAccentGradEndColor}"/>
+    <Color x:Key="SxSuccessColor">#22C55E</Color>
+    <SolidColorBrush x:Key="SxSuccess" Color="{DynamicResource SxSuccessColor}"/>
+    <Color x:Key="SxSuccessDimColor">#166534</Color>
+    <SolidColorBrush x:Key="SxSuccessDim" Color="{DynamicResource SxSuccessDimColor}"/>
+    <Color x:Key="SxWarningColor">#F59E0B</Color>
+    <SolidColorBrush x:Key="SxWarning" Color="{DynamicResource SxWarningColor}"/>
+    <Color x:Key="SxWarningDimColor">#92400E</Color>
+    <SolidColorBrush x:Key="SxWarningDim" Color="{DynamicResource SxWarningDimColor}"/>
+    <Color x:Key="SxErrorColor">#EF4444</Color>
+    <SolidColorBrush x:Key="SxError" Color="{DynamicResource SxErrorColor}"/>
+    <Color x:Key="SxErrorDimColor">#991B1B</Color>
+    <SolidColorBrush x:Key="SxErrorDim" Color="{DynamicResource SxErrorDimColor}"/>
+    <Color x:Key="SxVoiceActiveColor">#00D4FF</Color>
+    <SolidColorBrush x:Key="SxVoiceActive" Color="{DynamicResource SxVoiceActiveColor}"/>
+    <Color x:Key="SxVoiceStandbyColor">#F59E0B</Color>
+    <SolidColorBrush x:Key="SxVoiceStandby" Color="{DynamicResource SxVoiceStandbyColor}"/>
+    <Color x:Key="SxVoiceOffColor">#525868</Color>
+    <SolidColorBrush x:Key="SxVoiceOff" Color="{DynamicResource SxVoiceOffColor}"/>
+    <Color x:Key="SxWhiteColor">#FFFFFF</Color>
+    <SolidColorBrush x:Key="SxWhite" Color="{DynamicResource SxWhiteColor}"/>
+    <Color x:Key="SxTransparentColor">#00000000</Color>
+    <SolidColorBrush x:Key="SxTransparent" Color="{DynamicResource SxTransparentColor}"/>
+    <Color x:Key="SxUserBubbleColor">#263E5866</Color>
+    <SolidColorBrush x:Key="SxUserBubble" Color="{DynamicResource SxUserBubbleColor}"/>
+    <SolidColorBrush x:Key="SxOverlayBg" Color="#CC0D0F14"/>
 </ResourceDictionary>

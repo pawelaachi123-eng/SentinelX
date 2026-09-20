@@ -1,1 +1,54 @@
-<UserControl x:Class="SentinelX.Views.Pages.VoicePage" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:u="clr-namespace:SentinelX.Utilities" u:PageTransitions.Enabled="True"><ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"><StackPanel Margin="28"><TextBlock Text="Voice" Style="{StaticResource SxHeading}"/><TextBlock Text="OFF → STANDBY → ACTIVE · powiedz „Sentinel”, aby rozpocząć rozmowę." Style="{StaticResource SxCaption}" Margin="0,0,0,24"/><Border Style="{StaticResource SxCard}" Margin="0,0,0,16" ><StackPanel><TextBlock Text="Źródło dźwięku" Style="{StaticResource SxSectionTitle}" /><ComboBox ItemsSource="{Binding Microphones}" SelectedIndex="{Binding SelectedMicrophone}" AutomationProperties.Name="Mikrofon" Margin="0,0,0,16"/><TextBlock Text="{Binding Status}" Style="{StaticResource SxCaption}" Margin="0,0,0,16"/><WrapPanel><Button Content="Odśwież urządzenia" Command="{Binding RefreshMicrophonesCommand}" Margin="0,0,8,8"/><Button Content="Włącz mikrofon" Command="{Binding StartCommand}" Style="{StaticResource SxPrimaryButton}" Margin="0,0,8,8"/><Button Content="Wyłącz / anuluj" Command="{Binding StopCommand}" Margin="0,0,8,8"/><Button Content="Kalibruj · 2 s ciszy" Command="{Binding CalibrateCommand}" Margin="0,0,8,8"/></WrapPanel></StackPanel></Border><Border Style="{StaticResource SxCard}" Margin="0,0,0,16" ><StackPanel><TextBlock Text="Sygnał na żywo" Style="{StaticResource SxSectionTitle}" /><TextBlock Text="RAW RMS · % pełnej skali" Style="{StaticResource SxCaption}" /><ProgressBar Value="{Binding Metrics.Raw, Mode=OneWay}" Margin="0,8,0,20"/><TextBlock Text="ENHANCED RMS · % pełnej skali" Style="{StaticResource SxCaption}" /><ProgressBar Value="{Binding Metrics.Enhanced, Mode=OneWay}" Margin="0,8,0,20"/><UniformGrid Columns="3"><StackPanel><TextBlock Text="Noise floor" Style="{StaticResource SxCaption}"/><TextBlock Text="{Binding Metrics.Noise, StringFormat=F5}" FontSize="22"/></StackPanel><StackPanel><TextBlock Text="SNR · dB" Style="{StaticResource SxCaption}"/><TextBlock Text="{Binding Metrics.Snr, StringFormat=F1}" FontSize="22"/></StackPanel><StackPanel><TextBlock Text="Gain · ×" Style="{StaticResource SxCaption}"/><TextBlock Text="{Binding Metrics.Gain, StringFormat=F2}" FontSize="22"/></StackPanel></UniformGrid><TextBlock Text="{Binding Metrics.SpeechDetected, StringFormat=Wykryto mowę (VAD): {0}}" Margin="0,20,0,8"/><TextBlock Text="{Binding Metrics.Transcript}" TextWrapping="Wrap"/></StackPanel></Border><Border Style="{StaticResource SxCard}" Margin="0,0,0,16" ><StackPanel><TextBlock Text="Modele rozpoznawania mowy" Style="{StaticResource SxSectionTitle}" /><TextBlock Text="Rozpoznawanie odbywa się lokalnie: NAudio → obróbka audio → Silero VAD → Qwen / Whisper. Pobieranie wymaga internetu i Twojego kliknięcia. Whisper Small zajmuje około 488 MB. Próg VAD, gain i timeout ustawisz w Settings." Style="{StaticResource SxCaption}" Margin="0,0,0,16"/><Button Content="Pobierz modele i włącz głos" Command="{Binding DownloadModelsCommand}" Margin="0,0,8,8"/><TextBlock Text="Sam głos nie może zatwierdzać ryzykownych akcji." Style="{StaticResource SxCaption}" /></StackPanel></Border></StackPanel></ScrollViewer></UserControl>
+<UserControl xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:u="clr-namespace:SentinelX.Utilities" x:Class="SentinelX.Views.Pages.VoicePage" u:PageTransitions.Enabled="True">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="28">
+            <TextBlock Text="Voice" Style="{StaticResource SxHeading}"/>
+            <TextBlock Text="OFF → STANDBY → ACTIVE · powiedz „Sentinel”, aby rozpocząć rozmowę." Style="{StaticResource SxCaption}" Margin="0,0,0,24"/>
+            <Border Style="{StaticResource SxCard}" Margin="0,0,0,16">
+                <StackPanel>
+                    <TextBlock Text="Źródło dźwięku" Style="{StaticResource SxSectionTitle}"/>
+                    <ComboBox ItemsSource="{Binding Microphones}" SelectedIndex="{Binding SelectedMicrophone}" AutomationProperties.Name="Mikrofon" Margin="0,0,0,16"/>
+                    <TextBlock Text="{Binding Status}" Style="{StaticResource SxCaption}" Margin="0,0,0,16"/>
+                    <WrapPanel>
+                        <Button Content="Odśwież urządzenia" Command="{Binding RefreshMicrophonesCommand}" Margin="0,0,8,8"/>
+                        <Button Content="Włącz mikrofon" Command="{Binding StartCommand}" Style="{StaticResource SxPrimaryButton}" Margin="0,0,8,8"/>
+                        <Button Content="Wyłącz / anuluj" Command="{Binding StopCommand}" Margin="0,0,8,8"/>
+                        <Button Content="Kalibruj · 2 s ciszy" Command="{Binding CalibrateCommand}" Margin="0,0,8,8"/>
+                    </WrapPanel>
+                </StackPanel>
+            </Border>
+            <Border Style="{StaticResource SxCard}" Margin="0,0,0,16">
+                <StackPanel>
+                    <TextBlock Text="Sygnał na żywo" Style="{StaticResource SxSectionTitle}"/>
+                    <TextBlock Text="RAW RMS · % pełnej skali" Style="{StaticResource SxCaption}"/>
+                    <ProgressBar Value="{Binding Metrics.Raw, Mode=OneWay}" Margin="0,8,0,20"/>
+                    <TextBlock Text="ENHANCED RMS · % pełnej skali" Style="{StaticResource SxCaption}"/>
+                    <ProgressBar Value="{Binding Metrics.Enhanced, Mode=OneWay}" Margin="0,8,0,20"/>
+                    <UniformGrid Columns="3">
+                        <StackPanel>
+                            <TextBlock Text="Noise floor" Style="{StaticResource SxCaption}"/>
+                            <TextBlock Text="{Binding Metrics.Noise, StringFormat=F5}" FontSize="22"/>
+                        </StackPanel>
+                        <StackPanel>
+                            <TextBlock Text="SNR · dB" Style="{StaticResource SxCaption}"/>
+                            <TextBlock Text="{Binding Metrics.Snr, StringFormat=F1}" FontSize="22"/>
+                        </StackPanel>
+                        <StackPanel>
+                            <TextBlock Text="Gain · ×" Style="{StaticResource SxCaption}"/>
+                            <TextBlock Text="{Binding Metrics.Gain, StringFormat=F2}" FontSize="22"/>
+                        </StackPanel>
+                    </UniformGrid>
+                    <TextBlock Text="{Binding Metrics.SpeechDetected, StringFormat=Wykryto mowę (VAD): {0}}" Margin="0,20,0,8"/>
+                    <TextBlock Text="{Binding Metrics.Transcript}" TextWrapping="Wrap"/>
+                </StackPanel>
+            </Border>
+            <Border Style="{StaticResource SxCard}" Margin="0,0,0,16">
+                <StackPanel>
+                    <TextBlock Text="Modele rozpoznawania mowy" Style="{StaticResource SxSectionTitle}"/>
+                    <TextBlock Text="Rozpoznawanie odbywa się lokalnie: NAudio → obróbka audio → Silero VAD → Qwen / Whisper. Pobieranie wymaga internetu i Twojego kliknięcia. Whisper Small zajmuje około 488 MB. Próg VAD, gain i timeout ustawisz w Settings." Style="{StaticResource SxCaption}" Margin="0,0,0,16"/>
+                    <Button Content="Pobierz modele i włącz głos" Command="{Binding DownloadModelsCommand}" Margin="0,0,8,8"/>
+                    <TextBlock Text="Sam głos nie może zatwierdzać ryzykownych akcji." Style="{StaticResource SxCaption}"/>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

@@ -12,6 +12,7 @@ public partial class CommandCenterViewModel : ObservableObject, IDisposable
     private readonly IActionEngine engine;
     private readonly IVoiceService voice;
     private readonly IUiDispatcher dispatcher;
+    private readonly IHistoryService history;
     public SystemViewModel System { get; }
     public VoiceViewModel Voice { get; }
     public ObservableCollection<ConversationMessage> Messages { get; } = [];
@@ -24,7 +25,7 @@ public partial class CommandCenterViewModel : ObservableObject, IDisposable
     public CommandCenterViewModel(IActionEngine engine, IVoiceService voice, IUiDispatcher dispatcher,
         SystemViewModel system, VoiceViewModel voiceViewModel, IHistoryService history)
     {
-        this.engine = engine; this.voice = voice; this.dispatcher = dispatcher; System = system; Voice = voiceViewModel;
+        this.engine = engine; this.voice = voice; this.dispatcher = dispatcher; this.history = history; System = system; Voice = voiceViewModel;
         foreach (var entry in history.ReadConversation().TakeLast(100)) Messages.Add(new(entry.Role, entry.Text, entry.Timestamp));
         engine.Changed += Sync; voice.CommandRecognized += Recognized;
     }
@@ -50,7 +51,7 @@ public partial class CommandCenterViewModel : ObservableObject, IDisposable
         var result = await engine.ExecuteAsync(input, fromVoice: fromVoice);
         Messages.Add(new("sentinel", result.Text, DateTime.Now, result.Action));
         while (Messages.Count > 300) Messages.RemoveAt(0);
-        Status = engine.IsStopped ? "STOP awaryjny · nowe akcje zablokowane" : "Gotowe · wyniki akcji znajdziesz w Historii";
+        Status = history.StorageError ?? (engine.IsStopped ? "STOP awaryjny · nowe akcje zablokowane" : "Gotowe · wyniki akcji znajdziesz w Historii");
         if (fromVoice) voice.Speak(result.Text);
     }
     public void Dispose() { engine.Changed -= Sync; voice.CommandRecognized -= Recognized; }

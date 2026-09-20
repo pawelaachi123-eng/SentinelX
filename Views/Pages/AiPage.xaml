@@ -1,1 +1,33 @@
-<UserControl x:Class="SentinelX.Views.Pages.AiPage" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:u="clr-namespace:SentinelX.Utilities" u:PageTransitions.Enabled="True"><ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"><StackPanel Margin="28"><TextBlock Text="AI" Style="{StaticResource SxHeading}"/><TextBlock Text="OllamaSharp · lokalne modele · kontrolowany dostęp do narzędzi" Style="{StaticResource SxCaption}" Margin="0,0,0,24"/><Border Style="{StaticResource SxCard}" Margin="0,0,0,16" ><StackPanel><TextBlock Text="Lokalna Ollama" Style="{StaticResource SxSectionTitle}" /><TextBlock Text="Endpoint: http://127.0.0.1:11434 · na Twoim komputerze, bez chmury" Style="{StaticResource SxCaption}" Margin="0,0,0,16"/><TextBlock Text="{Binding Status}" Style="{StaticResource SxCaption}" Margin="0,0,0,16"/><WrapPanel><Button Content="Sprawdź połączenie" Command="{Binding RefreshCommand}" Style="{StaticResource SxPrimaryButton}" Margin="0,0,8,8"/><Button Content="Anuluj sprawdzanie" Command="{Binding RefreshCancelCommand}" Margin="0,0,8,8"/></WrapPanel></StackPanel></Border><Border Style="{StaticResource SxCard}" Margin="0,0,0,16" ><StackPanel><TextBlock Text="Model rozmowy" Style="{StaticResource SxSectionTitle}" /><ComboBox ItemsSource="{Binding Models}" SelectedItem="{Binding SelectedModel}" AutomationProperties.Name="Model Ollama" Margin="0,0,0,16"/><Button Content="Użyj wybranego modelu" Command="{Binding SelectModelCommand}" Margin="0,0,8,8"/><TextBlock Text="Listowane są wyłącznie zainstalowane modele lokalne. Przy grze lub dużym obciążeniu istniejący router wybiera lżejszy model. Modele i limity kontekstu skonfigurujesz w Settings." Style="{StaticResource SxCaption}" /></StackPanel></Border><Border Style="{StaticResource SxCard}" Margin="0,0,0,16" ><StackPanel><TextBlock Text="Najpierw narzędzia, potem model" Style="{StaticResource SxSectionTitle}" /><TextBlock Text="Polecenia systemowe trafiają do deterministycznego routera. AI służy do rozmowy i interpretacji informacji — jego tekst nie jest wykonywany jako kod ani polecenie powłoki. VERIFIED pojawia się tylko przy dowodzie z narzędzia." Style="{StaticResource SxCaption}" /></StackPanel></Border></StackPanel></ScrollViewer></UserControl>
+<UserControl xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:u="clr-namespace:SentinelX.Utilities" x:Class="SentinelX.Views.Pages.AiPage" u:PageTransitions.Enabled="True">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="28">
+            <TextBlock Text="AI" Style="{StaticResource SxHeading}"/>
+            <TextBlock Text="OllamaSharp · lokalne modele · kontrolowany dostęp do narzędzi" Style="{StaticResource SxCaption}" Margin="0,0,0,24"/>
+            <Border Style="{StaticResource SxCard}" Margin="0,0,0,16">
+                <StackPanel>
+                    <TextBlock Text="Lokalna Ollama" Style="{StaticResource SxSectionTitle}"/>
+                    <TextBlock Text="Endpoint: http://127.0.0.1:11434 · na Twoim komputerze, bez chmury" Style="{StaticResource SxCaption}" Margin="0,0,0,16"/>
+                    <TextBlock Text="{Binding Status}" Style="{StaticResource SxCaption}" Margin="0,0,0,16"/>
+                    <WrapPanel>
+                        <Button Content="Sprawdź połączenie" Command="{Binding RefreshCommand}" Style="{StaticResource SxPrimaryButton}" Margin="0,0,8,8"/>
+                        <Button Content="Anuluj sprawdzanie" Command="{Binding RefreshCancelCommand}" Margin="0,0,8,8"/>
+                    </WrapPanel>
+                </StackPanel>
+            </Border>
+            <Border Style="{StaticResource SxCard}" Margin="0,0,0,16">
+                <StackPanel>
+                    <TextBlock Text="Model rozmowy" Style="{StaticResource SxSectionTitle}"/>
+                    <ComboBox ItemsSource="{Binding Models}" SelectedItem="{Binding SelectedModel}" AutomationProperties.Name="Model Ollama" Margin="0,0,0,16"/>
+                    <Button Content="Użyj wybranego modelu" Command="{Binding SelectModelCommand}" Margin="0,0,8,8"/>
+                    <TextBlock Text="Listowane są wyłącznie zainstalowane modele lokalne. Przy grze lub dużym obciążeniu istniejący router wybiera lżejszy model. Modele i limity kontekstu skonfigurujesz w Settings." Style="{StaticResource SxCaption}"/>
+                </StackPanel>
+            </Border>
+            <Border Style="{StaticResource SxCard}" Margin="0,0,0,16">
+                <StackPanel>
+                    <TextBlock Text="Najpierw narzędzia, potem model" Style="{StaticResource SxSectionTitle}"/>
+                    <TextBlock Text="Polecenia systemowe trafiają do deterministycznego routera. AI służy do rozmowy i interpretacji informacji — jego tekst nie jest wykonywany jako kod ani polecenie powłoki. VERIFIED pojawia się tylko przy dowodzie z narzędzia." Style="{StaticResource SxCaption}"/>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

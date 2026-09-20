@@ -51,8 +51,8 @@ public sealed class ActionEngine(IIntentRouter router, SentinelToolboxService to
                 memory.AddAssistantMessage(text);
                 return text;
             }, source.Token);
-            record.Status = toolbox.HasPendingAction ? ActionStatus.WaitingPermission : ActionStatus.Unverified;
-            record.Evidence = toolbox.HasPendingAction ? toolbox.PendingSummary : "Odpowiedź nie stanowi dowodu wykonania akcji systemowej. Sprawdź szczegółowy wpis w Historii.";
+            record.Status = ActionStatus.Unverified;
+            record.Evidence = "Odpowiedź nie stanowi dowodu wykonania akcji systemowej. Sprawdź szczegółowy wpis w Historii.";
             // Never infer verification by searching the text of an LLM response.
             var entries = await Task.Run(() => history.GetRecentEntries(20), source.Token);
             var proof = entries.FirstOrDefault(x => x.Timestamp >= record.StartedAt);

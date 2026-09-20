@@ -1,6 +1,6 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-<Color x:Key="SxBackgroundColor">#07090D</Color>
-<Color x:Key="SxSurfaceColor">#0E1219</Color>
-<Color x:Key="SxSidebarColor">#090C12</Color>
-<Color x:Key="SxBorderSubtleColor">#171C26</Color>
+    <Color x:Key="SxBackgroundColor">#07090D</Color>
+    <Color x:Key="SxSurfaceColor">#0E1219</Color>
+    <Color x:Key="SxSidebarColor">#090C12</Color>
+    <Color x:Key="SxBorderSubtleColor">#171C26</Color>
 </ResourceDictionary>
