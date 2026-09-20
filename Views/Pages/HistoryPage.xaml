@@ -18,6 +18,7 @@
                             <DataGridTextColumn Header="Polecenie" Binding="{Binding Command}" Width="*"/>
                         </DataGrid.Columns>
                     </DataGrid>
+                    <TextBlock Text="{Binding SelectedEntry.RequestId, StringFormat=ID polecenia: {0}}" Style="{StaticResource SxCaption}" Margin="0,12,0,0"/>
                     <TextBlock Text="{Binding SelectedEntry.ActionId}" Style="{StaticResource SxCaption}" Margin="0,16,0,8"/>
                     <TextBox Text="{Binding SelectedEntry.Evidence, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" MaxHeight="200" VerticalScrollBarVisibility="Auto"/>
                 </StackPanel>

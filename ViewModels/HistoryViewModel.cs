@@ -18,7 +18,7 @@ public partial class HistoryViewModel : ObservableObject
     {
         this.history = history; FilteredEntries = CollectionViewSource.GetDefaultView(Entries);
         FilteredEntries.Filter = row => row is ActionHistoryEntry entry &&
-            $"{entry.ActionId} {entry.Command} {entry.Status} {entry.Evidence}".Contains(Search, StringComparison.OrdinalIgnoreCase);
+            $"{entry.ActionId} {entry.RequestId} {entry.Command} {entry.Status} {entry.Evidence}".Contains(Search, StringComparison.OrdinalIgnoreCase);
     }
     partial void OnSearchChanged(string value) => FilteredEntries.Refresh();
     [RelayCommand] private async Task RefreshAsync()

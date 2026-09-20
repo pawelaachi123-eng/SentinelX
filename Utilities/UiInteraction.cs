@@ -31,8 +31,28 @@ public static class UiInteraction
         element.IsVisibleChanged -= VisibleChanged;
         if ((bool)e.NewValue) { element.IsVisibleChanged += VisibleChanged; Focus(element); }
     }
+    private static readonly DependencyProperty PreviousFocusProperty = DependencyProperty.RegisterAttached(
+        "PreviousFocus", typeof(IInputElement), typeof(UiInteraction), new PropertyMetadata(null));
     private static void VisibleChanged(object sender, DependencyPropertyChangedEventArgs args)
-    { if (args.NewValue is true) Focus((FrameworkElement)sender); }
+    {
+        var element = (FrameworkElement)sender;
+        if (args.NewValue is true)
+        {
+            IInputElement? previous = Keyboard.FocusedElement;
+            // Switching between modal panels can leave the old, already hidden control focused.
+            for (int i = 0; i < 8 && previous is FrameworkElement hidden && !hidden.IsVisible; i++)
+                previous = hidden.GetValue(PreviousFocusProperty) as IInputElement;
+            if (!ReferenceEquals(previous, element)) element.SetValue(PreviousFocusProperty, previous);
+            Focus(element);
+        }
+        else if (element.GetValue(PreviousFocusProperty) is FrameworkElement previous)
+        {
+            element.Dispatcher.BeginInvoke(() =>
+            {
+                if (previous.IsVisible && previous.IsEnabled) Keyboard.Focus(previous);
+            }, DispatcherPriority.Input);
+        }
+    }
     public static readonly DependencyProperty FocusVersionProperty = DependencyProperty.RegisterAttached(
         "FocusVersion", typeof(int), typeof(UiInteraction), new PropertyMetadata(0, (d, _) => { if (d is FrameworkElement e) Focus(e); }));
     public static int GetFocusVersion(DependencyObject d) => (int)d.GetValue(FocusVersionProperty);

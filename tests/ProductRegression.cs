@@ -69,6 +69,19 @@ internal static class ProductRegression
         Check(engine.IsStopped && !engine.IsBusy, "Stop must remain latched after partial completion.");
         engine.Resume();
 
+        // The audit directory becomes unwritable by replacing it with a regular file.
+        string auditPath = Path.Combine(directory, "History"), backupPath = Path.Combine(directory, "History.saved");
+        Directory.Move(auditPath, backupPath); File.WriteAllText(auditPath, "blocked directory");
+        try
+        {
+            router.Handler = (_, _) => Task.FromResult("response");
+            var storageFailure = await engine.ExecuteAsync("audit storage failure");
+            Check(!engine.IsBusy && storageFailure.Action!.StorageWarning.Length > 0, "Audit failure must be visible and release the execution lane.");
+        }
+        finally { File.Delete(auditPath); Directory.Move(backupPath, auditPath); }
+        var recovered = await engine.ExecuteAsync("storage recovered");
+        Check(recovered.Action!.StorageWarning.Length == 0 && !engine.IsBusy, "Engine must recover after audit storage is repaired.");
+
         using (var capture = ActionEvidenceCapture.Begin("SNAPSHOT"))
         {
             history.AddResult("SNAPSHOT-PROOF", "TEST", "snapshot", ActionExecutionResult.VerifiedSuccess("OK", "original"));
@@ -118,7 +131,7 @@ internal static class ProductRegression
         bool probeCancelled = false;
         try { await readiness.CheckAsync(cancelledProbe.Token); } catch (OperationCanceledException) { probeCancelled = true; }
         Check(probeCancelled, "Readiness must honor cancellation.");
-        File.WriteAllText(Path.Combine(directory, "product-tests.txt"), "PASS: correlated evidence, mixed outcomes, stable IDs, cancellation evidence, live elapsed, observer isolation, bounded capture, late writes, voice approval normalization, palette, offline readiness and privacy\n");
+        File.WriteAllText(Path.Combine(directory, "product-tests.txt"), "PASS: correlated evidence, mixed outcomes, stable IDs, cancellation evidence, live elapsed, observer isolation, bounded capture, late writes, audit I/O failure/recovery, voice approval normalization, palette, offline readiness and privacy\n");
     }
     private sealed class ScriptedRouter : IIntentRouter
     {

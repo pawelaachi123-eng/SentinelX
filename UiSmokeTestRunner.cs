@@ -68,6 +68,16 @@ public static class UiSmokeTestRunner
             await chat.SendMessageCommand.ExecuteAsync(null);
             if (chat.UserInput != "użycie CPU") throw new InvalidOperationException("STOP must preserve the draft.");
             engine.Resume();
+            await shell.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
+            var previousFocus = System.Windows.Input.Keyboard.FocusedElement;
+            vm.OpenPaletteCommand.Execute(null);
+            await shell.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
+            if (System.Windows.Input.Keyboard.FocusedElement is not System.Windows.Controls.TextBox search || search.Name != "SearchInput")
+                throw new InvalidOperationException("Palette search did not receive keyboard focus.");
+            vm.Palette.CloseCommand.Execute(null);
+            await shell.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
+            if (previousFocus != null && !ReferenceEquals(previousFocus, System.Windows.Input.Keyboard.FocusedElement))
+                throw new InvalidOperationException("Palette did not restore keyboard focus.");
             vm.OpenReadinessCommand.Execute(null);
             await vm.Readiness.RefreshCommand.ExecuteAsync(null);
             await shell.Dispatcher.InvokeAsync(shell.UpdateLayout, DispatcherPriority.ContextIdle);
