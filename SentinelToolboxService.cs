@@ -24,10 +24,10 @@ namespace SentinelX
         private readonly NetworkDiagnosticService networkTools;
 
 
-        public SentinelToolboxService(Func<string>? browserPreference = null)
+        public SentinelToolboxService(Func<string>? browserPreference = null, ActionHistoryService? history = null)
         {
             actionHistory =
-                new ActionHistoryService();
+                history ?? new ActionHistoryService();
 
 
             permissionCenter =

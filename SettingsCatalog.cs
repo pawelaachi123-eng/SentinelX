@@ -28,7 +28,7 @@ public static class SettingsCatalog
 
         Choice("Wygląd", "Motyw", "Zmiana kolorów całego interfejsu od razu.", () => S().Ui.Theme, x => S().Ui.Theme = x, "Dark", "Deep Dark", "System");
         Choice("Wygląd", "Przeglądarka", "Strony i wyszukiwanie. Gdy wybranej nie ma, używana jest domyślna przeglądarka Windows.", () => S().Ui.DefaultBrowserPreference, x => S().Ui.DefaultBrowserPreference = x, "Brave", "Chrome", "System");
-        Choice("Wygląd", "Kolor akcentu", "Mięta, błękit, fiolet, bursztyn albo róż.", () => S().Ui.AccentColor, x => S().Ui.AccentColor = x, "#66F2C2", "#48D8FF", "#A98BFF", "#FFC86B", "#FF8DA6");
+        Choice("Wygląd", "Kolor akcentu", "Mięta, błękit, fiolet, bursztyn albo róż.", () => S().Ui.AccentColor, x => S().Ui.AccentColor = x, "#00D4FF", "#66F2C2", "#48D8FF", "#A98BFF", "#FFC86B", "#FF8DA6");
         Number("Wygląd", "Przezroczystość nakładki (%)", "Stosowana również do otwartej nakładki.", () => S().Ui.OverlayOpacityPercent, x => S().Ui.OverlayOpacityPercent = (int)x, 20, 100, true);
         Number("Wygląd", "Rozmiar nakładki (%)", "Skalowanie tekstu i karty.", () => S().Ui.OverlayScalePercent, x => S().Ui.OverlayScalePercent = (int)x, 60, 180, true);
         Choice("Wygląd", "Pozycja nakładki", "Róg głównego ekranu; kartę można też przeciągać.", () => S().Ui.OverlayPosition, x => S().Ui.OverlayPosition = x, "Lewy górny", "Prawy górny", "Lewy dolny", "Prawy dolny");
@@ -60,6 +60,14 @@ public static class SettingsCatalog
         Number("Watch", "Przerwa między alarmami (min)", "Ograniczenie powtarzających się powiadomień.", () => S().Watch.CooldownMinutes, x => S().Watch.CooldownMinutes = (int)x, 1, 120, true);
         Number("Zasoby", "Odświeżanie systemu (s)", "Rzadziej oznacza mniejszy koszt monitorowania.", () => S().Resources.MonitorIntervalSeconds, x => S().Resources.MonitorIntervalSeconds = (int)x, 1, 10, true);
         Number("Zasoby", "Odświeżanie podczas gry (s)", "Automatycznie po wykryciu gry.", () => S().Resources.GamingMonitorIntervalSeconds, x => S().Resources.GamingMonitorIntervalSeconds = (int)x, 2, 15, true);
+        Toggle("Wygląd", "Animacje", "Wyłączane także automatycznie podczas gry.", () => S().Ui.AnimationsEnabled, x => S().Ui.AnimationsEnabled = x);
+        Toggle("Ogólne", "Zamknij do zasobnika", "Przycisk X chowa okno, Wyjdź w zasobniku kończy aplikację.", () => S().Ui.CloseToTray, x => S().Ui.CloseToTray = x);
+        Toggle("Ogólne", "Start z Windows", "Autostart tylko dla bieżącego użytkownika.", () => S().Startup.StartWithWindows, x => S().Startup.StartWithWindows = x);
+        Toggle("Ogólne", "Uruchom zminimalizowany", "Przy starcie schowaj okno do zasobnika.", () => S().Startup.StartMinimized, x => S().Startup.StartMinimized = x);
+        Toggle("Ogólne", "Głos przy uruchomieniu", "Wymaga już pobranych modeli i dostępnego mikrofonu.", () => S().Startup.StartVoiceOnLaunch, x => S().Startup.StartVoiceOnLaunch = x);
+        Toggle("Głos", "Odpowiedzi głosowe", "Synteza lokalna Windows dla poleceń głosowych.", () => S().Voice.SpeakResponses, x => S().Voice.SpeakResponses = x);
+        Toggle("Developer", "Tryb deweloperski", "Diagnostyka; nie daje modelowi zgody na modyfikowanie kodu.", () => S().Developer.DeveloperMode, x => S().Developer.DeveloperMode = x);
+        Toggle("Developer", "Zapis próbek audio", "Prywatne nagrania lokalne. Wyłącz domyślnie.", () => S().Voice.SaveVoiceSamples, x => { S().Developer.SaveVoiceSamples = x; S().Voice.SaveVoiceSamples = x; });
         return fields;
     }
 }

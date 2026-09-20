@@ -29,7 +29,7 @@ public sealed class VoiceRecognitionService : IDisposable
     private Qwen3AsrService? qwenService;
     private WhisperFallbackAsrService? whisperService;
     private WaveIn? microphone;
-    private WasapiRecorder? playbackMonitor;
+    private WasapiLoopbackCapture? playbackMonitor;
     private volatile bool disposed, initialized, isProcessing, wakeOnlyMode, speechDetected, recognitionSuppressed;
     private int generation, droppedSegments;
     private long lastRecognitionMilliseconds;
@@ -478,12 +478,12 @@ public sealed class VoiceRecognitionService : IDisposable
     private void StartPlaybackMonitor()
     {
         StopPlaybackMonitor();
-        WasapiRecorder? capture = null;
+        WasapiLoopbackCapture? capture = null;
         try
         {
-            capture = new WasapiRecorderBuilder().WithLoopbackCapture().Build();
+            capture = new WasapiLoopbackCapture();
             playbackMonitor = capture;
-            capture.DataAvailable += (buffer, flags, devicePosition, qpcPosition) => { if (ReferenceEquals(capture, playbackMonitor)) systemAudioLevel = AudioSignalMath.PlaybackRms(buffer.ToArray(), buffer.Length, capture.WaveFormat); };
+            capture.DataAvailable += PlaybackDataAvailable;
             capture.RecordingStopped += PlaybackStopped;
             capture.StartRecording();
         }
@@ -493,13 +493,13 @@ public sealed class VoiceRecognitionService : IDisposable
     {
         var old = playbackMonitor; playbackMonitor = null; systemAudioLevel = 0;
         if (old == null) return;
-         old.RecordingStopped -= PlaybackStopped;
+         old.DataAvailable -= PlaybackDataAvailable; old.RecordingStopped -= PlaybackStopped;
         try { old.StopRecording(); } catch (Exception) { }
         old.Dispose();
     }
     private void PlaybackDataAvailable(object? sender, WaveInEventArgs e)
     {
-        if (sender is not WasapiRecorder capture || !ReferenceEquals(capture, playbackMonitor)) return;
+        if (sender is not WasapiLoopbackCapture capture || !ReferenceEquals(capture, playbackMonitor)) return;
         systemAudioLevel = AudioSignalMath.PlaybackRms(e.Buffer, e.BytesRecorded, capture.WaveFormat);
     }
     private void PlaybackStopped(object? sender, StoppedEventArgs e)

@@ -12,11 +12,11 @@ public sealed class FileWorkspaceService
     private readonly string desktop;
     private readonly ActionHistoryService history;
     public string? LastFile { get; private set; }
-    public FileWorkspaceService(string? root = null, string? desktop = null)
+    public FileWorkspaceService(string? root = null, string? desktop = null, ActionHistoryService? history = null)
     {
         workspace = Path.Combine(root ?? AppPaths.Root, "CreatedFiles");
         this.desktop = desktop ?? Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
-        history = new ActionHistoryService(root);
+        this.history = history ?? new ActionHistoryService(root);
     }
     public async Task<string?> ProcessAsync(string command, CancellationToken token)
     {

@@ -5,6 +5,13 @@ namespace SentinelX;
 public static class AppPaths
 {
     public static string Root { get; } = Resolve();
+    public static string RootDirectory => Root;
+    public static string SettingsDirectory => Path.Combine(Root, "Settings");
+    public static string LogsDirectory => Path.Combine(Root, "Logs");
+    public static string HistoryDirectory => Path.Combine(Root, "History");
+    public static string MemoryDirectory => Path.Combine(Root, "Memory");
+    public static string BackupsDirectory => Path.Combine(Root, "Backups");
+    public static string CacheDirectory => Path.Combine(Root, "Cache");
     private static string Resolve()
     {
         string? custom = Environment.GetEnvironmentVariable("SENTINEL_DATA_DIR");

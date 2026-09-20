@@ -1,0 +1,48 @@
+name: Windows build and WPF smoke
+on:
+  push:
+    branches: [main, 'arena/**']
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+      - name: Restore
+        run: dotnet restore SENTINEL-X.csproj
+      - name: Build
+        run: dotnet build SENTINEL-X.csproj -c Release --no-restore
+      - name: MVVM UI smoke (all pages and binding validation)
+        shell: pwsh
+        run: |
+          $exe = Resolve-Path 'bin/Release/net9.0-windows/SentinelX.exe'
+          $output = Join-Path $PWD 'test-results/ui'
+          $p = Start-Process $exe -ArgumentList '--ui-smoke', $output -PassThru
+          if (-not $p.WaitForExit(120000)) { $p.Kill(); throw 'UI smoke timeout' }
+          if ($p.ExitCode -ne 0 -or -not (Test-Path "$output/ui-smoke.txt")) { throw "UI smoke failed: exit $($p.ExitCode)" }
+          Get-Content "$output/ui-smoke.txt"
+      - name: Existing regression suite
+        shell: pwsh
+        run: |
+          $exe = Resolve-Path 'bin/Release/net9.0-windows/SentinelX.exe'
+          $output = Join-Path $PWD 'test-results/regression'
+          $p = Start-Process $exe -ArgumentList '--self-test', $output -PassThru
+          if (-not $p.WaitForExit(300000)) { $p.Kill(); throw 'Regression timeout' }
+          if ($p.ExitCode -ne 0) { throw "Regression failed: exit $($p.ExitCode)" }
+          Get-ChildItem $output
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sentinel-validation
+          path: test-results/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SentinelX-windows-x64
+          path: bin/Release/net9.0-windows/
