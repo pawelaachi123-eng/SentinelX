@@ -569,6 +569,7 @@ namespace SentinelX
                     "Brak wyniku akcji.");
 
 
+            actionHistory.AddResult(execution.Action.ActionId, execution.Action.ActionType, execution.Action.OriginalCommand, result);
             return FormatActionResponse(
                 execution.Action.ActionId,
                 result);

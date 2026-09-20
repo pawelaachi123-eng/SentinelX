@@ -27,9 +27,8 @@
 	<ItemGroup>
         <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
         <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.0" />
-        <PackageReference Include="OllamaSharp" Version="4.0.6" />
-        <!-- OllamaSharp 4.0.6 implements the preview IChatClient ABI, not the stable one. -->
-        <PackageReference Include="Microsoft.Extensions.AI.Abstractions" Version="[9.0.0-preview.9.24525.1]" />
+        <PackageReference Include="OllamaSharp" Version="5.4.18" />
+        <!-- 5.x uses the stable IChatClient ABI required by existing Whisper.net 1.9.1. -->
 		<PackageReference Include="System.Speech" Version="9.0.0" />
 
 		<PackageReference Include="NAudio"

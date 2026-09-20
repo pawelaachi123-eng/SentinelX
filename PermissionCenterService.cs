@@ -205,7 +205,7 @@ namespace SentinelX
                 result =
                     await (action.CancellableExecutor?.Invoke(cancellationToken) ?? action.Executor());
             }
-            catch (OperationCanceledException) { throw; }
+            catch (OperationCanceledException) { result = ActionExecutionResult.Cancelled(); }
             catch (Exception ex)
             {
                 result =

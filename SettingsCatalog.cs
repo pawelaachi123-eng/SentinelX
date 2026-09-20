@@ -2,7 +2,7 @@ using System.Globalization;
 
 namespace SentinelX;
 
-public sealed record SettingField(string Section, string Label, string Description, Func<string> Read, Func<string, string?> Write, string[]? Choices = null, bool IsToggle = false);
+public sealed record SettingField(string Section, string Label, string Description, Func<string> Read, Func<string, string?> Write, string[]? Choices = null, bool IsToggle = false, double? Minimum = null, double? Maximum = null, bool Integer = false);
 
 public static class SettingsCatalog
 {
@@ -17,7 +17,7 @@ public static class SettingsCatalog
                 if (!double.TryParse(text.Trim().Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture, out double value) || !double.IsFinite(value) || value < min || value > max || integer && value != Math.Truncate(value))
                     return $"Wpisz {(integer ? "liczbę całkowitą " : "liczbę ")}od {min} do {max}.";
                 write(value); return null;
-            }));
+            }, Minimum: min, Maximum: max, Integer: integer));
         }
         void Choice(string section, string label, string description, Func<string> read, Action<string> write, params string[] choices) =>
             fields.Add(new(section, label, description, read, value => { if (!choices.Contains(value)) return "Wybierz wartość z listy."; write(value); return null; }, choices));

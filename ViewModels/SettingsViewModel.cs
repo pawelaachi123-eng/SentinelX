@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Globalization;
 using System.Windows.Data;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -16,11 +17,20 @@ public partial class SettingViewModel : ObservableObject
     public bool IsChoice => Choices != null;
     public bool IsToggle => field.IsToggle;
     public bool IsText => !IsChoice && !IsToggle;
+    public bool IsSlider => field.Minimum.HasValue && !field.Integer;
+    public double Minimum => field.Minimum ?? 0;
+    public double Maximum => field.Maximum ?? 1;
+    [ObservableProperty] private double numericValue;
+    partial void OnNumericValueChanged(double value) => Value = value.ToString("0.###", CultureInfo.InvariantCulture);
+    partial void OnValueChanged(string value)
+    {
+        if (double.TryParse(value.Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture, out var number) && double.IsFinite(number)) NumericValue = number;
+    }
     [ObservableProperty] private string value;
     [ObservableProperty] private bool enabled;
     [ObservableProperty] private string error = "";
     public SettingViewModel(SettingField field, AppSettingsService store)
-    { this.field = field; this.store = store; value = field.Read(); enabled = bool.TryParse(value, out var b) && b; }
+    { this.field = field; this.store = store; value = field.Read(); if (double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var number)) numericValue = number; enabled = bool.TryParse(value, out var b) && b; }
     [RelayCommand] private void Save()
     {
         string before = field.Read();

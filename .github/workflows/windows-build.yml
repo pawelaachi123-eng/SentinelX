@@ -16,7 +16,14 @@ jobs:
         with:
           dotnet-version: 9.0.x
       - name: Restore
-        run: dotnet restore SENTINEL-X.csproj
+        shell: pwsh
+        run: |
+          dotnet restore SENTINEL-X.csproj 2>&1 | Tee-Object restore.log
+          if ($LASTEXITCODE -ne 0) {
+            $detail = (Get-Content restore.log -Raw).Replace("`r", '').Replace("`n", '%0A')
+            Write-Output "::error::$detail"
+            exit 1
+          }
       - name: Build
         run: dotnet build SENTINEL-X.csproj -c Release --no-restore
       - name: MVVM UI smoke (all pages and binding validation)
