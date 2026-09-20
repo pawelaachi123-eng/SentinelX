@@ -54,6 +54,7 @@ public static class SettingsCatalog
         Number("AI", "Próg obciążenia RAM (%)", "Powyżej progu wybierany jest model lekki.", () => S().Ai.RamPressurePercent, x => S().Ai.RamPressurePercent = (int)x, 50, 98, true);
         Number("AI", "Próg obciążenia CPU (%)", "Powyżej progu wybierany jest model lekki.", () => S().Ai.CpuPressurePercent, x => S().Ai.CpuPressurePercent = (int)x, 50, 99, true);
         Number("AI", "Próg obciążenia GPU (%)", "Niedostępny odczyt nie jest traktowany jako zerowe użycie.", () => S().Ai.GpuPressurePercent, x => S().Ai.GpuPressurePercent = (int)x, 30, 99, true);
+        Toggle("Watch", "Monitoruj obciążenie", "Powiadomienie po przekroczeniu progu przez zadany czas.", () => S().Watch.Enabled, x => S().Watch.Enabled = x);
         Number("Watch", "Alarm CPU (%)", "Alert przy długotrwałym obciążeniu.", () => S().Watch.CpuAlertPercent, x => S().Watch.CpuAlertPercent = (int)x, 50, 100, true);
         Number("Watch", "Alarm RAM (%)", "Alert przy długotrwałym zapełnieniu pamięci.", () => S().Watch.RamAlertPercent, x => S().Watch.RamAlertPercent = (int)x, 50, 100, true);
         Number("Watch", "Czas do alarmu (s)", "Krótkie skoki obciążenia nie wywołują alertu.", () => S().Watch.MinSecondsBeforeAlert, x => S().Watch.MinSecondsBeforeAlert = (int)x, 3, 300, true);

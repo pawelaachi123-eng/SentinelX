@@ -2,6 +2,8 @@ using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Threading;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using Microsoft.Extensions.DependencyInjection;
 using SentinelX.Services.Actions;
 using SentinelX.ViewModels;
@@ -28,6 +30,10 @@ public static class UiSmokeTestRunner
                 await shell.Dispatcher.InvokeAsync(shell.UpdateLayout, DispatcherPriority.ContextIdle);
                 await Task.Delay(150);
                 visited.Add(item.Key);
+                var image = new RenderTargetBitmap((int)shell.ActualWidth, (int)shell.ActualHeight, 96, 96, PixelFormats.Pbgra32);
+                image.Render(shell);
+                var png = new PngBitmapEncoder(); png.Frames.Add(BitmapFrame.Create(image));
+                using var imageFile = File.Create(Path.Combine(output, item.Key + ".png")); png.Save(imageFile);
             }
             foreach (string theme in new[] { "Deep Dark", "System", "Dark" })
             {

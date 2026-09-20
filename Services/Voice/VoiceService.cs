@@ -64,9 +64,10 @@ public sealed class VoiceService : IVoiceService, IDisposable
         dispatcher.Post(() =>
         {
             if (disposed || version != generation || State == VoiceState.Off || engine.IsStopped) return;
-            var match = Regex.Match(text.Trim(), @"^(?:hej\s+)?(?:sentinel|sentynel|sentinelu|sentynelu|centinel)(?:\s+x)?(?=[\s,.!?]|$)[\s,.!?]*(.*)$", RegexOptions.IgnoreCase);
-            if (State == VoiceState.Standby && !match.Success) return;
-            if (State == VoiceState.Active && DateTime.Now > activeUntil && !match.Success) return;
+            bool wakeAllowed = VoiceTranscriptFilter.ContainsWakeWord(text, settings.Current.Voice.WakeWordMode);
+            var match = Regex.Match(text.Trim(), @"^(?:hej\s+)?(?:sentinel|sentynel|sentinelu|sentynelu|centinel|centynel|centenel|santinel|sentnel|centinelu|sentinelka|senty nel)(?:\s+x)?(?=[\s,.!?]|$)[\s,.!?]*(.*)$", RegexOptions.IgnoreCase);
+            if (State == VoiceState.Standby && (!match.Success || !wakeAllowed)) return;
+            if (State == VoiceState.Active && DateTime.Now > activeUntil && (!match.Success || !wakeAllowed)) return;
             string command = match.Success ? match.Groups[1].Value.Trim() : text.Trim();
             State = VoiceState.Active; capture.SetWakeOnlyMode(false);
             activeUntil = DateTime.Now.AddMinutes(settings.Current.Voice.ConversationTimeoutMinutes);

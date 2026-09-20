@@ -26,6 +26,8 @@ public sealed class DesktopService(ISettingsService settings, IActionEngine engi
     private bool? startupApplied;
     private readonly StartupService startup = new("Sentinel X");
     private ResourceDictionary? palette;
+    private DateTime? highUsageSince;
+    private DateTime lastAlert;
     public string Status { get; private set; } = "";
     public event Action? StatusChanged;
     public void Attach(Window target)
@@ -93,6 +95,22 @@ public sealed class DesktopService(ISettingsService settings, IActionEngine engi
     private void MetricsUpdated(SystemSnapshot snapshot) => dispatcher.Post(() =>
     {
         StateChanged();
+        var watch = settings.Current.Watch;
+        double ramPercent = snapshot.RamTotal > 0 ? snapshot.RamUsed / snapshot.RamTotal * 100 : double.NaN;
+        bool high = watch.Enabled && (snapshot.Cpu >= watch.CpuAlertPercent || ramPercent >= watch.RamAlertPercent);
+        if (!high) highUsageSince = null;
+        else
+        {
+            highUsageSince ??= snapshot.Timestamp;
+            if (snapshot.Timestamp - highUsageSince >= TimeSpan.FromSeconds(watch.MinSecondsBeforeAlert)
+                && snapshot.Timestamp - lastAlert >= TimeSpan.FromMinutes(watch.CooldownMinutes))
+            {
+                lastAlert = snapshot.Timestamp;
+                string message = $"CPU {snapshot.CpuText} · RAM {snapshot.RamText}";
+                SetStatus("Watch: długotrwałe obciążenie. " + message);
+                tray?.ShowInfo("Sentinel Watch", message);
+            }
+        }
         Application.Current.Resources["SxAnimationsEnabled"] = settings.Current.Ui.AnimationsEnabled && string.IsNullOrEmpty(snapshot.Game);
     });
     private void ApplySettings()

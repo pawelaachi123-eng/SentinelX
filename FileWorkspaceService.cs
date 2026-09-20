@@ -20,6 +20,19 @@ public sealed class FileWorkspaceService : Services.Files.IFileService
     }
     public async Task<string?> ProcessAsync(string command, CancellationToken token)
     {
+        token.ThrowIfCancellationRequested();
+        var copy = Regex.Match(command, @"^(skopiuj|przenieś|przenies) ten plik (?:jako|do) (.+)$", RegexOptions.IgnoreCase);
+        if (copy.Success) return await CopyOrMoveAsync(command, copy.Groups[2].Value.Trim().Trim('"'), copy.Groups[1].Value != "skopiuj", token);
+        var search = Regex.Match(command, @"^(?:znajdź|znajdz|szukaj) plik (.+)$", RegexOptions.IgnoreCase);
+        if (search.Success)
+        {
+            var matches = Directory.Exists(workspace) ? Directory.EnumerateFiles(workspace, "*", new EnumerationOptions { AttributesToSkip = FileAttributes.ReparsePoint, IgnoreInaccessible = true })
+                .Where(path => Path.GetFileName(path).Contains(search.Groups[1].Value.Trim(), StringComparison.OrdinalIgnoreCase)).Take(50).ToArray() : [];
+            token.ThrowIfCancellationRequested();
+            string text = matches.Length == 0 ? "Brak pasujących plików w folderze Sentinel." : string.Join(Environment.NewLine, matches);
+            history.AddResult(history.CreateActionId(), "FILE_SEARCH", command, ActionExecutionResult.VerifiedSuccess(text, $"Katalog: {workspace}; odczyt {DateTime.Now:O}; limit 50 wyników"));
+            return text;
+        }
         var create = Regex.Match(command, @"^(?:stwórz|stworz|utwórz|utworz)\s+plik\s+([^\r\n:]+?)(?:\s+(na pulpicie|w folderze sentinel))?(?:\s*:\s*([\s\S]*))?$", RegexOptions.IgnoreCase);
         var write = Regex.Match(command, @"^(wpisz|dopisz)\s+do niego\s+([\s\S]+)$", RegexOptions.IgnoreCase);
         var line = Regex.Match(command, @"^(?:zmień|zmien)\s+(\d+)\s+linie?\s+(?:na\s+)?([\s\S]+)$", RegexOptions.IgnoreCase);
@@ -38,6 +51,7 @@ public sealed class FileWorkspaceService : Services.Files.IFileService
                 string root = create.Groups[2].Value.Equals("na pulpicie", StringComparison.OrdinalIgnoreCase) ? desktop : workspace;
                 Directory.CreateDirectory(root);
                 path = Path.Combine(root, name); content = create.Groups[3].Value;
+                if (content.Length > 1000000) throw new InvalidOperationException("Treść przekracza limit 1 MB.");
                 await using var file = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None, 4096, true);
                 await file.WriteAsync(Encoding.UTF8.GetBytes(content), token); await file.FlushAsync(token);
             }
@@ -74,6 +88,37 @@ public sealed class FileWorkspaceService : Services.Files.IFileService
         {
             var result = ActionExecutionResult.Failure("Nie zapisano potwierdzonej zmiany: " + ex.Message);
             history.AddResult(id, "FILE_WRITE", command, result); return "FAILED • " + id + "\n" + result.Message;
+        }
+    }
+    private async Task<string> CopyOrMoveAsync(string command, string name, bool move, CancellationToken token)
+    {
+        string id = history.CreateActionId(), type = move ? "FILE_MOVE" : "FILE_COPY";
+        history.AddRunning(id, type, command);
+        try
+        {
+            if (!IsSafeName(name)) throw new InvalidOperationException("Podaj zwykłą nazwę pliku bez ścieżki.");
+            string source = LastFile ?? throw new InvalidOperationException("Najpierw utwórz plik w tej rozmowie.");
+            var info = new FileInfo(source);
+            if (!info.Exists || info.Length > 1024 * 1024 || (info.Attributes & FileAttributes.ReparsePoint) != 0)
+                throw new InvalidOperationException("Plik niedostępny, większy niż 1 MB lub jest dowiązaniem.");
+            string target = Path.Combine(Path.GetDirectoryName(source)!, name);
+            byte[] before = await File.ReadAllBytesAsync(source, token);
+            token.ThrowIfCancellationRequested();
+            // No overwrite. Move is restricted to the same directory of a file created by Sentinel.
+            if (move) File.Move(source, target, false); else File.Copy(source, target, false);
+            LastFile = target; // Preserve the real location even if verification is interrupted.
+            byte[] after = await File.ReadAllBytesAsync(target, token);
+            string hash = Convert.ToHexString(SHA256.HashData(before));
+            if (!before.AsSpan().SequenceEqual(after) || (move && File.Exists(source))) throw new IOException("Weryfikacja pliku nie powiodła się.");
+            var result = ActionExecutionResult.VerifiedSuccess(move ? "Przeniesiono plik." : "Skopiowano plik.", $"{source} → {target}\nSHA-256: {hash}");
+            history.AddResult(id, type, command, result);
+            return $"VERIFIED • {id}\n{result.Message}\n{result.Evidence}";
+        }
+        catch (OperationCanceledException) { history.AddCancelled(id, type, command, "Przerwano; ukończony zapis nie jest cofany."); throw; }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            history.AddResult(id, type, command, ActionExecutionResult.Failure(ex.Message));
+            return $"FAILED • {id}\n{ex.Message}";
         }
     }
     internal static bool IsSafeName(string name)

@@ -186,7 +186,7 @@ namespace SentinelX
                 try
                 {
                     bool requestedClose =
-                        if (!cancellationToken.IsCancellationRequested) process.CloseMainWindow();
+                        !cancellationToken.IsCancellationRequested && process.CloseMainWindow();
 
 
                     if (requestedClose)
