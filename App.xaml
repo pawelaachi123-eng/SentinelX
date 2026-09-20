@@ -9,6 +9,7 @@
                 <ResourceDictionary Source="Themes/Controls.xaml"/>
                 <ResourceDictionary Source="Themes/Animations.xaml"/>
             </ResourceDictionary.MergedDictionaries>
+            <c:ReadinessToBrushConverter x:Key="ReadinessBrush"/>
             <c:StatusToBrushConverter x:Key="StatusBrush"/>
             <c:VoiceStateToBrushConverter x:Key="VoiceBrush"/>
             <c:RiskLevelToBrushConverter x:Key="RiskBrush"/>

@@ -15,6 +15,10 @@ public partial class ActionRecord : ObservableObject
     [ObservableProperty] private string evidence = "";
     [ObservableProperty] private string error = "";
     [ObservableProperty] private DateTime? finishedAt;
+    [ObservableProperty] private string phase = "W kolejce";
+    [ObservableProperty] private long elapsedMilliseconds;
+    [ObservableProperty] private IReadOnlyList<ActionHistoryEntry> toolResults = [];
+    [ObservableProperty] private string storageWarning = "";
 }
 public sealed record IntentResult(string Text, ActionRecord? Action = null);
 public sealed record ConversationMessage(string Role, string Content, DateTime Timestamp, ActionRecord? ActionRecord = null);

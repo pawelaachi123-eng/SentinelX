@@ -50,6 +50,9 @@ public static class ServiceLocator
         services.AddSingleton<SpeechOutputService>();
         services.AddSingleton<IVoiceService, VoiceService>();
         services.AddSingleton<IDesktopService, DesktopService>();
+        services.AddSingleton<Services.Readiness.IReadinessService, Services.Readiness.ReadinessService>();
+        services.AddSingleton<ReadinessViewModel>();
+        services.AddSingleton<CommandPaletteViewModel>();
         // Cached page VMs preserve drafts, selections and subscriptions across navigation.
         services.AddSingleton<SystemViewModel>();
         services.AddSingleton<VoiceViewModel>();

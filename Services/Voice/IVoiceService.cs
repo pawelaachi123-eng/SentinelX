@@ -5,6 +5,7 @@ public interface IVoiceService
 {
     VoiceState State { get; }
     string Status { get; }
+    bool HasLocalModels { get; }
     event Action? Changed;
     event Action<VoiceMetrics>? MetricsUpdated;
     event Action<string>? CommandRecognized;

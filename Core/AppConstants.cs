@@ -4,5 +4,5 @@ public static class AppConstants
 {
     public const string Name = "SENTINEL X";
     // Do not downgrade existing installations to the prompt's older 0.77 release.
-    public const string Version = "0.83 · MVVM";
+    public const string Version = "0.84 · LOCAL FIRST";
 }

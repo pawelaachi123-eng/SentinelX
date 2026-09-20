@@ -25,7 +25,10 @@
                                     <TextBlock Text="{Binding UserRequest}" TextWrapping="Wrap" FontWeight="SemiBold"/>
                                 </DockPanel>
                                 <TextBlock Text="{Binding ActionId}" Style="{StaticResource SxCaption}" Margin="0,8"/>
+                                <TextBlock Text="{Binding Phase}" Foreground="{DynamicResource SxAccentCyan}" TextWrapping="Wrap" Margin="0,0,0,8"/>
+                                <TextBlock Text="{Binding ElapsedMilliseconds, StringFormat=Czas wykonania: {0} ms}" Style="{StaticResource SxCaption}" Margin="0,0,0,12"/>
                                 <TextBlock Text="{Binding Evidence}" TextWrapping="Wrap"/>
+                                <TextBlock Text="{Binding StorageWarning}" Foreground="{DynamicResource SxWarning}" TextWrapping="Wrap"/>
                                 <TextBlock Text="{Binding Error}" Foreground="{DynamicResource SxError}" TextWrapping="Wrap"/>
                             </StackPanel>
                         </Border>

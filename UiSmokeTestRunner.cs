@@ -12,6 +12,12 @@ namespace SentinelX;
 /// <summary>Windows-only: instantiate and render every real page, then check bindings and stop semantics.</summary>
 public static class UiSmokeTestRunner
 {
+    private static void Capture(Window shell, string path)
+    {
+        var bitmap = new RenderTargetBitmap((int)shell.ActualWidth, (int)shell.ActualHeight, 96, 96, PixelFormats.Pbgra32);
+        bitmap.Render(shell); var png = new PngBitmapEncoder(); png.Frames.Add(BitmapFrame.Create(bitmap));
+        using var stream = File.Create(path); png.Save(stream);
+    }
     public static async Task RunAsync(IServiceProvider services, Window shell, string output)
     {
         Directory.CreateDirectory(output);
@@ -22,7 +28,10 @@ public static class UiSmokeTestRunner
         try
         {
             await Tests.BackendRegression.RunAsync(Path.Combine(output, "backend"));
+            await Tests.ProductRegression.RunAsync(Path.Combine(output, "product"));
             var vm = services.GetRequiredService<MainViewModel>();
+            vm.Readiness.IsOpen = false;
+            if (vm.InitializeCommand.IsRunning) await vm.InitializeCommand.ExecutionTask!;
             var chat = services.GetRequiredService<CommandCenterViewModel>();
             chat.UserInput = "Sentinel, ile mam RAM?";
             await chat.SendMessageCommand.ExecuteAsync(null);
@@ -43,6 +52,28 @@ public static class UiSmokeTestRunner
                 var png = new PngBitmapEncoder(); png.Frames.Add(BitmapFrame.Create(image));
                 using var imageFile = File.Create(Path.Combine(output, item.Key + ".png")); png.Save(imageFile);
             }
+            vm.OpenPaletteCommand.Execute(null);
+            vm.Palette.Query = "ustawienia";
+            await shell.Dispatcher.InvokeAsync(shell.UpdateLayout, DispatcherPriority.ContextIdle);
+            Capture(shell, Path.Combine(output, "palette.png"));
+            vm.Palette.ChooseCommand.Execute(null);
+            if (vm.SelectedItem?.Key != "settings") throw new InvalidOperationException("Palette navigation not wired.");
+            vm.OpenPaletteCommand.Execute(null); vm.Palette.Query = "użycie CPU";
+            vm.Palette.ChooseCommand.Execute(null);
+            if (chat.UserInput != "użycie CPU") throw new InvalidOperationException("Palette must stage a command.");
+            var before = chat.Messages.Count;
+            await shell.Dispatcher.InvokeAsync(shell.UpdateLayout, DispatcherPriority.ContextIdle);
+            if (chat.Messages.Count != before) throw new InvalidOperationException("Palette must not auto-execute.");
+            engine.EmergencyStop();
+            await chat.SendMessageCommand.ExecuteAsync(null);
+            if (chat.UserInput != "użycie CPU") throw new InvalidOperationException("STOP must preserve the draft.");
+            engine.Resume();
+            vm.OpenReadinessCommand.Execute(null);
+            await vm.Readiness.RefreshCommand.ExecuteAsync(null);
+            await shell.Dispatcher.InvokeAsync(shell.UpdateLayout, DispatcherPriority.ContextIdle);
+            if (vm.Readiness.Checks.Count != 4) throw new InvalidOperationException("Readiness cards not populated.");
+            Capture(shell, Path.Combine(output, "readiness.png"));
+            vm.Readiness.CloseCommand.Execute(null);
             foreach (string theme in new[] { "Deep Dark", "System", "Dark" })
             {
                 var store = services.GetRequiredService<AppSettingsService>();
@@ -63,7 +94,7 @@ public static class UiSmokeTestRunner
             string errors = buffer.ToString();
             File.WriteAllText(Path.Combine(output, "bindings.log"), errors);
             if (errors.Length != 0) throw new InvalidOperationException("WPF binding errors: " + errors);
-            File.WriteAllText(Path.Combine(output, "ui-smoke.txt"), "PASS\nPages: " + string.Join(", ", visited) + "\nDark/DeepDark/System themes rendered\nSTOP/Resume/voice approval passed\n");
+            File.WriteAllText(Path.Combine(output, "ui-smoke.txt"), "PASS\nPages: " + string.Join(", ", visited) + "\nDark/DeepDark/System themes rendered\nSTOP/Resume/voice approval passed\nPalette, readiness, draft preservation and execution-scoped evidence passed\n");
         }
         finally { PresentationTraceSources.DataBindingSource.Listeners.Remove(listener); }
     }

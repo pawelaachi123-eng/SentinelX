@@ -4,6 +4,7 @@ public interface IActionEngine
 {
     bool IsStopped { get; }
     bool IsBusy { get; }
+    ActionRecord? CurrentAction { get; }
     bool HasPendingPermission { get; }
     string PermissionSummary { get; }
     event Action? Changed;

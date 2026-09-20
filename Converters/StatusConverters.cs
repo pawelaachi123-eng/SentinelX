@@ -31,3 +31,13 @@ public sealed class RiskLevelToBrushConverter : IValueConverter
     { RiskLevel.Low => "SxSuccess", RiskLevel.Medium => "SxWarning", _ => "SxError" });
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => Binding.DoNothing;
 }
+
+public sealed class ReadinessToBrushConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture) => Application.Current.FindResource(value switch
+    {
+        ReadinessState.Ready => "SxSuccess", ReadinessState.NeedsSetup => "SxWarning",
+        ReadinessState.Unavailable => "SxError", _ => "SxTextSecondary"
+    });
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => Binding.DoNothing;
+}

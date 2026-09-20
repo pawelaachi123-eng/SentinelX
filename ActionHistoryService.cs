@@ -29,6 +29,7 @@ namespace SentinelX
         public string Evidence { get; set; } =
             string.Empty;
 
+        public string RequestId { get; set; } = string.Empty;
         public string ParentActionId { get; set; } = string.Empty;
         public string SessionId { get; set; } = string.Empty;
         public long DurationMilliseconds { get; set; }
@@ -234,6 +235,8 @@ namespace SentinelX
                 try
                 {
                     entry.SessionId = sessionId;
+                    if (entry.ActionType == "REQUEST") entry.RequestId = entry.ActionId;
+                    else Services.History.ActionEvidenceCapture.Record(entry);
                     string json =
                         JsonSerializer.Serialize(
                             entry,

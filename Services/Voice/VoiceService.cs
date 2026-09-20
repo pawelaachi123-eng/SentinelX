@@ -18,6 +18,7 @@ public sealed class VoiceService : IVoiceService, IDisposable
     private DateTime activeUntil;
     private int generation;
     private bool disposed;
+    public bool HasLocalModels => capture.HasLocalModels;
     public VoiceState State { get; private set; }
     public string Status { get; private set; } = "Mikrofon wyłączony";
     public event Action? Changed;

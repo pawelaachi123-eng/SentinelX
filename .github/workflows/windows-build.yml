@@ -1,4 +1,7 @@
 name: Windows build and WPF smoke
+concurrency:
+  group: windows-${{ github.ref }}
+  cancel-in-progress: true
 on:
   push:
     branches: [main, 'arena/**']
@@ -58,6 +61,23 @@ jobs:
             throw "Regression failed: exit $($p.ExitCode)"
           }
           Get-ChildItem $output
+      - name: Publish portable Windows application
+        run: dotnet publish SENTINEL-X.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=false -o bin/portable
+      - name: Verify portable package
+        shell: pwsh
+        run: |
+          if (-not (Test-Path 'bin/portable/coreclr.dll')) { throw 'Missing self-contained .NET runtime' }
+          $exe = Resolve-Path 'bin/portable/SentinelX.exe'
+          $output = Join-Path $PWD 'test-results/portable'
+          $p = Start-Process $exe -ArgumentList '--ui-smoke', $output -PassThru
+          if (-not $p.WaitForExit(120000)) { $p.Kill(); throw 'Portable smoke timeout' }
+          if ($p.ExitCode -ne 0 -or -not (Test-Path "$output/ui-smoke.txt")) {
+            Get-ChildItem $output -Recurse -Include FAILED.txt,errors.log,bindings.log | ForEach-Object {
+              $detail = (Get-Content $_.FullName -Raw).Replace("`r", '').Replace("`n", '%0A')
+              Write-Output "::error::$detail"
+            }
+            throw "Portable smoke failed: exit $($p.ExitCode)"
+          }
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -67,3 +87,8 @@ jobs:
         with:
           name: SentinelX-windows-x64
           path: bin/Release/net9.0-windows/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SentinelX-Portable-win-x64
+          path: bin/portable/

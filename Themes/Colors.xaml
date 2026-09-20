@@ -62,4 +62,5 @@
     <Color x:Key="SxUserBubbleColor">#263E5866</Color>
     <SolidColorBrush x:Key="SxUserBubble" Color="{DynamicResource SxUserBubbleColor}"/>
     <SolidColorBrush x:Key="SxOverlayBg" Color="#CC0D0F14"/>
+    <SolidColorBrush x:Key="SxScrim" Color="#B30D0F14"/>
 </ResourceDictionary>

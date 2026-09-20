@@ -1,4 +1,4 @@
-using System.Text.RegularExpressions;
+using SentinelX.Core;
 
 namespace SentinelX.Services.Intent;
 
@@ -9,7 +9,7 @@ public sealed class IntentRouter(SentinelToolboxService toolbox, Services.Files.
     public async Task<string> ProcessAsync(string input, CancellationToken token)
     {
         token.ThrowIfCancellationRequested();
-        input = Regex.Replace(input.Trim(), @"^(?:hej\s+)?sentinel(?:\s*x)?(?=[\s,.!?]|$)[\s,.!?]*", "", RegexOptions.IgnoreCase);
+        input = CommandText.StripWakeWord(input);
         if (input.Length == 0) return "Słucham. Wpisz polecenie.";
         string normalized = ConversationMemoryService.Normalize(input).TrimEnd('?', '.', '!', ' ');
         string? read = ReadMetric(normalized, input);

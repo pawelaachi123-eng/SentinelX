@@ -100,6 +100,9 @@
                                             <StackPanel>
                                                 <TextBlock Text="{Binding ActionRecord.Status}" Foreground="{Binding ActionRecord.Status, Converter={StaticResource StatusBrush}}" FontSize="11"/>
                                                 <TextBlock Text="{Binding ActionRecord.ActionId}" Style="{StaticResource SxCaption}"/>
+                                        <TextBlock Text="{Binding ActionRecord.Phase}" Style="{StaticResource SxCaption}" Margin="0,4,0,0"/>
+                                        <TextBlock Text="{Binding ActionRecord.ElapsedMilliseconds, StringFormat=Czas wykonania: {0} ms}" Style="{StaticResource SxCaption}"/>
+                                        <TextBlock Text="{Binding ActionRecord.StorageWarning}" Foreground="{DynamicResource SxWarning}" TextWrapping="Wrap"/>
                                                 <TextBlock Text="{Binding ActionRecord.Evidence}" Style="{StaticResource SxCaption}" Margin="0,4,0,0"/>
                                             </StackPanel>
                                         </Border>
@@ -124,6 +127,9 @@
                     </WrapPanel>
                 </StackPanel>
             </Border>
+            <Border Background="{DynamicResource SxSurfaceActive}" CornerRadius="12" Padding="12" Margin="0,0,0,8" Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}">
+                <StackPanel><TextBlock Text="{Binding CurrentAction.Phase}" Foreground="{DynamicResource SxAccentCyan}" FontSize="12"/><TextBlock Text="{Binding CurrentAction.ActionId}" Style="{StaticResource SxCaption}" Margin="0,4,0,0"/><TextBlock Text="{Binding CurrentAction.ElapsedMilliseconds, StringFormat=Czas: {0} ms}" Style="{StaticResource SxCaption}"/></StackPanel>
+            </Border>
             <WrapPanel>
                 <Button Content="Ile mam RAM?" Command="{Binding QuickCommandCommand}" CommandParameter="ile mam ram" Margin="0,0,8,8"/>
                 <Button Content="Top procesy" Command="{Binding QuickCommandCommand}" CommandParameter="top procesy" Margin="0,0,8,8"/>
@@ -140,7 +146,7 @@
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <Button Content="◉" Command="{Binding Voice.StartCommand}" Style="{StaticResource SxIconButton}" ToolTip="Włącz mikrofon" AutomationProperties.Name="Włącz mikrofon"/>
-                    <TextBox Grid.Column="1" Text="{Binding UserInput, UpdateSourceTrigger=PropertyChanged}" u:InputHint.Text="Wpisz polecenie lub powiedz Sentinel…" BorderThickness="0" ToolTip="Wpisz polecenie lub powiedz Sentinel…" AutomationProperties.Name="Polecenie">
+                    <TextBox Grid.Column="1" Text="{Binding UserInput, UpdateSourceTrigger=PropertyChanged}" u:UiInteraction.FocusVersion="{Binding InputFocusVersion}" u:InputHint.Text="Wpisz polecenie lub powiedz Sentinel…" BorderThickness="0" ToolTip="Wpisz polecenie lub powiedz Sentinel…" AutomationProperties.Name="Polecenie">
                         <TextBox.InputBindings>
                             <KeyBinding Key="Enter" Command="{Binding SendMessageCommand}"/>
                         </TextBox.InputBindings>

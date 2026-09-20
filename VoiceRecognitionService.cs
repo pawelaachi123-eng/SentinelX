@@ -62,6 +62,7 @@ public sealed class VoiceRecognitionService : IDisposable
     }
     public bool IsListening { get; private set; }
     public bool IsReady => initialized;
+    public bool HasLocalModels => modelManager.IsSileroReady() && (modelManager.IsQwenReady() || modelManager.IsWhisperReady());
     public bool IsProcessing => isProcessing;
     public bool IsWakeOnlyMode => wakeOnlyMode;
     public int SelectedDeviceNumber { get; private set; }
