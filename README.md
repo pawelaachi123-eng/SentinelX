@@ -14,6 +14,8 @@ Lokalny asystent Windows 10/11, C# 13, .NET 9, WPF. Nowe GUI jest domyślnym int
 
 To konkretne ulepszenia z testami regresji, **nie deklaracja przewagi nad wszystkimi projektami na GitHubie**. Mikrofon, prawdziwe modele i integracje sprzętowe nadal wymagają testów na docelowym komputerze.
 
+> **Plan rozwoju:** priorytety, research i mapa drogowa 0.85 → 1.0 znajdują się w [PLAN.md](PLAN.md) (dokument planistyczny, nie deklaracja gotowych funkcji).
+
 ## Uruchomienie
 
 Najprościej: w najnowszym udanym przebiegu [Windows build and WPF smoke](https://github.com/pawelaachi123-eng/SentinelX/actions/workflows/windows-build.yml) pobierz **SentinelX-Portable-win-x64**, wypakuj cały ZIP i uruchom `SentinelX.exe`. Modele AI/ASR nie są częścią ZIP-a — konfigurujesz je osobno.
