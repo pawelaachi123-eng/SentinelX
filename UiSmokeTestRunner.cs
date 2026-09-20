@@ -23,6 +23,12 @@ public static class UiSmokeTestRunner
         {
             await Tests.BackendRegression.RunAsync(Path.Combine(output, "backend"));
             var vm = services.GetRequiredService<MainViewModel>();
+            var chat = services.GetRequiredService<CommandCenterViewModel>();
+            chat.UserInput = "ile mam ram";
+            await chat.SendMessageCommand.ExecuteAsync(null);
+            var engine = services.GetRequiredService<IActionEngine>();
+            await engine.ExecuteAsync("zamknij notatnik"); // requests permission only; never closes a process in CI.
+            vm.SelectedItem = vm.NavItems[^1];
             var visited = new List<string>();
             foreach (var item in vm.NavItems)
             {
@@ -41,7 +47,9 @@ public static class UiSmokeTestRunner
                 store.Settings.Ui.Theme = theme; store.Save();
                 shell.UpdateLayout();
             }
-            var engine = services.GetRequiredService<IActionEngine>();
+            services.GetRequiredService<Services.Desktop.IDesktopService>().ToggleOverlay();
+            await shell.Dispatcher.InvokeAsync(shell.UpdateLayout, DispatcherPriority.ContextIdle);
+            services.GetRequiredService<Services.Desktop.IDesktopService>().ToggleOverlay();
             engine.EmergencyStop();
             var blocked = await engine.ExecuteAsync("uruchom kalkulator");
             if (!engine.IsStopped || blocked.Action != null) throw new InvalidOperationException("STOP did not block an action.");

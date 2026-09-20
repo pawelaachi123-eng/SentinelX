@@ -25,7 +25,7 @@ internal static class BackendRegression
         Check(router.Calls == 0, "Voice approval must not reach a tool.");
         var spoofed = await engine.ExecuteAsync("answer");
         Check(spoofed.Action?.Status == ActionStatus.Unverified, "A model saying VERIFIED is not proof.");
-        Check(history.GetRecentEntries().Any(x => x.ActionId == spoofed.Action.ActionId && x.Status == "UNVERIFIED"), "Request must be persisted.");
+        Check(history.GetRecentEntries().Any(x => x.ActionId == spoofed.Action!.ActionId && x.Status == "UNVERIFIED"), "Request must be persisted.");
         router.Wait = true;
         var first = engine.ExecuteAsync("wait");
         await router.Entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
