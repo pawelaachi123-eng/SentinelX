@@ -69,6 +69,21 @@ internal static class ProductRegression
         Check(engine.IsStopped && !engine.IsBusy, "Stop must remain latched after partial completion.");
         engine.Resume();
 
+        // An uninterruptible tool can enqueue permission between Cancel() and its return.
+        // Cancellation must also clear such a late permission, not only an emergency stop.
+        var raceEntered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var raceRelease = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        router.Handler = async (_, _) =>
+        {
+            raceEntered.TrySetResult(); await raceRelease.Task;
+            return (await toolbox.ProcessAsync("zamknij notatnik", CancellationToken.None)).Response;
+        };
+        var race = engine.ExecuteAsync("late permission cancellation race");
+        await raceEntered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        engine.Cancel(); raceRelease.TrySetResult();
+        var raceResult = await race.WaitAsync(TimeSpan.FromSeconds(5));
+        Check(raceResult.Action?.Status == ActionStatus.Cancelled && !engine.HasPendingPermission, "Cancelled request must not leave a late approval armed.");
+
         // The audit directory becomes unwritable by replacing it with a regular file.
         string auditPath = Path.Combine(directory, "History"), backupPath = Path.Combine(directory, "History.saved");
         Directory.Move(auditPath, backupPath); File.WriteAllText(auditPath, "blocked directory");
@@ -131,7 +146,7 @@ internal static class ProductRegression
         bool probeCancelled = false;
         try { await readiness.CheckAsync(cancelledProbe.Token); } catch (OperationCanceledException) { probeCancelled = true; }
         Check(probeCancelled, "Readiness must honor cancellation.");
-        File.WriteAllText(Path.Combine(directory, "product-tests.txt"), "PASS: correlated evidence, mixed outcomes, stable IDs, cancellation evidence, live elapsed, observer isolation, bounded capture, late writes, audit I/O failure/recovery, voice approval normalization, palette, offline readiness and privacy\n");
+        File.WriteAllText(Path.Combine(directory, "product-tests.txt"), "PASS: correlated evidence, mixed outcomes, stable IDs, cancellation evidence, live elapsed, observer isolation, bounded capture, late writes, audit I/O failure/recovery, late permission cancellation race, voice approval normalization, palette, offline readiness and privacy\n");
     }
     private sealed class ScriptedRouter : IIntentRouter
     {

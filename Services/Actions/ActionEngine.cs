@@ -105,7 +105,7 @@ public sealed class ActionEngine(IIntentRouter router, SentinelToolboxService to
             {
                 await Task.Run(() => Persist(record, response));
                 record.StorageWarning = history.LastStorageError ?? memory.LastStorageError ?? "";
-                if (IsStopped) toolbox.CancelPendingAction();
+                if (IsStopped || record.Status == ActionStatus.Cancelled) toolbox.CancelPendingAction();
             }
             catch (Exception ex) { AppLog.Write(ex); record.StorageWarning = "Nie zapisano audytu: " + ex.Message; }
             finally
@@ -180,7 +180,7 @@ public sealed class ActionEngine(IIntentRouter router, SentinelToolboxService to
         foreach (var task in waiting)
         {
             task.Status = ActionStatus.Cancelled; task.FinishedAt = DateTime.Now;
-            task.Phase = "Oczekująca zgoda anulowana"; task.Evidence = "Użytkownik anulował oczekującą zgodę. Nie wykonano tej akcji.";
+            task.Phase = "Oczekująca zgoda anulowana"; task.Evidence = "Anulowano oczekiwanie na zgodę. Wcześniej zatwierdzone lub ukończone kroki nie są cofane — sprawdź ich historię.";
             Persist(task, task.Evidence);
         }
         PublishChanged();
