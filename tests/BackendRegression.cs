@@ -48,7 +48,7 @@ internal static class BackendRegression
         Check(damaged.LastError != null, "Corrupted settings must be reported.");
         var files = new FileWorkspaceService(directory, directory, history);
         Check((await files.ProcessAsync("utwórz plik original.txt: Zażółć gęślą jaźń", CancellationToken.None))!.Contains("VERIFIED"), "Create + verify UTF-8 file.");
-        Check((await files.ProcessAsync("skopiuj ten plik jako copy.txt", CancellationToken.None))!.Contains("VERIFIED"), "Copy + verify file.");
+        Check((await files.ProcessAsync("Skopiuj ten plik jako copy.txt", CancellationToken.None))!.Contains("VERIFIED"), "Copy + verify file.");
         Check(File.ReadAllText(Path.Combine(directory, "CreatedFiles", "copy.txt")) == "Zażółć gęślą jaźń", "Copy must preserve exact text.");
         Check((await files.ProcessAsync("przenieś ten plik jako moved.txt", CancellationToken.None))!.Contains("VERIFIED"), "Move + verify file.");
         Check(!File.Exists(Path.Combine(directory, "CreatedFiles", "copy.txt")), "Move must remove the old name.");

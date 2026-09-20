@@ -22,7 +22,7 @@ public sealed class FileWorkspaceService : Services.Files.IFileService
     {
         token.ThrowIfCancellationRequested();
         var copy = Regex.Match(command, @"^(skopiuj|przenieś|przenies) ten plik (?:jako|do) (.+)$", RegexOptions.IgnoreCase);
-        if (copy.Success) return await CopyOrMoveAsync(command, copy.Groups[2].Value.Trim().Trim('"'), copy.Groups[1].Value != "skopiuj", token);
+        if (copy.Success) return await CopyOrMoveAsync(command, copy.Groups[2].Value.Trim().Trim('"'), !copy.Groups[1].Value.Equals("skopiuj", StringComparison.OrdinalIgnoreCase), token);
         var search = Regex.Match(command, @"^(?:znajdź|znajdz|szukaj) plik (.+)$", RegexOptions.IgnoreCase);
         if (search.Success)
         {
