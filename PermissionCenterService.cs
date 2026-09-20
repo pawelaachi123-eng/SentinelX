@@ -23,6 +23,8 @@ namespace SentinelX
         public DateTime CreatedAt { get; init; } =
             DateTime.Now;
 
+        internal Func<CancellationToken, Task<ActionExecutionResult>>? CancellableExecutor { get; init; }
+
         internal Func<Task<ActionExecutionResult>> Executor
         {
             get;
@@ -45,7 +47,7 @@ namespace SentinelX
     }
 
 
-    public sealed class PermissionCenterService
+    public sealed class PermissionCenterService : Services.Permissions.IPermissionService
     {
         private readonly object syncRoot =
             new object();
@@ -148,8 +150,9 @@ namespace SentinelX
 
 
         public async Task<PermissionExecutionResult>
-            ConfirmAsync()
+            ConfirmAsync(CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             PendingPermissionAction? action;
 
 
@@ -200,8 +203,9 @@ namespace SentinelX
             try
             {
                 result =
-                    await action.Executor();
+                    await (action.CancellableExecutor?.Invoke(cancellationToken) ?? action.Executor());
             }
+            catch (OperationCanceledException) { throw; }
             catch (Exception ex)
             {
                 result =

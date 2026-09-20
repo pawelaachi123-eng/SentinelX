@@ -12,7 +12,7 @@ using System.Threading.Tasks;
 
 namespace SentinelX;
 
-public sealed class NetworkDiagnosticService
+public sealed class NetworkDiagnosticService : Services.Network.INetworkService
 {
     private static readonly HttpClient Client = new(new HttpClientHandler { AllowAutoRedirect = false })
     { Timeout = Timeout.InfiniteTimeSpan };

@@ -6,7 +6,9 @@ public enum RiskLevel { Low, Medium, High, Critical }
 public enum VoiceState { Off, Standby, Active }
 public partial class ActionRecord : ObservableObject
 {
-    public string ActionId { get; init; } = $"SX-{DateTime.Now:yyyyMMdd-HHmmss}-{Guid.NewGuid():N}";
+    [ObservableProperty] private string actionId = $"SX-{DateTime.Now:yyyyMMdd-HHmmss}-{Guid.NewGuid().ToString("N")[..6].ToUpperInvariant()}";
+    [ObservableProperty] private string actionType = "REQUEST";
+    [ObservableProperty] private RiskLevel risk;
     public string UserRequest { get; init; } = "";
     public DateTime StartedAt { get; init; } = DateTime.Now;
     [ObservableProperty] private ActionStatus status = ActionStatus.Queued;

@@ -6,7 +6,7 @@ using System.Text.RegularExpressions;
 namespace SentinelX;
 
 /// <summary>Only edits the last file created through this service; every replacement keeps a backup.</summary>
-public sealed class FileWorkspaceService
+public sealed class FileWorkspaceService : Services.Files.IFileService
 {
     private readonly string workspace;
     private readonly string desktop;

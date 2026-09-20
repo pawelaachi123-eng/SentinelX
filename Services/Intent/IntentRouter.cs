@@ -1,7 +1,7 @@
 namespace SentinelX.Services.Intent;
 
 /// <summary>Deterministic tools first. The language model cannot execute arbitrary commands.</summary>
-public sealed class IntentRouter(SentinelToolboxService toolbox, FileWorkspaceService files,
+public sealed class IntentRouter(SentinelToolboxService toolbox, Services.Files.IFileService files,
     CommandRouter router) : IIntentRouter
 {
     public async Task<string> ProcessAsync(string input, CancellationToken token)

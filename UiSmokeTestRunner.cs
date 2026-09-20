@@ -19,6 +19,7 @@ public static class UiSmokeTestRunner
         PresentationTraceSources.DataBindingSource.Switch.Level = SourceLevels.Error;
         try
         {
+            await Tests.BackendRegression.RunAsync(Path.Combine(output, "backend"));
             var vm = services.GetRequiredService<MainViewModel>();
             var visited = new List<string>();
             foreach (var item in vm.NavItems)

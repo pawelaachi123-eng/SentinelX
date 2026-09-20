@@ -5,8 +5,8 @@ namespace SentinelX
 {
     public sealed class SentinelToolboxService
     {
-        private readonly PcDiagnosticService diagnostics = new();
-        private readonly ActionTaskRegistry tasks = new();
+        private readonly PcDiagnosticService diagnostics;
+        private readonly ActionTaskRegistry tasks;
         private string lastVerifiedApplication = "";
         public IReadOnlyList<ActionTaskSnapshot> GetTasks() => tasks.GetTasks();
         public int CancelAllTasks() => tasks.CancelAll();
@@ -15,37 +15,28 @@ namespace SentinelX
         public string PendingSummary => permissionCenter.GetPendingSummary();
         private readonly ActionHistoryService actionHistory;
 
-        private readonly PermissionCenterService permissionCenter;
+        private readonly Services.Permissions.IPermissionService permissionCenter;
 
-        private readonly AppLauncherService appLauncher;
+        private readonly Services.Apps.IAppLauncherService appLauncher;
 
         private readonly ProcessToolService processTools;
 
-        private readonly NetworkDiagnosticService networkTools;
+        private readonly Services.Network.INetworkService networkTools;
 
 
-        public SentinelToolboxService(Func<string>? browserPreference = null, ActionHistoryService? history = null)
+        public SentinelToolboxService(Func<string>? browserPreference = null, ActionHistoryService? history = null,
+            Services.Permissions.IPermissionService? permissions = null, Services.Apps.IAppLauncherService? launcher = null,
+            ProcessToolService? processes = null, Services.Network.INetworkService? network = null,
+            PcDiagnosticService? diagnostics = null, ActionTaskRegistry? tasks = null)
         {
-            actionHistory =
-                history ?? new ActionHistoryService();
-
-
-            permissionCenter =
-                new PermissionCenterService();
-
-
-            appLauncher =
-                new AppLauncherService(browserPreference);
-
-
-            processTools =
-                new ProcessToolService();
-
-
-            networkTools =
-                new NetworkDiagnosticService();
+            actionHistory = history ?? new ActionHistoryService();
+            permissionCenter = permissions ?? new PermissionCenterService();
+            appLauncher = launcher ?? new AppLauncherService(browserPreference);
+            processTools = processes ?? new ProcessToolService();
+            networkTools = network ?? new NetworkDiagnosticService();
+            this.diagnostics = diagnostics ?? new PcDiagnosticService();
+            this.tasks = tasks ?? new ActionTaskRegistry();
         }
-
 
         // =========================================================
         // MAIN TOOL ROUTER
@@ -94,7 +85,7 @@ namespace SentinelX
                 normalized == "confirm")
             {
                 return ToolboxCommandResult.HandledWith(
-                    await ConfirmPendingActionAsync());
+                    await ConfirmPendingActionAsync(cancellationToken));
             }
 
 
@@ -507,13 +498,13 @@ namespace SentinelX
                     RiskLevel =
                         "MEDIUM",
 
-                    Executor =
-                        async () =>
+                    CancellableExecutor =
+                        async token =>
                         {
                             ActionExecutionResult result =
                                 await processTools
                                     .CloseAppAsync(
-                                        target);
+                                        target, token);
 
 
                             actionHistory
@@ -557,11 +548,11 @@ namespace SentinelX
         // =========================================================
 
         private async Task<string>
-            ConfirmPendingActionAsync()
+            ConfirmPendingActionAsync(CancellationToken cancellationToken)
         {
             PermissionExecutionResult execution =
                 await permissionCenter
-                    .ConfirmAsync();
+                    .ConfirmAsync(cancellationToken);
 
 
             if (!execution.HadPendingAction ||

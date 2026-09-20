@@ -28,7 +28,7 @@ public sealed class ConversationMemoryState
 }
 
 /// <summary>Bounded conversation history and separate durable explicit memories, stored only locally.</summary>
-public sealed class ConversationMemoryService
+public sealed class ConversationMemoryService : Services.Memory.IConversationMemory
 {
     private const int MaxEntries = 720;
     private const int MaxNotes = 500;

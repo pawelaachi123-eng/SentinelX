@@ -6,7 +6,7 @@ using System.Threading;
 
 namespace SentinelX;
 
-public sealed class AppLauncherService
+public sealed class AppLauncherService : Services.Apps.IAppLauncherService
 {
     private readonly Func<string> browserPreference;
     public AppLauncherService(Func<string>? browserPreference = null) => this.browserPreference = browserPreference ?? (() => "Brave");

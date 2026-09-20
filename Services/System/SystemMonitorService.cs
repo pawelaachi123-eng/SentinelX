@@ -6,8 +6,8 @@ using SentinelX.Services.Settings;
 namespace SentinelX.Services.Monitoring;
 
 /// <summary>Sequential sampling on a worker, never overlapping callbacks or WMI on the UI thread.</summary>
-public sealed class SystemMonitorService(SystemMonitor monitor, GamingModeService gaming,
-    NetworkDiagnosticService network, ISettingsService settings) : ISystemMonitorService, IDisposable
+public sealed class SystemMonitorService(SystemMonitor monitor, Services.Gaming.IGamingService gaming,
+    Services.Network.INetworkService network, ISettingsService settings) : ISystemMonitorService, IDisposable
 {
     private readonly CancellationTokenSource lifetime = new();
     private readonly Dictionary<int, (DateTime Start, TimeSpan Cpu)> previous = [];

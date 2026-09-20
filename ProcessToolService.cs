@@ -132,8 +132,9 @@ namespace SentinelX
 
         public async Task<ActionExecutionResult>
             CloseAppAsync(
-                string target)
+                string target, CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             string normalized = AppLauncherService.CanonicalizeLaunchTarget(target);
 
 
@@ -185,7 +186,7 @@ namespace SentinelX
                 try
                 {
                     bool requestedClose =
-                        process.CloseMainWindow();
+                        if (!cancellationToken.IsCancellationRequested) process.CloseMainWindow();
 
 
                     if (requestedClose)
@@ -228,6 +229,7 @@ namespace SentinelX
                 500);
 
 
+            cancellationToken.ThrowIfCancellationRequested();
             bool stillRunning =
                 false;
 
