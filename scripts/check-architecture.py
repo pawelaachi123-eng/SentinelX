@@ -23,16 +23,16 @@ for path in (ROOT / "Views").rglob("*.xaml"):
     for node in document.iter():
         if node.tag.endswith("}ProgressBar") and node.attrib.get("Value", "").startswith("{Binding"):
             assert "Mode=OneWay" in node.attrib["Value"], f"Read-only metrics need OneWay: {path}"
-    source = path.read_text()
+    source = path.read_text(encoding="utf-8")
     for resource in re.findall(r"\{(?:Static|Dynamic)Resource (Sx\w+|BoolToVisibility|StatusBrush|VoiceBrush|RiskBrush)\}", source):
         assert resource in keys, f"Unknown resource {resource}: {path}"
     assert not re.search(r'="#[0-9a-fA-F]{6,8}"', source), f"Hard-coded view color: {path}"
     behind = Path(str(path) + ".cs")
     assert behind.exists(), f"Missing code-behind: {path}"
-    assert len(behind.read_text().splitlines()) < 20, f"Non-trivial code-behind: {behind}"
+    assert len(behind.read_text(encoding="utf-8").splitlines()) < 20, f"Non-trivial code-behind: {behind}"
 
 for path in (ROOT / "ViewModels").glob("*.cs"):
-    source = path.read_text()
+    source = path.read_text(encoding="utf-8")
     for forbidden in ("Process.Start(", "File.Read", "File.Write", "Registry.Current", "ManagementObjectSearcher"):
         assert forbidden not in source, f"System operation {forbidden} in {path}"
 

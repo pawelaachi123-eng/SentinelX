@@ -24,8 +24,10 @@ public static class UiSmokeTestRunner
             await Tests.BackendRegression.RunAsync(Path.Combine(output, "backend"));
             var vm = services.GetRequiredService<MainViewModel>();
             var chat = services.GetRequiredService<CommandCenterViewModel>();
-            chat.UserInput = "ile mam ram";
+            chat.UserInput = "Sentinel, ile mam RAM?";
             await chat.SendMessageCommand.ExecuteAsync(null);
+            if (chat.Messages.Last().ActionRecord?.Status != Models.ActionStatus.Verified)
+                throw new InvalidOperationException("RAM fast path did not produce measurement evidence.");
             var engine = services.GetRequiredService<IActionEngine>();
             await engine.ExecuteAsync("zamknij notatnik"); // requests permission only; never closes a process in CI.
             vm.SelectedItem = vm.NavItems[^1];

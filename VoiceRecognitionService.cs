@@ -28,7 +28,7 @@ public sealed class VoiceRecognitionService : IDisposable
     private SileroVadService? vadService;
     private Qwen3AsrService? qwenService;
     private WhisperFallbackAsrService? whisperService;
-    private WaveIn? microphone;
+    private WaveInEvent? microphone;
     private WasapiLoopbackCapture? playbackMonitor;
     private volatile bool disposed, initialized, isProcessing, wakeOnlyMode, speechDetected, recognitionSuppressed;
     private int generation, droppedSegments;
@@ -206,21 +206,21 @@ public sealed class VoiceRecognitionService : IDisposable
     private static InvalidOperationException MissingModels() => new(
         "Brak kompletnego lokalnego modelu mowy. Wybierz „Pobierz model głosu” (Whisper Small, około 488 MB). Rozpoznawanie będzie działało lokalnie; nic nie jest pobierane przy starcie aplikacji.");
 
-    public int GetMicrophoneCount() => WaveIn.DeviceCount;
-    public IReadOnlyList<string> GetMicrophones() => Enumerable.Range(0, WaveIn.DeviceCount)
-        .Select(i => $"{i}: {WaveIn.GetCapabilities(i).ProductName}" + (IsLikelyLoopbackDevice(i) ? " [DŹWIĘK SYSTEMOWY]" : "")).ToArray();
+    public int GetMicrophoneCount() => WaveInEvent.DeviceCount;
+    public IReadOnlyList<string> GetMicrophones() => Enumerable.Range(0, WaveInEvent.DeviceCount)
+        .Select(i => $"{i}: {WaveInEvent.GetCapabilities(i).ProductName}" + (IsLikelyLoopbackDevice(i) ? " [DŹWIĘK SYSTEMOWY]" : "")).ToArray();
     public int GetRecommendedMicrophoneDevice()
     {
-        if (WaveIn.DeviceCount == 0) return -1;
+        if (WaveInEvent.DeviceCount == 0) return -1;
         string[] preferred = ["microphone", "mikrofon", "mic", "headset", "usb"];
-        return Enumerable.Range(0, WaveIn.DeviceCount).Where(i => !IsLikelyLoopbackDevice(i))
-            .OrderByDescending(i => preferred.Any(p => WaveIn.GetCapabilities(i).ProductName.Contains(p, StringComparison.OrdinalIgnoreCase)))
+        return Enumerable.Range(0, WaveInEvent.DeviceCount).Where(i => !IsLikelyLoopbackDevice(i))
+            .OrderByDescending(i => preferred.Any(p => WaveInEvent.GetCapabilities(i).ProductName.Contains(p, StringComparison.OrdinalIgnoreCase)))
             .DefaultIfEmpty(0).First();
     }
     public bool IsLikelyLoopbackDevice(int number)
     {
-        if (number < 0 || number >= WaveIn.DeviceCount) return false;
-        string name = WaveIn.GetCapabilities(number).ProductName;
+        if (number < 0 || number >= WaveInEvent.DeviceCount) return false;
+        string name = WaveInEvent.GetCapabilities(number).ProductName;
         string[] words = ["stereo mix", "stereomix", "miks stereo", "what u hear", "what you hear", "wave out", "loopback", "virtual audio", "cable output", "voicemeeter output"];
         return words.Any(w => name.Contains(w, StringComparison.OrdinalIgnoreCase));
     }
@@ -266,17 +266,17 @@ public sealed class VoiceRecognitionService : IDisposable
         ThrowIfDisposed();
         if (!initialized) throw MissingModels();
         if (IsListening) return;
-        if (WaveIn.DeviceCount == 0) throw new InvalidOperationException("Windows nie wykrywa mikrofonu.");
-        if (deviceNumber < 0 || deviceNumber >= WaveIn.DeviceCount) throw new ArgumentOutOfRangeException(nameof(deviceNumber));
+        if (WaveInEvent.DeviceCount == 0) throw new InvalidOperationException("Windows nie wykrywa mikrofonu.");
+        if (deviceNumber < 0 || deviceNumber >= WaveInEvent.DeviceCount) throw new ArgumentOutOfRangeException(nameof(deviceNumber));
         if (IsLikelyLoopbackDevice(deviceNumber)) throw new InvalidOperationException("To urządzenie przechwytuje dźwięk systemowy. Wybierz fizyczny mikrofon lub mikrofon zestawu słuchawkowego.");
         ApplySettings();
-        var capture = new WaveIn { DeviceNumber = deviceNumber, WaveFormat = new WaveFormat(16000, 16, 1), BufferMilliseconds = 32, NumberOfBuffers = 4 };
+        var capture = new WaveInEvent { DeviceNumber = deviceNumber, WaveFormat = new WaveFormat(16000, 16, 1), BufferMilliseconds = 32, NumberOfBuffers = 4 };
         capture.DataAvailable += MicrophoneDataAvailable;
         capture.RecordingStopped += MicrophoneRecordingStopped;
         lock (audioLock)
         {
             SelectedDeviceNumber = deviceNumber;
-            SelectedDeviceName = WaveIn.GetCapabilities(deviceNumber).ProductName;
+            SelectedDeviceName = WaveInEvent.GetCapabilities(deviceNumber).ProductName;
             audioEnhancer.Reset(); ResetAudioPipelineLocked();
             session = new CaptureSession(lifetime.Token);
             Interlocked.Increment(ref generation);
@@ -297,7 +297,7 @@ public sealed class VoiceRecognitionService : IDisposable
 
     private void StopListeningCore(object? expectedCapture)
     {
-        WaveIn? old;
+        WaveInEvent? old;
         lock (audioLock)
         {
             if (expectedCapture != null && !ReferenceEquals(expectedCapture, microphone)) return;

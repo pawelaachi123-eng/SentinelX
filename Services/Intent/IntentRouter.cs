@@ -1,3 +1,5 @@
+using System.Text.RegularExpressions;
+
 namespace SentinelX.Services.Intent;
 
 /// <summary>Deterministic tools first. The language model cannot execute arbitrary commands.</summary>
@@ -7,6 +9,8 @@ public sealed class IntentRouter(SentinelToolboxService toolbox, Services.Files.
     public async Task<string> ProcessAsync(string input, CancellationToken token)
     {
         token.ThrowIfCancellationRequested();
+        input = Regex.Replace(input.Trim(), @"^(?:hej\s+)?sentinel(?:\s*x)?(?=[\s,.!?]|$)[\s,.!?]*", "", RegexOptions.IgnoreCase);
+        if (input.Length == 0) return "Słucham. Wpisz polecenie.";
         string normalized = ConversationMemoryService.Normalize(input).TrimEnd('?', '.', '!', ' ');
         string? read = ReadMetric(normalized, input);
         if (read != null) return read;
