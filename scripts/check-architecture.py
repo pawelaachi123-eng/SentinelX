@@ -19,7 +19,10 @@ for path in files:
     keys |= local
 
 for path in (ROOT / "Views").rglob("*.xaml"):
-    ET.parse(path)
+    document = ET.parse(path)
+    for node in document.iter():
+        if node.tag.endswith("}ProgressBar") and node.attrib.get("Value", "").startswith("{Binding"):
+            assert "Mode=OneWay" in node.attrib["Value"], f"Read-only metrics need OneWay: {path}"
     source = path.read_text()
     for resource in re.findall(r"\{(?:Static|Dynamic)Resource (Sx\w+|BoolToVisibility|StatusBrush|VoiceBrush|RiskBrush)\}", source):
         assert resource in keys, f"Unknown resource {resource}: {path}"

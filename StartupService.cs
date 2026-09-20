@@ -45,7 +45,7 @@ namespace SentinelX
 
 
                 using RegistryKey? key =
-                    Registry.CurrentUser.OpenSubKey(
+                    Registry.CurrentUser.CreateSubKey(
                         RegistryPath,
                         writable: true);
 
@@ -93,7 +93,7 @@ namespace SentinelX
 
 
                 if (key == null)
-                    return false;
+                    return true;
 
 
                 key.DeleteValue(
