@@ -93,7 +93,7 @@ public sealed class ConversationMemoryService : Services.Memory.IConversationMem
     public IReadOnlyList<ContextSlice> LastContextTrace { get; private set; } = [];
     public DateTime? LastContextBuiltAt { get; private set; }
     /// <summary>True when the context trace is being recorded and may be shown in the UI.</summary>
-    public bool PrivacyContextVisible => !PrivateMode && Privacy.ContextPreviewEnabled;
+    public bool PrivacyContextVisible => !PrivateMode && Privacy.ContextPreview;
     public event Action? Changed;
     public event Action? SessionChanged;
 
@@ -354,6 +354,16 @@ public sealed class ConversationMemoryService : Services.Memory.IConversationMem
     }
 
     private static string ValidateCategory(string? category) => Categories.Contains(category) ? category! : "notatka";
+
+    private void ExtractProfile(string text)
+    {
+        Match name = Regex.Match(text.Trim(), @"^(?:zapami[eę]taj[, :]+)?(?:mam na imi[eę]|nazywam si[eę]|m[oó]w do mnie|zwracaj si[eę] do mnie)\s+([\p{L}][\p{L}\-' ]{0,60})[.!]?$", RegexOptions.IgnoreCase);
+        if (name.Success && name.Groups[1].Value.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length <= 3)
+            state.Profile["name"] = name.Groups[1].Value.Trim();
+        string normalized = Normalize(text);
+        if (Regex.IsMatch(normalized, @"^(?:zapamietaj[, :]+)?(?:wole|preferuje) (?:krotkie|zwiezle) odpowiedzi[.!]?$")) state.Profile["responseStyle"] = "krótkie odpowiedzi";
+        if (Regex.IsMatch(normalized, @"^(?:zapamietaj[, :]+)?(?:wole|preferuje) (?:dlugie|dokladne|szczegolowe) odpowiedzi[.!]?$")) state.Profile["responseStyle"] = "szczegółowe odpowiedzi";
+    }
 
     private static string InferCategory(string text)
     {
