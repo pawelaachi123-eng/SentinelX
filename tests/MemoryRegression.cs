@@ -83,7 +83,9 @@ internal static class MemoryRegression
         privacy.AddUserMessage("sekretna rozmowa prywatna", "test");
         privacy.AddAssistantMessage("prywatna odpowiedź");
         privacy.SaveDraft("prywatny szkic");
-        string privateFile = File.ReadAllText(Path.Combine(third, "conversation-memory.json"));
+        string privatePath = Path.Combine(third, "conversation-memory.json");
+        // Private mode means nothing was ever written: the file may legitimately not exist at all.
+        string privateFile = File.Exists(privatePath) ? File.ReadAllText(privatePath) : "";
         Check(!privateFile.Contains("sekretna") && !privateFile.Contains("prywatny szkic"), "Private mode must leave no content on disk.");
         Check(new ConversationMemoryService(third).GetAllEntries().Count == 0, "Private session must not resurrect after restart.");
 
