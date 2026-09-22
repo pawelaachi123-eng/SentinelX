@@ -57,6 +57,7 @@ public sealed class ActionEngine(IIntentRouter router, SentinelToolboxService to
             {
                 history.AddRunning(record.ActionId, "REQUEST", input);
                 memory.AddUserMessage(input, fromVoice ? "voice" : "keyboard");
+                using var approval = ApprovalContext.Begin(input, fromVoice);
                 using var scope = ActionEvidenceCapture.Begin(record.ActionId);
                 capture = scope;
                 var text = await router.ProcessAsync(input, source.Token);
@@ -134,7 +135,8 @@ public sealed class ActionEngine(IIntentRouter router, SentinelToolboxService to
     {
         var results = task.ToolResults;
         task.ActionType = results.Count switch { 0 => "RESPONSE", 1 => results[0].ActionType, _ => "WORKFLOW" };
-        task.Risk = results.Any(x => x.ActionType == "CLOSE_APP") ? RiskLevel.Medium : RiskLevel.Low;
+        task.Risk = results.Any(x => x.ActionType.StartsWith("MEMORY_", StringComparison.Ordinal)) ? RiskLevel.High
+            : results.Any(x => x.ActionType == "CLOSE_APP") ? RiskLevel.Medium : RiskLevel.Low;
         task.Status = results.Count == 0 ? ActionStatus.Unverified
             : results.Any(x => x.Status == "FAILED") ? ActionStatus.Failed
             : results.Any(x => x.Status is "CANCELLED" or "EXPIRED" or "INTERRUPTED") ? ActionStatus.Cancelled

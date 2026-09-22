@@ -45,7 +45,7 @@ public partial class MainWindow : Window
     {
         this.smokeMode = smokeMode;
         files = new FileWorkspaceService(desktop: smokeMode ? System.IO.Path.Combine(AppPaths.Root, "TestDesktop") : null);
-        toolbox = new SentinelToolboxService(() => settings.Settings.Ui.DefaultBrowserPreference);
+        toolbox = new SentinelToolboxService(() => settings.Settings.Ui.DefaultBrowserPreference, memory: memory);
         InitializeComponent();
         ai = new LocalAiService(gaming, systemMonitor: monitor, aiSettingsProvider: () => settings.Settings.Ai);
         voice = new VoiceRecognitionService(() => settings.Settings.Voice);

@@ -33,6 +33,7 @@ public static class ServiceLocator
         services.AddSingleton<ActionHistoryService>(_ => new());
         services.AddSingleton<ConversationMemoryService>(_ => new());
         services.AddSingleton<IHistoryService, HistoryService>();
+        services.AddSingleton<HistoryExportService>();
         services.AddSingleton<Services.Memory.IConversationMemory>(sp => sp.GetRequiredService<ConversationMemoryService>());
         services.AddSingleton<LocalAiService>(sp => new(sp.GetRequiredService<GamingModeService>(),
             systemMonitor: sp.GetRequiredService<SystemMonitor>(), aiSettingsProvider: () => sp.GetRequiredService<ISettingsService>().Current.Ai));
@@ -41,9 +42,11 @@ public static class ServiceLocator
         services.AddSingleton<SentinelToolboxService>(sp => new(() => sp.GetRequiredService<ISettingsService>().Current.Ui.DefaultBrowserPreference, sp.GetRequiredService<ActionHistoryService>(),
             sp.GetRequiredService<Services.Permissions.IPermissionService>(), sp.GetRequiredService<Services.Apps.IAppLauncherService>(),
             sp.GetRequiredService<ProcessToolService>(), sp.GetRequiredService<Services.Network.INetworkService>(),
-            sp.GetRequiredService<PcDiagnosticService>(), sp.GetRequiredService<ActionTaskRegistry>()));
+            sp.GetRequiredService<PcDiagnosticService>(), sp.GetRequiredService<ActionTaskRegistry>(),
+            sp.GetRequiredService<ConversationMemoryService>(), sp.GetRequiredService<HistoryExportService>()));
         services.AddSingleton<FileWorkspaceService>(sp => new(history: sp.GetRequiredService<ActionHistoryService>()));
         services.AddSingleton<Services.Files.IFileService>(sp => sp.GetRequiredService<FileWorkspaceService>());
+        services.AddSingleton<ReadOnlyCommandService>();
         services.AddSingleton<IIntentRouter, IntentRouter>();
         services.AddSingleton<IActionEngine, ActionEngine>();
         services.AddSingleton<VoiceRecognitionService>(sp => new(() => sp.GetRequiredService<ISettingsService>().Current.Voice));

@@ -4,21 +4,39 @@ using System.Windows.Data;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SentinelX.Services.History;
+using SentinelX.Services.Actions;
 namespace SentinelX.ViewModels;
 public partial class HistoryViewModel : ObservableObject
 {
     private readonly IHistoryService history;
+    private readonly IActionEngine engine;
+    public IReadOnlyList<string> StatusOptions { get; } = ["Wszystkie", "VERIFIED", "UNVERIFIED", "FAILED", "CANCELLED", "PENDING", "RUNNING", "INTERRUPTED"];
+    [ObservableProperty] private string statusFilter = "Wszystkie";
+    [ObservableProperty] private string exportSummary = "Eksport zawiera do 200 ostatnich stanów akcji, niezależnie od filtra; prywatne komendy i ścieżki. Zapis lokalny, bez wysyłania.";
     public ObservableCollection<ActionHistoryEntry> Entries { get; } = [];
     public ObservableCollection<ConversationMemoryEntry> Conversation { get; } = [];
     public ICollectionView FilteredEntries { get; }
     [ObservableProperty] private string search = "";
     [ObservableProperty] private string status = "Odśwież, aby wczytać historię lokalną.";
     [ObservableProperty] private ActionHistoryEntry? selectedEntry;
-    public HistoryViewModel(IHistoryService history)
+    public HistoryViewModel(IHistoryService history, IActionEngine engine)
     {
-        this.history = history; FilteredEntries = CollectionViewSource.GetDefaultView(Entries);
+        this.history = history; this.engine = engine; FilteredEntries = CollectionViewSource.GetDefaultView(Entries);
         FilteredEntries.Filter = row => row is ActionHistoryEntry entry &&
-            $"{entry.ActionId} {entry.RequestId} {entry.Command} {entry.Status} {entry.Evidence}".Contains(Search, StringComparison.OrdinalIgnoreCase);
+            (StatusFilter == "Wszystkie" || entry.Status == StatusFilter) &&
+            ConversationMemoryService.Normalize($"{entry.ActionId} {entry.RequestId} {entry.Command} {entry.Status} {entry.Evidence}")
+                .Contains(ConversationMemoryService.Normalize(Search), StringComparison.Ordinal);
+    }
+    partial void OnStatusFilterChanged(string value) => FilteredEntries.Refresh();
+    [RelayCommand] private async Task ExportAsync(string format)
+    {
+        if (format is not ("json" or "csv")) return;
+        try
+        {
+            var result = await engine.ExecuteAsync("eksportuj historie " + format);
+            ExportSummary = result.Text + (result.Action?.StorageWarning is { Length: > 0 } warning ? "\n" + warning : "");
+        }
+        catch (Exception ex) { ExportSummary = "Błąd eksportu: " + ex.Message; }
     }
     partial void OnSearchChanged(string value) => FilteredEntries.Refresh();
     [RelayCommand] private async Task RefreshAsync()

@@ -18,7 +18,7 @@ public partial class MainWindow
         if (normalized is "anuluj" or "przerwij" or "przerwij odpowiedz") { CancelCurrent(); toolbox.CancelPendingAction(); UpdatePermission(); return "Przerwano. Akcje już ukończone nie są cofane."; }
         if (emergency) { string msg = "STOP awaryjny blokuje nowe zadania. Wpisz „wznów Sentinel”."; AddMessage("SENTINEL", msg); return msg; }
         if (string.IsNullOrWhiteSpace(command)) return "Słucham.";
-        if (fromVoice && normalized.StartsWith("potwierdz", StringComparison.Ordinal))
+        if (fromVoice && Core.CommandText.IsApproval(normalized))
         { AddMessage("SENTINEL", "Potwierdź akcję przyciskiem lub wpisz potwierdzenie. Sam głos jej nie zatwierdza."); ShowFromTray(); return "Potwierdź w oknie."; }
         if (busy || installing)
         {
@@ -38,6 +38,7 @@ public partial class MainWindow
         memory.AddUserMessage(command, fromVoice ? "VOICE" : "TEXT"); AddMessage("TY", command, false); StatusText.Text = "Wykonuję…";
         try
         {
+            using var approval = Core.ApprovalContext.Begin(command, fromVoice);
             string response = await BuiltInAsync(command, normalized, token) ?? await RouteAsync(command, token);
             token.ThrowIfCancellationRequested(); AddMessage("SENTINEL", response);
             if (currentPage == "Tools") DiagnosticOutput.Text = response;

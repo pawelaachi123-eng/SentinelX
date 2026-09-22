@@ -14,6 +14,8 @@ namespace SentinelX
         public bool HasPendingAction => permissionCenter.HasPendingAction;
         public string PendingSummary => permissionCenter.GetPendingSummary();
         private readonly ActionHistoryService actionHistory;
+        private readonly Services.Memory.MemoryActionService memoryActions;
+        private readonly Services.History.HistoryExportService historyExport;
 
         private readonly Services.Permissions.IPermissionService permissionCenter;
 
@@ -27,7 +29,8 @@ namespace SentinelX
         public SentinelToolboxService(Func<string>? browserPreference = null, ActionHistoryService? history = null,
             Services.Permissions.IPermissionService? permissions = null, Services.Apps.IAppLauncherService? launcher = null,
             ProcessToolService? processes = null, Services.Network.INetworkService? network = null,
-            PcDiagnosticService? diagnostics = null, ActionTaskRegistry? tasks = null)
+            PcDiagnosticService? diagnostics = null, ActionTaskRegistry? tasks = null, ConversationMemoryService? memory = null,
+            Services.History.HistoryExportService? historyExport = null)
         {
             actionHistory = history ?? new ActionHistoryService();
             permissionCenter = permissions ?? new PermissionCenterService();
@@ -36,6 +39,8 @@ namespace SentinelX
             networkTools = network ?? new NetworkDiagnosticService();
             this.diagnostics = diagnostics ?? new PcDiagnosticService();
             this.tasks = tasks ?? new ActionTaskRegistry();
+            memoryActions = new(memory ?? new ConversationMemoryService(), permissionCenter, actionHistory);
+            this.historyExport = historyExport ?? new(actionHistory);
         }
 
         // =========================================================
@@ -47,7 +52,16 @@ namespace SentinelX
                 string command, System.Threading.CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            string query = Normalize(command ?? "");
+            string query = Core.CommandText.Normalize(command ?? "");
+            string? memoryResponse = memoryActions.TryRequest(command ?? "");
+            if (memoryResponse != null) return ToolboxCommandResult.HandledWith(memoryResponse);
+            if (query is "eksportuj historie json" or "eksportuj historie csv")
+            {
+                string id = actionHistory.CreateActionId();
+                var export = await historyExport.ExportAsync(query.EndsWith("csv", StringComparison.Ordinal) ? "csv" : "json", cancellationToken);
+                actionHistory.AddResult(id, "EXPORT_HISTORY", command ?? "", export);
+                return ToolboxCommandResult.HandledWith(FormatActionResponse(id, export));
+            }
             if (query is "zadania" or "aktywne zadania" or "..tasks") return ToolboxCommandResult.HandledWith(GetTaskSummary());
             if (query.StartsWith("dowod ")) return ToolboxCommandResult.HandledWith(actionHistory.GetActionDetails(command![6..]));
             string? diagnostic = query switch
@@ -82,7 +96,7 @@ namespace SentinelX
 
             if (normalized == "potwierdz" ||
                 normalized == "potwierdz akcje" ||
-                normalized == "confirm")
+                normalized == "confirm" || normalized == "potwierdz usuniecie wspomnien")
             {
                 return ToolboxCommandResult.HandledWith(
                     await ConfirmPendingActionAsync(cancellationToken));
@@ -555,6 +569,7 @@ namespace SentinelX
                     .ConfirmAsync(cancellationToken);
 
 
+            if (execution.ApprovalRejected) return execution.Result?.Message ?? "Zgoda odrzucona.";
             if (!execution.HadPendingAction ||
                 execution.Action == null)
             {

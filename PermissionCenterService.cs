@@ -40,6 +40,7 @@ namespace SentinelX
     public sealed class PermissionExecutionResult
     {
         public bool HadPendingAction { get; init; }
+        public bool ApprovalRejected { get; init; }
 
         public PendingPermissionAction? Action { get; init; }
 
@@ -158,6 +159,12 @@ namespace SentinelX
 
             lock (syncRoot)
             {
+                if (pendingAction != null && !Core.ApprovalContext.Allows(pendingAction.ActionType))
+                    return new PermissionExecutionResult
+                    {
+                        HadPendingAction = true, Action = pendingAction, ApprovalRejected = true,
+                        Result = ActionExecutionResult.Failure("Ta zgoda wymaga jawnego potwierdzenia w oknie dla właściwej akcji.", "Nie wykonano akcji; oczekująca zgoda pozostała aktywna.")
+                    };
                 action =
                     pendingAction;
 

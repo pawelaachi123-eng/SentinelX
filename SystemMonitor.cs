@@ -63,6 +63,7 @@ public class SystemMonitor : IDisposable
     }
 
     public double GetTotalRamGB() => GetMemoryStatus() is { } value ? value.TotalPhysical / 1073741824d : double.NaN;
+    public double GetAvailableRamGB() => GetMemoryStatus() is { } value ? value.AvailablePhysical / 1073741824d : double.NaN;
     public double GetUsedRamGB() => GetMemoryStatus() is { } value ? (value.TotalPhysical - value.AvailablePhysical) / 1073741824d : double.NaN;
     public double GetRamUsagePercent() => GetMemoryStatus() is { } value ? 100d * (value.TotalPhysical - value.AvailablePhysical) / value.TotalPhysical : double.NaN;
 

@@ -29,6 +29,7 @@ public static class UiSmokeTestRunner
         {
             await Tests.BackendRegression.RunAsync(Path.Combine(output, "backend"));
             await Tests.ProductRegression.RunAsync(Path.Combine(output, "product"));
+            await Tests.ReleaseRegression.RunAsync(Path.Combine(output, "release"));
             var vm = services.GetRequiredService<MainViewModel>();
             vm.Readiness.IsOpen = false;
             if (vm.InitializeCommand.IsRunning) await vm.InitializeCommand.ExecutionTask!;
@@ -52,6 +53,14 @@ public static class UiSmokeTestRunner
                 var png = new PngBitmapEncoder(); png.Frames.Add(BitmapFrame.Create(image));
                 using var imageFile = File.Create(Path.Combine(output, item.Key + ".png")); png.Save(imageFile);
             }
+            var historyVm = services.GetRequiredService<HistoryViewModel>();
+            await historyVm.RefreshCommand.ExecuteAsync(null);
+            historyVm.StatusFilter = "VERIFIED";
+            if (historyVm.FilteredEntries.Cast<ActionHistoryEntry>().Any(x => x.Status != "VERIFIED"))
+                throw new InvalidOperationException("History status filter failed.");
+            historyVm.StatusFilter = "Wszystkie";
+            await historyVm.ExportCommand.ExecuteAsync("json");
+            if (!historyVm.ExportSummary.Contains("SHA-256")) throw new InvalidOperationException("History export command is not wired.");
             vm.OpenPaletteCommand.Execute(null);
             vm.Palette.Query = "ustawienia";
             await shell.Dispatcher.InvokeAsync(shell.UpdateLayout, DispatcherPriority.ContextIdle);

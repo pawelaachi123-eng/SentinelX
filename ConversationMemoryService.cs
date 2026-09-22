@@ -176,6 +176,25 @@ public sealed class ConversationMemoryService : Services.Memory.IConversationMem
         lock (syncRoot) { state = new(); SaveLocked(); }
     }
 
+    internal bool VerifyPersistedState(out string evidence)
+    {
+        lock (syncRoot)
+        {
+            try
+            {
+                if (LastStorageError != null) { evidence = LastStorageError; return false; }
+                string expected = JsonSerializer.Serialize(state, jsonOptions);
+                if (File.ReadAllText(memoryPath, Encoding.UTF8) != expected)
+                { evidence = "Zapis nie odpowiada bieżącemu stanowi pamięci."; return false; }
+                string hash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(memoryPath)));
+                evidence = $"Odczyt zwrotny: {memoryPath}; SHA-256: {hash}; wiadomości: {state.Entries.Count}; wspomnienia: {state.Notes.Count}; profil: {state.Profile.Count}.";
+                return true;
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            { evidence = "Nie można sprawdzić zapisu pamięci: " + ex.Message; return false; }
+        }
+    }
+
     public string Export()
     {
         lock (syncRoot)
