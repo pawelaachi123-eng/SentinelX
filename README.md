@@ -1,6 +1,20 @@
-# SENTINEL X 0.85 — Windows / MVVM
+# SENTINEL X 0.86 — Windows / MVVM
 
 Lokalny asystent Windows 10/11, C# 13, .NET 9, WPF. Nowe GUI jest domyślnym interfejsem. Poprzedni interfejs i jego funkcje nadal są dostępne przez `--legacy`.
+
+## Nowe w 0.86 — pamięć v3, rozmowy i prywatność
+
+- **Nowa strona „Pamięć”:** trwałe wspomnienia ze stabilnym identyfikatorem, kategorią (`notatka/preferencja/fakt/decyzja/zadanie/narzędzie`), źródłem, datami utworzenia i zmiany. Dodawanie z podpowiedzią o podobnych wpisach, edycja, usuwanie pojedynczego wpisu po ID przez zgodę HIGH (podobne teksty nie giną), przypinanie (zawsze w budżecie kontekstu) i oznaczanie „nieaktualne” (zostaje w panelu, znika z kontekstu AI). Dziennik zmian ważnych ustaleń, wykrywanie duplikatów i sprzecznych wpisów jako wskazówka do decyzji — asystent nigdy sam nie rozstrzyga konfliktu.
+- **Nazwane, wznawiane rozmowy:** każda sesja ma tytuł z pierwszej wiadomości (można zmienić), listę i daty. `pokaż rozmowy` / `wznów rozmowę N` albo przyciski w panelu. Przełączenie przeładowuje Command Center i izoluje kontekst — rozmowy nie mieszają się.
+- **Cztery niezależne przełączniki prywatności** (Settings → Pamięć): zapis rozmów, czytanie historii przez AI, zapis wspomnień, czytanie wspomnień przez AI — plus retencja rozmów w dniach (wspomnienia nie są kasowane automatycznie) i przełącznik podglądu kontekstu.
+- **Tryb prywatny** (przycisk w Command Center / komenda `tryb prywatny`): treść rozmowy nie trafia nigdzie na dysk — ani do rozmów, ani do audytu (audyt zapisuje marker „treść niezapisana”), ani szkic. Sesyjny, nigdy auto-włączany po restarcie.
+- **Podgląd „co trafiło do modelu i dlaczego”:** panel pokazuje etykiety i powody źródeł kontekstu ostatniego zapytania (komenda `co poszło do modelu`). Pełne prompty nie są rejestrowane.
+- **Szkic niewysłanej wiadomości** przeżywa restart aplikacji (poza trybem prywatnym, zapis dławiony do co 2 s).
+- **Import pamięci** z podglądem liczebności, walidacją pliku, ochroną przed duplikatami i — celowo — bez importowania historii rozmów. Eksport był; format opisany w [docs/MEMORY.md](docs/MEMORY.md).
+- **Migracja formatu pamięci v1/v2 → v3** tworzy datowaną kopię zapasową oryginalnego pliku przed pierwszym zapisem; uszkodzony plik nadal nigdy nie jest nadpisywany pustym stanem.
+- Nowy zestaw regresji pamięci (`tests/MemoryRegression.cs`: restart, izolacja rozmów, zgody, retencja, import, migracja, czerwienienie audytu w trybie prywatnym) uruchamiany w CI wraz z pozostałymi zestawami.
+
+Pozostały zakres (projekty, zadania, przypomnienia, snapshoty diagnostyczne) — w [docs/BACKLOG.md](docs/BACKLOG.md), jako kolejne przyrosty, nie obietnice.
 
 ## Plan rozwoju
 

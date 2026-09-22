@@ -13,6 +13,7 @@ public partial class CommandCenterViewModel : ObservableObject, IDisposable
     private readonly IVoiceService voice;
     private readonly IUiDispatcher dispatcher;
     private readonly IHistoryService history;
+    private readonly ConversationMemoryService memory;
     public SystemViewModel System { get; }
     public VoiceViewModel Voice { get; }
     public ObservableCollection<ConversationMessage> Messages { get; } = [];
@@ -24,18 +25,32 @@ public partial class CommandCenterViewModel : ObservableObject, IDisposable
     [ObservableProperty] private bool hasPermission;
     [ObservableProperty] private string permissionSummary = "";
     [ObservableProperty] private string status = "Lokalny asystent · gotowy na polecenie";
+    [ObservableProperty] private string conversationTitle = "";
+    [ObservableProperty] private bool isPrivateMode;
     public CommandCenterViewModel(IActionEngine engine, IVoiceService voice, IUiDispatcher dispatcher,
-        SystemViewModel system, VoiceViewModel voiceViewModel, IHistoryService history)
+        SystemViewModel system, VoiceViewModel voiceViewModel, IHistoryService history, ConversationMemoryService memory)
     {
-        this.engine = engine; this.voice = voice; this.dispatcher = dispatcher; this.history = history; System = system; Voice = voiceViewModel;
+        this.engine = engine; this.voice = voice; this.dispatcher = dispatcher; this.history = history; this.memory = memory; System = system; Voice = voiceViewModel;
         foreach (var entry in history.ReadConversation().TakeLast(100)) Messages.Add(new(entry.Role, entry.Text, entry.Timestamp));
+        ConversationTitle = memory.ActiveConversationTitle; IsPrivateMode = memory.PrivateMode;
+        if (!memory.PrivateMode && memory.GetDraft().Length > 0) UserInput = memory.GetDraft();
         engine.Changed += Sync; voice.CommandRecognized += Recognized;
+        memory.Changed += MemorySync; memory.SessionChanged += SessionSync;
     }
     private void Sync() => dispatcher.Post(() =>
     {
         CurrentAction = engine.CurrentAction; IsBusy = engine.IsBusy; IsStopped = engine.IsStopped;
         HasPermission = engine.HasPendingPermission; PermissionSummary = engine.PermissionSummary;
     });
+    private void MemorySync() => dispatcher.Post(() => { ConversationTitle = memory.ActiveConversationTitle; IsPrivateMode = memory.PrivateMode; });
+    private void SessionSync() => dispatcher.Post(() =>
+    {
+        Messages.Clear();
+        foreach (var entry in history.ReadConversation().TakeLast(100)) Messages.Add(new(entry.Role, entry.Text, entry.Timestamp));
+        ConversationTitle = memory.ActiveConversationTitle;
+        Status = "Przełączono rozmowę — kontekst poniżej dotyczy wyłącznie wybranej rozmowy.";
+    });
+    partial void OnUserInputChanged(string value) => memory.SaveDraft(value);
     public void StageCommand(string text)
     {
         UserInput = text; InputFocusVersion++;
@@ -52,6 +67,14 @@ public partial class CommandCenterViewModel : ObservableObject, IDisposable
     [RelayCommand] private Task QuickCommandAsync(string input) => SubmitAsync(input);
     [RelayCommand] private Task ApproveAsync() => SubmitAsync("potwierdz");
     [RelayCommand] private void Cancel() => engine.Cancel();
+    [RelayCommand]
+    private void TogglePrivateMode()
+    {
+        memory.SetPrivateMode(!memory.PrivateMode);
+        Status = memory.PrivateMode
+            ? "Tryb prywatny WŁĄCZONY. Treść rozmowy nie jest zapisywana — po restarcie nie będzie czego przywrócić."
+            : "Tryb prywatny WYŁĄCZONY. Zapis rozmów zgodny z ustawieniami prywatności.";
+    }
     private async Task SubmitAsync(string input, bool fromVoice = false)
     {
         Messages.Add(new("user", input, DateTime.Now));
@@ -62,5 +85,10 @@ public partial class CommandCenterViewModel : ObservableObject, IDisposable
         Status = result.Action?.StorageWarning is { Length: > 0 } warning ? warning : history.StorageError ?? (engine.IsStopped ? "STOP awaryjny · nowe akcje zablokowane" : "Gotowe · wyniki akcji znajdziesz w Historii");
         if (fromVoice) voice.Speak(result.Text);
     }
-    public void Dispose() { engine.Changed -= Sync; voice.CommandRecognized -= Recognized; }
+    public void Dispose()
+    {
+        engine.Changed -= Sync; voice.CommandRecognized -= Recognized;
+        memory.Changed -= MemorySync; memory.SessionChanged -= SessionSync;
+        memory.FlushDraft();
+    }
 }

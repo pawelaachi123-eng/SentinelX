@@ -23,13 +23,13 @@ public partial class MainViewModel : ObservableObject, IDisposable
     public MainViewModel(IActionEngine engine, IDesktopService desktop, IUiDispatcher dispatcher,
         CommandCenterViewModel command, SystemViewModel system, GamingViewModel gaming,
         VoiceViewModel voice, AiViewModel ai, ActionsViewModel actions, HistoryViewModel history, SettingsViewModel settings,
-        CommandPaletteViewModel palette, ReadinessViewModel readiness)
+        CommandPaletteViewModel palette, ReadinessViewModel readiness, MemoryViewModel memory)
     {
         this.engine = engine; this.desktop = desktop; this.dispatcher = dispatcher; Voice = voice; Palette = palette; Readiness = readiness; commandCenter = command;
         Palette.Chosen += PaletteChosen; Readiness.OpenSectionRequested += Navigate;
         NavItems = [new("command", "⌘", "Command Center", command), new("system", "▥", "System", system),
             new("gaming", "◇", "Gaming", gaming), new("voice", "◉", "Voice", voice), new("ai", "✧", "AI", ai),
-            new("actions", "ϟ", "Actions", actions), new("history", "≡", "History", history), new("settings", "⚙", "Settings", settings)];
+            new("actions", "ϟ", "Actions", actions), new("memory", "▤", "Pamięć", memory), new("history", "≡", "History", history), new("settings", "⚙", "Settings", settings)];
         SelectedItem = NavItems[0]; Readiness.IsOpen = command.Messages.Count == 0; engine.Changed += Sync; desktop.StatusChanged += DesktopChanged;
     }
     partial void OnSelectedItemChanged(NavItem? value)

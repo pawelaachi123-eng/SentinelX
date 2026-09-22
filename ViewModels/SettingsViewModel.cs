@@ -46,7 +46,7 @@ public partial class SettingsViewModel : ObservableObject
     private readonly AppSettingsService store;
     public ObservableCollection<SettingViewModel> Fields { get; } = [];
     public ICollectionView FilteredFields { get; }
-    public string[] Sections { get; } = ["Wygląd", "Głos", "AI", "Watch", "Zasoby", "Ogólne", "Developer"];
+    public string[] Sections { get; } = ["Wygląd", "Głos", "AI", "Pamięć", "Watch", "Zasoby", "Ogólne", "Developer"];
     [ObservableProperty] private string selectedSection = "Wygląd";
     [ObservableProperty] private string search = "";
     [ObservableProperty] private string status = "Zapisz wybrane ustawienie przyciskiem obok pola. Zmiana działa od razu.";

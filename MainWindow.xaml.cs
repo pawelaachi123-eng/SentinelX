@@ -44,6 +44,10 @@ public partial class MainWindow : Window
     public MainWindow(bool smokeMode)
     {
         this.smokeMode = smokeMode;
+        // The compatibility UI honors the same memory privacy toggles as the MVVM shell.
+        memory.PrivacyProvider = () => new(settings.Settings.Memory.SaveConversations, settings.Settings.Memory.UseHistoryForAi,
+            settings.Settings.Memory.SaveMemories, settings.Settings.Memory.UseMemoriesForAi,
+            settings.Settings.Memory.RetentionDays, settings.Settings.Memory.ContextPreviewEnabled);
         files = new FileWorkspaceService(desktop: smokeMode ? System.IO.Path.Combine(AppPaths.Root, "TestDesktop") : null);
         toolbox = new SentinelToolboxService(() => settings.Settings.Ui.DefaultBrowserPreference, memory: memory);
         InitializeComponent();

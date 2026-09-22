@@ -87,6 +87,7 @@ public sealed class AppSettingsService
             case "Wygląd": Settings.Ui = new(); break;
             case "Głos": Settings.Voice = new(); break;
             case "AI": Settings.Ai = new(); break;
+            case "Pamięć": Settings.Memory = new(); break;
             case "Watch": Settings.Watch = new(); break;
             case "Zasoby": Settings.Resources = new(); break;
             case "Ogólne": Settings.Startup = new(); Settings.Ui.CloseToTray = true; break;

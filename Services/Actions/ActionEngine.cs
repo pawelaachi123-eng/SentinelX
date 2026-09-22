@@ -55,7 +55,7 @@ public sealed class ActionEngine(IIntentRouter router, SentinelToolboxService to
             record.Phase = "Wykonywanie polecenia · możesz je przerwać";
             response = await Task.Run(async () =>
             {
-                history.AddRunning(record.ActionId, "REQUEST", input);
+                history.AddRunning(record.ActionId, "REQUEST", AuditText(input));
                 memory.AddUserMessage(input, fromVoice ? "voice" : "keyboard");
                 using var approval = ApprovalContext.Begin(input, fromVoice);
                 using var scope = ActionEvidenceCapture.Begin(record.ActionId);
@@ -150,16 +150,19 @@ public sealed class ActionEngine(IIntentRouter router, SentinelToolboxService to
     private void Persist(ActionRecord record, string response)
     {
         if (record.Status == ActionStatus.WaitingPermission)
-        { history.AddPending(record.ActionId, "REQUEST", record.UserRequest, record.Evidence); return; }
+        { history.AddPending(record.ActionId, "REQUEST", AuditText(record.UserRequest), record.Evidence); return; }
+        bool ephemeral = memory.IsEphemeral;
         var result = record.Status switch
         {
-            ActionStatus.Verified => ActionExecutionResult.VerifiedSuccess(response, record.Evidence),
+            // A private session must not persist the command text or the reply text anywhere, including the audit file.
+            ActionStatus.Verified => ActionExecutionResult.VerifiedSuccess(ephemeral ? "[treść niezapisana]" : response, record.Evidence),
             ActionStatus.Cancelled => ActionExecutionResult.Cancelled(record.Evidence),
-            ActionStatus.Failed => ActionExecutionResult.Failure(record.Error, record.Evidence),
-            _ => ActionExecutionResult.UnverifiedSuccess(response, record.Evidence)
+            ActionStatus.Failed => ActionExecutionResult.Failure(ephemeral ? "[treść niezapisana]" : record.Error, record.Evidence),
+            _ => ActionExecutionResult.UnverifiedSuccess(ephemeral ? "[treść niezapisana]" : response, record.Evidence)
         };
-        history.AddResult(record.ActionId, "REQUEST", record.UserRequest, result, record.ElapsedMilliseconds);
+        history.AddResult(record.ActionId, "REQUEST", AuditText(record.UserRequest), result, record.ElapsedMilliseconds);
     }
+    private string AuditText(string text) => memory.IsEphemeral ? "[rozmowa prywatna lub zapis wyłączony — treść niezapisana]" : text;
     private void UpdateWaitingRequests(IReadOnlyList<ActionHistoryEntry> proof)
     {
         ActionRecord[] waiting;

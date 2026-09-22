@@ -43,4 +43,83 @@ public sealed class MemoryActionService(ConversationMemoryService memory, IPermi
         if (permissions.TryRequest(action, out string response)) history.AddPending(id, action.ActionType, input, action.Description);
         return response;
     }
+
+    /// <summary>Deleting one explicit memory by stable ID is still HIGH risk and goes through the same approval flow.</summary>
+    public string RequestDeleteNote(string noteId, string preview)
+    {
+        var note = memory.FindNote(noteId);
+        if (note == null) return "Wspomnienie już nie istnieje. Odśwież listę.";
+        string id = history.CreateActionId();
+        string shortText = preview.Length <= 80 ? preview : preview[..77] + "…";
+        var action = new PendingPermissionAction
+        {
+            ActionId = id, ActionType = "MEMORY_DELETE_NOTE", OriginalCommand = "usuń wspomnienie",
+            Description = $"Usunąć jedno wspomnienie: „{shortText}”? Dotyczy wyłącznie tego wpisu — podobne teksty pozostaną.",
+            RiskLevel = "HIGH",
+            CancellableExecutor = token =>
+            {
+                token.ThrowIfCancellationRequested();
+                bool removed = memory.DeleteNote(noteId);
+                bool verified = removed ? memory.VerifyPersistedState(out string evidence) : false;
+                if (!removed) return Task.FromResult(ActionExecutionResult.Failure("Wspomnienie nie istniało w chwili zatwierdzenia. Nic nie usunięto.", "Odczyt przed wykonaniem nie znalazł wpisu o tym identyfikatorze."));
+                return Task.FromResult(verified
+                    ? ActionExecutionResult.VerifiedSuccess("Usunięto jedno wspomnienie i sprawdzono zapis. Pozostałe wpisy i audyt zachowane.", evidence)
+                    : ActionExecutionResult.Failure("Zmieniono pamięć procesu, ale nie potwierdzono zapisu. Stare dane mogą powrócić po restarcie.", evidence));
+            }
+        };
+        if (permissions.TryRequest(action, out string response)) history.AddPending(id, action.ActionType, "usuń wybrane wspomnienie", action.Description);
+        return response;
+    }
+
+    // -------- verified non-destructive mutations for the Memory page (audited, read-back checked) --------
+    public string AddNoteVerified(string text, string category, string source)
+    {
+        var result = memory.AddNote(text, category, source);
+        string id = history.CreateActionId();
+        return result switch
+        {
+            NoteAddResult.Added => Audited(id, "MEMORY_ADD", "dodaj wspomnienie", true, "Zapisano wspomnienie.", VerifiedEvidence()),
+            NoteAddResult.StaleDuplicate => Audited(id, "MEMORY_ADD", "dodaj wspomnienie", true, "Takie wspomnienie istniało jako nieaktualne — przywrócono je zamiast tworzyć duplikat.", VerifiedEvidence()),
+            NoteAddResult.Duplicate => "Takie wspomnienie już istnieje. Nic nie dodano (ochrona przed duplikatami).",
+            NoteAddResult.Disabled => memory.LastStorageError ?? "Zapisywanie wspomnień jest wyłączone w ustawieniach prywatności.",
+            _ => memory.LastStorageError ?? "Nie zapisano wspomnienia."
+        };
+    }
+
+    public string UpdateNoteVerified(string noteId, string newText)
+        => Audited(history.CreateActionId(), "MEMORY_EDIT", "edytuj wspomnienie", memory.UpdateNote(noteId, newText),
+            "Zaktualizowano wspomnienie.", memory.LastStorageError ?? "Nie znaleziono wspomnienia lub treść jest niepoprawna.");
+
+    public string SetPinnedVerified(string noteId, bool pinned)
+        => Audited(history.CreateActionId(), "MEMORY_PIN", "przypnij wspomnienie", memory.SetPinned(noteId, pinned),
+            pinned ? "Przypięto wspomnienie — trafia do kontekstu w pierwszej kolejności." : "Odpięto wspomnienie.",
+            "Nie znaleziono wspomnienia.");
+
+    public string SetStaleVerified(string noteId, bool stale)
+        => Audited(history.CreateActionId(), "MEMORY_STALE", "oznacz aktualność", memory.SetStale(noteId, stale),
+            stale ? "Oznaczono jako nieaktualne — wspomnienie nie trafia już do kontekstu AI, ale nie jest skasowane." : "Przywrócono wspomnienie jako aktualne.",
+            "Nie znaleziono wspomnienia.");
+
+    public string ImportVerified(string path)
+    {
+        string id = history.CreateActionId();
+        string summary = memory.ImportMemories(path);
+        bool ok = summary.StartsWith("Zaimportowano", StringComparison.Ordinal);
+        history.AddResult(id, "MEMORY_IMPORT", "importuj wspomnienia", ok
+            ? ActionExecutionResult.VerifiedSuccess(summary, VerifiedEvidence())
+            : ActionExecutionResult.Failure(summary, "Import przerwany przed zapisem — plik pamięci nie został zmieniony."));
+        return summary;
+    }
+
+    private string Audited(string id, string type, string command, bool ok, string success, string failure)
+    {
+        if (!ok) return failure;
+        bool verified = memory.VerifyPersistedState(out string evidence);
+        history.AddResult(id, type, command, verified
+            ? ActionExecutionResult.VerifiedSuccess(success, evidence)
+            : ActionExecutionResult.Failure("Zmiana w pamięci procesu, ale zapis na dysk nie został potwierdzony. Sprawdź po restarcie.", evidence));
+        return verified ? success : "Zmiana wykonana, ale zapisu nie potwierdzono: " + evidence;
+    }
+
+    private string VerifiedEvidence() => memory.VerifyPersistedState(out string evidence) ? evidence : "Brak odczytu zwrotnego: " + evidence;
 }

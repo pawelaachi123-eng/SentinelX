@@ -22,6 +22,9 @@
         <DataTemplate DataType="{x:Type vm:HistoryViewModel}">
             <pages:HistoryPage/>
         </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:MemoryViewModel}">
+            <pages:MemoryPage/>
+        </DataTemplate>
         <DataTemplate DataType="{x:Type vm:SettingsViewModel}">
             <pages:SettingsPage/>
         </DataTemplate>

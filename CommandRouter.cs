@@ -81,7 +81,52 @@ public sealed class CommandRouter
     private string? TryHandleMemoryCommand(string command, string text)
     {
         if (text is "nowa rozmowa" or "nowa sesja" or "zacznij nowa rozmowe")
-        { memory.StartNewSession(); lastTopic = ""; return StorageResult("Rozpoczęto nową rozmowę. Zapisane imię i wspomnienia są zachowane."); }
+        {
+            memory.StartNewSession(); lastTopic = "";
+            return StorageResult("Rozpoczęto nową rozmowę. Wcześniejsze rozmowy są zachowane — wpisz „pokaż rozmowy”, aby wrócić.");
+        }
+        if (text is "pokaz rozmowy" or "lista rozmow" or "moje rozmowy")
+        {
+            var conversations = memory.GetConversations().Take(10).ToArray();
+            if (conversations.Length == 0) return "Nie ma jeszcze zapisanych rozmów.";
+            var lines = conversations.Select((x, i) => $"{i + 1}. {(x.Id == memory.ActiveSessionId ? "▶ " : "")}{x.Title}  (ostatnio: {x.LastActiveAt:dd.MM HH:mm})");
+            return "Zapisane rozmowy:\n" + string.Join("\n", lines) + "\nWpisz „wznów rozmowę N”, aby wrócić do wybranej.";
+        }
+        var resume = Regex.Match(text, @"^wznow rozmowe (\d{1,3})$");
+        if (resume.Success && int.TryParse(resume.Groups[1].Value, out int index))
+        {
+            var conversations = memory.GetConversations().Take(10).ToArray();
+            if (index < 1 || index > conversations.Length) return "Podaj numer rozmowy z listy (1…" + Math.Max(1, conversations.Length) + ").";
+            var target = conversations[index - 1];
+            lastTopic = "";
+            return memory.ResumeSession(target.Id)
+                ? StorageResult($"Wznowiono rozmowę „{target.Title}”. Widok rozmowy został przeładowany.")
+                : "Ta rozmowa jest już aktywna.";
+        }
+        if (text is "tryb prywatny" or "wlacz tryb prywatny" or "wylacz tryb prywatny")
+        {
+            bool enable = text == "tryb prywatny" ? !memory.PrivateMode : text == "wlacz tryb prywatny";
+            memory.SetPrivateMode(enable);
+            return enable
+                ? "Tryb prywatny WŁĄCZONY. Treść rozmowy nie jest nigdzie zapisywana — po zamknięciu nie będzie czego przywrócić. Trwałe wspomnienia i zgody działają bez zmian."
+                : "Tryb prywatny WYŁĄCZONY. Rozmowa jest zapisywana zgodnie z ustawieniami prywatności.";
+        }
+        var searchMemory = Regex.Match(text, @"^(?:szukaj|znajdz) w pamieci (.+)$");
+        if (searchMemory.Success)
+        {
+            string query = searchMemory.Groups[1].Value.Trim(' ', '„', '”', '"');
+            var found = memory.SearchNotes(query).Take(10).ToArray();
+            if (found.Length == 0) return "Nie znaleziono wspomnień pasujących do: " + query;
+            return "Pasujące wspomnienia:\n" + string.Join("\n", found.Select((x, i) => $"{i + 1}. {(x.Pinned ? "📌 " : "")}{(x.SupersededAt != null ? "[nieaktualne] " : "")}{x.Text}"));
+        }
+        if (text is "co poszlo do modelu" or "pokaz kontekst ai" or "dlaczego to pamietasz")
+        {
+            var trace = memory.LastContextTrace;
+            if (!memory.PrivacyContextVisible) return "Podgląd kontekstu AI jest wyłączony (Ustawienia → Pamięć i prywatność). Źródła kontekstu nie są rejestrowane.";
+            if (trace.Count == 0) return "Od uruchomienia nie wysłano jeszcze zapytania z kontekstem do modelu.";
+            var lines = trace.Select(x => $"• {x.Kind}: {x.Label} — {x.Reason}");
+            return $"Kontekst ostatniego zapytania ({memory.LastContextBuiltAt:HH:mm:ss}):\n" + string.Join("\n", lines);
+        }
         if (text is "co pamietasz" or "pokaz pamiec" or "lista wspomnien" or "moje preferencje") return memory.GetNotesSummary();
         if (text is "jak mam na imie" or "pamietasz moje imie" or "jak sie nazywam")
             return memory.UserName.Length > 0 ? $"Masz na imię {memory.UserName}." : "Nie mam zapisanego imienia. Możesz powiedzieć: mam na imię…";
@@ -92,7 +137,20 @@ public sealed class CommandRouter
         }
         if (Regex.IsMatch(text, @"^(?:wole|preferuje) (?:krotkie|zwiezle|dlugie|dokladne|szczegolowe) odpowiedzi$")) return StorageResult("Zapamiętam tę preferencję odpowiedzi.");
         if (text.StartsWith("zapamietaj ", StringComparison.Ordinal) || text.StartsWith("zapamietaj:", StringComparison.Ordinal))
-        { memory.AddNote(command[(command.IndexOf(' ') + 1)..]); return StorageResult("Zapamiętane lokalnie."); }
+        {
+            string noteText = command[(command.IndexOf(' ') + 1)..];
+            var result = memory.AddNote(noteText);
+            IReadOnlyList<ConversationMemoryEntry> similar = result == NoteAddResult.Added ? memory.FindSimilarNotes(noteText) : [];
+            string hint = similar.Count > 0 ? $"\nPodobne istniejące wspomnienie: „{similar[0].Text}”. Jeśli wpisy się wykluczają, oznacz stare jako nieaktualne w panelu Pamięć." : "";
+            return result switch
+            {
+                NoteAddResult.Added => StorageResult("Zapamiętane lokalnie." + hint),
+                NoteAddResult.StaleDuplicate => StorageResult("To wspomnienie było oznaczone jako nieaktualne — przywróciłem je zamiast tworzyć duplikat."),
+                NoteAddResult.Duplicate => "Takie wspomnienie już istnieje. Nic nie zapisano.",
+                NoteAddResult.Disabled => memory.LastStorageError ?? "Zapisywanie wspomnień jest wyłączone.",
+                _ => memory.LastStorageError ?? "Nie zapisano wspomnienia."
+            };
+        }
         if (text is "status pamieci" or "ile pamietasz") return StorageResult($"Pamięć: {memory.Count} wpisów, w tym {memory.NoteCount} trwałych wspomnień.");
         if (Services.Memory.MemoryActionService.IsMutation(command) || text == "potwierdz usuniecie wspomnien")
             return "Operacje usuwania pamięci wymagają zgody w centrum poleceń. Nie wykonano zmian.";

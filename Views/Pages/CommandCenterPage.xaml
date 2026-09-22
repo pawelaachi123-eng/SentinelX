@@ -8,12 +8,20 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
         <DockPanel Margin="0,0,0,20">
-            <Border Style="{StaticResource SxBadge}" DockPanel.Dock="Right" VerticalAlignment="Top">
-                <TextBlock Text="{Binding Voice.State, StringFormat=VOICE · {0}}" Foreground="{DynamicResource SxAccentCyan}" FontSize="12"/>
-            </Border>
+            <StackPanel DockPanel.Dock="Right" HorizontalAlignment="Right">
+                <Border Style="{StaticResource SxBadge}" VerticalAlignment="Top">
+                    <TextBlock Text="{Binding Voice.State, StringFormat=VOICE · {0}}" Foreground="{DynamicResource SxAccentCyan}" FontSize="12"/>
+                </Border>
+                <Border Style="{StaticResource SxBadge}" Margin="0,8,0,0" Visibility="{Binding IsPrivateMode, Converter={StaticResource BoolToVisibility}}">
+                    <TextBlock Text="🔒 ROZMOWA PRYWATNA" Foreground="{DynamicResource SxWarning}" FontSize="12"/>
+                </Border>
+            </StackPanel>
             <StackPanel>
                 <TextBlock Text="Command Center" Style="{StaticResource SxHeading}"/>
-                <TextBlock Text="Twój komputer. Twój asystent. Wszystko lokalnie." Style="{StaticResource SxCaption}"/>
+                <DockPanel>
+                    <TextBlock Text="{Binding ConversationTitle, StringFormat=Rozmowa: {0}}" Style="{StaticResource SxCaption}" VerticalAlignment="Center"/>
+                    <Button Content="Tryb prywatny" Command="{Binding TogglePrivateModeCommand}" Style="{StaticResource SxGhostButton}" FontSize="11" Margin="12,0,0,0" Padding="8,2" ToolTip="Rozmowa prywatna nie jest nigdzie zapisywana"/>
+                </DockPanel>
             </StackPanel>
         </DockPanel>
         <StackPanel Grid.Row="1">

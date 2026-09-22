@@ -31,7 +31,10 @@ public static class ServiceLocator
         services.AddSingleton<ActionTaskRegistry>();
         services.AddSingleton<ISystemMonitorService, SystemMonitorService>();
         services.AddSingleton<ActionHistoryService>(_ => new());
-        services.AddSingleton<ConversationMemoryService>(_ => new());
+        services.AddSingleton<ConversationMemoryService>(sp => new ConversationMemoryService
+        { PrivacyProvider = () => MapPrivacy(sp.GetRequiredService<ISettingsService>().Current.Memory) });
+        services.AddSingleton<Services.Memory.MemoryActionService>(sp => new(sp.GetRequiredService<ConversationMemoryService>(),
+            sp.GetRequiredService<Services.Permissions.IPermissionService>(), sp.GetRequiredService<ActionHistoryService>()));
         services.AddSingleton<IHistoryService, HistoryService>();
         services.AddSingleton<HistoryExportService>();
         services.AddSingleton<Services.Memory.IConversationMemory>(sp => sp.GetRequiredService<ConversationMemoryService>());
@@ -43,7 +46,8 @@ public static class ServiceLocator
             sp.GetRequiredService<Services.Permissions.IPermissionService>(), sp.GetRequiredService<Services.Apps.IAppLauncherService>(),
             sp.GetRequiredService<ProcessToolService>(), sp.GetRequiredService<Services.Network.INetworkService>(),
             sp.GetRequiredService<PcDiagnosticService>(), sp.GetRequiredService<ActionTaskRegistry>(),
-            sp.GetRequiredService<ConversationMemoryService>(), sp.GetRequiredService<HistoryExportService>()));
+            sp.GetRequiredService<ConversationMemoryService>(), sp.GetRequiredService<HistoryExportService>(),
+            sp.GetRequiredService<Services.Memory.MemoryActionService>()));
         services.AddSingleton<FileWorkspaceService>(sp => new(history: sp.GetRequiredService<ActionHistoryService>()));
         services.AddSingleton<Services.Files.IFileService>(sp => sp.GetRequiredService<FileWorkspaceService>());
         services.AddSingleton<ReadOnlyCommandService>();
@@ -65,9 +69,12 @@ public static class ServiceLocator
         services.AddSingleton<ActionsViewModel>();
         services.AddSingleton<HistoryViewModel>();
         services.AddSingleton<SettingsViewModel>();
+        services.AddSingleton<MemoryViewModel>();
         services.AddSingleton<OverlayViewModel>();
         services.AddSingleton<MainViewModel>();
         services.AddSingleton<Views.MainWindow>();
         return services.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });
     }
+    private static MemoryPrivacy MapPrivacy(MemorySettings s) =>
+        new(s.SaveConversations, s.UseHistoryForAi, s.SaveMemories, s.UseMemoriesForAi, s.RetentionDays, s.ContextPreviewEnabled);
 }

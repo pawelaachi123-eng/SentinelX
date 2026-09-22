@@ -30,6 +30,7 @@ public static class UiSmokeTestRunner
             await Tests.BackendRegression.RunAsync(Path.Combine(output, "backend"));
             await Tests.ProductRegression.RunAsync(Path.Combine(output, "product"));
             await Tests.ReleaseRegression.RunAsync(Path.Combine(output, "release"));
+            await Tests.MemoryRegression.RunAsync(Path.Combine(output, "memory"));
             var vm = services.GetRequiredService<MainViewModel>();
             vm.Readiness.IsOpen = false;
             if (vm.InitializeCommand.IsRunning) await vm.InitializeCommand.ExecutionTask!;
@@ -38,6 +39,22 @@ public static class UiSmokeTestRunner
             await chat.SendMessageCommand.ExecuteAsync(null);
             if (chat.Messages.Last().ActionRecord?.Status != Models.ActionStatus.Verified)
                 throw new InvalidOperationException("RAM fast path did not produce measurement evidence.");
+            // Memory roundtrip through the real engine and the real page VM.
+            var memoryEngine = services.GetRequiredService<IActionEngine>();
+            await memoryEngine.ExecuteAsync("zapamiętaj smoke: ulubiony kolor to cyjan");
+            var memoryVm = services.GetRequiredService<MemoryViewModel>();
+            memoryVm.RefreshDataCommand.Execute(null);
+            if (!memoryVm.Items.Any(x => x.Text.Contains("cyjan")))
+                throw new InvalidOperationException("Memory note created in chat did not reach the Memory page.");
+            memoryVm.TogglePinCommand.Execute(memoryVm.Items.First(x => x.Text.Contains("cyjan")));
+            if (!memoryVm.Items.Any(x => x.Pinned)) throw new InvalidOperationException("Pinning did not persist to the list.");
+            var memoryService = services.GetRequiredService<ConversationMemoryService>();
+            if (memoryService.ActiveConversationTitle.Length == 0)
+                throw new InvalidOperationException("Conversation title must be available.");
+            chat.TogglePrivateModeCommand.Execute(null);
+            if (!memoryService.PrivateMode) throw new InvalidOperationException("Private mode toggle must apply immediately.");
+            chat.TogglePrivateModeCommand.Execute(null);
+            if (memoryService.PrivateMode) throw new InvalidOperationException("Private mode toggle must turn back off.");
             var engine = services.GetRequiredService<IActionEngine>();
             await engine.ExecuteAsync("zamknij notatnik"); // requests permission only; never closes a process in CI.
             vm.SelectedItem = vm.NavItems[^1];

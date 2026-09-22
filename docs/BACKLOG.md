@@ -1,0 +1,50 @@
+# Trwały backlog rozwoju SentinelX
+
+Stan na 2026-09-22. Zasada: pojedyncza pozycja znika z listy dopiero, gdy jest **zbudowana i przetestowana na Windows (CI)**, nie „gdy wygląda na zrobioną".
+
+## Gotowe i zweryfikowane (0.85 i wcześniejsze)
+
+- MVVM shell + 8 stron, DI z walidacją, legacy UI za `--legacy`.
+- Deterministyczne odczyty narzędzi (RAM/CPU/dyski/czas), dowody na żądanie, audyt JSONL, historia z filtrami i eksportem JSON/CSV.
+- Centrum zgód LOW/MEDIUM/HIGH/CRITICAL: jednorazowe zgody z wygaśnięciem, głos nie zatwierdza, STOP/anulowanie usuwa oczekiwanie.
+- STOP awaryjny z zatrzaskiem, single-lane ActionEngine, korelacja dowodów z requestId.
+- Self-contained portable + instalator per-user (Inno), build/test/smoke CI na Windows.
+- Pamięć v2: rozmowa z limitem 720 wpisów, profil, wspomnienia, format json z atomowym zapisem i ochroną przed uszkodzeniem.
+
+## Gotowe w 0.86 (ten przyrost — patrz git)
+
+- Pamięć v3: stabilne ID, kategorie, przypinanie, edycja/usuwanie po ID, oznaczanie nieaktualne, dziennik zmian, wykrywanie duplikatów i konfliktów (jako wskazówka do decyzji).
+- Nazwane, wznawiane rozmowy z auto-tytułem i izolacją kontekstu; przełączenie przeładowuje widok rozmowy.
+- Cztery niezależne przełączniki prywatności + retencja rozmów + tryb prywatny (bez trwałego śladu, także w audycie).
+- Podgląd „co trafiło do modelu i dlaczego" (etykiety + powody, bez pełnych promptów), komenda `co poszło do modelu`.
+- Nowa strona Pamięć w shellu (łącznie 9 stron), szkic rozmowy przeżywa restart poza trybem prywatnym.
+- Eksport istniał; dodany import z podglądem, walidacją i ochroną przed duplikatami (bez importu historii).
+- Migracja v1/v2→v3 z kopią zapasową przed pierwszym zapisem.
+- Zestaw regresji `tests/MemoryRegression.cs` (odpalany w `--ui-smoke`).
+
+## Priorytet P0 — kolejny przyrost
+
+1. **Projekty** (moduł): tworzenie/archiwizacja/status, pamięć projektu (jako przestrzeń nazw nad Notes: `ProjectId`), powiązanie rozmów z projektem, „gdzie skończyliśmy", eksport projektu, izolacja kontekstu.
+2. **Zadania i przypomnienia**: model zadania (priorytet/termin/projekt/status), widok Dzisiaj, przypomnienia lokalne z poprawną strefą czasową i obsługą przegapionych terminów; parser „jutro o 18" → konkretna data do zatwierdzenia.
+3. **Diagnoza-streaming odpowiedzi AI**: istniejący `LocalAiService` wspiera fallback; dodać strumieniowanie do UI + przycisk stop generacji widoczny stale.
+4. **Snapshoty diagnostyczne**: zapis + porównanie dwóch snapshotów + eksport raportu (istniejące serwisy diagnostyczne rozszerzyć).
+
+## Priorytet P1
+
+- Pliki: plan porządkowania folderu z podglądem, zbiorcze zmiany nazw z podglądem, duplikaty po treści, sumy kontrolne, integracja z Koszem dla usuwania.
+- Tryb gry: zawieszanie indeksowania/ciężkich zadań, profil modeli z histerezą przełączania (progi + opóźnienie), zwalnianie modelu opcjonalne.
+- Sekwencje działań: nazwane kroki, plan z podglądem, statusy kroków, stop na błędzie, wznowienie tam gdzie sensowne.
+- Rozmowa: ponowienie odpowiedzi, edycja+prześlij z oznaczeniem alternatywy, wyszukiwanie w rozmowie, eksport rozmowy Markdown.
+
+## Priorytet P2
+
+- Wyszukiwanie semantyczne lokalne: tylko jako opcjonalny indeks (bez wpływu na tryb tekstowy); najpierw benchmark jakości na scenariuszach PL.
+- Integracja z autostartem/Harmonogramem zadań dla przypomnień — wyłącznie za jawną zgodą, z opcją cofnięcia.
+- Alerty progów diagnostyki z historią krótkich pomiarów (z limitem wzrostu plików).
+
+## Świadome ograniczenia obecnego stanu
+
+- Brak lokalnego kompilatora .NET w środowisku deweloperskim — weryfikacja wyłącznie przez CI na `windows-latest` (opis w README).
+- Build niepodpisany: SmartScreen może ostrzegać (zgodnie z README; nie wyłączamy zabezpieczeń).
+- Ollama, mikrofon i gry wymagają testów na komputerze docelowym; CI nie ma mikrofonu ani gier.
+- Wyszukiwanie we wspomnieniach jest tekstowe (normalizacja, bez fuzzy/typo-tolerance) — literówki mogą nie trafić.

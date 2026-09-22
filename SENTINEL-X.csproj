@@ -20,7 +20,7 @@
 
 		<PlatformTarget>x64</PlatformTarget>
 		<Prefer32Bit>false</Prefer32Bit>
-		<Version>0.85.0</Version>
+		<Version>0.86.0</Version>
 		<Description>Lokalny asystent i diagnostyka Windows</Description>
 	</PropertyGroup>
 
