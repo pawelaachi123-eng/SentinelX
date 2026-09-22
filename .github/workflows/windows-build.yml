@@ -78,6 +78,38 @@ jobs:
             }
             throw "Portable smoke failed: exit $($p.ExitCode)"
           }
+      - name: Build per-user EXE installer
+        shell: pwsh
+        run: |
+          $compiler = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $compiler)) { throw 'Inno Setup compiler missing from Windows runner image' }
+          [xml]$project = Get-Content SENTINEL-X.csproj
+          $version = $project.Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
+          & $compiler "/DAppVersion=$version" 'installer/SentinelX.iss'
+          if ($LASTEXITCODE -ne 0) { throw 'Installer compilation failed' }
+          $installer = Get-ChildItem 'bin/installer/*.exe' | Select-Object -First 1
+          $hash = (Get-FileHash $installer.FullName -Algorithm SHA256).Hash
+          "$hash  $($installer.Name)" | Set-Content 'bin/installer/SHA256SUMS.txt'
+      - name: Install EXE and smoke-test installed application
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem 'bin/installer/*.exe' | Select-Object -First 1
+          $installed = Join-Path $env:RUNNER_TEMP 'SentinelX-installed'
+          $output = Join-Path $PWD 'test-results/installer'
+          New-Item -ItemType Directory -Force $output | Out-Null
+          $setup = Start-Process $installer.FullName -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-', "/DIR=`"$installed`"", "/LOG=`"$output/setup.log`"" -PassThru
+          if (-not $setup.WaitForExit(120000)) { $setup.Kill(); throw 'Installer timeout' }
+          if ($setup.ExitCode -ne 0) { throw "Installer failed: $($setup.ExitCode)" }
+          if (-not (Test-Path "$installed/coreclr.dll")) { throw 'Installed runtime missing' }
+          $p = Start-Process "$installed/SentinelX.exe" -ArgumentList '--ui-smoke', $output -PassThru
+          if (-not $p.WaitForExit(120000)) { $p.Kill(); throw 'Installed application timeout' }
+          if ($p.ExitCode -ne 0 -or -not (Test-Path "$output/ui-smoke.txt")) {
+            Get-ChildItem $output -Recurse -Include FAILED.txt,errors.log,bindings.log | ForEach-Object {
+              $detail = (Get-Content $_.FullName -Raw).Replace("`r", '').Replace("`n", '%0A')
+              Write-Output "::error::$detail"
+            }
+            throw "Installed application smoke failed: $($p.ExitCode)"
+          }
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -92,3 +124,8 @@ jobs:
         with:
           name: SentinelX-Portable-win-x64
           path: bin/portable/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SentinelX-Setup-win-x64
+          path: bin/installer/

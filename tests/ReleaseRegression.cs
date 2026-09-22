@@ -28,6 +28,7 @@ internal static class ReleaseRegression
         var router = new IntentRouter(toolbox, new FileWorkspaceService(root, root, history), oldRouter, reads);
         var engine = new ActionEngine(router, toolbox, history, memory, new NoAi());
         memory.AddNote("prywatne wspomnienie testowe");
+        Check((await engine.ExecuteAsync("pokaż pamięć")).Text.Contains("prywatne wspomnienie testowe"), "Memory aliases must not be stolen by RAM metrics.");
         var pending = await engine.ExecuteAsync("usuń wszystkie wspomnienia", fromVoice: true);
         Check(pending.Action?.Status == ActionStatus.WaitingPermission && pending.Action.Risk == RiskLevel.High && memory.NoteCount == 1, "Memory mutation must only request HIGH permission.");
         foreach (var command in new[] { "potwierdź usunięcie wspomnień", "Hej Sentinel, potwierdź usunięcie wspomnień!", "confirm", "potwierdź akcję" })
@@ -78,7 +79,7 @@ internal static class ReleaseRegression
             Check(ReadOnlyIntentCatalog.TryResolve("Sentinel, " + item.Key + "?", out var intent) && intent == item.Value, "Wake/punctuation alias regression: " + item.Key);
             Check(ReadOnlyIntentCatalog.TryResolve("proszę " + item.Key, out intent) && intent == item.Value, "Polite alias regression: " + item.Key);
         }
-        foreach (var text in new[] { "nie pokazuj ram", "nie zamykaj aplikacji", "ile mam ramu i usuń wspomnienia", "co oznacza RAM?" })
+        foreach (var text in new[] { "nie pokazuj ram", "nie zamykaj aplikacji", "ile mam ramu i usuń wspomnienia", "co oznacza RAM?", "pokaż pamięć" })
             Check(!ReadOnlyIntentCatalog.TryResolve(text, out _), "Whole-command classifier must not consume compound/negative/unrelated text.");
         foreach (var text in new[] { "ile mam ramu?", "wolna pamięć", "procent RAM", "czas pracy komputera", "która godzina", "dzisiejsza data" })
             Check((await engine.ExecuteAsync(text)).Action?.Status == ActionStatus.Verified, "Read-only alias must produce actual proof: " + text);

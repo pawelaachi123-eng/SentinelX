@@ -1,6 +1,6 @@
 namespace SentinelX.Core;
 
-public enum ReadOnlyIntent { RamTotal, RamUsed, RamFree, RamPercent, Cpu, Gpu, Disks, Uptime, Clock, Date }
+public enum ReadOnlyIntent { RamTotal, RamUsed, RamSummary, RamFree, RamPercent, Cpu, Gpu, Disks, Uptime, Clock, Date }
 /// <summary>Whole-command aliases only. Never fuzzy-match a negation or silently infer a mutation.</summary>
 public static class ReadOnlyIntentCatalog
 {
@@ -10,7 +10,8 @@ public static class ReadOnlyIntentCatalog
         var result = new Dictionary<string, ReadOnlyIntent>(StringComparer.Ordinal);
         void Add(ReadOnlyIntent intent, params string[] aliases) { foreach (var text in aliases) result.Add(text, intent); }
         Add(ReadOnlyIntent.RamTotal, "ile mam ram", "ile mam ramu", "ile mam pamieci ram", "ile mam pamieci operacyjnej", "calkowity ram", "ile jest ramu");
-        Add(ReadOnlyIntent.RamUsed, "ile uzywam ram", "ile uzywam ramu", "ile uzywam pamieci ram", "uzycie ram", "uzycie ramu", "zuzycie ram", "zuzycie ramu", "pokaz pamiec", "pokaz ram", "zajetosc ram", "ram", "status ram");
+        Add(ReadOnlyIntent.RamUsed, "ile uzywam ram", "ile uzywam ramu", "ile uzywam pamieci ram", "uzycie ram", "uzycie ramu", "zuzycie ram", "zuzycie ramu", "zajetosc ram");
+        Add(ReadOnlyIntent.RamSummary, "ram", "pokaz ram", "status ram", "pokaz pamiec ram");
         Add(ReadOnlyIntent.RamFree, "wolny ram", "wolna pamiec", "ile mam wolnego ramu", "ile wolnej pamieci", "dostepna pamiec ram");
         Add(ReadOnlyIntent.RamPercent, "procent ram", "uzycie ram procent", "ile procent ram", "jaki procent ram", "zuzycie ram w procentach");
         Add(ReadOnlyIntent.Cpu, "uzycie cpu", "ile uzywam cpu", "zuzycie cpu", "uzycie procesora", "obciazenie procesora", "pokaz cpu", "cpu");

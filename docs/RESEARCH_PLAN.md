@@ -2,6 +2,7 @@
 
 > **Status: PLAN, nie implementacja.** Żadna pozycja poniżej nie oznacza, że funkcja została dostarczona lub przeszła pomiary.
 > Zasada nadrzędna: **żadnych udawanych pomiarów, żadnego VERIFIED bez dowodu z narzędzia, żadnego wykonywania dowolnych narzędzi przez LLM z pominięciem polityki i zgód.**
+> **Postęp implementacji 0.85:** zobacz dopisek na końcu §7. Audyt 0.84 poniżej jest zachowany historycznie, w tym opis wykrytej wówczas L16.
 > Oryginalna propozycja: 2026-09-20, runda 1. Aktualizacja: **2026-09-22, audyt rundy 1 / rewizja 1.1**.
 > Zakres audytu: bieżące pliki wersji **0.84.0** w drzewie roboczym, nie sam numer commita HEAD. Istniejących zmian aplikacji nie resetowano. W tej rundzie zmieniana jest wyłącznie dokumentacja.
 
@@ -353,3 +354,11 @@ Kierunki: KWS, PL TTS, streaming/schematy, semantyczny routing, GPU, PresentMon,
 4. Spike ABI Windows sherpa 1.13.5, Whisper 1.9.1 CUDA/Vulkan i kandydackiego MCP; niczego nie aktualizować wyłącznie na podstawie numeru najnowszego wydania.
 5. Ustalić per-adapter źródło device-wide VRAM, obsługę NVML/WDDM oraz uprawnienia/ABI wybranego PresentMon SDK.
 6. Każdą zaakceptowaną pozycję zamienić w mały etap z testem, fallbackiem i wynikiem Windows CI. Dopiero zmierzony rezultat zmienia status z „plan” na „dostarczone”.
+
+### Dopisek implementacyjny 0.85 — po audycie
+
+Na osobne zlecenie wdrożono część fundamentów: `ApprovalContext` i wspólne zgody dla destrukcyjnych operacji pamięci (L16), weryfikację zapisu pamięci, katalog ponad 50 wariantów odczytów z dowodami, JSON/CSV eksport historii z SHA-256 i ostrzeżeniami o błędach dziennika, filtry historii oraz instalator per-user EXE. Zachowano polecenie odczytu wspomnień „pokaż pamięć”; nowe „pokaż pamięć RAM” jest jednoznaczne.
+
+`tests/ReleaseRegression.cs` sprawdza m.in. głosowe potwierdzanie kasowania, brak kontekstu zgody, zamknięty kontekst, STOP/resume, wygaśnięcie, niewłaściwy rodzaj potwierdzenia, zapis i odczyt danych, aliasy i negacje, integralność eksportu oraz CSV injection. Workflow rozszerzono o instalację i smoke zainstalowanego EXE. Konkretny wynik należy sprawdzić w CI powiązanym z danym commitem/PR; samo dopisanie testów nie jest dowodem ich przejścia.
+
+Nie wdrożono jeszcze KWS, Piper, streamingu Ollama, nowych modeli ASR, semantycznego routingu, NVML/PresentMon ani MCP. L17 i korpus pomiarowy nadal pozostają otwarte. L16 ma naprawę i testy konkretnych ścieżek — nie oznacza to dowodu bezpieczeństwa dowolnego przyszłego narzędzia.

@@ -27,15 +27,26 @@ public sealed class ReadOnlyCommandService(SystemMonitor monitor, ActionHistoryS
                 try
                 {
                     if (!drive.IsReady) { errors.Add(drive.Name + ": niegotowy"); continue; }
-                    lines.Add($"{drive.Name} wolne: {drive.TotalFreeSpace / 1073741824d:F1} GiB / {drive.TotalSize / 1073741824d:F1} GiB");
+                    long total = drive.TotalSize, free = drive.AvailableFreeSpace;
+                    if (total <= 0) { errors.Add(drive.Name + ": nieznana pojemność"); continue; }
+                    double percent = 100d * free / total;
+                    lines.Add($"{drive.Name} [{drive.DriveFormat}] Wolne dla użytkownika: {free / 1073741824d:F1} / {total / 1073741824d:F1} GiB ({percent:F1}%)." + (percent < 10 ? " MAŁO MIEJSCA (<10%)." : ""));
                 }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { errors.Add(drive.Name + ": " + ex.Message); }
             }
-            string message = string.Join("\n", lines.Concat(errors));
-            string evidence = "DriveInfo.TotalFreeSpace / TotalSize; " + DateTimeOffset.Now.ToString("O");
+            string message = string.Join("\n", lines.Concat(errors)) + "\nPojemność woluminów nie jest pomiarem kondycji sprzętu ani odczytem SMART.";
+            string evidence = "DriveInfo.AvailableFreeSpace / TotalSize / DriveFormat; " + DateTimeOffset.Now.ToString("O");
             return lines.Count == 0 ? ActionExecutionResult.Failure("Brak dostępnych odczytów dysków.", message)
                 : errors.Count > 0 ? ActionExecutionResult.UnverifiedSuccess(message, evidence + "; odczyt częściowy")
                 : ActionExecutionResult.VerifiedSuccess(message, evidence + "\n" + message);
+        }
+        if (intent == ReadOnlyIntent.RamSummary)
+        {
+            double total = monitor.GetTotalRamGB(), used = monitor.GetUsedRamGB();
+            if (!double.IsFinite(total) || !double.IsFinite(used) || total <= 0)
+                return ActionExecutionResult.Failure("Pomiar pamięci niedostępny.", "GlobalMemoryStatusEx");
+            string message = $"RAM: {used:F1} / {total:F1} GiB ({100 * used / total:F1}%).";
+            return ActionExecutionResult.VerifiedSuccess(message, $"GlobalMemoryStatusEx; {DateTimeOffset.Now:O}; używane={used:R} GiB; całkowite={total:R} GiB.");
         }
         if (intent is ReadOnlyIntent.Clock or ReadOnlyIntent.Date)
         {
