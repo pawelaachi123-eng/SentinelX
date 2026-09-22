@@ -96,10 +96,11 @@ internal static class MemoryRegression
         privateMemory.SetPrivateMode(true);
         var toolbox = new SentinelToolboxService(history: auditHistory, memory: privateMemory);
         var engine = new ActionEngine(new EchoRouter(), toolbox, auditHistory, privateMemory, new NoAi());
-        await engine.ExecuteAsync("usuń wszystkie sekrety klientów");
+        await engine.ExecuteAsync("remove all client secrets ZXCVBNM");
         string auditText = string.Join("\n", Directory.GetFiles(Path.Combine(auditDir, "History")).Select(File.ReadAllText));
-        Check(!auditText.Contains("sekrety klientów"), "Private session must redact the audit file.");
-        Check(auditText.Contains("treść niezapisana"), "Audit must record that a redacted action ran.");
+        Check(!auditText.Contains("ZXCVBNM"), "Private session must redact the audit file.");
+        // The serialized audit escapes Polish characters, so assert the marker on parsed entries.
+        Check(auditHistory.GetRecentEntries().Any(x => x.Command.Contains("treść niezapisana")), "Audit must record that a redacted action ran.");
 
         // --- named conversations: auto-title, resume, isolation ---
         string fourth = Path.Combine(directory, "conversations");
