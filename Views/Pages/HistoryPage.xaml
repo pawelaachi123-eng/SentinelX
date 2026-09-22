@@ -1,0 +1,49 @@
+<UserControl xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:u="clr-namespace:SentinelX.Utilities" x:Class="SentinelX.Views.Pages.HistoryPage" u:PageTransitions.Enabled="True" u:UiInteraction.LoadedCommand="{Binding RefreshCommand}">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="28">
+            <TextBlock Text="History" Style="{StaticResource SxHeading}"/>
+            <TextBlock Text="Trwała historia lokalna · dowody działań i pamięć rozmów" Style="{StaticResource SxCaption}" Margin="0,0,0,24"/>
+            <DockPanel Margin="0,0,0,16">
+                <Button Content="Odśwież historię" Command="{Binding RefreshCommand}" DockPanel.Dock="Right" Margin="12,0,0,0"/>
+                <ComboBox ItemsSource="{Binding StatusOptions}" SelectedItem="{Binding StatusFilter}" Width="160" DockPanel.Dock="Right" Margin="12,0,0,0" AutomationProperties.Name="Filtr statusu akcji"/>
+                <TextBox Text="{Binding Search, UpdateSourceTrigger=PropertyChanged}" u:InputHint.Text="Szukaj…" AutomationProperties.Name="Szukaj w historii" ToolTip="Szukaj po ID, komendzie, statusie lub dowodzie"/>
+            </DockPanel>
+            <WrapPanel Margin="0,0,0,12">
+                <Button Content="Eksportuj JSON" Command="{Binding ExportCommand}" CommandParameter="json" Margin="0,0,12,0"/>
+                <Button Content="Eksportuj CSV" Command="{Binding ExportCommand}" CommandParameter="csv"/>
+            </WrapPanel>
+            <TextBox Text="{Binding ExportSummary, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" MaxHeight="140" VerticalScrollBarVisibility="Auto" Margin="0,0,0,16" AutomationProperties.Name="Wynik i zakres eksportu historii"/>
+            <TextBlock Text="{Binding Status}" Style="{StaticResource SxCaption}" Margin="0,0,0,16"/>
+            <Border Style="{StaticResource SxCard}" Margin="0,0,0,16">
+                <StackPanel>
+                    <TextBlock Text="Akcje · ostatnie 200" Style="{StaticResource SxSectionTitle}"/>
+                    <DataGrid ItemsSource="{Binding FilteredEntries}" SelectedItem="{Binding SelectedEntry}" Height="280">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Czas" Binding="{Binding Timestamp, StringFormat=MM-dd HH:mm:ss}" Width="135"/>
+                            <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="130"/>
+                            <DataGridTextColumn Header="Polecenie" Binding="{Binding Command}" Width="*"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                    <TextBlock Text="{Binding SelectedEntry.RequestId, StringFormat=ID polecenia: {0}}" Style="{StaticResource SxCaption}" Margin="0,12,0,0"/>
+                    <TextBlock Text="{Binding SelectedEntry.ActionId}" Style="{StaticResource SxCaption}" Margin="0,16,0,8"/>
+                    <TextBox Text="{Binding SelectedEntry.Evidence, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" MaxHeight="200" VerticalScrollBarVisibility="Auto"/>
+                </StackPanel>
+            </Border>
+            <Border Style="{StaticResource SxCard}" Margin="0,0,0,16">
+                <StackPanel>
+                    <TextBlock Text="Historia rozmowy" Style="{StaticResource SxSectionTitle}"/>
+                    <ItemsControl ItemsSource="{Binding Conversation}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Margin="0,0,0,16">
+                                    <TextBlock Text="{Binding Role}" Foreground="{DynamicResource SxAccentCyan}" FontSize="12"/>
+                                    <TextBlock Text="{Binding Text}" TextWrapping="Wrap"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

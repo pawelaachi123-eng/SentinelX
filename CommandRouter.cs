@@ -14,7 +14,6 @@ public sealed class CommandRouter
     private readonly ConversationMemoryService memory;
     private string lastTopic = "";
     private DateTime lastTopicTime;
-    private DateTime? forgetAllRequestedAt;
 
     public CommandRouter(SystemMonitor systemMonitor, SystemInfoService systemInfo, LocalAiService localAi, ConversationMemoryService memory)
     { this.systemMonitor = systemMonitor; this.systemInfo = systemInfo; this.localAi = localAi; this.memory = memory; }
@@ -35,7 +34,7 @@ public sealed class CommandRouter
             catch (System.Net.Http.HttpRequestException) { return "Nie udało się odczytać modeli. Uruchom lokalną Ollama."; }
         }
         if (text is "anuluj" or "przerwij" or "przerwij odpowiedz")
-        { localAi.CancelCurrentRequest(); forgetAllRequestedAt = null; return "Przerwano."; }
+        { localAi.CancelCurrentRequest(); return "Przerwano."; }
         if (text is "ktora godzina" or "jaka jest godzina" or "godzina") return DateTime.Now.ToString("HH:mm");
         if (text is "jaka dzis data" or "jaka jest data" or "dzisiejsza data") return DateTime.Now.ToString("dddd, d MMMM yyyy", CultureInfo.GetCultureInfo("pl-PL"));
 
@@ -95,18 +94,8 @@ public sealed class CommandRouter
         if (text.StartsWith("zapamietaj ", StringComparison.Ordinal) || text.StartsWith("zapamietaj:", StringComparison.Ordinal))
         { memory.AddNote(command[(command.IndexOf(' ') + 1)..]); return StorageResult("Zapamiętane lokalnie."); }
         if (text is "status pamieci" or "ile pamietasz") return StorageResult($"Pamięć: {memory.Count} wpisów, w tym {memory.NoteCount} trwałych wspomnień.");
-        if (text is "wyczysc pamiec rozmowy") { memory.Clear(); lastTopic = ""; return StorageResult("Wyczyszczono historię rozmów. Trwałe wspomnienia i profil pozostały."); }
-        if (text is "usun wszystkie wspomnienia" or "wyczysc cala pamiec")
-        { forgetAllRequestedAt = DateTime.Now; return "To usunie lokalną historię rozmów, zapisane imię i wszystkie wspomnienia. Aby wykonać, wpisz „potwierdź usunięcie wspomnień” w ciągu 60 sekund."; }
-        if (text == "potwierdz usuniecie wspomnien")
-        {
-            if (!forgetAllRequestedAt.HasValue || DateTime.Now - forgetAllRequestedAt.Value > TimeSpan.FromSeconds(60))
-                return "Nie ma aktualnej prośby o usunięcie całej pamięci.";
-            forgetAllRequestedAt = null; memory.ClearAll(); lastTopic = "";
-            return StorageResult("Usunięto lokalną historię, profil i wspomnienia. Wcześniejsze eksporty pozostają w folderze eksportów.");
-        }
-        if (text.StartsWith("zapomnij ", StringComparison.Ordinal))
-        { int count = memory.Forget(command[(command.IndexOf(' ') + 1)..]); return StorageResult(count > 0 ? $"Usunięto pasujące zapisy: {count}." : "Nie znalazłem pasującego wspomnienia."); }
+        if (Services.Memory.MemoryActionService.IsMutation(command) || text == "potwierdz usuniecie wspomnien")
+            return "Operacje usuwania pamięci wymagają zgody w centrum poleceń. Nie wykonano zmian.";
         if (text is "eksportuj pamiec" or "eksportuj rozmowe")
         {
             try { return "Eksport lokalny zapisany: " + memory.Export(); }

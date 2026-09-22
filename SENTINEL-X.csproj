@@ -3,9 +3,14 @@
 	<PropertyGroup>
 		<OutputType>WinExe</OutputType>
 
-		<TargetFramework>net9.0-windows7.0</TargetFramework>
+		<TargetFramework>net9.0-windows</TargetFramework>
 
 		<UseWPF>true</UseWPF>
+        <EnableWindowsTargeting>true</EnableWindowsTargeting>
+        <LangVersion>13.0</LangVersion>
+        <ApplicationManifest>app.manifest</ApplicationManifest>
+        <ApplicationIcon>Assets/sentinel.ico</ApplicationIcon>
+        <NoWarn>$(NoWarn);WPF0001</NoWarn>
 
 		<Nullable>enable</Nullable>
 		<ImplicitUsings>enable</ImplicitUsings>
@@ -15,15 +20,19 @@
 
 		<PlatformTarget>x64</PlatformTarget>
 		<Prefer32Bit>false</Prefer32Bit>
-		<Version>0.83.0</Version>
+		<Version>0.85.0</Version>
 		<Description>Lokalny asystent i diagnostyka Windows</Description>
 	</PropertyGroup>
 
 	<ItemGroup>
+        <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.0" />
+        <PackageReference Include="OllamaSharp" Version="5.4.18" />
+        <!-- 5.x uses the stable IChatClient ABI required by existing Whisper.net 1.9.1. -->
 		<PackageReference Include="System.Speech" Version="9.0.0" />
 
 		<PackageReference Include="NAudio"
-						  Version="3.1.0" />
+						  Version="2.2.1" />
 
 		<PackageReference Include="Whisper.net"
 						  Version="1.9.1" />
@@ -42,5 +51,8 @@
 
 	</ItemGroup>
 
+    <ItemGroup>
+        <Resource Include="Assets/sentinel.ico" />
+    </ItemGroup>
 </Project>
 

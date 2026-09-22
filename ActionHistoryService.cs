@@ -29,6 +29,7 @@ namespace SentinelX
         public string Evidence { get; set; } =
             string.Empty;
 
+        public string RequestId { get; set; } = string.Empty;
         public string ParentActionId { get; set; } = string.Empty;
         public string SessionId { get; set; } = string.Empty;
         public long DurationMilliseconds { get; set; }
@@ -40,6 +41,7 @@ namespace SentinelX
     {
         private static readonly string sessionId = Guid.NewGuid().ToString("N");
         public string? LastStorageError { get; private set; }
+        public string? LastReadError { get; private set; }
         public string HistoryPath => historyPath;
         private readonly object syncRoot =
             new object();
@@ -234,6 +236,8 @@ namespace SentinelX
                 try
                 {
                     entry.SessionId = sessionId;
+                    if (entry.ActionType == "REQUEST") entry.RequestId = entry.ActionId;
+                    else Services.History.ActionEvidenceCapture.Record(entry);
                     string json =
                         JsonSerializer.Serialize(
                             entry,
@@ -322,6 +326,7 @@ namespace SentinelX
         {
             lock (syncRoot)
             {
+                LastReadError = null;
                 Dictionary<string, ActionHistoryEntry> latest =
                     new Dictionary<string, ActionHistoryEntry>(
                         StringComparer.OrdinalIgnoreCase);
@@ -360,6 +365,7 @@ namespace SentinelX
                                 string.IsNullOrWhiteSpace(
                                     entry.ActionId))
                             {
+                                LastReadError = "Wpis historii bez identyfikatora akcji.";
                                 continue;
                             }
 
@@ -367,13 +373,15 @@ namespace SentinelX
                             latest[entry.ActionId] =
                                 entry;
                         }
-                        catch
+                        catch (JsonException ex)
                         {
+                            LastReadError = "Uszkodzony wpis historii: " + ex.Message;
                         }
                     }
                 }
-                catch
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
                 {
+                    LastReadError = "Nie odczytano historii: " + ex.Message;
                 }
 
 

@@ -6,7 +6,7 @@ using System.Linq;
 namespace SentinelX;
 
 /// <summary>Presence detection only; does not change Windows Game Mode or process priority.</summary>
-public class GamingModeService
+public class GamingModeService : Services.Gaming.IGamingService
 {
     private readonly object gate = new();
     private long sampledAt = long.MinValue;

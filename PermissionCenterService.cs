@@ -23,6 +23,8 @@ namespace SentinelX
         public DateTime CreatedAt { get; init; } =
             DateTime.Now;
 
+        internal Func<CancellationToken, Task<ActionExecutionResult>>? CancellableExecutor { get; init; }
+
         internal Func<Task<ActionExecutionResult>> Executor
         {
             get;
@@ -38,6 +40,7 @@ namespace SentinelX
     public sealed class PermissionExecutionResult
     {
         public bool HadPendingAction { get; init; }
+        public bool ApprovalRejected { get; init; }
 
         public PendingPermissionAction? Action { get; init; }
 
@@ -45,7 +48,7 @@ namespace SentinelX
     }
 
 
-    public sealed class PermissionCenterService
+    public sealed class PermissionCenterService : Services.Permissions.IPermissionService
     {
         private readonly object syncRoot =
             new object();
@@ -148,13 +151,20 @@ namespace SentinelX
 
 
         public async Task<PermissionExecutionResult>
-            ConfirmAsync()
+            ConfirmAsync(CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             PendingPermissionAction? action;
 
 
             lock (syncRoot)
             {
+                if (pendingAction != null && !Core.ApprovalContext.Allows(pendingAction.ActionType))
+                    return new PermissionExecutionResult
+                    {
+                        HadPendingAction = true, Action = pendingAction, ApprovalRejected = true,
+                        Result = ActionExecutionResult.Failure("Ta zgoda wymaga jawnego potwierdzenia w oknie dla właściwej akcji.", "Nie wykonano akcji; oczekująca zgoda pozostała aktywna.")
+                    };
                 action =
                     pendingAction;
 
@@ -200,8 +210,9 @@ namespace SentinelX
             try
             {
                 result =
-                    await action.Executor();
+                    await (action.CancellableExecutor?.Invoke(cancellationToken) ?? action.Executor());
             }
+            catch (OperationCanceledException) { result = ActionExecutionResult.Cancelled(); }
             catch (Exception ex)
             {
                 result =

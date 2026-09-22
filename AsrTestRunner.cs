@@ -23,7 +23,7 @@ internal static class AsrTestRunner
         using (var reader = new WaveFileReader(wav))
         {
             var provider = reader.ToSampleProvider(); var data = new List<float>(); float[] buffer = new float[16000]; int count;
-            while ((count = provider.Read(buffer.AsSpan())) > 0) data.AddRange(buffer.Take(count)); samples = data.ToArray();
+            while ((count = provider.Read(buffer, 0, buffer.Length)) > 0) data.AddRange(buffer.Take(count)); samples = data.ToArray();
         }
         string models = Path.Combine(AppContext.BaseDirectory, "Models");
         using var asr = new WhisperFallbackAsrService(Path.Combine(models, "ggml-small.bin"));

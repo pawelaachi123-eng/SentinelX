@@ -427,3 +427,10 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+# Local validation outputs
+test-results/
+# NuGet/MSBuild generated outputs accidentally tracked at the repository root
+/*.csproj.nuget.*
+/project.assets.json
+/project.nuget.cache

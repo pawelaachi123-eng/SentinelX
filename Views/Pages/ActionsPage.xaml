@@ -1,0 +1,40 @@
+<UserControl xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:u="clr-namespace:SentinelX.Utilities" x:Class="SentinelX.Views.Pages.ActionsPage" u:PageTransitions.Enabled="True">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="28">
+            <TextBlock Text="Actions" Style="{StaticResource SxHeading}"/>
+            <TextBlock Text="Kontrola zadań, zgody i dowody wykonania. Anulowanie nie cofa ukończonych kroków." Style="{StaticResource SxCaption}" Margin="0,0,0,24"/>
+            <TextBlock Text="{Binding Status}" Style="{StaticResource SxCaption}" Margin="0,0,0,16"/>
+            <Border Style="{StaticResource SxCardElevated}" BorderBrush="{DynamicResource SxWarning}" Margin="0,0,0,16" Visibility="{Binding HasPermission, Converter={StaticResource BoolToVisibility}}">
+                <StackPanel>
+                    <TextBlock Text="Wymagana zgoda" Style="{StaticResource SxSectionTitle}"/>
+                    <TextBlock Text="{Binding PermissionSummary}" TextWrapping="Wrap" Margin="0,0,0,16"/>
+                    <WrapPanel>
+                        <Button Content="Anuluj" Command="{Binding CancelCommand}" Margin="0,0,8,0"/>
+                        <Button Content="Zatwierdź akcję" Command="{Binding ApproveCommand}" Style="{StaticResource SxPrimaryButton}"/>
+                    </WrapPanel>
+                </StackPanel>
+            </Border>
+            <Button Content="Anuluj bieżące zadania" Command="{Binding CancelCommand}" Margin="0,0,8,8"/>
+            <ItemsControl ItemsSource="{Binding Tasks}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border Style="{StaticResource SxCard}" Margin="0,0,0,12">
+                            <StackPanel>
+                                <DockPanel>
+                                    <TextBlock Text="{Binding Status}" Foreground="{Binding Status, Converter={StaticResource StatusBrush}}" FontWeight="SemiBold" DockPanel.Dock="Right"/>
+                                    <TextBlock Text="{Binding UserRequest}" TextWrapping="Wrap" FontWeight="SemiBold"/>
+                                </DockPanel>
+                                <TextBlock Text="{Binding ActionId}" Style="{StaticResource SxCaption}" Margin="0,8"/>
+                                <TextBlock Text="{Binding Phase}" Foreground="{DynamicResource SxAccentCyan}" TextWrapping="Wrap" Margin="0,0,0,8"/>
+                                <TextBlock Text="{Binding ElapsedMilliseconds, StringFormat=Czas wykonania: {0} ms}" Style="{StaticResource SxCaption}" Margin="0,0,0,12"/>
+                                <TextBlock Text="{Binding Evidence}" TextWrapping="Wrap"/>
+                                <TextBlock Text="{Binding StorageWarning}" Foreground="{DynamicResource SxWarning}" TextWrapping="Wrap"/>
+                                <TextBlock Text="{Binding Error}" Foreground="{DynamicResource SxError}" TextWrapping="Wrap"/>
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>
