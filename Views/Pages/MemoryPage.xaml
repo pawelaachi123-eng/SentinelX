@@ -24,7 +24,7 @@
                 </StackPanel>
             </Border>
 
-            <Border Style="{StaticResource SxCard}" Margin="0,0,0,16">
+            <Border Margin="0,0,0,16">
                 <Border.Style>
                     <Style TargetType="Border" BasedOn="{StaticResource SxCard}">
                         <Style.Triggers>
@@ -62,7 +62,7 @@
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
-            <TextBlock Text="Brak wspomnień do pokazania. Dodaj własne powyżej albo napisz w rozmowie: zapamiętaj …" Style="{StaticResource SxCaption}" Margin="0,0,0,16">
+            <TextBlock Text="Brak wspomnień do pokazania. Dodaj własne powyżej albo napisz w rozmowie: zapamiętaj …" Margin="0,0,0,16">
                 <TextBlock.Style>
                     <Style TargetType="TextBlock" BasedOn="{StaticResource SxCaption}">
                         <Setter Property="Visibility" Value="Collapsed"/>
