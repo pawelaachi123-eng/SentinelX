@@ -59,9 +59,9 @@ public sealed class MemoryActionService(ConversationMemoryService memory, IPermi
             CancellableExecutor = token =>
             {
                 token.ThrowIfCancellationRequested();
-                bool removed = memory.DeleteNote(noteId);
-                bool verified = removed ? memory.VerifyPersistedState(out string evidence) : false;
-                if (!removed) return Task.FromResult(ActionExecutionResult.Failure("Wspomnienie nie istniało w chwili zatwierdzenia. Nic nie usunięto.", "Odczyt przed wykonaniem nie znalazł wpisu o tym identyfikatorze."));
+                if (!memory.DeleteNote(noteId))
+                    return Task.FromResult(ActionExecutionResult.Failure("Wspomnienie nie istniało w chwili zatwierdzenia. Nic nie usunięto.", "Odczyt przed wykonaniem nie znalazł wpisu o tym identyfikatorze."));
+                bool verified = memory.VerifyPersistedState(out string evidence);
                 return Task.FromResult(verified
                     ? ActionExecutionResult.VerifiedSuccess("Usunięto jedno wspomnienie i sprawdzono zapis. Pozostałe wpisy i audyt zachowane.", evidence)
                     : ActionExecutionResult.Failure("Zmieniono pamięć procesu, ale nie potwierdzono zapisu. Stare dane mogą powrócić po restarcie.", evidence));
