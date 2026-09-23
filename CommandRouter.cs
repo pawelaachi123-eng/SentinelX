@@ -311,7 +311,7 @@ public sealed class CommandRouter
                 ? StorageResult($"Zapisano rozmowę lokalnie ({export.Turns} wypowiedzi). Plik nie został wysłany do internetu.\n{export.Path}\nSHA-256: {export.Sha256}")
                 : "Nie zapisano eksportu. " + export.Error;
         }
-        var search = Regex.Match(text, @"^szukaj w rozmowie[:\s]+(.+)$");
+        var search = Regex.Match(text, @"^(?:szukaj w rozmowie|znajdz w rozmowie|przeszukaj rozmowe)[:\s]+(.+)$");
         if (search.Success)
         {
             string query = search.Groups[1].Value.Trim().Trim('„', '”', '"');

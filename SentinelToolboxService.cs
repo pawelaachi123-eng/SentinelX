@@ -199,6 +199,13 @@ namespace SentinelX
             }
 
 
+            // Searching the conversation is a local memory feature — never route it to a web search.
+            string normalizedForSearch = ConversationMemoryService.Normalize(command);
+            if (normalizedForSearch.StartsWith("szukaj w rozmowie", StringComparison.Ordinal) ||
+                normalizedForSearch.StartsWith("znajdz w rozmowie", StringComparison.Ordinal) ||
+                normalizedForSearch.StartsWith("przeszukaj rozmowe", StringComparison.Ordinal))
+                return ToolboxCommandResult.NotHandled();
+
             // =====================================================
             // WEB SEARCH
             // =====================================================
