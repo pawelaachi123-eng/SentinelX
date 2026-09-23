@@ -908,7 +908,7 @@ public sealed class ConversationMemoryService : Services.Memory.IConversationMem
     }
 
     private static bool IsValid(ConversationMemoryEntry? entry) => entry != null && entry.Role is "user" or "assistant" or "note" && !string.IsNullOrWhiteSpace(entry.Text);
-    private static ConversationMemoryEntry Clone(ConversationMemoryEntry x) => new() { Timestamp = x.Timestamp, Role = x.Role, Text = x.Text, Source = x.Source, SessionId = x.SessionId, Id = x.Id, Category = x.Category, Pinned = x.Pinned, UpdatedAt = x.UpdatedAt, SupersededAt = x.SupersededAt };
+    private static ConversationMemoryEntry Clone(ConversationMemoryEntry x) => new() { Timestamp = x.Timestamp, Role = x.Role, Text = x.Text, Source = x.Source, SessionId = x.SessionId, Id = x.Id, Category = x.Category, Pinned = x.Pinned, UpdatedAt = x.UpdatedAt, SupersededAt = x.SupersededAt, ProjectId = x.ProjectId };
     internal static string Normalize(string text)
     {
         var result = new StringBuilder();
