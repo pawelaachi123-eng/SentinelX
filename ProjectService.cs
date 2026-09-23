@@ -175,7 +175,7 @@ public sealed class ProjectService
             if (project == null) return "Projekt nie istnieje — eksport przerwany, nic nie zapisano.";
             string directory = Path.Combine(Path.GetDirectoryName(storePath)!, "Exports");
             Directory.CreateDirectory(directory);
-            string safe = new(project.Name.Select(c => char.IsLetterOrDigit(c) ? c : '-').ToArray()).Trim('-');
+            string safe = new string(project.Name.Select(c => char.IsLetterOrDigit(c) ? c : '-').ToArray()).Trim('-');
             string path = Path.Combine(directory, $"projekt-{(safe.Length == 0 ? id : safe)}-{DateTime.Now:yyyyMMdd-HHmmss}-{Guid.NewGuid().ToString("N")[..6]}.json");
             var payload = new { FormatVersion = 1, ExportedAt = DateTime.Now, Project = Clone(project), Notes = projectNotes, Conversations = projectConversations };
             File.WriteAllText(path, JsonSerializer.Serialize(payload, jsonOptions), Encoding.UTF8);
