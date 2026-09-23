@@ -61,7 +61,7 @@ internal static class UtilityRegression
         Check(UtilityToolbox.FromRoman("MMXXVI") == "MMXXVI = 2026", "roman parsing");
         Check(UtilityToolbox.FromRoman("IIII").StartsWith("To nie jest poprawna"), "a non-canonical numeral must be refused");
         Check(UtilityToolbox.DescribeColor("1fa2c3").Contains("RGB(31, 162, 195)"), "hex colour conversion: " + UtilityToolbox.DescribeColor("1fa2c3"));
-        Check(UtilityToolbox.DescribeColor("ffffff").Contains("kontrast z czernią 21,0:1"), "white on black is 21:1");
+        Check(UtilityToolbox.DescribeColor("ffffff").Contains("z czernią 21,0:1"), "white against black must be 21:1, got " + UtilityToolbox.DescribeColor("ffffff"));
         Check(UtilityToolbox.Bmi("80", "180").StartsWith("BMI 24,7"), "BMI calculation: " + UtilityToolbox.Bmi("80", "180"));
         Check(UtilityToolbox.Bmi("80", "180").Contains("orientacyjnym"), "BMI must carry its honest disclaimer");
         Check(UtilityToolbox.Bmi("5", "180").StartsWith("Podaj wagę"), "implausible values must be refused");
