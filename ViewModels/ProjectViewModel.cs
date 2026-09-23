@@ -171,7 +171,7 @@ public partial class ProjectViewModel : ObservableObject, IDisposable
     [RelayCommand] private void WhereDidWeStop(ProjectCardViewModel? card)
     {
         if (card == null) return;
-        var lines = new List<string> { $"Projekt „{card.Name}" — ostatni punkt pracy (z zapisanych danych):" };
+        var lines = new List<string> { $"Projekt „{card.Name}” — ostatni punkt pracy (z zapisanych danych):" };
         var conversations = memory.GetConversationsForProject(card.Id);
         if (conversations.Count == 0) lines.Add("• Brak rozmów przypisanych do tego projektu.");
         else
