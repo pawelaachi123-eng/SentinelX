@@ -225,30 +225,54 @@ public static class UtilityToolbox
         ["ms"] = 1, ["kmh"] = 1d / 3.6, ["km/h"] = 1d / 3.6, ["mph"] = 0.44704, ["kn"] = 0.514444
     };
 
+    /// <summary>Polish and spelled-out unit names mapped onto the factor table.</summary>
+    private static readonly Dictionary<string, string> UnitAliases = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["milimetr"] = "mm", ["milimetry"] = "mm", ["centymetr"] = "cm", ["centymetry"] = "cm",
+        ["metr"] = "m", ["metry"] = "m", ["kilometr"] = "km", ["kilometry"] = "km",
+        ["cal"] = "in", ["cale"] = "in", ["stopa"] = "ft", ["stopy"] = "ft", ["jard"] = "yd", ["jardy"] = "yd",
+        ["mila"] = "mi", ["mile"] = "mi", ["mil"] = "mi",
+        ["gram"] = "g", ["gramy"] = "g", ["kilogram"] = "kg", ["kilogramy"] = "kg", ["kilo"] = "kg",
+        ["tona"] = "t", ["tony"] = "t", ["funt"] = "lb", ["funty"] = "lb", ["uncja"] = "oz", ["uncje"] = "oz",
+        ["litr"] = "l", ["litry"] = "l", ["mililitr"] = "ml", ["mililitry"] = "ml", ["galon"] = "gal", ["galony"] = "gal",
+        ["pinta"] = "pt", ["pinty"] = "pt",
+        ["bajt"] = "b", ["bajty"] = "b", ["kilobajt"] = "kb", ["megabajt"] = "mb", ["gigabajt"] = "gb", ["terabajt"] = "tb",
+        ["kbps"] = "kb", ["mbps"] = "mb", ["gbps"] = "gb",
+        ["kmh"] = "kmh", ["km/h"] = "kmh", ["kilometrow na godzine"] = "kmh", ["ms"] = "ms", ["m/s"] = "ms",
+        ["mph"] = "mph", ["mil na godzine"] = "mph", ["wezel"] = "kn", ["wezly"] = "kn", ["wezlów"] = "kn", ["knot"] = "kn",
+        ["c"] = "c", ["celsjusz"] = "c", ["celsius"] = "c", ["f"] = "f", ["fahrenheit"] = "f", ["fahrenheita"] = "f",
+        ["k"] = "k", ["kelwin"] = "k", ["kelvina"] = "k", ["kelvin"] = "k"
+    };
+
+    private static string Canonical(string unit)
+    {
+        string key = unit.Replace("°", "").Replace("/", "").Trim().ToLowerInvariant();
+        return UnitAliases.TryGetValue(key, out string? canonical) ? canonical : key;
+    }
+
     public static string ConvertUnit(double value, string from, string to)
     {
-        from = from.Replace("°", "").Trim().ToLowerInvariant();
-        to = to.Replace("°", "").Trim().ToLowerInvariant();
-        if (from is "c" or "celsius") return to switch
+        string fromKey = Canonical(from), toKey = Canonical(to);
+        if (fromKey == "c") return toKey switch
         {
-            "f" or "fahrenheit" => Format(value * 9d / 5d + 32d) + " °F",
-            "k" or "kelvin" => Format(value + 273.15d) + " K",
+            "f" => Format(value * 9d / 5d + 32d) + " °F",
+            "k" => Format(value + 273.15d) + " K",
             _ => UnknownUnit(to)
         };
-        if (from is "f" or "fahrenheit") return to switch
+        if (fromKey == "f") return toKey switch
         {
-            "c" or "celsius" => Format((value - 32d) * 5d / 9d) + " °C",
-            "k" or "kelvin" => Format((value - 32d) * 5d / 9d + 273.15d) + " K",
+            "c" => Format((value - 32d) * 5d / 9d) + " °C",
+            "k" => Format((value - 32d) * 5d / 9d + 273.15d) + " K",
             _ => UnknownUnit(to)
         };
-        if (from is "k" or "kelvin") return to switch
+        if (fromKey == "k") return toKey switch
         {
-            "c" or "celsius" => Format(value - 273.15d) + " °C",
-            "f" or "fahrenheit" => Format((value - 273.15d) * 9d / 5d + 32d) + " °F",
+            "c" => Format(value - 273.15d) + " °C",
+            "f" => Format((value - 273.15d) * 9d / 5d + 32d) + " °F",
             _ => UnknownUnit(to)
         };
-        if (!Factors.TryGetValue(from, out double fromFactor)) return UnknownUnit(from);
-        if (!Factors.TryGetValue(to, out double toFactor)) return UnknownUnit(to);
+        if (!Factors.TryGetValue(fromKey, out double fromFactor)) return UnknownUnit(from);
+        if (!Factors.TryGetValue(toKey, out double toFactor)) return UnknownUnit(to);
         return Format(value * fromFactor / toFactor) + " " + to;
     }
 
