@@ -147,7 +147,7 @@ public static class UiSmokeTestRunner
                 ("wybierz losowo: pizza, sushi", "Wybrano:"), ("bmi 80 180", "BMI 24,7"),
                 ("rzymskie 2026", "MMXXVI"), ("z rzymskich MMXXVI", "= 2026"), ("kolor 1fa2c3", "RGB(31, 162, 195)"),
                 ("jaki dzien tygodnia 1.1.2030", "wtorek"), ("plan dnia", "PLAN NA"), ("statystyki", "STATYSTYKI"),
-                ("skroty", "→"), ("pomoc", "CO UMIEM"), ("archiwa", "Archiw"), ("backup", "SHA-256"),
+                ("skroty", "→"), ("pomoc", "CO UMIEM"), ("archiwa", "archiw"), ("backup", "SHA-256"),
             })
             {
                 string toolResponse = (await memoryEngine.ExecuteAsync(command)).Text;
