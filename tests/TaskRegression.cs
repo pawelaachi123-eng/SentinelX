@@ -26,7 +26,8 @@ internal static class TaskRegression
         // Wednesday 16:00 → „w piątek” = this Friday; „w środę” alone = next week (7 days).
         Check(PolishTimeParser.TryParse("w piątek o 15", now, out var w8, out _) && w8 == new DateTime(2026, 9, 25, 15, 0, 0), "w piątek o 15");
         Check(PolishTimeParser.TryParse("w środę", now, out var w9, out _) && w9 == new DateTime(2026, 9, 30, 9, 0, 0), "w środę alone means next week");
-        Check(PolishTimeParser.TryParse("w środę o 18", now, out var w10, out _) && w10 == new DateTime(2026, 9, 30, 18, 0, 0), "same-day weekday with a past hour rolls to next week");
+        Check(PolishTimeParser.TryParse("w środę o 18", now, out var w10, out _) && w10 == new DateTime(2026, 9, 23, 18, 0, 0), "same-day weekday with a future hour stays today");
+        Check(PolishTimeParser.TryParse("w środę o 15", now, out var w10b, out _) && w10b == new DateTime(2026, 9, 30, 15, 0, 0), "same-day weekday with a past hour rolls to next week");
         Check(PolishTimeParser.TryParse("w piątek 15:00", now, out var w11, out _) && w11 == new DateTime(2026, 9, 25, 15, 0, 0), "weekday with HH:MM without o");
         Check(PolishTimeParser.TryParse("24.12 o 12", now, out var w12, out _) && w12 == new DateTime(2026, 12, 24, 12, 0, 0), "explicit date with time");
         Check(PolishTimeParser.TryParse("12.06 o 18", now, out var w13, out _) && w13.Month == 6 && w13.Hour == 18, "12.06 o 18 means June 12 at 18:00, never 12:06");
