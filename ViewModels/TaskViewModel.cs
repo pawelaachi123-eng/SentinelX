@@ -148,12 +148,17 @@ public partial class TaskViewModel : ObservableObject, IDisposable
 
     private void RefreshReminders()
     {
-        var reminders = tasks.GetReminders().Select(x => new ReminderItemViewModel
+        var now = DateTime.Now;
+        var reminders = tasks.GetReminders().Select(x =>
         {
-            Id = x.Id, Text = x.Text, NotifiedAt = x.NotifiedAt, Missed = x.Missed,
-            MetaText = x.NotifiedAt == null
-                ? $"za {(x.RemindAt - DateTime.Now).Days > 0 ? $"{(x.RemindAt - DateTime.Now).Days} d " : ""}{Math.Max(0, (int)(x.RemindAt - DateTime.Now).TotalHours)} h — {x.RemindAt:dd.MM.yyyy HH:mm}"
-                : $"{(x.Missed ? "⚠ przegapione (aplikacja była zamknięta)" : "dostarczone")} · termin {x.RemindAt:dd.MM.yyyy HH:mm}",
+            string meta;
+            if (x.NotifiedAt == null)
+            {
+                var span = x.RemindAt - now;
+                meta = $"za {(span.Days > 0 ? span.Days + " d " : "")}{Math.Max(0, (int)span.TotalHours)} h — {x.RemindAt:dd.MM.yyyy HH:mm}";
+            }
+            else meta = $"{(x.Missed ? "⚠ przegapione (aplikacja była zamknięta)" : "dostarczone")} · termin {x.RemindAt:dd.MM.yyyy HH:mm}";
+            return new ReminderItemViewModel { Id = x.Id, Text = x.Text, NotifiedAt = x.NotifiedAt, Missed = x.Missed, MetaText = meta };
         }).ToArray();
         Reminders.Clear(); foreach (var reminder in reminders) Reminders.Add(reminder);
     }
