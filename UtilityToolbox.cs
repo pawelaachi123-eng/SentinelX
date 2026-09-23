@@ -200,10 +200,10 @@ public static class UtilityToolbox
             if (text[position] == '(')
             {
                 position++;
-                double value = ParseAddSub();
+                double parenthesized = ParseAddSub();
                 if (position >= text.Length || text[position] != ')') throw new InvalidOperationException("brak nawiasu )");
                 position++;
-                return value;
+                return parenthesized;
             }
             int start = position;
             while (position < text.Length && (char.IsDigit(text[position]) || text[position] == '.')) position++;

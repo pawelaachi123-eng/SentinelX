@@ -16,7 +16,7 @@ internal static class MemoryArchiveRegression
         string memoryDirectory = Path.Combine(directory, "memory");
         string archiveDirectory = Path.Combine(directory, "archives");
         var memory = new ConversationMemoryService(memoryDirectory);
-        memory.AddUserMessage("Stare pytanie o dysk ZXCVBNM.");
+        memory.AddUserMessage("Stare pytanie o dysk ZXCVBNM.", "TEST");
         memory.AddAssistantMessage("Dysk jest w porządku ZXCVBNM.");
         Check(memory.AddNote("Wspomnienie, które musi przetrwać archiwizację ZXCVBNM") == NoteAddResult.Added, "the fixture note must be added");
         string month = DateTime.Now.ToString("yyyy-MM");
@@ -46,7 +46,7 @@ internal static class MemoryArchiveRegression
         Check(archives.List().Single().Sha256.Length == 64, "the list must recompute the archive hash from disk");
 
         // Retention window: 0 keeps everything; 1 keeps the previous month live.
-        memory.AddUserMessage("Nowa rozmowa po archiwizacji ZXCVBNM.");
+        memory.AddUserMessage("Nowa rozmowa po archiwizacji ZXCVBNM.", "TEST");
         Check(archives.ArchiveDue(0).Count == 0, "0 months must disable automatic archiving");
         Check(archives.ArchiveDue(1).Count == 0, "a month inside the window must stay live");
         archives.NowProvider = () => DateTime.Now.AddMonths(2);

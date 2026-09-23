@@ -1,6 +1,6 @@
 # Trwały backlog rozwoju SentinelX
 
-Stan na 2026-09-22. Zasada: każda pojedyncza pozycja znika z listy dopiero, gdy jest **zbudowana i przetestowana na Windows (CI)**, nie „gdy wygląda na zrobioną".
+Stan na 2026-09-23. Zasada: każda pojedyncza pozycja znika z listy dopiero, gdy jest **zbudowana i przetestowana na Windows (CI)**, nie „gdy wygląda na zrobioną".
 
 ## Gotowe i zweryfikowane (0.85 i wcześniejsze)
 
@@ -49,10 +49,24 @@ Stan na 2026-09-22. Zasada: każda pojedyncza pozycja znika z listy dopiero, gdy
 - Paleta poleceń: 13 nowych wpisów, w tym brakujące strony Pamięć/Projekty/Zadania/Diagnostyka.
 - Zestawy `tests/AiStreamRegression.cs` + `tests/DiagnosticSnapshotRegression.cs` w `--ui-smoke` (CI).
 
+## Gotowe w 0.90 (ten przyrost — patrz git)
+
+- **Rozumienie literówek** (`CommandUnderstanding`): Damerau-Levenshtein, progi 0,80 / margines 0,08, naprawa frazy i pojedynczych słów, jawny komunikat „Zrozumiałem jako: …”. Katalog napraw (`Core/IntentCatalog`) **nie zawiera poleceń niszczących** — pilnuje tego test.
+- **Skróty** (18, jawne, komenda `skróty`): cs, dc, st, ch, nt, kl, yt, mz, dk, sp, sn, sns, zs, tp, ti, zd, pr, pm.
+- **Uruchamianie programów z dowodem**: 7 tytułów Steam (CS2, Dota 2, Cyberpunk 2077, Wiedźmin 3, Elden Ring, Terraria, Rust), aplikacje po ścieżce instalacji (VS Code, VLC, OBS, Firefox, Edge, Telegram), systemowe (Paint, Terminal), reszta przez skróty menu Start.
+- **24 narzędzia offline** (`UtilityToolbox`, czyste funkcje): kalkulator z własnym parserem, procenty, VAT, przelicznik jednostek i temperatur, daty i dni tygodnia, hasło (stock crypto), UUID, licznik słów, Base64 w obie strony, SHA-256, walidacja i formatowanie JSON, slug, transliteracja, wielkie/małe litery, odwracanie tekstu, losowanie, kostki, wybór losowy, BMI, liczby rzymskie w dwie strony, kolor (RGB/HSL/kontrast WCAG).
+- **5 funkcji przekrojowych** (`WorkspaceInsightsService`): `plan dnia`, `szukaj wszystkiego: fraza`, `statystyki`, `backup` z manifestem i odczytem zwrotnym, `pomoc` / `co umiesz`.
+- **Własny folder i comiesięczne archiwum pamięci** (`MemoryArchiveService`): `Memory/Archives/RRRR-MM/` (JSON + Markdown + SHA-256), usunięcie z magazynu dopiero po zgodnym odczycie zwrotnym, ustawienie „Archiwum rozmów (miesiące)” (domyślnie 1), komendy `archiwizuj rozmowy` / `archiwa` / `usuń archiwum RRRR-MM`, odmowa w trybie prywatnym, wspomnienia i profil nietknięte.
+- **Pliki do pobrania z GitHub**: `.github/workflows/release.yml` (tag `v*.*.*` i ręczny dispatch) publikuje portable ZIP, instalator EXE, `SHA256SUMS.txt`, `BUILD.txt`.
+- Zestawy `tests/UnderstandingRegression.cs`, `tests/UtilityRegression.cs`, `tests/MemoryArchiveRegression.cs` w `--ui-smoke` (CI) + 27 dodatkowych sprawdzeń end-to-end przez prawdziwy silnik czatu.
+- Dokument `docs/ARCHITECTURE.md`: warstwy, ścieżka polecenia, reguły dowodów, granice.
+
 ## Priorytet P0 — kolejny przyrost
 
 1. **Pliki**: plan porządkowania folderu z podglądem przed wykonaniem, zbiorcze zmiany nazw z podglądem, duplikaty po treści (SHA-256), usuwanie do Kosza jako domyślne.
 2. **Sekwencje działań**: nazwane kroki, plan z podglądem, statusy kroków, zatrzymanie na błędzie, wznowienie tam, gdzie to sensowne.
+3. **Panel archiwum w UI**: strona/panel z listą archiwów (miesiąc, rozmowy, wypowiedzi, rozmiar, hash), podglądem Markdowna i usuwaniem — dziś archiwum działa z czatu i z ustawień, ale nie ma własnego widoku.
+4. **Podpisywanie buildów**: certyfikat (płatny) albo jawnie opisana ścieżka bez podpisu z instrukcją odblokowania SmartScreen; dziś pliki są niepodpisane i tak jest opisane.
 
 ## Priorytet P1
 
@@ -60,6 +74,9 @@ Stan na 2026-09-22. Zasada: każda pojedyncza pozycja znika z listy dopiero, gdy
 - Tryb gry: zawieszanie indeksowania/ciężkich zadań, profil modeli z histerezą przełączania (progi + opóźnienie), zwalnianie modelu opcjonalne.
 - Sekwencje działań: nazwane kroki, plan z podglądem, statusy kroków, stop na błędzie, wznowienie tam gdzie sensowne.
 - Rozmowa: edycja wypowiedzi i ponowne wysłanie z oznaczeniem alternatywy; zakładanie odgałęzień rozmowy.
+- Wyszukiwanie (wspomnienia, rozmowa, `szukaj wszystkiego`) z tolerancją literówek — dziś naprawa dotyczy poleceń, nie treści wyszukiwania.
+- Narzędzia: przelicznik walut (wymaga kursu — offline nieuczciwe), własne stawki VAT (8/5/0%), przywracanie archiwum do nowej rozmowy, skróty konfigurowalne przez użytkownika.
+- Rozbicie `CommandRouter` (510 linii) na osobne moduły: pamięć, projekty/zadania, snapshoty, narzędzia — dopiero przy zielonym CI.
 
 ## Priorytet P2
 
@@ -72,5 +89,9 @@ Stan na 2026-09-22. Zasada: każda pojedyncza pozycja znika z listy dopiero, gdy
 - Brak lokalnego kompilatora .NET w środowisku deweloperskim — weryfikacja wyłącznie przez CI na `windows-latest` (opis w README).
 - Build niepodpisany: SmartScreen może ostrzegać (zgodnie z README; nie wyłączamy zabezpieczeń).
 - Ollama, mikrofon i gry wymagają testów na komputerze docelowym; CI nie ma mikrofonu ani gier.
-- Wyszukiwanie we wspomnieniach i w rozmowie jest tekstowe (normalizacja, bez fuzzy/typo-tolerance) — literówki mogą nie trafić.
+- Wyszukiwanie **treści** (wspomnienia, rozmowa, `szukaj wszystkiego`) jest tekstowe (normalizacja, bez fuzzy) — literówki mogą nie trafić. Tolerancja literówek dotyczy **poleceń**, nie wyników wyszukiwania.
+- Naprawa poleceń działa na stałym katalogu 184 fraz: nie rozumie odmiany ani kontekstu, a przy niejednoznaczności celowo nic nie poprawia.
+- `przelicz` nie przelicza walut, brak zrzutów ekranu i sterowania głośnością — świadomie odłożone, nie „zrobione częściowo”.
+- VAT liczy tylko stawkę 23%.
+- Archiwum rozmów jest kopią do odczytu: nie ma przywracania do aktywnej rozmowy.
 - Streaming AI nie jest weryfikowany z żywym modelem w CI (brak Ollama w środowisku testowym) — transport i logika fragmentów są testowane na wstrzykniętym HTTP.
