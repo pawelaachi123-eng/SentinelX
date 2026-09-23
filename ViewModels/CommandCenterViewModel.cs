@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Text;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SentinelX.Core;
@@ -28,6 +29,12 @@ public partial class CommandCenterViewModel : ObservableObject, IDisposable
     [ObservableProperty] private string status = "Lokalny asystent · gotowy na polecenie";
     [ObservableProperty] private string conversationTitle = "";
     [ObservableProperty] private bool isPrivateMode;
+    [ObservableProperty] private bool isStreaming;
+    [ObservableProperty] private string streamingText = "";
+    private readonly StringBuilder pendingChunks = new();
+    private readonly object streamGate = new();
+    private bool streamPending;
+    private string lastUserInput = "";
     public CommandCenterViewModel(IActionEngine engine, IVoiceService voice, IUiDispatcher dispatcher,
         SystemViewModel system, VoiceViewModel voiceViewModel, IHistoryService history, ConversationMemoryService memory, TaskService tasks)
     {
@@ -70,7 +77,40 @@ public partial class CommandCenterViewModel : ObservableObject, IDisposable
     {
         var input = UserInput.Trim(); if (input.Length == 0) return;
         if (engine.IsBusy || engine.IsStopped) { Status = engine.IsStopped ? "STOP jest aktywny. Wznów Sentinel przed wysłaniem." : "Trwa zadanie. Szkic pozostaje w polu wpisywania."; return; }
-        UserInput = ""; await SubmitAsync(input);
+        string normalized = CommandText.Normalize(input);
+        UserInput = "";
+        if (normalized is "ponow" or "ponow odpowiedz" or "ponow to" or "sproboj jeszcze raz") { await RetryAsync(); return; }
+        await SubmitAsync(input);
+    }
+    /// <summary>Repeats the last command verbatim and marks the answer as a retry — nothing is invented.</summary>
+    [RelayCommand]
+    private async Task RetryAsync()
+    {
+        if (lastUserInput.Length == 0) { Status = "Nie mam czego ponowić — w tej sesji nie wysłano jeszcze polecenia."; return; }
+        if (engine.IsBusy || engine.IsStopped) { Status = engine.IsStopped ? "STOP jest aktywny. Wznów Sentinel przed ponowieniem." : "Trwa zadanie — najpierw je zatrzymaj."; return; }
+        Status = "Ponawiam ostatnie polecenie. Odpowiedź modelu może się różnić od poprzedniej.";
+        await SubmitAsync(lastUserInput, isRetry: true);
+    }
+    /// <summary>Always reachable: stops the running generation and keeps whatever the model already produced.</summary>
+    [RelayCommand]
+    private void StopGeneration()
+    {
+        if (!engine.IsBusy) { Status = "Nic teraz nie jest generowane."; return; }
+        engine.Cancel();
+        Status = "Wysłałem sygnał zatrzymania. Częściowa odpowiedź zostanie pokazana i oznaczona jako urwana.";
+    }
+    private void StreamChunk(string chunk)
+    {
+        lock (streamGate) { pendingChunks.Append(chunk); if (streamPending) return; streamPending = true; }
+        dispatcher.Post(FlushStream);
+    }
+    private void FlushStream()
+    {
+        string chunk;
+        lock (streamGate) { chunk = pendingChunks.ToString(); pendingChunks.Clear(); streamPending = false; }
+        if (chunk.Length == 0) return;
+        StreamingText += chunk;
+        IsStreaming = true;
     }
     [RelayCommand] private Task QuickCommandAsync(string input) => SubmitAsync(input);
     [RelayCommand] private Task ApproveAsync() => SubmitAsync("potwierdz");
@@ -83,12 +123,15 @@ public partial class CommandCenterViewModel : ObservableObject, IDisposable
             ? "Tryb prywatny WŁĄCZONY. Treść rozmowy nie jest zapisywana — po restarcie nie będzie czego przywrócić."
             : "Tryb prywatny WYŁĄCZONY. Zapis rozmów zgodny z ustawieniami prywatności.";
     }
-    private async Task SubmitAsync(string input, bool fromVoice = false)
+    private async Task SubmitAsync(string input, bool fromVoice = false, bool isRetry = false)
     {
-        Messages.Add(new("user", input, DateTime.Now));
+        lastUserInput = input;
+        Messages.Add(new("user", input + (isRetry ? "  (ponowione)" : ""), DateTime.Now));
         Status = "Przetwarzanie polecenia…";
-        var result = await engine.ExecuteAsync(input, fromVoice: fromVoice);
-        Messages.Add(new("sentinel", result.Text, DateTime.Now, result.Action));
+        IntentResult result;
+        try { result = await engine.ExecuteAsync(input, fromVoice: fromVoice, onDelta: StreamChunk); }
+        finally { lock (streamGate) { pendingChunks.Clear(); streamPending = false; } IsStreaming = false; StreamingText = ""; }
+        Messages.Add(new("sentinel", isRetry ? result.Text + "\n\n[Ponowiona odpowiedź na to samo polecenie — model mógł odpowiedzieć inaczej.]" : result.Text, DateTime.Now, result.Action));
         while (Messages.Count > 300) Messages.RemoveAt(0);
         Status = result.Action?.StorageWarning is { Length: > 0 } warning ? warning : history.StorageError ?? (engine.IsStopped ? "STOP awaryjny · nowe akcje zablokowane" : "Gotowe · wyniki akcji znajdziesz w Historii");
         if (fromVoice) voice.Speak(result.Text);
@@ -98,6 +141,7 @@ public partial class CommandCenterViewModel : ObservableObject, IDisposable
         engine.Changed -= Sync; voice.CommandRecognized -= Recognized;
         memory.Changed -= MemorySync; memory.SessionChanged -= SessionSync;
         tasks.ReminderFired -= ReminderFired;
+        lock (streamGate) { pendingChunks.Clear(); streamPending = false; }
         memory.FlushDraft();
     }
 }

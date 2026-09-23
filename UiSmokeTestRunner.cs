@@ -33,6 +33,8 @@ public static class UiSmokeTestRunner
             await Tests.MemoryRegression.RunAsync(Path.Combine(output, "memory"));
             await Tests.ProjectRegression.RunAsync(Path.Combine(output, "projects"));
             await Tests.TaskRegression.RunAsync(Path.Combine(output, "tasks"));
+            await Tests.DiagnosticSnapshotRegression.RunAsync(Path.Combine(output, "snapshots"));
+            await Tests.AiStreamRegression.RunAsync(Path.Combine(output, "ai-stream"));
             var vm = services.GetRequiredService<MainViewModel>();
             vm.Readiness.IsOpen = false;
             if (vm.InitializeCommand.IsRunning) await vm.InitializeCommand.ExecutionTask!;
@@ -100,6 +102,40 @@ public static class UiSmokeTestRunner
             taskVm.RefreshCommand.Execute(null);
             if (!taskVm.Reminders.Any(x => x.Text.Contains("ZXCVBNM")))
                 throw new InvalidOperationException("Reminder created in chat did not reach the Tasks page.");
+            // Diagnostic snapshots: chat capture, page roundtrip and a real comparison.
+            var snapshotService = services.GetRequiredService<DiagnosticSnapshotService>();
+            var diagnosticVm = services.GetRequiredService<DiagnosticViewModel>();
+            var captured = await memoryEngine.ExecuteAsync("snapshot");
+            if (!captured.Text.Contains("Zapisano odczyt"))
+                throw new InvalidOperationException("Chat snapshot command did not store a reading: " + captured.Text);
+            if (!(await memoryEngine.ExecuteAsync("snapshoty")).Text.Contains("Zapisane odczyty"))
+                throw new InvalidOperationException("Chat snapshot list is not wired.");
+            await snapshotService.CaptureAsync("smoke porównanie B");
+            diagnosticVm.RefreshCommand.Execute(null);
+            if (diagnosticVm.Items.Count < 2)
+                throw new InvalidOperationException("Readings captured in chat did not reach the Diagnostics page.");
+            diagnosticVm.FirstSnapshot = diagnosticVm.Items[^2];
+            diagnosticVm.SecondSnapshot = diagnosticVm.Items[^1];
+            diagnosticVm.CompareCommand.Execute(null);
+            if (!diagnosticVm.HasComparison || diagnosticVm.Comparison.Length == 0)
+                throw new InvalidOperationException("Snapshot comparison did not produce a report.");
+            if (!diagnosticVm.Comparison.Contains("Porównanie snapshotów"))
+                throw new InvalidOperationException("The comparison report lost its header.");
+            // Conversation tools: in-conversation search and a verified Markdown export.
+            if (!(await memoryEngine.ExecuteAsync("szukaj w rozmowie: snapshot")).Text.Contains("Znalezione w tej rozmowie"))
+                throw new InvalidOperationException("In-conversation search is not wired.");
+            if (!(await memoryEngine.ExecuteAsync("eksportuj rozmowę markdown")).Text.Contains("SHA-256"))
+                throw new InvalidOperationException("Conversation Markdown export did not produce a verified file.");
+            // Streaming surface: the stop control must answer honestly when nothing is generating.
+            chat.StopGenerationCommand.Execute(null);
+            if (!chat.Status.Contains("Nic teraz nie jest generowane"))
+                throw new InvalidOperationException("Stop generation must say when nothing is running: " + chat.Status);
+            int messagesBeforeRetry = chat.Messages.Count;
+            await chat.RetryCommand.ExecuteAsync(null);
+            if (chat.Messages.Count < messagesBeforeRetry + 2)
+                throw new InvalidOperationException("Retry must add the repeated command and a new answer.");
+            if (!chat.Messages[^2].Content.Contains("ponowione"))
+                throw new InvalidOperationException("A retried command must be visibly marked as a retry.");
             var engine = services.GetRequiredService<IActionEngine>();
             await engine.ExecuteAsync("zamknij notatnik"); // requests permission only; never closes a process in CI.
             vm.SelectedItem = vm.NavItems[^1];

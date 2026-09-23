@@ -71,6 +71,7 @@
                     </TextBlock.Style>
                 </TextBlock>
                 <ScrollViewer VerticalScrollBarVisibility="Auto" u:ChatScroll.Follow="True">
+                    <StackPanel>
                     <ItemsControl ItemsSource="{Binding Messages}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
@@ -119,6 +120,16 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
+                    <Border Padding="14,12" Margin="0,0,0,12" MaxWidth="740" HorizontalAlignment="Left" Background="{DynamicResource SxSurfaceActive}" CornerRadius="4,16,16,16" Visibility="{Binding IsStreaming, Converter={StaticResource BoolToVisibility}}">
+                        <StackPanel>
+                            <DockPanel Margin="0,0,0,8">
+                                <TextBlock Text="generowanie · możesz zatrzymać" Foreground="{DynamicResource SxTextSecondary}" FontSize="10" DockPanel.Dock="Right" Margin="24,0,0,0"/>
+                                <TextBlock Text="sentinel" Foreground="{DynamicResource SxAccentCyan}" FontSize="11" FontWeight="SemiBold"/>
+                            </DockPanel>
+                            <TextBlock Text="{Binding StreamingText}" TextWrapping="Wrap" LineHeight="22"/>
+                        </StackPanel>
+                    </Border>
+                    </StackPanel>
                 </ScrollViewer>
             </Grid>
         </Border>
@@ -159,7 +170,10 @@
                             <KeyBinding Key="Enter" Command="{Binding SendMessageCommand}"/>
                         </TextBox.InputBindings>
                     </TextBox>
-                    <Button Grid.Column="2" Content="Przerwij" Command="{Binding CancelCommand}" Style="{StaticResource SxGhostButton}"/>
+                    <StackPanel Grid.Column="2" Orientation="Horizontal">
+                        <Button Content="Ponów" Command="{Binding RetryCommand}" Style="{StaticResource SxGhostButton}" Margin="0,0,6,0" ToolTip="Powtarza ostatnie polecenie; odpowiedź może się różnić"/>
+                        <Button Content="Zatrzymaj generowanie" Command="{Binding StopGenerationCommand}" Style="{StaticResource SxDangerButton}" IsEnabled="{Binding IsBusy}" ToolTip="Przerywa odpowiedź AI; to, co model już napisał, zostanie pokazane"/>
+                    </StackPanel>
                     <Button Grid.Column="3" Content="Wyślij  ↗" Command="{Binding SendMessageCommand}" Style="{StaticResource SxPrimaryButton}" Margin="8,0,0,0"/>
                 </Grid>
             </Border>

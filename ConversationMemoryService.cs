@@ -68,6 +68,12 @@ public enum NoteAddResult { Added, Duplicate, Limit, Invalid, Disabled, StaleDup
 /// <summary>One line of the explainable context trace: what reached the model and why.</summary>
 public sealed record ContextSlice(string Kind, string Id, string Label, string Reason);
 
+/// <summary>Result of a conversation export: path + read-back hash, or the honest reason nothing was written.</summary>
+public sealed record ConversationExport(string? Path, string Sha256, int Turns, string Error)
+{
+    public bool Success => Path != null && Error.Length == 0;
+}
+
 public sealed record ImportPreview(bool Valid, string Message, int NotesToAdd, int Duplicates, int Invalid, int ProfileKeys);
 
 /// <summary>Bounded conversation history and separate durable explicit memories, stored only locally.</summary>
@@ -461,6 +467,62 @@ public sealed class ConversationMemoryService : Services.Memory.IConversationMem
     public IReadOnlyList<ConversationMemoryEntry> GetAllEntries()
     {
         lock (syncRoot) return state.Entries.Select(Clone).ToArray();
+    }
+
+    /// <summary>Searches only the ACTIVE conversation; normalized text match, newest first, honest about what was not found.</summary>
+    public IReadOnlyList<ConversationMemoryEntry> SearchConversation(string query, int maxResults = 15)
+    {
+        string needle = Normalize(query ?? "");
+        if (needle.Length == 0) return [];
+        lock (syncRoot) return state.Entries
+            .Where(x => x.SessionId == state.ActiveSessionId && Normalize(x.Text).Contains(needle, StringComparison.Ordinal))
+            .OrderByDescending(x => x.Timestamp)
+            .Take(Math.Clamp(maxResults, 1, 50))
+            .Select(Clone).ToArray();
+    }
+
+    /// <summary>Writes the active conversation to a local Markdown file and proves it with a read-back hash.</summary>
+    public ConversationExport ExportConversationMarkdown(string? directory = null)
+    {
+        if (PrivateMode) return new(null, "", 0, "Tryb prywatny jest włączony — ta rozmowa nie jest nigdzie zapisywana, więc nie ma czego wyeksportować.");
+        string title;
+        string markdown;
+        ConversationMemoryEntry[] turns;
+        lock (syncRoot)
+        {
+            turns = state.Entries.Where(x => x.SessionId == state.ActiveSessionId).OrderBy(x => x.Timestamp).Select(Clone).ToArray();
+            title = state.Conversations.FirstOrDefault(x => x.Id == state.ActiveSessionId)?.Title ?? "Nowa rozmowa";
+        }
+        if (turns.Length == 0)
+            return new(null, "", 0, "Ta rozmowa nie ma zapisanych wypowiedzi (zapis rozmów może być wyłączony w ustawieniach prywatności albo to nowa sesja).");
+        var builder = new StringBuilder();
+        builder.AppendLine("# Rozmowa: " + title);
+        builder.AppendLine();
+        builder.AppendLine($"- Wyeksportowano: {DateTime.Now:yyyy-MM-dd HH:mm:ss} (czas lokalny)");
+        builder.AppendLine($"- Wypowiedzi: {turns.Length}");
+        builder.AppendLine("- Eksport lokalny. Plik zawiera treść rozmowy — traktuj go jak dane prywatne.");
+        builder.AppendLine();
+        foreach (var turn in turns)
+        {
+            string who = turn.Role == "user" ? "Ja" : "Sentinel X";
+            builder.AppendLine("**" + who + "** · " + turn.Timestamp.ToString("dd.MM.yyyy HH:mm") + " · " + turn.Source);
+            builder.AppendLine();
+            builder.AppendLine(turn.Text);
+            builder.AppendLine();
+        }
+        markdown = builder.ToString();
+        try
+        {
+            string target = Path.Combine(directory ?? Path.Combine(AppPaths.Root, "Reports"));
+            Directory.CreateDirectory(target);
+            string path = Path.Combine(target, $"rozmowa-{DateTime.Now:yyyyMMdd-HHmmss}-{Guid.NewGuid().ToString("N")[..6]}.md");
+            File.WriteAllText(path, markdown, Encoding.UTF8);
+            string readBack = File.ReadAllText(path, Encoding.UTF8);
+            if (readBack != markdown) { try { File.Delete(path); } catch { } return new(null, "", turns.Length, "Zapisany plik nie zgadza się z odczytem kontrolnym — eksport odrzucony."); }
+            return new(path, Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(readBack))), turns.Length, "");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        { return new(null, "", turns.Length, "Nie udało się zapisać eksportu: " + ex.Message); }
     }
 
     public string GetRecentContext(int maxEntries = 24) => BuildAiContext(includeRecent: true, maxEntries);

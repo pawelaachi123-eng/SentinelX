@@ -1,13 +1,27 @@
-# SENTINEL X 0.88 — Windows / MVVM
+# SENTINEL X 0.89 — Windows / MVVM
 
 Lokalny asystent Windows 10/11, C# 13, .NET 9, WPF. Nowe GUI jest domyślnym interfejsem. Poprzedni interfejs i jego funkcje nadal są dostępne przez `--legacy`.
+
+## Nowe w 0.89 — strumieniowanie AI, odczyty diagnostyczne i narzędzia rozmowy
+
+- **Odpowiedzi AI płyną na ekran w trakcie generowania** (`/api/chat` z `stream: true`, NDJSON czytany linia po linii). Ukryte rozumowanie modelu (`<think>…</think>`) jest odfiltrowywane **przyrostowo** — także wtedy, gdy znacznik zostanie przecięty między dwoma fragmentami, więc brudnopis modelu nigdy nie trafia do czatu.
+- **Przycisk „Zatrzymaj generowanie” jest widoczny zawsze**, nie tylko w trakcie pracy. Zatrzymanie nie usuwa tekstu: to, co model zdążył napisać, zostaje pokazane i oznaczone jako urwane, a odpowiedź **nie** jest oznaczana jako udana.
+- **Ponowienie odpowiedzi** (`ponów` albo przycisk): powtarza ostatnie polecenie dosłownie i oznacza wynik jako ponowiony — bez udawania, że to ta sama odpowiedź.
+- **Strona „Diagnostyka” (12. w shellu):** zapisywanie odczytów stanu (dyski, usługi, zdarzenia, sieć, metryki), **porównanie dwóch odczytów** linia po linii (zmienione / pojawiło się / zniknęło / sekcja nieodczytana), eksport porównania do Markdown + JSON z odczytem zwrotnym i SHA-256, usuwanie pojedynczego odczytu. Limit 20 odczytów — najstarsze są usuwane automatycznie, magazyn `snapshots.json` ma te same gwarancje co pozostałe (zapis atomowy, kopia uszkodzonego pliku).
+- **Porównanie nie wyjaśnia przyczyny** i nie jest diagnozą kondycji sprzętu — ten komunikat jest wbudowany w sam raport, nie tylko w dokumentację.
+- **Narzędzia rozmowy:** `szukaj w rozmowie: fraza` (wyłącznie aktywna rozmowa, dopasowanie po normalizacji — bez literówek i odmiany, co jest mówione wprost) oraz `eksportuj rozmowę markdown` (plik lokalny z treścią rozmowy, odczyt zwrotny + SHA-256; w trybie prywatnym eksport jest odmawiany, bo nie ma czego zapisywać).
+- **Komendy:** `snapshot`, `snapshoty`, `porównaj snapshoty [N M]`, `eksportuj porównanie`, `usuń snapshot N`.
+- **Paleta poleceń (Ctrl+K)** dostała 13 nowych wpisów, w tym brakujące strony (Pamięć, Projekty, Zadania, Diagnostyka) — funkcje, których nie da się znaleźć, praktycznie nie istnieją.
+- Nowe zestawy regresji `tests/AiStreamRegression.cs` (kolejność fragmentów, filtrowanie `<think>` przeciętego między fragmentami, zatrzymanie w połowie, awaria strumienia → zapasowy model, linia błędu w strumieniu) i `tests/DiagnosticSnapshotRegression.cs` (porównanie na syntetycznych odczytach, trwałość, limit, eksport, uszkodzony magazyn) — oba odpalane w CI.
+
+Pozostały zakres (pliki: plan porządkowania i duplikaty; sekwencje działań; alerty progów) — w [docs/BACKLOG.md](docs/BACKLOG.md), jako kolejne przyrosty, nie obietnice.
 
 ## Nowe w 0.88 — zadania i przypomnienia
 
 - **Nowa strona „Zadania” (11. w shellu):** zadania z priorytetem (niski/normalny/wysoki), terminem, opcjonalnym projektem i statusami `otwarte → w toku → zrobione` (z powrotem); filtry Dzisiaj / Wszystkie / Przeterminowane / Zrobione; edycja tytułu i terminu; kasowanie pojedynczego wpisu, jawnie i nieodwracalnie opisane.
 - **Polski parser terminów** działający offline: `za 30 minut`, `za 2 godziny`, `za pół godziny`, `dziś o 19`, `jutro o 18` (bez godziny → 9:00 i tak jest pokazane), `pojutrze`, `w piątek o 15` (najbliższy; ten sam dzień tygodnia bez godziny → następny tydzień), `24.12 o 12` (bez roku → najbliższa taka data), `15:30` samo. Każdy wynik zamieniany jest na **konkretną, widoczną datę i godzinę** przed zapisem.
 - **Przypomnienia z czatu są accept-only:** `przypomnij mi jutro o 18 o raporcie` wraca propozycją z rozstrzeloną datą — dopiero odpowiedź „tak” zapisuje; „nie” anuluje; oczekiwanie wygasa po 5 minutach. Z panelu Zadania przypomnienie zapisuje się od razu, pod polem zawsze widać rozstrzeloną datę.
-- **Brak przypomnień w szatach graficznych:** aplikacja przypomina tylko, gdy jest uruchomiona. Wszystko przeterminowane podczas zamknięcia zgłasza się przy starcie jako **przegapione** z widocznym oznaczeniem — nigdy po cichu, nigdy z udawaniem, że zadziałało.
+- **Przypomnienia tylko przy uruchomionej aplikacji:** Sentinel nie udaje mechanizmu systemowego. Wszystko przeterminowane podczas zamknięcia zgłasza się przy starcie jako **przegapione** z widocznym oznaczeniem — nigdy po cichu, nigdy z udawaniem, że zadziałało.
 - **Komendy:** `dodaj zadanie: treść [termin]`, `zadania`, `zadanie N zrobione`, `przypomnienia`. Usuwanie zadań/przypomnień — wyłącznie przyciskiem w panelu (świadomy klik, nie polecenie tekstowe).
 - Własny magazyn `tasks.json` z gwarancjami jak pamięć i projekty: zapis atomowy, kopia uszkodzonego pliku, odczyt zwrotny z SHA-256. Zegar jest testowalnym szwem, więc zestaw regresji `tests/TaskRegression.cs` weryfikuje pełną tabelę parsera wokół środy 16:00.
 

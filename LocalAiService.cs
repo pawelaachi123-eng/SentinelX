@@ -34,6 +34,10 @@ public sealed class LocalAiService : IDisposable
     public string LastError { get; private set; } = "";
     public bool LastResponseSucceeded { get; private set; }
     public IReadOnlyList<string> LastAttemptedModels { get; private set; } = [];
+    /// <summary>True while a streamed answer is arriving; chunks go through the caller's callback.</summary>
+    public bool IsStreaming { get; private set; }
+    /// <summary>Text produced so far when a generation was stopped halfway — shown, never silently dropped.</summary>
+    public string LastPartialAnswer { get; private set; } = "";
 
     public LocalAiService(GamingModeService gamingMode, HttpMessageHandler? handler = null, string? settingsDirectory = null, SystemMonitor? systemMonitor = null,
         Func<AiSettings>? aiSettingsProvider = null, TimeSpan? requestTimeout = null)
@@ -138,7 +142,12 @@ public sealed class LocalAiService : IDisposable
         { return "Nie udało się zapisać wyboru modelu: " + ex.Message; }
     }
 
-    public async Task<string> AskAsync(string userMessage, string context = "", CancellationToken cancellationToken = default)
+    public Task<string> AskAsync(string userMessage, string context = "", CancellationToken cancellationToken = default) =>
+        AskAsync(userMessage, context, cancellationToken, null);
+
+    /// <summary>Streams visible chunks through <paramref name="onDelta"/> when a consumer wants a live answer.
+    /// Only the first model attempt streams, so what the user watches is exactly what comes back.</summary>
+    public async Task<string> AskAsync(string userMessage, string context = "", CancellationToken cancellationToken = default, Action<string>? onDelta = null)
     {
         if (string.IsNullOrWhiteSpace(userMessage)) return "Słucham.";
         if (userMessage.Length > 16000) return "Wiadomość jest za długa. Podziel ją na fragmenty do 16 000 znaków.";
@@ -149,7 +158,10 @@ public sealed class LocalAiService : IDisposable
         var started = System.Diagnostics.Stopwatch.StartNew();
         LastResponseSucceeded = false;
         LastModel = LastFallbackReason = LastError = "";
+        LastPartialAnswer = "";
+        IsStreaming = onDelta != null;
         LastAttemptedModels = [];
+        var filter = new StreamThinkFilter();
         try
         {
             AiSettings config = GetSettingsSnapshot();
@@ -164,6 +176,7 @@ public sealed class LocalAiService : IDisposable
 
             var errors = new List<string>();
             var attempted = new List<string>();
+            int attemptIndex = 0;
             foreach (string selected in candidates)
             {
                 request.Token.ThrowIfCancellationRequested();
@@ -176,8 +189,11 @@ public sealed class LocalAiService : IDisposable
                 attempted.Add(selected);
                 LastAttemptedModels = attempted.ToArray();
                 ModelAttempt attempt;
-                try { attempt = await AskModelAsync(selected, userMessage, context, pressure, config, request.Token); }
+                // Only the first attempt publishes chunks: a retry must not append a second answer to the live bubble.
+                Action<string>? stream = attemptIndex == 0 && onDelta != null ? chunk => { string visible = filter.Push(chunk); if (visible.Length > 0) onDelta(visible); } : null;
+                try { attempt = await AskModelAsync(selected, userMessage, context, pressure, config, stream, request.Token); }
                 catch (JsonException) { attempt = ModelAttempt.Failed("nieprawidłowy JSON modelu"); }
+                attemptIndex++;
                 if (attempt.Success)
                 {
                     string result = CleanAnswer(attempt.Answer ?? "");
@@ -187,6 +203,7 @@ public sealed class LocalAiService : IDisposable
                         loadedModel = pressure ? null : selected;
                         LastResponseSucceeded = true;
                         LastFallbackReason = string.Join(" | ", errors);
+                        if (onDelta != null) { string tail = filter.Flush(); if (tail.Length > 0) onDelta(tail); }
                         return result;
                     }
                     attempt = ModelAttempt.Failed("pusta odpowiedź modelu");
@@ -201,13 +218,17 @@ public sealed class LocalAiService : IDisposable
                    "Sprawdzone: " + string.Join(" | ", errors.Take(3)) +
                    ". Wpisz „modele AI”, aby sprawdzić pliki i dostępność modeli.");
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { LastPartialAnswer = CleanAnswer(LastPartialAnswer); throw; }
         catch (OperationCanceledException)
-        { return Fail(deadline.IsCancellationRequested ? $"Przekroczono limit czasu odpowiedzi AI ({requestTimeout.TotalSeconds:0} s). Spróbuj mniejszego modelu." : "Przerwano odpowiedź AI."); }
+        {
+            LastPartialAnswer = CleanAnswer(LastPartialAnswer);
+            return Fail(deadline.IsCancellationRequested ? $"Przekroczono limit czasu odpowiedzi AI ({requestTimeout.TotalSeconds:0} s). Spróbuj mniejszego modelu." : "Przerwano odpowiedź AI.");
+        }
         catch (HttpRequestException) { return Fail("Brak połączenia z lokalną Ollama. Uruchom Ollama i wpisz „status AI”."); }
         catch (JsonException) { return Fail("Ollama zwróciła nieprawidłową odpowiedź."); }
         finally
         {
+            IsStreaming = false;
             LastResponseTime = started.Elapsed;
             lock (syncRoot) { if (ReferenceEquals(currentRequest, request)) currentRequest = null; }
             requestGate.Release();
@@ -276,14 +297,83 @@ public sealed class LocalAiService : IDisposable
         return parts.Count > 0;
     }
 
-    private async Task<ModelAttempt> AskModelAsync(string model, string userMessage, string context, bool gaming, AiSettings config, CancellationToken token)
+    private async Task<ModelAttempt> AskModelAsync(string model, string userMessage, string context, bool gaming, AiSettings config, Action<string>? onDelta, CancellationToken token)
     {
+        if (onDelta != null)
+        {
+            var streamed = await AskChatStreamAsync(model, userMessage, context, gaming, config, onDelta, token);
+            if (streamed.Success || !IsUnsupportedEndpoint(streamed.Error)) return streamed;
+        }
         var chat = await AskChatEndpointAsync(model, userMessage, context, gaming, config, token);
         if (chat.Success || !IsUnsupportedEndpoint(chat.Error))
             return chat;
         string health = await CheckModelAsync(model, token);
         if (health.Contains("niekompletny", StringComparison.Ordinal)) return ModelAttempt.Failed(health);
         return await AskGenerateEndpointAsync(model, userMessage, context, gaming, config, token);
+    }
+
+    /// <summary>NDJSON streaming: chunks are published as they arrive, hidden reasoning is filtered before the UI sees it.</summary>
+    private async Task<ModelAttempt> AskChatStreamAsync(string model, string userMessage, string context, bool gaming, AiSettings config, Action<string> onDelta, CancellationToken token)
+    {
+        var messages = new object[] { new { role = "system", content = BuildSystemPrompt(gaming) },
+            new { role = "user", content = BuildUserPrompt(userMessage, context, gaming, config.MaxContextTokens) } };
+        var body = new Dictionary<string, object>
+        {
+            ["model"] = model,
+            ["messages"] = messages,
+            ["stream"] = true,
+            ["keep_alive"] = gaming ? "0" : "10m",
+            ["options"] = BuildOptions(config, gaming)
+        };
+        if (model.StartsWith("qwen3", StringComparison.OrdinalIgnoreCase)) body["think"] = false;
+
+        using var content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json");
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/chat") { Content = content };
+        using var response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, token);
+        if (!response.IsSuccessStatusCode)
+            return ModelAttempt.Failed($"HTTP {(int)response.StatusCode}: {ExtractOllamaError(await response.Content.ReadAsStringAsync(token))}");
+
+        var answer = new StringBuilder();
+        await using var stream = await response.Content.ReadAsStreamAsync(token);
+        using var reader = new StreamReader(stream, Encoding.UTF8);
+        string? line;
+        while ((line = await reader.ReadLineAsync(token)) != null)
+        {
+            token.ThrowIfCancellationRequested();
+            if (line.Trim().Length == 0) continue;
+            string delta = ExtractStreamDelta(line, out string error);
+            if (error.Length > 0) return ModelAttempt.Failed(error);
+            if (delta.Length == 0) continue;
+            answer.Append(delta);
+            LastPartialAnswer = answer.ToString();
+            try { onDelta(delta); }
+            catch (Exception ex) when (ex is not OperationCanceledException) { AppLog.Write(ex); } // a broken observer must not kill generation
+        }
+        string full = CleanAnswer(answer.ToString());
+        return full.Length == 0 ? ModelAttempt.Failed("pusta odpowiedź strumienia") : ModelAttempt.Ok(full);
+    }
+
+    /// <summary>Accepts the Ollama stream shapes (/api/chat message.content and /api/generate response) line by line.</summary>
+    internal static string ExtractStreamDelta(string line, out string error)
+    {
+        error = "";
+        try
+        {
+            using JsonDocument doc = JsonDocument.Parse(line);
+            if (doc.RootElement.ValueKind != JsonValueKind.Object) return "";
+            if (doc.RootElement.TryGetProperty("error", out var failure))
+            {
+                error = failure.ValueKind == JsonValueKind.String ? failure.GetString() ?? "błąd modelu" : "błąd modelu";
+                return "";
+            }
+            if (doc.RootElement.TryGetProperty("message", out var message) && message.ValueKind == JsonValueKind.Object &&
+                message.TryGetProperty("content", out var streamed) && streamed.ValueKind == JsonValueKind.String)
+                return streamed.GetString() ?? "";
+            if (doc.RootElement.TryGetProperty("response", out var generated) && generated.ValueKind == JsonValueKind.String)
+                return generated.GetString() ?? "";
+            return "";
+        }
+        catch (JsonException) { return ""; }
     }
 
     private async Task<ModelAttempt> AskChatEndpointAsync(string model, string userMessage, string context, bool gaming, AiSettings config, CancellationToken token)

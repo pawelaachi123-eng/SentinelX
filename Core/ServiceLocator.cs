@@ -28,6 +28,7 @@ public static class ServiceLocator
         services.AddSingleton<Services.Apps.IAppLauncherService>(sp => new AppLauncherService(() => sp.GetRequiredService<ISettingsService>().Current.Ui.DefaultBrowserPreference));
         services.AddSingleton<ProcessToolService>();
         services.AddSingleton<PcDiagnosticService>();
+        services.AddSingleton<DiagnosticSnapshotService>(sp => new DiagnosticSnapshotService(sp.GetRequiredService<PcDiagnosticService>()));
         services.AddSingleton<ActionTaskRegistry>();
         services.AddSingleton<ISystemMonitorService, SystemMonitorService>();
         services.AddSingleton<ActionHistoryService>(_ => new());
@@ -77,6 +78,7 @@ public static class ServiceLocator
         services.AddSingleton<MemoryViewModel>();
         services.AddSingleton<ProjectViewModel>();
         services.AddSingleton<TaskViewModel>();
+        services.AddSingleton<DiagnosticViewModel>();
         services.AddSingleton<OverlayViewModel>();
         services.AddSingleton<MainViewModel>();
         services.AddSingleton<Views.MainWindow>();

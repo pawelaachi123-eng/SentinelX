@@ -6,7 +6,9 @@ namespace SentinelX.Services.Intent;
 public sealed class IntentRouter(SentinelToolboxService toolbox, Services.Files.IFileService files,
     CommandRouter router, Services.Monitoring.ReadOnlyCommandService reads) : IIntentRouter
 {
-    public async Task<string> ProcessAsync(string input, CancellationToken token)
+    public Task<string> ProcessAsync(string input, CancellationToken token) => ProcessAsync(input, token, null);
+
+    public async Task<string> ProcessAsync(string input, CancellationToken token, Action<string>? onDelta)
     {
         token.ThrowIfCancellationRequested();
         input = CommandText.StripWakeWord(input);
@@ -16,6 +18,6 @@ public sealed class IntentRouter(SentinelToolboxService toolbox, Services.Files.
         string? file = await files.ProcessAsync(input, token);
         if (file != null) return file;
         var result = await toolbox.ProcessAsync(input, token);
-        return result.Handled ? result.Response : await router.ProcessAsync(input, token);
+        return result.Handled ? result.Response : await router.ProcessAsync(input, token, onDelta);
     }
 }

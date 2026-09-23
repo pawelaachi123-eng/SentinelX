@@ -14,18 +14,22 @@ public sealed class CommandRouter
     private readonly ConversationMemoryService memory;
     private readonly ProjectService? projects;
     private readonly TaskService? tasks;
+    private readonly DiagnosticSnapshotService? snapshots;
     private string lastTopic = "";
     private DateTime lastTopicTime;
     private (string Text, DateTime When, string Description, DateTime Expires)? pendingReminder;
 
-    public CommandRouter(SystemMonitor systemMonitor, SystemInfoService systemInfo, LocalAiService localAi, ConversationMemoryService memory, ProjectService? projects = null, TaskService? tasks = null)
-    { this.systemMonitor = systemMonitor; this.systemInfo = systemInfo; this.localAi = localAi; this.memory = memory; this.projects = projects; this.tasks = tasks; }
+    public CommandRouter(SystemMonitor systemMonitor, SystemInfoService systemInfo, LocalAiService localAi, ConversationMemoryService memory,
+        ProjectService? projects = null, TaskService? tasks = null, DiagnosticSnapshotService? snapshots = null)
+    { this.systemMonitor = systemMonitor; this.systemInfo = systemInfo; this.localAi = localAi; this.memory = memory; this.projects = projects; this.tasks = tasks; this.snapshots = snapshots; }
 
-    public async Task<string> ProcessAsync(string command, CancellationToken cancellationToken = default)
+    public async Task<string> ProcessAsync(string command, CancellationToken cancellationToken = default, Action<string>? onDelta = null)
     {
         cancellationToken.ThrowIfCancellationRequested();
         if (string.IsNullOrWhiteSpace(command)) return "";
         string text = Normalize(command).TrimEnd('?', '!', '.', ' ');
+        string? snapshotResponse = await TryHandleSnapshotCommandAsync(command.Trim(), text, cancellationToken);
+        if (snapshotResponse != null) return snapshotResponse;
         string? memoryResponse = TryHandleMemoryCommand(command.Trim(), text);
         if (memoryResponse != null) return memoryResponse;
         string? projectResponse = TryHandleProjectCommand(command.Trim(), text);
@@ -77,7 +81,7 @@ public sealed class CommandRouter
         bool includeRecentHistory = IsFollowUpQuestion(text, followUp, topicForContext);
         bool includeSystemFacts = string.IsNullOrEmpty(topicForContext) ? MentionsComputerStateNoTopic(text, followUp) : topicForContext is "RAM" or "CPU" or "SYSTEM" or "DISK";
         if (!Regex.IsMatch(followUp, @"^(?:czy to|czy jest|a |dlaczego|czemu|co z tym)")) lastTopic = "";
-        return await localAi.AskAsync(command, BuildSystemContext(topicForContext, includeSystemFacts, includeRecentHistory), cancellationToken);
+        return await localAi.AskAsync(command, BuildSystemContext(topicForContext, includeSystemFacts, includeRecentHistory), cancellationToken, onDelta);
     }
 
     private string? TryHandleProjectCommand(string command, string text)
@@ -300,6 +304,28 @@ public sealed class CommandRouter
             try { return "Eksport lokalny zapisany: " + memory.Export(); }
             catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException) { return "Nie udało się wyeksportować pamięci: " + ex.Message; }
         }
+        if (text is "eksportuj rozmowe markdown" or "zapisz rozmowe markdown" or "eksportuj rozmowe do pliku")
+        {
+            var export = memory.ExportConversationMarkdown();
+            return export.Success
+                ? StorageResult($"Zapisano rozmowę lokalnie ({export.Turns} wypowiedzi). Plik nie został wysłany do internetu.\n{export.Path}\nSHA-256: {export.Sha256}")
+                : "Nie zapisano eksportu. " + export.Error;
+        }
+        var search = Regex.Match(text, @"^szukaj w rozmowie[:\s]+(.+)$");
+        if (search.Success)
+        {
+            string query = search.Groups[1].Value.Trim().Trim('„', '”', '"');
+            var found = memory.SearchConversation(query);
+            if (found.Count == 0)
+                return $"Nie znalazłem „{query}” w tej rozmowie. Szukam wyłącznie w aktywnej rozmowie: {memory.ActiveConversationTitle}.";
+            var lines = found.Select((x, i) =>
+            {
+                string who = x.Role == "user" ? "Ty" : "Sentinel";
+                return (i + 1) + ". [" + x.Timestamp.ToString("dd.MM HH:mm") + "] " + who + ": " + Truncate(x.Text, 160);
+            });
+            return $"Znalezione w tej rozmowie ({found.Count}, najnowsze pierwsze):\n" + string.Join("\n", lines) +
+                "\nSzukanie dotyczy wyłącznie aktywnej rozmowy i jest dopasowaniem tekstu po normalizacji — bez literówek i odmiany.";
+        }
         if (text is "co powiedzialem wczesniej" or "co mowilem wczesniej" or "co powiedzialem przed chwila")
             return memory.TryGetPreviousUserMessage(command, out string previous) ? previous : "Nie mam wcześniejszej wypowiedzi w tej rozmowie.";
         var after = Regex.Match(text, @"^co (?:powiedzialem|mowilem) po (.+)$");
@@ -338,6 +364,80 @@ public sealed class CommandRouter
         MentionedComputerState(text + " " + followUp);
 
     private void SetTopic(string topic) { lastTopic = topic; lastTopicTime = DateTime.Now; }
+    private async Task<string?> TryHandleSnapshotCommandAsync(string command, string text, CancellationToken cancellationToken)
+    {
+        if (snapshots == null) return null;
+        if (text is "snapshot" or "zrob snapshot" or "snapshot diagnostyki" or "zapisz odczyt diagnostyczny")
+        {
+            try
+            {
+                var captured = await snapshots.CaptureAsync("", cancellationToken);
+                if (captured == null) return "Nie udało się zapisać odczytu. " + (snapshots.LastStorageError ?? "");
+                return SnapshotStorage($"Zapisano odczyt diagnostyczny: {captured.Label} · {captured.CapturedAt:dd.MM.yyyy HH:mm:ss} · {captured.Sections.Count} sekcji. " +
+                    "To obraz stanu w jednej chwili, nie diagnoza kondycji sprzętu. Wpisz „snapshoty”, a potem „porównaj snapshoty”.");
+            }
+            catch (OperationCanceledException) { return "Przerwano zapisywanie odczytu. Nic nie zostało zapisane."; }
+        }
+        if (text is "snapshoty" or "lista snowshotow" or "lista snapshotow" or "pokaz snapshoty")
+            return SnapshotStorage(snapshots.List());
+        var pair = Regex.Match(text, @"^porownaj snapshoty? (\d{1,2}) (?:z )?(\d{1,2})$");
+        bool latestPair = text is "porownaj snapshoty" or "porownaj snapshot" or "rozni sie cos" or "co sie zmienilo w diagnostyce";
+        if (pair.Success || latestPair)
+        {
+            var all = snapshots.GetSnapshots().OrderBy(x => x.CapturedAt).ToArray();
+            if (all.Length < 2) return "Potrzebuję dwóch zapisanych odczytów, żeby je porównać. Wpisz „snapshot” teraz, a drugi później.";
+            DiagnosticSnapshot first, second;
+            if (pair.Success)
+            {
+                int a = int.Parse(pair.Groups[1].Value), b = int.Parse(pair.Groups[2].Value);
+                if (a < 1 || b < 1 || a > all.Length || b > all.Length) return "Podaj numery odczytów z listy (1…" + all.Length + ").";
+                first = all[a - 1]; second = all[b - 1];
+            }
+            else { first = all[^2]; second = all[^1]; }
+            var diff = snapshots.Compare(first.Id, second.Id, out string reason);
+            if (diff == null) return reason;
+            var lines = diff.Sections.SelectMany(section =>
+                section.Changed.Select(x => $"· {section.SectionTitle}: {x.From} → {x.To}")
+                    .Concat(section.Added.Select(x => $"· {section.SectionTitle}: pojawiło się {x}"))
+                    .Concat(section.Removed.Select(x => $"· {section.SectionTitle}: zniknęło {x}")));
+            string body = diff.TotalChanges == 0 && diff.SectionsOnlyInFirst.Count == 0
+                ? "Brak różnic — te odczyty opisują ten sam stan."
+                : string.Join("\n", lines.Take(24));
+            return SnapshotStorage($"Porównanie {first.Label} ({first.CapturedAt:dd.MM HH:mm:ss}) → {second.Label} ({second.CapturedAt:dd.MM HH:mm:ss}):\n{diff.Headline}\n{body}" +
+                (diff.TotalChanges > 24 ? "\n…i kolejne różnice — pełna lista po wpisaniu „eksportuj porównanie”." : "") +
+                "\nRóżnica nie wyjaśnia przyczyny; pokazuje tylko, co zmieniło się między odczytami.");
+        }
+        if (text is "eksportuj porownanie" or "eksportuj porownanie snapshotow")
+        {
+            var all = snapshots.GetSnapshots().OrderBy(x => x.CapturedAt).ToArray();
+            if (all.Length < 2) return "Nie mam dwóch odczytów do porównania — najpierw wpisz „snapshot”.";
+            try
+            {
+                var result = await snapshots.ExportComparisonAsync(all[^2].Id, all[^1].Id, cancellationToken);
+                return result.Status switch
+                {
+                    "VERIFIED" => "VERIFIED\n" + result.Message + "\n" + result.Evidence,
+                    "UNVERIFIED" => "Zapisano bez pełnego dowodu odczytu zwrotnego.\n" + result.Message + "\n" + result.Evidence,
+                    _ => "FAILED\n" + result.Message + (result.Evidence.Length > 0 ? "\n" + result.Evidence : "")
+                };
+            }
+            catch (OperationCanceledException) { return "Przerwano eksport porównania."; }
+        }
+        var delete = Regex.Match(text, @"^usun snapshot (\d{1,2})$");
+        if (delete.Success)
+        {
+            var all = snapshots.GetSnapshots().OrderBy(x => x.CapturedAt).ToArray();
+            if (!int.TryParse(delete.Groups[1].Value, out int index) || index < 1 || index > all.Length)
+                return "Podaj numer odczytu z listy (1…" + Math.Max(1, all.Length) + ").";
+            return snapshots.Delete(all[index - 1].Id)
+                ? SnapshotStorage($"Usunięto wyłącznie odczyt {all[index - 1].Label}. Pozostałe odczyty i raporty są nietknięte.")
+                : "Nie usunięto odczytu. " + (snapshots.LastStorageError ?? "");
+        }
+        return null;
+    }
+
+    private string SnapshotStorage(string success) => snapshots?.LastStorageError == null ? success : snapshots.LastStorageError;
+    private static string Truncate(string text, int max) => text.Length <= max ? text : text[..(max - 1)] + "…";
     private string StorageResult(string success) => memory.LastStorageError == null ? success : memory.LastStorageError;
     internal static string Number(double value, string unit, int decimals = 0) => double.IsFinite(value) && value >= 0 ? value.ToString("F" + decimals, CultureInfo.GetCultureInfo("pl-PL")) + (unit == "%" ? "" : " ") + unit : "odczyt niedostępny";
     internal static string Normalize(string text) => ConversationMemoryService.Normalize(text);

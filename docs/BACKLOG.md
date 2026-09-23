@@ -39,17 +39,27 @@ Stan na 2026-09-22. Zasada: każda pojedyncza pozycja znika z listy dopiero, gdy
 - Komendy: „dodaj zadanie:”, „zadania”, „zadanie N zrobione”, „przypomnienia”; usuwanie tylko przyciskiem w panelu.
 - Własny magazyn `tasks.json`: zapis atomowy, kopia uszkodzonego pliku, odczyt zwrotny z SHA-256. Zestaw `tests/TaskRegression.cs` + sekcje w `--ui-smoke`.
 
+## Gotowe w 0.89 (ten przyrost — patrz git)
+
+- **Streaming odpowiedzi AI**: `/api/chat` z `stream: true`, NDJSON linia po linii, przyrostowe filtrowanie `<think>` (także przeciętego między fragmentami). Tylko pierwsza próba modelu strumieniuje, więc podgląd = odpowiedź końcowa.
+- **Przycisk „Zatrzymaj generowanie” widoczny stale**; zatrzymanie zachowuje częściowy tekst z jawnym oznaczeniem i nie oznacza odpowiedzi jako udanej.
+- **Ponowienie odpowiedzi** (`ponów` + przycisk) z oznaczeniem ponowienia.
+- **Snapshoty diagnostyczne** (12. strona): zapis odczytu, porównanie dwóch odczytów linia po linii, eksport Markdown + JSON z odczytem zwrotnym i SHA-256, usuwanie pojedynczego odczytu, limit 20, `snapshots.json` z kopią uszkodzonego pliku.
+- **Narzędzia rozmowy**: `szukaj w rozmowie: fraza` (tylko aktywna rozmowa) i `eksportuj rozmowę markdown` (odmowa w trybie prywatnym).
+- Paleta poleceń: 13 nowych wpisów, w tym brakujące strony Pamięć/Projekty/Zadania/Diagnostyka.
+- Zestawy `tests/AiStreamRegression.cs` + `tests/DiagnosticSnapshotRegression.cs` w `--ui-smoke` (CI).
+
 ## Priorytet P0 — kolejny przyrost
 
-1. **Diagnoza-streaming odpowiedzi AI**: istniejący `LocalAiService` wspiera fallback; dodać strumieniowanie do UI + przycisk stop generacji widoczny stale.
-2. **Snapshoty diagnostyczne**: zapis + porównanie dwóch snapshotów + eksport raportu (istniejące serwisy diagnostyczne rozszerzyć).
+1. **Pliki**: plan porządkowania folderu z podglądem przed wykonaniem, zbiorcze zmiany nazw z podglądem, duplikaty po treści (SHA-256), usuwanie do Kosza jako domyślne.
+2. **Sekwencje działań**: nazwane kroki, plan z podglądem, statusy kroków, zatrzymanie na błędzie, wznowienie tam, gdzie to sensowne.
 
 ## Priorytet P1
 
-- Pliki: plan porządkowania folderu z podglądem, zbiorcze zmiany nazw z podglądem, duplikaty po treści, sumy kontrolne, integracja z Koszem dla usuwania.
+- Pliki — rozszerzenia poza P0: podgląd diff przed zmianą treści, filtrowanie duplikatów po rozmiarze przed hashowaniem.
 - Tryb gry: zawieszanie indeksowania/ciężkich zadań, profil modeli z histerezą przełączania (progi + opóźnienie), zwalnianie modelu opcjonalne.
 - Sekwencje działań: nazwane kroki, plan z podglądem, statusy kroków, stop na błędzie, wznowienie tam gdzie sensowne.
-- Rozmowa: ponowienie odpowiedzi, edycja+prześlij z oznaczeniem alternatywy, wyszukiwanie w rozmowie, eksport rozmowy Markdown.
+- Rozmowa: edycja wypowiedzi i ponowne wysłanie z oznaczeniem alternatywy; zakładanie odgałęzień rozmowy.
 
 ## Priorytet P2
 
@@ -62,4 +72,5 @@ Stan na 2026-09-22. Zasada: każda pojedyncza pozycja znika z listy dopiero, gdy
 - Brak lokalnego kompilatora .NET w środowisku deweloperskim — weryfikacja wyłącznie przez CI na `windows-latest` (opis w README).
 - Build niepodpisany: SmartScreen może ostrzegać (zgodnie z README; nie wyłączamy zabezpieczeń).
 - Ollama, mikrofon i gry wymagają testów na komputerze docelowym; CI nie ma mikrofonu ani gier.
-- Wyszukiwanie we wspomnieniach jest tekstowe (normalizacja, bez fuzzy/typo-tolerance) — literówki mogą nie trafić.
+- Wyszukiwanie we wspomnieniach i w rozmowie jest tekstowe (normalizacja, bez fuzzy/typo-tolerance) — literówki mogą nie trafić.
+- Streaming AI nie jest weryfikowany z żywym modelem w CI (brak Ollama w środowisku testowym) — transport i logika fragmentów są testowane na wstrzykniętym HTTP.

@@ -14,6 +14,9 @@ public sealed class AiService : IAiService, IDisposable
         (await client.ListLocalModelsAsync(token)).Select(x => x.Name).Where(LocalAiService.IsLocalModelName).OrderBy(x => x).ToArray();
     public Task<string> SelectModelAsync(string model, CancellationToken token = default) => local.SetPreferredModelAsync(model, token);
     public Task<string> AskAsync(string input, string context, CancellationToken token) => local.AskAsync(input, context, token);
+    public Task<string> AskAsync(string input, string context, CancellationToken token, Action<string>? onDelta) => local.AskAsync(input, context, token, onDelta);
+    public bool IsStreaming => local.IsStreaming;
+    public string PartialAnswer => local.LastPartialAnswer;
     public string RoutingReason => local.LastRoutingReason;
     public void Cancel() => local.CancelCurrentRequest();
     public void Dispose() { ((IDisposable)client).Dispose(); http.Dispose(); }
