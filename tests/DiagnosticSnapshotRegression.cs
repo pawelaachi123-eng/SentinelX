@@ -68,7 +68,8 @@ internal static class DiagnosticSnapshotRegression
 
         var reloaded = new DiagnosticSnapshotService(directory: store);
         Check(reloaded.GetSnapshots().Count == 2, "readings survive a restart");
-        Check(reloaded.VerifyPersistedState(out string evidence) && evidence.Contains("SHA-256"), "read-back proof with a hash");
+        Check(reloaded.VerifyPersistedState(out string evidence), "read-back proof failed → " + evidence);
+        Check(evidence.Contains("SHA-256"), "the proof carries a file hash → " + evidence);
         Check(reloaded.Compare(capturedA.Id, capturedB.Id, out _) != null, "comparison by id works after a reload");
         Check(reloaded.Compare(capturedA.Id, capturedA.Id, out string sameReason) == null && sameReason.Contains("ten sam"),
             "comparing a reading with itself is refused with an explanation");
@@ -93,7 +94,7 @@ internal static class DiagnosticSnapshotRegression
         var state = new SnapshotState
         {
             Version = 1,
-            Snapshots = Enumerable.Range(0, 25).Select(i => new DiagnosticSnapshot
+            Snapshots = Enumerable.Range(0, 25).Select(i => new StoredSnapshot
             { Id = "id" + i, Label = "odczyt " + i, CapturedAt = DateTimeOffset.Now.AddMinutes(i) }).ToList()
         };
         File.WriteAllText(Path.Combine(capped, "snapshots.json"), JsonSerializer.Serialize(state));

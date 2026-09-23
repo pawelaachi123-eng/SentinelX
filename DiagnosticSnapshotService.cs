@@ -16,10 +16,27 @@ public sealed class DiagnosticSnapshot
     public List<DiagnosticSection> Sections { get; set; } = [];
 }
 
+/// <summary>Persisted shape of a reading: plain settable properties, so the file round-trips without ctor magic.</summary>
+public sealed class StoredSnapshot
+{
+    public string Id { get; set; } = "";
+    public DateTimeOffset CapturedAt { get; set; }
+    public string Label { get; set; } = "";
+    public List<StoredSection> Sections { get; set; } = [];
+}
+
+public sealed class StoredSection
+{
+    public string Id { get; set; } = "";
+    public string Title { get; set; } = "";
+    public string Status { get; set; } = "";
+    public string Content { get; set; } = "";
+}
+
 public sealed class SnapshotState
 {
     public int Version { get; set; } = 1;
-    public List<DiagnosticSnapshot> Snapshots { get; set; } = [];
+    public List<StoredSnapshot> Snapshots { get; set; } = [];
 }
 
 public sealed class LineChange
@@ -49,33 +66,33 @@ public sealed class DiagnosticDiff
     public int TotalChanges => Sections.Sum(x => x.Count);
     public string Headline => TotalChanges == 0 && SectionsOnlyInFirst.Count == 0
         ? "Brak różnic między tymi odczytami — stan opisany przez te sekcje się nie zmienił."
-        : $"Znaleziono {TotalChanges} różnic w {Sections.Count(x => !x.Empty)} sekcjach" +
-          (SectionsOnlyInFirst.Count > 0 ? $"; sekcji brak w drugim odczycie: {SectionsOnlyInFirst.Count}" : "") + ".";
+        : "Znaleziono " + TotalChanges + " różnic w " + Sections.Count(x => !x.Empty) + " sekcjach" +
+          (SectionsOnlyInFirst.Count > 0 ? "; sekcji brak w drugim odczycie: " + SectionsOnlyInFirst.Count : "") + ".";
 
     public string ToMarkdown()
     {
         var builder = new StringBuilder();
         builder.AppendLine("# Porównanie snapshotów diagnostycznych Sentinel X");
         builder.AppendLine();
-        builder.AppendLine($"- Odczyt A: {FirstLabel} · {FirstCapturedAt:yyyy-MM-dd HH:mm:ss} (czas lokalny)");
-        builder.AppendLine($"- Odczyt B: {SecondLabel} · {SecondCapturedAt:yyyy-MM-dd HH:mm:ss} (czas lokalny)");
-        builder.AppendLine($"- Wynik: {Headline}");
+        builder.AppendLine("- Odczyt A: " + FirstLabel + " · " + FirstCapturedAt.ToString("yyyy-MM-dd HH:mm:ss") + " (czas lokalny)");
+        builder.AppendLine("- Odczyt B: " + SecondLabel + " · " + SecondCapturedAt.ToString("yyyy-MM-dd HH:mm:ss") + " (czas lokalny)");
+        builder.AppendLine("- Wynik: " + Headline);
         builder.AppendLine();
         builder.AppendLine("To porównanie dwóch odczytów wykonanych przez aplikację. Nie jest diagnozą kondycji sprzętu ani dowodem przyczyny.");
         builder.AppendLine();
         foreach (var section in Sections)
         {
-            builder.AppendLine($"## {section.SectionTitle}");
+            builder.AppendLine("## " + section.SectionTitle);
             if (section.Empty) { builder.AppendLine("- bez zmian"); builder.AppendLine(); continue; }
-            foreach (var change in section.Changed) builder.AppendLine($"- zmienione: `{change.From}` → `{change.To}`");
-            foreach (string added in section.Added) builder.AppendLine($"- pojawiło się: `{added}`");
-            foreach (string removed in section.Removed) builder.AppendLine($"- zniknęło: `{removed}`");
+            foreach (var change in section.Changed) builder.AppendLine("- zmienione: `" + change.From + "` → `" + change.To + "`");
+            foreach (string added in section.Added) builder.AppendLine("- pojawiło się: `" + added + "`");
+            foreach (string removed in section.Removed) builder.AppendLine("- zniknęło: `" + removed + "`");
             builder.AppendLine();
         }
         if (SectionsOnlyInFirst.Count > 0)
         {
             builder.AppendLine("## Sekcje nieodczytane w drugim odczycie");
-            foreach (string missing in SectionsOnlyInFirst) builder.AppendLine($"- {missing}");
+            foreach (string missing in SectionsOnlyInFirst) builder.AppendLine("- " + missing);
             builder.AppendLine();
         }
         return builder.ToString();
@@ -90,7 +107,7 @@ public sealed class DiagnosticSnapshotService
     private readonly string storePath;
     private readonly PcDiagnosticService diagnostics;
     private readonly JsonSerializerOptions jsonOptions = new() { WriteIndented = true, PropertyNameCaseInsensitive = true };
-    private SnapshotState state = new();
+    private readonly List<DiagnosticSnapshot> snapshots = [];
 
     public string? LastStorageError { get; private set; }
     public string StoragePath => storePath;
@@ -105,12 +122,12 @@ public sealed class DiagnosticSnapshotService
 
     public IReadOnlyList<DiagnosticSnapshot> GetSnapshots()
     {
-        lock (syncRoot) return state.Snapshots.OrderByDescending(x => x.CapturedAt).Select(Clone).ToArray();
+        lock (syncRoot) return snapshots.OrderByDescending(x => x.CapturedAt).Select(Clone).ToArray();
     }
 
     public DiagnosticSnapshot? Find(string id)
     {
-        lock (syncRoot) return state.Snapshots.Where(x => x.Id == id).Select(Clone).FirstOrDefault();
+        lock (syncRoot) return snapshots.Where(x => x.Id == id).Select(Clone).FirstOrDefault();
     }
 
     public async Task<DiagnosticSnapshot?> CaptureAsync(string label = "", CancellationToken token = default)
@@ -118,49 +135,45 @@ public sealed class DiagnosticSnapshotService
         var report = await diagnostics.CollectAsync(token).ConfigureAwait(false);
         token.ThrowIfCancellationRequested();
         DiagnosticSnapshot snapshot;
-        bool fire;
         lock (syncRoot)
         {
             snapshot = new DiagnosticSnapshot
             {
                 Id = Guid.NewGuid().ToString("N")[..12],
                 CapturedAt = report.CapturedAt,
-                Label = (label ?? "").Trim() is { Length: > 0 and <= 80 } text ? text : $"Odczyt {state.Snapshots.Count + 1}",
+                Label = (label ?? "").Trim() is { Length: > 0 and <= 80 } text ? text : "Odczyt " + (snapshots.Count + 1),
                 Sections = report.Sections.ToList()
             };
-            state.Snapshots.Add(snapshot);
-            // Oldest readings go first: the file stays small and bounded.
-            TrimLocked();
-            fire = true;
+            snapshots.Add(snapshot);
+            TrimLocked(); // oldest readings go first: the store stays bounded
             SaveLocked();
         }
-        if (fire) Changed?.Invoke();
+        Changed?.Invoke();
         return Clone(snapshot);
     }
 
     public bool Delete(string id)
     {
-        bool fire = false;
+        bool removed;
         lock (syncRoot)
         {
-            var snapshot = state.Snapshots.FirstOrDefault(x => x.Id == id);
+            var snapshot = snapshots.FirstOrDefault(x => x.Id == id);
             if (snapshot == null) { LastStorageError = "Nie znaleziono takiego odczytu."; return false; }
-            state.Snapshots.Remove(snapshot);
+            removed = snapshots.Remove(snapshot);
             SaveLocked();
-            fire = true;
         }
-        if (fire) Changed?.Invoke();
-        return true;
+        if (removed) Changed?.Invoke();
+        return removed;
     }
 
     public string List()
     {
-        var snapshots = GetSnapshots();
-        if (snapshots.Count == 0)
+        var stored = GetSnapshots();
+        if (stored.Count == 0)
             return "Brak zapisanych odczytów diagnostycznych. Wpisz „snapshot”, żeby zapisać aktualny stan, a potem „porównaj snapshoty”.";
-        var lines = snapshots.Select((x, i) => $"{i + 1}. {x.Label} · {x.CapturedAt:dd.MM.yyyy HH:mm:ss} · {x.Sections.Count} sekcji · id {x.Id}");
+        var lines = stored.Select((x, i) => (i + 1) + ". " + x.Label + " · " + x.CapturedAt.ToString("dd.MM.yyyy HH:mm:ss") + " · " + x.Sections.Count + " sekcji · id " + x.Id);
         return "Zapisane odczyty diagnostyczne (najnowszy pierwszy):\n" + string.Join("\n", lines) +
-            $"\nLimit {MaxSnapshots} odczytów — najstarsze są usuwane automatycznie. Porównanie: „porównaj snapshoty”.";
+            "\nLimit " + MaxSnapshots + " odczytów — najstarsze są usuwane automatycznie. Porównanie: „porównaj snapshoty”.";
     }
 
     public DiagnosticDiff? Compare(string firstId, string secondId, out string reason)
@@ -212,10 +225,10 @@ public sealed class DiagnosticSnapshotService
         foreach (var pair in afterPairs.Where(x => !beforePairs.ContainsKey(x.Key)))
             section.Added.Add(pair.Key + ": " + pair.Value);
         // Free-form lines have no key: report them as appeared/disappeared, order-insensitively.
-        foreach (string line in ReadableLines(before).Where(x => !ContainsPair(x)).Except(ReadableLines(after).Where(x => !ContainsPair(x)), StringComparer.Ordinal))
-            section.Removed.Add(line);
-        foreach (string line in ReadableLines(after).Where(x => !ContainsPair(x)).Except(ReadableLines(before).Where(x => !ContainsPair(x)), StringComparer.Ordinal))
-            section.Added.Add(line);
+        string[] beforePlain = ReadableLines(before).Where(x => !ContainsPair(x)).ToArray();
+        string[] afterPlain = ReadableLines(after).Where(x => !ContainsPair(x)).ToArray();
+        foreach (string line in beforePlain.Except(afterPlain, StringComparer.Ordinal)) section.Removed.Add(line);
+        foreach (string line in afterPlain.Except(beforePlain, StringComparer.Ordinal)) section.Added.Add(line);
     }
 
     private static bool ContainsPair(string line) => Pairs(line).Count > 0;
@@ -246,7 +259,7 @@ public sealed class DiagnosticSnapshotService
         {
             string target = directory ?? Path.Combine(AppPaths.Root, "Reports");
             Directory.CreateDirectory(target);
-            string basename = $"snapshots-{DateTime.Now:yyyyMMdd-HHmmss}-{Guid.NewGuid().ToString("N")[..6]}";
+            string basename = "snapshots-" + DateTime.Now.ToString("yyyyMMdd-HHmmss") + "-" + Guid.NewGuid().ToString("N")[..6];
             string markdownPath = Path.Combine(target, basename + ".md");
             string jsonPath = Path.Combine(target, basename + ".json");
             string markdown = diff.ToMarkdown();
@@ -259,13 +272,14 @@ public sealed class DiagnosticSnapshotService
             { return ActionExecutionResult.UnverifiedSuccess("Zapisano porównanie tekstowe; plik JSON nie został zapisany: " + ex.Message, markdownPath); }
             return ActionExecutionResult.VerifiedSuccess(
                 "Zapisano porównanie dwóch odczytów lokalnie. Nic nie zostało wysłane do internetu.",
-                $"{markdownPath}\n{jsonPath}\nSHA-256 (Markdown): {hash}");
+                markdownPath + "\n" + jsonPath + "\nSHA-256 (Markdown): " + hash);
         }
         catch (OperationCanceledException) { throw; }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         { return ActionExecutionResult.Failure("Nie udało się zapisać porównania: " + ex.Message); }
     }
 
+    /// <summary>Read-back proof of the store: same reading ids in the file and in memory, with the file hash.</summary>
     internal bool VerifyPersistedState(out string evidence)
     {
         evidence = "";
@@ -273,46 +287,61 @@ public sealed class DiagnosticSnapshotService
         {
             if (!File.Exists(storePath)) { evidence = "Brak pliku odczytów — nic nie zapisano."; return false; }
             byte[] bytes = File.ReadAllBytes(storePath);
-            var loaded = JsonSerializer.Deserialize<SnapshotState>(Encoding.UTF8.GetString(bytes), jsonOptions);
+            // ReadAllText tolerates a BOM; Encoding.UTF8.GetString(bytes) would keep it and break parsing.
+            var loaded = JsonSerializer.Deserialize<SnapshotState>(File.ReadAllText(storePath, Encoding.UTF8), jsonOptions);
             if (loaded == null) { evidence = "Plik odczytów jest pusty."; return false; }
-            evidence = $"Plik: {storePath}\nOdczytów w pliku: {loaded.Snapshots.Count}\nSHA-256: {Convert.ToHexString(SHA256.HashData(bytes))}";
-            return loaded.Snapshots.Count == GetSnapshots().Count;
+            var fileIds = (loaded.Snapshots ?? []).Select(x => x.Id).OrderBy(x => x, StringComparer.Ordinal).ToArray();
+            string[] memoryIds;
+            lock (syncRoot) memoryIds = snapshots.Select(x => x.Id).OrderBy(x => x, StringComparer.Ordinal).ToArray();
+            evidence = "Plik: " + storePath + "\nRozmiar: " + bytes.Length + " B\nOdczytów w pliku: " + fileIds.Length +
+                "\nOdczytów w pamięci: " + memoryIds.Length + "\nSHA-256: " + Convert.ToHexString(SHA256.HashData(bytes));
+            return fileIds.SequenceEqual(memoryIds, StringComparer.Ordinal);
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
-        { evidence = "Odczyt kontrolny nie powiódł się: " + ex.Message; return false; }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or NotSupportedException or InvalidOperationException)
+        { evidence = "Odczyt kontrolny nie powiódł się: " + ex.GetType().Name + ": " + ex.Message; return false; }
     }
 
     private void TrimLocked()
     {
-        if (state.Snapshots.Count <= MaxSnapshots) return;
-        state.Snapshots = state.Snapshots.OrderByDescending(x => x.CapturedAt).Take(MaxSnapshots).ToList();
+        if (snapshots.Count <= MaxSnapshots) return;
+        var keep = snapshots.OrderByDescending(x => x.CapturedAt).Take(MaxSnapshots).ToArray();
+        snapshots.Clear();
+        snapshots.AddRange(keep);
     }
 
     private void Load()
     {
         lock (syncRoot)
         {
+            snapshots.Clear();
             try
             {
                 if (!File.Exists(storePath)) return;
                 if (new FileInfo(storePath).Length > 10 * 1024 * 1024) throw new IOException("Plik odczytów przekracza 10 MB.");
                 var loaded = JsonSerializer.Deserialize<SnapshotState>(File.ReadAllText(storePath, Encoding.UTF8), jsonOptions);
-                if (loaded == null) throw new JsonException("Pusty plik odczytów.");
-                state = loaded;
-                state.Snapshots ??= [];
-                foreach (var snapshot in state.Snapshots)
+                if (loaded?.Snapshots == null) throw new JsonException("Pusty plik odczytów.");
+                foreach (var stored in loaded.Snapshots)
                 {
-                    if (snapshot.Id.Length == 0) snapshot.Id = Guid.NewGuid().ToString("N")[..12];
-                    snapshot.Sections ??= [];
+                    if (stored == null) continue;
+                    snapshots.Add(new DiagnosticSnapshot
+                    {
+                        Id = stored.Id.Length > 0 ? stored.Id : Guid.NewGuid().ToString("N")[..12],
+                        CapturedAt = stored.CapturedAt,
+                        Label = stored.Label ?? "",
+                        Sections = (stored.Sections ?? [])
+                            .Where(x => x != null)
+                            .Select(x => new DiagnosticSection(x.Id ?? "", x.Title ?? "", x.Status ?? "", x.Content ?? ""))
+                            .ToList()
+                    });
                 }
                 TrimLocked();
                 LastStorageError = null;
             }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or NotSupportedException or InvalidOperationException)
             {
-                state = new();
+                snapshots.Clear();
                 LastStorageError = "Nie udało się wczytać odczytów diagnostycznych: " + ex.Message;
-                try { if (File.Exists(storePath)) File.Copy(storePath, storePath + $".damaged-{DateTime.Now:yyyyMMddHHmmss}", false); }
+                try { if (File.Exists(storePath)) File.Copy(storePath, storePath + ".damaged-" + DateTime.Now.ToString("yyyyMMddHHmmss"), false); }
                 catch (Exception copyError) when (copyError is IOException or UnauthorizedAccessException) { LastStorageError += " Nie udało się utworzyć kopii uszkodzonego pliku."; }
             }
         }
@@ -323,8 +352,18 @@ public sealed class DiagnosticSnapshotService
         try
         {
             Directory.CreateDirectory(Path.GetDirectoryName(storePath)!);
+            var state = new SnapshotState
+            {
+                Version = 1,
+                Snapshots = snapshots.Select(x => new StoredSnapshot
+                {
+                    Id = x.Id, CapturedAt = x.CapturedAt, Label = x.Label,
+                    Sections = x.Sections.Select(section => new StoredSection
+                    { Id = section.Id, Title = section.Title, Status = section.Status, Content = section.Content }).ToList()
+                }).ToList()
+            };
             string temp = storePath + ".tmp";
-            File.WriteAllText(temp, JsonSerializer.Serialize(state, jsonOptions), Encoding.UTF8);
+            File.WriteAllText(temp, JsonSerializer.Serialize(state, jsonOptions), new UTF8Encoding(false));
             File.Move(temp, storePath, true);
             LastStorageError = null;
         }
