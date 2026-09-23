@@ -1,6 +1,6 @@
 # Trwały backlog rozwoju SentinelX
 
-Stan na 2026-09-22. Zasada: pojedyncza pozycja znika z listy dopiero, gdy jest **zbudowana i przetestowana na Windows (CI)**, nie „gdy wygląda na zrobioną".
+Stan na 2026-09-22. Zasada: każda pojedyncza pozycja znika z listy dopiero, gdy jest **zbudowana i przetestowana na Windows (CI)**, nie „gdy wygląda na zrobioną".
 
 ## Gotowe i zweryfikowane (0.85 i wcześniejsze)
 
