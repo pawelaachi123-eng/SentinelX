@@ -60,6 +60,7 @@ public static class SettingsCatalog
         Toggle("Pamięć", "AI używa wspomnień", "Profil i trwałe wspomnienia trafiają do kontekstu modelu. Niezależne od zapisu wspomnień.", () => S().Memory.UseMemoriesForAi, x => S().Memory.UseMemoriesForAi = x);
         Number("Pamięć", "Retencja rozmów (dni)", "Po ilu dniach historia rozmów jest usuwana. 0 = bezterminowo. Wspomnienia nie są kasowane automatycznie.", () => S().Memory.RetentionDays, x => S().Memory.RetentionDays = (int)x, 0, 3650, true);
         Toggle("Pamięć", "Podgląd kontekstu AI", "Rejestruje, które wspomnienia i fragmenty rozmowy trafiły do modelu (etykiety i powody, nie pełne prompty).", () => S().Memory.ContextPreviewEnabled, x => S().Memory.ContextPreviewEnabled = x);
+        Number("Pamięć", "Archiwum rozmów (miesiące)", "Po ilu miesiącach rozmowy trafiają do Memory/Archives (Markdown + JSON z hashem) i są usuwane z aktywnego magazynu. 0 = bez archiwizacji. Wspomnienia nie są archiwizowane.", () => S().Memory.ArchiveMonths, x => S().Memory.ArchiveMonths = (int)x, 0, 120, true);
         Toggle("Watch", "Monitoruj obciążenie", "Powiadomienie po przekroczeniu progu przez zadany czas.", () => S().Watch.Enabled, x => S().Watch.Enabled = x);
         Number("Watch", "Alarm CPU (%)", "Alert przy długotrwałym obciążeniu.", () => S().Watch.CpuAlertPercent, x => S().Watch.CpuAlertPercent = (int)x, 50, 100, true);
         Number("Watch", "Alarm RAM (%)", "Alert przy długotrwałym zapełnieniu pamięci.", () => S().Watch.RamAlertPercent, x => S().Watch.RamAlertPercent = (int)x, 50, 100, true);

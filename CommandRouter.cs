@@ -15,13 +15,19 @@ public sealed class CommandRouter
     private readonly ProjectService? projects;
     private readonly TaskService? tasks;
     private readonly DiagnosticSnapshotService? snapshots;
+    private readonly MemoryArchiveService? archives;
+    private readonly WorkspaceInsightsService? insights;
     private string lastTopic = "";
     private DateTime lastTopicTime;
     private (string Text, DateTime When, string Description, DateTime Expires)? pendingReminder;
 
     public CommandRouter(SystemMonitor systemMonitor, SystemInfoService systemInfo, LocalAiService localAi, ConversationMemoryService memory,
-        ProjectService? projects = null, TaskService? tasks = null, DiagnosticSnapshotService? snapshots = null)
-    { this.systemMonitor = systemMonitor; this.systemInfo = systemInfo; this.localAi = localAi; this.memory = memory; this.projects = projects; this.tasks = tasks; this.snapshots = snapshots; }
+        ProjectService? projects = null, TaskService? tasks = null, DiagnosticSnapshotService? snapshots = null,
+        MemoryArchiveService? archives = null, WorkspaceInsightsService? insights = null)
+    {
+        this.systemMonitor = systemMonitor; this.systemInfo = systemInfo; this.localAi = localAi; this.memory = memory;
+        this.projects = projects; this.tasks = tasks; this.snapshots = snapshots; this.archives = archives; this.insights = insights;
+    }
 
     public async Task<string> ProcessAsync(string command, CancellationToken cancellationToken = default, Action<string>? onDelta = null)
     {
@@ -30,6 +36,10 @@ public sealed class CommandRouter
         string text = Normalize(command).TrimEnd('?', '!', '.', ' ');
         string? snapshotResponse = await TryHandleSnapshotCommandAsync(command.Trim(), text, cancellationToken);
         if (snapshotResponse != null) return snapshotResponse;
+        string? utilityResponse = UtilityToolbox.Process(command.Trim(), text);
+        if (utilityResponse != null) return utilityResponse;
+        string? workspaceResponse = TryHandleWorkspaceCommand(command.Trim(), text);
+        if (workspaceResponse != null) return workspaceResponse;
         string? memoryResponse = TryHandleMemoryCommand(command.Trim(), text);
         if (memoryResponse != null) return memoryResponse;
         string? projectResponse = TryHandleProjectCommand(command.Trim(), text);
@@ -435,6 +445,62 @@ public sealed class CommandRouter
         }
         return null;
     }
+
+    private string? TryHandleWorkspaceCommand(string command, string text)
+    {
+        if (text is "pomoc" or "co umiesz" or "lista komend" or "komendy") return Help;
+        if (text is "skroty" or "skroty komend" or "jakie skroty")
+            return "Obsługiwane skróty (wpisz dokładnie tak, bez polskich znaków):\n" +
+                string.Join("\n", Core.IntentCatalog.Abbreviations.OrderBy(x => x.Key, StringComparer.Ordinal)
+                    .Select(x => "· " + x.Key + " → " + x.Value)) +
+                "\nSkróty są jawne i stałe — nie zgaduję znaczenia innych zbitek liter.";
+        if (insights == null && archives == null) return null;
+        if (insights != null && text is "statystyki" or "ile mam danych" or "stan danych") return insights.Statistics();
+        if (insights != null && text is "backup" or "kopia zapasowa" or "zrob backup")
+        {
+            string result = insights.Backup(out string path);
+            return path.Length == 0 ? result : "VERIFIED\n" + result;
+        }
+        if (insights != null && (text is "plan dnia" or "co dzis" or "podsumuj dzien" or "co mam dzisiaj")) return insights.Briefing();
+        if (insights != null)
+        {
+            var searchAll = Regex.Match(text, @"^szukaj wszystkiego[:\s]+(.+)$");
+            if (searchAll.Success) return insights.SearchAll(searchAll.Groups[1].Value.Trim());
+        }
+        if (archives != null && text is "archiwizuj rozmowy" or "archiwizuj rozmowe")
+        {
+            var result = archives.ArchiveMonth();
+            return result.Success ? "VERIFIED\n" + result.Message : result.Message;
+        }
+        if (archives != null && text is "archiwa" or "lista archiwow" or "pokaz archiwa") return archives.Describe();
+        if (archives != null)
+        {
+            var delete = Regex.Match(text, @"^usun archiwum (\d{4}-\d{2})$");
+            if (delete.Success)
+                return archives.DeleteArchive(delete.Groups[1].Value, out string reason)
+                    ? "Usunięto wyłącznie archiwum " + delete.Groups[1].Value + ". Aktywne rozmowy i wspomnienia są nietknięte."
+                    : "Nie usunięto archiwum. " + reason;
+        }
+        return null;
+    }
+
+    private const string Help = """
+        SENTINEL X — CO UMIEM (wszystko działa lokalnie)
+
+        Pomiary i system: ile mam RAM · użycie CPU · użycie GPU · dyski · top procesy · czas pracy komputera · która godzina · dzisiejsza data
+        Aplikacje: włącz <nazwa> (cs2, discord, steam, chrome, brave, spotify, notatnik, kalkulator, VS Code, Firefox, VLC, OBS…) · otwórz pobrane / dokumenty / pulpit · skróty
+        Diagnostyka: diagnostyka komputera · eksportuj raport · status zabezpieczeń · zdarzenia windows · programy autostartu · lista usług
+        Odczyty stanu: snapshot · snapshoty · porównaj snapshoty · eksportuj porównanie · usuń snapshot N
+        Pamięć: zapamiętaj: … · co pamiętasz · pokaż rozmowy · nowa rozmowa · szukaj w rozmowie: fraza · eksportuj rozmowę markdown
+        Archiwum: archiwizuj rozmowy · archiwa · usuń archiwum RRRR-MM
+        Projekty: nowy projekt: nazwa · projekty · użyj projektu N · aktywny projekt
+        Zadania: dodaj zadanie: treść · zadania · zadanie N zrobione · przypomnienia · przypomnij mi jutro o 18 o …
+        Narzędzia: policz 12,5*4 · procent 15 z 240 · vat 100 · przelicz 5 km na mile · ile dni do 24.12 · jaki dzien tygodnia 1.1.2030 · haslo 20 · uuid · ile slow: tekst · base64: tekst · dekoduj base64: … · hash tekstu: … · json: {…} · slug: tekst · transliteruj: tekst · wielkie litery: … · male litery: … · odwroc tekst: … · losuj 1-100 · rzuc kostka · wybierz losowo: a, b · bmi 80 180 · rzymskie 2026 · z rzymskich XIV · kolor 1fa2c3
+        Podsumowania: plan dnia · szukaj wszystkiego: fraza · statystyki · backup
+        Czat: ponów (przycisk „Ponów") · zatrzymaj generowanie (przycisk widoczny zawsze)
+
+        Rozumienie: literówki i skróty są poprawiane, ale zawsze pokazuję, co zrozumiałem. Nie zgaduję poleceń niszczących — usuwanie wymaga świadomego kliknięcia lub osobnej zgody.
+        """;
 
     private string SnapshotStorage(string success) => snapshots?.LastStorageError == null ? success : snapshots.LastStorageError;
     private static string Truncate(string text, int max) => text.Length <= max ? text : text[..(max - 1)] + "…";

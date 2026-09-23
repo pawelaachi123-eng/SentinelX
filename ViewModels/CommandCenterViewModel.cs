@@ -36,7 +36,8 @@ public partial class CommandCenterViewModel : ObservableObject, IDisposable
     private bool streamPending;
     private string lastUserInput = "";
     public CommandCenterViewModel(IActionEngine engine, IVoiceService voice, IUiDispatcher dispatcher,
-        SystemViewModel system, VoiceViewModel voiceViewModel, IHistoryService history, ConversationMemoryService memory, TaskService tasks)
+        SystemViewModel system, VoiceViewModel voiceViewModel, IHistoryService history, ConversationMemoryService memory, TaskService tasks,
+        MemoryArchiveService? archives = null)
     {
         this.engine = engine; this.voice = voice; this.dispatcher = dispatcher; this.history = history; this.memory = memory; this.tasks = tasks; System = system; Voice = voiceViewModel;
         foreach (var entry in history.ReadConversation().TakeLast(100)) Messages.Add(new(entry.Role, entry.Text, entry.Timestamp));
@@ -45,6 +46,8 @@ public partial class CommandCenterViewModel : ObservableObject, IDisposable
         engine.Changed += Sync; voice.CommandRecognized += Recognized;
         memory.Changed += MemorySync; memory.SessionChanged += SessionSync;
         tasks.ReminderFired += ReminderFired;
+        foreach (var archived in archives?.ArchiveDue() ?? [])
+            Messages.Add(new("assistant", $"📦 Rozmowy z {archived.Month} przeniesione do archiwum ({archived.Conversations} rozmów, {archived.Turns} wypowiedzi) i usunięte z aktywnego magazynu. Folder: {archived.JsonPath}. Wspomnienia są nietknięte. Polecenie „archiwa” pokazuje listę.", DateTime.Now));
         var missed = tasks.CheckDue(atStartup: true);
         if (missed.Count > 0)
             Messages.Add(new("assistant", missed.Count == 1

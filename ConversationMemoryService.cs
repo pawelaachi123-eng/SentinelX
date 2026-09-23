@@ -469,6 +469,20 @@ public sealed class ConversationMemoryService : Services.Memory.IConversationMem
         lock (syncRoot) return state.Entries.Select(Clone).ToArray();
     }
 
+    /// <summary>Removes conversation turns older than the cutoff. Explicit memories, the profile and the
+    /// change log are never touched — this is the archive path, not a memory wipe.</summary>
+    public int PruneEntriesBefore(DateTime cutoff)
+    {
+        int removed;
+        lock (syncRoot)
+        {
+            removed = state.Entries.RemoveAll(x => x.Timestamp < cutoff);
+            if (removed > 0) SaveLocked();
+        }
+        if (removed > 0) Changed?.Invoke();
+        return removed;
+    }
+
     /// <summary>Searches only the ACTIVE conversation; normalized text match, newest first, honest about what was not found.</summary>
     public IReadOnlyList<ConversationMemoryEntry> SearchConversation(string query, int maxResults = 15)
     {

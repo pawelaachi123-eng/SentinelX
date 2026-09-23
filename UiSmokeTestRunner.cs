@@ -35,6 +35,9 @@ public static class UiSmokeTestRunner
             await Tests.TaskRegression.RunAsync(Path.Combine(output, "tasks"));
             await Tests.DiagnosticSnapshotRegression.RunAsync(Path.Combine(output, "snapshots"));
             await Tests.AiStreamRegression.RunAsync(Path.Combine(output, "ai-stream"));
+            await Tests.UnderstandingRegression.RunAsync(Path.Combine(output, "understanding"));
+            await Tests.UtilityRegression.RunAsync(Path.Combine(output, "utility"));
+            await Tests.MemoryArchiveRegression.RunAsync(Path.Combine(output, "archives"));
             var vm = services.GetRequiredService<MainViewModel>();
             vm.Readiness.IsOpen = false;
             if (vm.InitializeCommand.IsRunning) await vm.InitializeCommand.ExecutionTask!;
@@ -126,6 +129,35 @@ public static class UiSmokeTestRunner
                 throw new InvalidOperationException("In-conversation search is not wired.");
             if (!(await memoryEngine.ExecuteAsync("eksportuj rozmowę markdown")).Text.Contains("SHA-256"))
                 throw new InvalidOperationException("Conversation Markdown export did not produce a verified file.");
+            // Typo tolerance: the repaired command must run and the interpretation must be disclosed.
+            var repaired = await memoryEngine.ExecuteAsync("ile mam ramuu");
+            if (!repaired.Text.Contains("Zrozumiałem jako") || !repaired.Text.Contains("ile mam ramu"))
+                throw new InvalidOperationException("A mistyped command must be understood and disclosed: " + repaired.Text);
+            if (!(await memoryEngine.ExecuteAsync("wlacz kalcuator")).Text.Contains("Zrozumiałem jako"))
+                throw new InvalidOperationException("A mistyped app name must be disclosed as a repair.");
+            // Offline tools through the real chat pipeline.
+            foreach (var (command, expected) in new[]
+            {
+                ("policz 12+8", "= 20"), ("przelicz 5 km na mile", "3,1069"), ("procent 15 z 240", "= 36"),
+                ("ile to procent 30 z 240", "12,5%"), ("vat 100", "brutto 123,00"), ("haslo 20", "entropii"),
+                ("uuid", "UUID: "), ("ile slow: ala ma kota", "Słowa: 3"), ("base64: ala", "YWxh"),
+                ("hash tekstu: abc", "ba7816bf8f01cfea"), ("json: {\"a\":1}", "JSON poprawny"),
+                ("slug: ZaŻółć Gęślą Jaźń", "zazolc-gesla-jazn"), ("wielkie litery: kot", "KOT"),
+                ("odwroc tekst: kot", "tok"), ("losuj 1-6", "Wylosowano"), ("rzuc kostka", "suma:"),
+                ("wybierz losowo: pizza, sushi", "Wybrano:"), ("bmi 80 180", "BMI 24,7"),
+                ("rzymskie 2026", "MMXXVI"), ("z rzymskich MMXXVI", "= 2026"), ("kolor 1fa2c3", "RGB(31, 162, 195)"),
+                ("jaki dzien tygodnia 1.1.2030", "wtorek"), ("plan dnia", "PLAN NA"), ("statystyki", "STATYSTYKI"),
+                ("skroty", "→"), ("pomoc", "CO UMIEM"), ("archiwa", "Archiw"), ("backup", "SHA-256"),
+            })
+            {
+                string toolResponse = (await memoryEngine.ExecuteAsync(command)).Text;
+                if (!toolResponse.Contains(expected))
+                    throw new InvalidOperationException("Tool command „" + command + "” did not answer as expected (" + expected + "): " + toolResponse);
+            }
+            // Unified search must reach every module, not just the conversation.
+            string unified = (await memoryEngine.ExecuteAsync("szukaj wszystkiego: cyjan")).Text;
+            if (!unified.Contains("Znalezione w danych lokalnych"))
+                throw new InvalidOperationException("Unified search is not wired: " + unified);
             // Streaming surface: the stop control must answer honestly when nothing is generating.
             chat.StopGenerationCommand.Execute(null);
             if (!chat.Status.Contains("Nic teraz nie jest generowane"))
@@ -211,7 +243,7 @@ public static class UiSmokeTestRunner
             string errors = buffer.ToString();
             File.WriteAllText(Path.Combine(output, "bindings.log"), errors);
             if (errors.Length != 0) throw new InvalidOperationException("WPF binding errors: " + errors);
-            File.WriteAllText(Path.Combine(output, "ui-smoke.txt"), "PASS\nPages: " + string.Join(", ", visited) + "\nDark/DeepDark/System themes rendered\nSTOP/Resume/voice approval passed\nPalette, readiness, draft preservation and execution-scoped evidence passed\n");
+            File.WriteAllText(Path.Combine(output, "ui-smoke.txt"), "PASS\nPages: " + string.Join(", ", visited) + "\nDark/DeepDark/System themes rendered\nSTOP/Resume/voice approval passed\nPalette, readiness, draft preservation and execution-scoped evidence passed\nTypo repair, offline tools, archives, insights and unified search passed\n");
         }
         finally { PresentationTraceSources.DataBindingSource.Listeners.Remove(listener); }
     }

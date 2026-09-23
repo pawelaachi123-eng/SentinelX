@@ -21,10 +21,47 @@ public sealed class AppLauncherService : Services.Apps.IAppLauncherService
         ["notatnika"] = "notatnik", ["notepad"] = "notatnik", ["kalkulatora"] = "kalkulator", ["calculator"] = "kalkulator",
         ["task manager"] = "menedzer zadan", ["menedzera zadan"] = "menedzer zadan", ["menedzer zadan windows"] = "menedzer zadan",
         ["explorer"] = "eksplorator", ["eksploratora"] = "eksplorator", ["eksplorator plikow"] = "eksplorator", ["eksploratora plikow"] = "eksplorator",
-        ["ustawienia windows"] = "ustawienia", ["spotifya"] = "spotify", ["spotify'a"] = "spotify", ["gmaila"] = "gmail", ["faceita"] = "faceit"
+        ["ustawienia windows"] = "ustawienia", ["spotifya"] = "spotify", ["spotify'a"] = "spotify", ["gmaila"] = "gmail", ["faceita"] = "faceit",
+        ["cs 2"] = "cs2", ["cs:go"] = "cs2", ["cs go 2"] = "cs2", ["counter strike global offensive"] = "cs2", ["counterstrike"] = "cs2",
+        ["dota"] = "dota 2", ["dote"] = "dota 2", ["dote 2"] = "dota 2",
+        ["cyberpunk"] = "cyberpunk 2077", ["cp2077"] = "cyberpunk 2077", ["cyberpunka"] = "cyberpunk 2077",
+        ["wiedzmin"] = "wiedzmin 3", ["wiedzmina"] = "wiedzmin 3", ["wiedzmina 3"] = "wiedzmin 3", ["witcher"] = "wiedzmin 3", ["witcher 3"] = "wiedzmin 3", ["witchera 3"] = "wiedzmin 3",
+        ["elden"] = "elden ring", ["eldenring"] = "elden ring", ["elden ringa"] = "elden ring",
+        ["rusta"] = "rust", ["terrarii"] = "terraria",
+        ["vscode"] = "vs code", ["vs code'a"] = "vs code", ["code"] = "vs code", ["visual studio code"] = "vs code", ["vs"] = "vs code", ["vsc"] = "vs code",
+        ["vlc player"] = "vlc", ["obs studio"] = "obs", ["obsa"] = "obs",
+        ["firefoxa"] = "firefox", ["fajerfoks"] = "firefox", ["ms edge"] = "edge", ["microsoft edge"] = "edge", ["edga"] = "edge",
+        ["painta"] = "paint", ["mspaint"] = "paint", ["terminala"] = "terminal", ["wt"] = "terminal", ["windows terminal"] = "terminal",
+        ["telegrama"] = "telegram", ["telegrame"] = "telegram"
+    };
+    /// <summary>Steam titles launched through the official rungameid protocol. Verification is by the game's own process name.</summary>
+    private static readonly Dictionary<string, (int AppId, string[] Processes, string Label, int TimeoutMs)> steamGames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["cs2"] = (730, ["cs2"], "CS2", 20000),
+        ["dota 2"] = (570, ["dota2"], "Dota 2", 15000),
+        ["cyberpunk 2077"] = (1091500, ["Cyberpunk2077"], "Cyberpunk 2077", 20000),
+        ["wiedzmin 3"] = (292030, ["witcher3"], "Wiedźmin 3", 20000),
+        ["elden ring"] = (1245620, ["eldenring"], "Elden Ring", 20000),
+        ["terraria"] = (105600, ["Terraria"], "Terraria", 15000),
+        ["rust"] = (252490, ["RustClient"], "Rust", 20000)
+    };
+    /// <summary>Desktop apps found by their standard install path. Missing install is reported honestly.</summary>
+    private static readonly Dictionary<string, (string[] Paths, string[] Processes, string Label)> localApps = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["vs code"] = (["%LocalAppData%\Programs\Microsoft VS Code\Code.exe", "%ProgramFiles%\Microsoft VS Code\Code.exe"], ["Code"], "Visual Studio Code"),
+        ["vlc"] = (["%ProgramFiles%\VideoLAN\VLC\vlc.exe", "%ProgramFiles(x86)%\VideoLAN\VLC\vlc.exe"], ["vlc"], "VLC"),
+        ["obs"] = (["%ProgramFiles%\obs-studio\bin\64bit\obs64.exe"], ["obs64"], "OBS Studio"),
+        ["firefox"] = (["%ProgramFiles%\Mozilla Firefox\firefox.exe", "%ProgramFiles(x86)%\Mozilla Firefox\firefox.exe"], ["firefox"], "Firefox"),
+        ["edge"] = (["%ProgramFiles(x86)%\Microsoft\Edge\Application\msedge.exe", "%ProgramFiles%\Microsoft\Edge\Application\msedge.exe"], ["msedge"], "Microsoft Edge"),
+        ["telegram"] = (["%LocalAppData%\Telegram Desktop\Telegram.exe", "%ProgramFiles%\Telegram Desktop\Telegram.exe"], ["Telegram"], "Telegram")
     };
     private static readonly HashSet<string> knownTargets = new(StringComparer.OrdinalIgnoreCase)
-    { "discord", "steam", "cs2", "brave", "chrome", "notatnik", "kalkulator", "menedzer zadan", "eksplorator", "ustawienia", "youtube", "google", "gmail", "faceit", "chatgpt", "spotify" };
+    {
+        "discord", "steam", "brave", "chrome", "notatnik", "kalkulator", "menedzer zadan", "eksplorator", "ustawienia",
+        "youtube", "google", "gmail", "faceit", "chatgpt", "spotify", "paint", "terminal",
+        "cs2", "dota 2", "cyberpunk 2077", "wiedzmin 3", "elden ring", "terraria", "rust",
+        "vs code", "vlc", "obs", "firefox", "edge", "telegram"
+    };
 
     public static string CanonicalizeLaunchTarget(string target)
     {
@@ -41,6 +78,15 @@ public sealed class AppLauncherService : Services.Apps.IAppLauncherService
         if (IsSafeWebUrl(target)) return OpenWebsite(target.Trim(), target.Trim());
         if (Uri.TryCreate(target, UriKind.Absolute, out _) || target.Contains('\\') || target.Contains('/'))
             return ActionExecutionResult.Failure("Dozwolone są nazwy aplikacji i adresy HTTP/HTTPS.", "Nie wykonano przekazanego URI ani ścieżki.");
+        if (steamGames.TryGetValue(normalized, out (int AppId, string[] Processes, string Label, int TimeoutMs) game))
+            return await LaunchAndVerifyAsync("steam://rungameid/" + game.AppId, game.Processes, game.Label, cancellationToken, timeoutMilliseconds: game.TimeoutMs);
+        if (localApps.TryGetValue(normalized, out (string[] Paths, string[] Processes, string Label) app))
+        {
+            string? installed = app.Paths.Select(Environment.ExpandEnvironmentVariables).FirstOrDefault(File.Exists);
+            return installed == null
+                ? ActionExecutionResult.Failure($"Nie znalazłem zainstalowanej aplikacji {app.Label}.", "Nie uruchomiono żadnego programu. Sprawdź ścieżkę instalacji albo podaj nazwę skrótu z menu Start.")
+                : await LaunchAndVerifyAsync(installed, app.Processes, app.Label, cancellationToken);
+        }
         switch (normalized)
         {
             case "discord":
@@ -49,7 +95,6 @@ public sealed class AppLauncherService : Services.Apps.IAppLauncherService
                     ? await LaunchAndVerifyAsync(discordUpdate, ["Discord"], "Discord", cancellationToken, ["--processStart", "Discord.exe"], 6000)
                     : await LaunchAndVerifyAsync("discord:", ["Discord"], "Discord", cancellationToken, timeoutMilliseconds: 6000);
             case "steam": return await LaunchAndVerifyAsync(GetSteamExe() ?? "steam://open/main", ["steam"], "Steam", cancellationToken, timeoutMilliseconds: 7000);
-            case "cs2": return await LaunchAndVerifyAsync("steam://rungameid/730", ["cs2"], "CS2", cancellationToken, timeoutMilliseconds: 20000);
             case "brave":
             case "chrome":
                 string? browser = FindBrowser(normalized);
@@ -66,6 +111,8 @@ public sealed class AppLauncherService : Services.Apps.IAppLauncherService
             case "faceit": return OpenWebsite("https://www.faceit.com/", "FACEIT");
             case "chatgpt": return OpenWebsite("https://chatgpt.com/", "ChatGPT");
             case "spotify": return await LaunchAndVerifyAsync("spotify:", ["Spotify"], "Spotify", cancellationToken);
+            case "paint": return await LaunchAndVerifyAsync("mspaint.exe", ["mspaint"], "Paint", cancellationToken);
+            case "terminal": return await LaunchAndVerifyAsync("wt.exe", ["WindowsTerminal"], "Terminal Windows", cancellationToken);
         }
         var matches = await Task.Run(() => FindStartMenuMatches(normalized, cancellationToken), cancellationToken);
         if (matches.Count == 1) return StartShell(matches[0], Path.GetFileNameWithoutExtension(matches[0]));

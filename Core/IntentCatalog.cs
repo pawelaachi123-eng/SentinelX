@@ -1,0 +1,82 @@
+namespace SentinelX.Core;
+
+/// <summary>Known, non-destructive command phrases and stems, in normalized form.
+/// Typo repair only ever rewrites text towards these — destructive commands (delete, clear, kill,
+/// confirm) are deliberately absent, so a mistyped word can never reach them.</summary>
+public static class IntentCatalog
+{
+    /// <summary>Documented short forms. Deterministic and listed by the „skróty” command.</summary>
+    public static IReadOnlyDictionary<string, string> Abbreviations { get; } = new Dictionary<string, string>(StringComparer.Ordinal)
+    {
+        ["mz"] = "uruchom menedzer zadan",
+        ["dk"] = "diagnostyka komputera",
+        ["sp"] = "status pamieci",
+        ["sn"] = "snapshot",
+        ["sns"] = "snapshoty",
+        ["cs"] = "wlacz cs2",
+        ["dc"] = "wlacz discord",
+        ["st"] = "wlacz steam",
+        ["ch"] = "wlacz chrome",
+        ["nt"] = "wlacz notatnik",
+        ["kl"] = "wlacz kalkulator",
+        ["yt"] = "wlacz youtube",
+        ["zs"] = "status zabezpieczen",
+        ["tp"] = "top procesy",
+        ["ti"] = "test internetu",
+        ["zd"] = "zadania",
+        ["pr"] = "projekty",
+        ["pm"] = "co pamietasz"
+    };
+
+    public static IReadOnlyList<string> Phrases { get; } = Build();
+
+    private static IReadOnlyList<string> Build()
+    {
+        var phrases = new HashSet<string>(StringComparer.Ordinal);
+        // Read-only measurements are already a curated alias table — reuse it instead of duplicating.
+        foreach (string alias in ReadOnlyIntentCatalog.Aliases.Keys) phrases.Add(alias);
+
+        string[] extra =
+        [
+            // launching and folders
+            "wlacz cs2", "wlacz discord", "wlacz steam", "wlacz chrome", "wlacz brave", "wlacz spotify",
+            "wlacz notatnik", "wlacz kalkulator", "wlacz youtube", "wlacz vs code", "wlacz firefox", "wlacz edge",
+            "wlacz vlc", "wlacz obs", "wlacz minecraft", "wlacz valorant", "wlacz league of legends",
+            "wlacz epic games", "wlacz battle net", "wlacz telegram", "wlacz whatsapp", "wlacz paint",
+            "uruchom cs2", "uruchom discord", "uruchom steam", "uruchom chrome", "uruchom brave",
+            "uruchom notatnik", "uruchom kalkulator", "uruchom menedzer zadan", "uruchom eksplorator",
+            "otworz ustawienia", "otworz pobrane", "otworz dokumenty", "otworz pulpit", "otworz folder sentinel",
+            // diagnostics, network, processes
+            "top procesy", "co zjada ram", "test internetu", "status sieci", "historia akcji",
+            "diagnostyka komputera", "raport komputera", "eksportuj raport", "status zabezpieczen",
+            "zdarzenia windows", "programy autostartu", "lista uslug",
+            // ai
+            "modele ai", "status ai", "test ai", "lista modeli", "sprawdz ai", "model ai auto",
+            // memory and conversations
+            "co pamietasz", "status pamieci", "ile pamietasz", "pokaz rozmowy", "lista rozmow", "moje rozmowy",
+            "nowa rozmowa", "nowa sesja", "co poszlo do modelu", "co powiedzialem wczesniej",
+            "szukaj w rozmowie", "eksportuj rozmowe markdown", "eksportuj pamiec",
+            // tasks, projects, snapshots
+            "zadania", "lista zadan", "przypomnienia", "dodaj zadanie",
+            "projekty", "lista projektow", "moje projekty", "pokaz projekty", "aktywny projekt", "status projektu",
+            "snapshot", "snapshoty", "lista snapshotow", "porownaj snapshoty", "eksportuj porownanie",
+            // archives, backup, help
+            "archiwizuj rozmowy", "archiwa", "backup", "statystyki", "pomoc", "co umiesz", "skroty",
+            "toolbox", "narzedzia sentinel",
+            // utility stems (argument commands)
+            "ile dni do", "ile dni od", "jaki dzien tygodnia", "haslo", "generuj haslo", "uuid", "guid",
+            "ile slow", "policz slowa", "przelicz", "konwertuj", "procent", "ile to procent", "vat",
+            "base64", "dekoduj base64", "hash tekstu", "sha256", "json", "sprawdz json", "slug",
+            "transliteruj", "wielkie litery", "male litery", "odwroc tekst", "losuj", "rzuc kostka",
+            "wybierz losowo", "bmi", "rzymskie", "z rzymskich", "kolor", "kalkulator", "policz",
+            "szukaj wszystkiego", "podsumuj dzien", "plan dnia", "co dzis"
+        ];
+        foreach (string phrase in extra) phrases.Add(phrase);
+        return phrases.OrderBy(x => x, StringComparer.Ordinal).ToArray();
+    }
+
+    /// <summary>Every word that appears in a known phrase — the vocabulary used for word-level repair.</summary>
+    public static IReadOnlySet<string> Vocabulary { get; } = new HashSet<string>(
+        Phrases.SelectMany(phrase => phrase.Split(' ', StringSplitOptions.RemoveEmptyEntries)),
+        StringComparer.Ordinal);
+}

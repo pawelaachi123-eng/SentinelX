@@ -39,6 +39,12 @@ public static class ServiceLocator
             PrivacyProvider = () => MapPrivacy(sp.GetRequiredService<ISettingsService>().Current.Memory),
             ActiveProjectIdProvider = () => sp.GetRequiredService<ProjectService>().ActiveProjectId,
         });
+        services.AddSingleton<MemoryArchiveService>(sp => new MemoryArchiveService(sp.GetRequiredService<ConversationMemoryService>())
+        {
+            KeepMonthsProvider = () => sp.GetRequiredService<ISettingsService>().Current.Memory.ArchiveMonths
+        });
+        services.AddSingleton<WorkspaceInsightsService>(sp => new(sp.GetRequiredService<ConversationMemoryService>(), sp.GetRequiredService<TaskService>(),
+            sp.GetRequiredService<ProjectService>(), sp.GetRequiredService<DiagnosticSnapshotService>(), sp.GetRequiredService<ActionHistoryService>()));
         services.AddSingleton<Services.Memory.MemoryActionService>(sp => new(sp.GetRequiredService<ConversationMemoryService>(),
             sp.GetRequiredService<Services.Permissions.IPermissionService>(), sp.GetRequiredService<ActionHistoryService>()));
         services.AddSingleton<IHistoryService, HistoryService>();

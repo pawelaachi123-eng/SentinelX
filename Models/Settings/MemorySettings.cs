@@ -15,4 +15,7 @@ public sealed class MemorySettings
     public int RetentionDays { get; set; }
     /// <summary>Record which memories/conversation slices were sent to the model (labels and reasons, not prompts).</summary>
     public bool ContextPreviewEnabled { get; set; } = true;
+    /// <summary>How many months of conversations stay in the live store. Older months are archived to
+    /// Memory/Archives and pruned at startup. 0 = keep everything, nothing is archived automatically.</summary>
+    public int ArchiveMonths { get; set; } = 1;
 }
