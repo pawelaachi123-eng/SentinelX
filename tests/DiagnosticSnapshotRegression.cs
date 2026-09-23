@@ -62,6 +62,7 @@ internal static class DiagnosticSnapshotRegression
         var capturedA = await service.CaptureAsync("smoke A");
         var capturedB = await service.CaptureAsync("smoke B");
         Check(capturedA != null && capturedB != null, "two readings were captured");
+        if (capturedA == null || capturedB == null) return;
         Check(capturedA!.Sections.Count > 0, "a reading contains diagnostic sections");
         Check(service.GetSnapshots().Count == 2, "both readings are listed");
 

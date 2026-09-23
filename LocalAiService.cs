@@ -142,11 +142,9 @@ public sealed class LocalAiService : IDisposable
         { return "Nie udało się zapisać wyboru modelu: " + ex.Message; }
     }
 
-    public Task<string> AskAsync(string userMessage, string context = "", CancellationToken cancellationToken = default) =>
-        AskAsync(userMessage, context, cancellationToken, null);
-
     /// <summary>Streams visible chunks through <paramref name="onDelta"/> when a consumer wants a live answer.
-    /// Only the first model attempt streams, so what the user watches is exactly what comes back.</summary>
+    /// Without a consumer the request stays non-streaming, exactly as before. Only the first model attempt
+    /// streams, so what the user watches is the same text that comes back.</summary>
     public async Task<string> AskAsync(string userMessage, string context = "", CancellationToken cancellationToken = default, Action<string>? onDelta = null)
     {
         if (string.IsNullOrWhiteSpace(userMessage)) return "Słucham.";
