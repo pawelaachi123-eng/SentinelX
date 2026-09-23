@@ -147,7 +147,9 @@ public sealed class CommandRouter
         if (remind.Success)
         {
             if (!TrySplitReminderTime(remind.Groups[1].Value.Trim(), out string reminderText, out DateTime when, out string description))
-                return "Nie rozpoznano terminu. Napisz np.: „przypomnij mi jutro o 18 o telefonie do mamy”, „przypomnij za 30 minut o herbacie” albo „przypomnij w piątek o 15 o raporcie”.";
+                return description.Length > 0
+                    ? "Termin: " + description + " Nic nie zapisano."
+                    : "Nie rozpoznano terminu. Napisz np.: „przypomnij mi jutro o 18 o telefonie do mamy”, „przypomnij za 30 minut o herbacie” albo „przypomnij o herbacie za 30 minut”.";
             pendingReminder = (reminderText, when, description, DateTime.Now.AddMinutes(5));
             return $"Rozumiem: przypomnienie „{reminderText}” na {description} (czas lokalny). Zapiszę to dopiero po Twojej zgodzie — odpowiedz „tak” albo „nie”.";
         }
@@ -192,17 +194,23 @@ public sealed class CommandRouter
         return null;
     }
 
-    /// <summary>Splits „telefon do mamy jutro o 18" into text + a parsed time phrase; the phrase must sit at the very end.</summary>
+    /// <summary>Splits a reminder sentence into text + a parsed time phrase. Both natural Polish orders work:
+    /// trailing („telefon do mamy jutro o 18") and leading („jutro o 18 telefon do mamy"). Trailing wins on ambiguity.</summary>
     private static bool TrySplitReminderTime(string remainder, out string text, out DateTime when, out string description)
     {
         text = ""; when = default; description = "";
-        var match = Regex.Match(remainder, @"^(?<body>.+?)\s+(?<time>za \d+ (?:min\w+|godzin\w*|dni|dzień)|za pół godziny|pojutrze(?: o \d{1,2}(?::\d{2})?)?|jutro(?: o \d{1,2}(?::\d{2})?)?|dzi[śs](?:iaj)? o \d{1,2}(?::\d{2})?|w (?:poniedziałek|wtorek|środ[ęe]|czwartek|piątek|sobot[ęe]|niedziel[ęea])(?: o \d{1,2}(?::\d{2})?)?|(?:na )?\d{1,2}[.\-/]\d{1,2}(?:[.\-/]\d{2,4})?(?: o \d{1,2}(?::\d{2})?)?|o \d{1,2}(?::\d{2})?|\d{1,2}:\d{2})$", RegexOptions.IgnoreCase);
+        const string timePhrases = @"za \d+ (?:min\w+|godzin\w*|dni|dzień)|za pół godziny|pojutrze(?: o \d{1,2}(?::\d{2})?)?|jutro(?: o \d{1,2}(?::\d{2})?)?|dzi[śs](?:iaj)? o \d{1,2}(?::\d{2})?|w (?:poniedziałek|wtorek|środ[ęe]|czwartek|piątek|sobot[ęe]|niedziel[ęea])(?: o \d{1,2}(?::\d{2})?)?|(?:na )?\d{1,2}[.\-/]\d{1,2}(?:[.\-/]\d{2,4})?(?: o \d{1,2}(?::\d{2})?)?|o \d{1,2}(?::\d{2})?|\d{1,2}:\d{2}";
+        var trailing = Regex.Match(remainder, "^(?<body>.+?)\\s+(?<time>" + timePhrases + ")$", RegexOptions.IgnoreCase);
+        var leading = Regex.Match(remainder, "^(?<time>" + timePhrases + @")\s*,?\s*(?<body>.+)$", RegexOptions.IgnoreCase);
+        var match = trailing.Success ? trailing : leading;
         if (!match.Success) return false;
         if (!PolishTimeParser.TryParse(match.Groups["time"].Value, DateTime.Now, out DateTime parsed, out description)) return false;
-        if (parsed <= DateTime.Now) return false;
-        text = match.Groups["body"].Value.Trim().TrimEnd(',', '.', '!');
+        if (parsed <= DateTime.Now) { description = description.Length > 0 ? description : "Ten termin już minął (rozumiem: " + match.Groups["time"].Value + ")."; return false; }
+        text = match.Groups["body"].Value.Trim().Trim(',', '.', '!').Trim();
+        if (text.StartsWith("o ", StringComparison.OrdinalIgnoreCase) && text.Length > 2) text = text[2..].TrimStart(); // „jutro o 18 o herbacie" → „herbacie"
         if (text.Length == 0) return false;
         when = parsed;
+        description = description.Length > 0 ? description : "";
         return true;
     }
 
