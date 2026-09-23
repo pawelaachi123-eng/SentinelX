@@ -190,8 +190,8 @@ public sealed class WorkspaceInsightsService
     private static string Size(long bytes) => bytes switch
     {
         < 1024 => bytes + " B",
-        < 1024 * 1024 => (bytes / 1024d).ToString("0.#") + " kB",
-        _ => (bytes / 1048576d).ToString("0.#") + " MB"
+        < 1024 * 1024 => (bytes / 1024d).ToString("0.#", CultureInfo.GetCultureInfo("pl-PL")) + " kB",
+        _ => (bytes / 1048576d).ToString("0.#", CultureInfo.GetCultureInfo("pl-PL")) + " MB"
     };
 
     private static string Hash(byte[] bytes) => Convert.ToHexString(SHA256.HashData(bytes));

@@ -74,7 +74,7 @@ public sealed class MemoryArchiveService
         if (archives.Count == 0)
             return "Brak archiwów. Folder: " + archiveRoot + "\nWpisz „archiwizuj rozmowy”, żeby przenieść tam rozmowy z poprzedniego miesiąca.";
         var lines = archives.Select(x => "· " + x.Month + " · " + x.Conversations + " rozmów · " + x.Turns + " wypowiedzi · " +
-            (x.Bytes / 1024.0).ToString("0.#") + " kB" + (x.Sha256.Length == 64 ? "\n  " + x.JsonPath : "\n  " + x.Sha256));
+            (x.Bytes / 1024.0).ToString("0.#", CultureInfo.GetCultureInfo("pl-PL")) + " kB" + (x.Sha256.Length == 64 ? "\n  " + x.JsonPath : "\n  " + x.Sha256));
         return "Archiwa rozmów (folder " + archiveRoot + "):\n" + string.Join("\n", lines) +
             "\nArchiwum to kopia do odczytu — przywracanie do aktywnej rozmowy nie jest obsługiwane.";
     }

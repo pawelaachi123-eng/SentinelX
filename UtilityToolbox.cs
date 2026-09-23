@@ -466,8 +466,8 @@ public static class UtilityToolbox
         double saturation = delta == 0 ? 0 : delta / (1 - Math.Abs(2 * lightness - 1));
         double luminance = 0.2126 * Linear(rn) + 0.7152 * Linear(gn) + 0.0722 * Linear(bn);
         return "#" + hex.ToLowerInvariant() + " · RGB(" + r + ", " + g + ", " + b + ") · HSL(" + hue.ToString("0") + "°, " +
-            (saturation * 100).ToString("0") + "%, " + (lightness * 100).ToString("0") + "%) · luminancja " + luminance.ToString("0.000") +
-            " · kontrast z bielą " + Contrast(luminance, 1).ToString("0.0") + ":1, z czernią " + Contrast(luminance, 0).ToString("0.0") + ":1";
+            (saturation * 100).ToString("0", Pl) + "%, " + (lightness * 100).ToString("0", Pl) + "%) · luminancja " + luminance.ToString("0.000", Pl) +
+            " · kontrast z bielą " + Contrast(luminance, 1).ToString("0.0", Pl) + ":1, z czernią " + Contrast(luminance, 0).ToString("0.0", Pl) + ":1";
     }
 
     private static double Linear(double channel) => channel <= 0.03928 ? channel / 12.92 : Math.Pow((channel + 0.055) / 1.055, 2.4);
