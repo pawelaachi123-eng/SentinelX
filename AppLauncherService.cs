@@ -48,12 +48,12 @@ public sealed class AppLauncherService : Services.Apps.IAppLauncherService
     /// <summary>Desktop apps found by their standard install path. Missing install is reported honestly.</summary>
     private static readonly Dictionary<string, (string[] Paths, string[] Processes, string Label)> localApps = new(StringComparer.OrdinalIgnoreCase)
     {
-        ["vs code"] = (["%LocalAppData%\Programs\Microsoft VS Code\Code.exe", "%ProgramFiles%\Microsoft VS Code\Code.exe"], ["Code"], "Visual Studio Code"),
-        ["vlc"] = (["%ProgramFiles%\VideoLAN\VLC\vlc.exe", "%ProgramFiles(x86)%\VideoLAN\VLC\vlc.exe"], ["vlc"], "VLC"),
-        ["obs"] = (["%ProgramFiles%\obs-studio\bin\64bit\obs64.exe"], ["obs64"], "OBS Studio"),
-        ["firefox"] = (["%ProgramFiles%\Mozilla Firefox\firefox.exe", "%ProgramFiles(x86)%\Mozilla Firefox\firefox.exe"], ["firefox"], "Firefox"),
-        ["edge"] = (["%ProgramFiles(x86)%\Microsoft\Edge\Application\msedge.exe", "%ProgramFiles%\Microsoft\Edge\Application\msedge.exe"], ["msedge"], "Microsoft Edge"),
-        ["telegram"] = (["%LocalAppData%\Telegram Desktop\Telegram.exe", "%ProgramFiles%\Telegram Desktop\Telegram.exe"], ["Telegram"], "Telegram")
+        ["vs code"] = ([@"%LocalAppData%\Programs\Microsoft VS Code\Code.exe", @"%ProgramFiles%\Microsoft VS Code\Code.exe"], ["Code"], "Visual Studio Code"),
+        ["vlc"] = ([@"%ProgramFiles%\VideoLAN\VLC\vlc.exe", @"%ProgramFiles(x86)%\VideoLAN\VLC\vlc.exe"], ["vlc"], "VLC"),
+        ["obs"] = ([@"%ProgramFiles%\obs-studio\bin\64bit\obs64.exe"], ["obs64"], "OBS Studio"),
+        ["firefox"] = ([@"%ProgramFiles%\Mozilla Firefox\firefox.exe", @"%ProgramFiles(x86)%\Mozilla Firefox\firefox.exe"], ["firefox"], "Firefox"),
+        ["edge"] = ([@"%ProgramFiles(x86)%\Microsoft\Edge\Application\msedge.exe", @"%ProgramFiles%\Microsoft\Edge\Application\msedge.exe"], ["msedge"], "Microsoft Edge"),
+        ["telegram"] = ([@"%LocalAppData%\Telegram Desktop\Telegram.exe", @"%ProgramFiles%\Telegram Desktop\Telegram.exe"], ["Telegram"], "Telegram")
     };
     private static readonly HashSet<string> knownTargets = new(StringComparer.OrdinalIgnoreCase)
     {
