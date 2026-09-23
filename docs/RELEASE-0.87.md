@@ -3,16 +3,16 @@
 ## Pochodzenie buildu
 
 - **Wersja:** 0.87.0 (`Version` w `SENTINEL-X.csproj`, `AppConstants`, `installer/SentinelX.iss`).
-- **Źródła:** gałąź `arena/01a0ca99-sentinelx`, commit `967d7f37177f8de843c9f06a36e3f0a22696ac9b`.
-- **CI:** workflow „Windows build and WPF smoke", run `35901867808` — wszystkie kroki zakończone sukcesem (build, regresje, UI smoke 10 stron, portable, instalator, instalacja+smoke).
+- **Źródła:** gałąź `arena/01a0ca99-sentinelx`, commit `5f42444bda4c3e2493aa047c11937888a2815ea7`.
+- **CI:** workflow „Windows build and WPF smoke", run `35902985782` — wszystkie kroki zakończone sukcesem (build, regresje, UI smoke 10 stron, portable, instalator, instalacja+smoke).
 - Build **nie jest podpisany** certyfikatem wydawcy — SmartScreen może ostrzegać; nie wyłączamy zabezpieczeń Windows.
 
 ## Artefakty (do pobrania z zielonego przebiegu CI → „Artifacts")
 
 | Artefakt | Zawartość | SHA-256 (z adnotacji kroku CI) |
 |---|---|---|
-| `SentinelX-Setup-win-x64` | `SentinelX-Setup-0.87.0-win-x64.exe` + `SHA256SUMS.txt` | `21C19FCE53E5A70DCD469C359EC2A4D8AFFCFCE0BE8E1981E3B48A8507B5A74D` (instalator) |
-| `SentinelX-Portable-win-x64` | wypakuj i uruchom `SentinelX.exe`, self-contained | `6352E6BA7FF1AA4A477C839B50E0A8FF27341217897DEF70B49B9D742FB0684D` (`SentinelX.exe`) |
+| `SentinelX-Setup-win-x64` | `SentinelX-Setup-0.87.0-win-x64.exe` + `SHA256SUMS.txt` | `6FC0FF3396355257F08742BCE39058A4C7B913DE8F371C6C49B6A1B12C040EDC` (instalator) |
+| `SentinelX-Portable-win-x64` | wypakuj i uruchom `SentinelX.exe`, self-contained | `E9460F0A5A40D86ABDEA6FF37284A9A39B02D0C030C34184952ED5551A61FA47` (`SentinelX.exe`) |
 | `SentinelX-windows-x64` | build framework-dependent | suma w `SHA256SUMS.txt` artefaktu |
 | `sentinel-validation` | wyniki testów | zrzuty stron (w tym `projects.png`), logi smoke, raporty regresji |
 
