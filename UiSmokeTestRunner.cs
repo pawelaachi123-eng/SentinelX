@@ -32,6 +32,7 @@ public static class UiSmokeTestRunner
             await Tests.ReleaseRegression.RunAsync(Path.Combine(output, "release"));
             await Tests.MemoryRegression.RunAsync(Path.Combine(output, "memory"));
             await Tests.ProjectRegression.RunAsync(Path.Combine(output, "projects"));
+            await Tests.TaskRegression.RunAsync(Path.Combine(output, "tasks"));
             var vm = services.GetRequiredService<MainViewModel>();
             vm.Readiness.IsOpen = false;
             if (vm.InitializeCommand.IsRunning) await vm.InitializeCommand.ExecutionTask!;
@@ -78,6 +79,27 @@ public static class UiSmokeTestRunner
             projectService.Deactivate();
             projectService.Archive(smoke.Id);
             projectService.Archive(other.Id);
+            // Tasks roundtrip through the real DI graph and the real page VM.
+            var taskService = services.GetRequiredService<TaskService>();
+            var taskVm = services.GetRequiredService<TaskViewModel>();
+            foreach (var oldReminder in taskService.GetReminders().Where(x => x.Text.Contains("ZXCVBNM"))) taskService.DeleteReminder(oldReminder.Id);
+            if (taskService.AddTask("smoke zadanie ZXCVBNM", TaskRecord.PriorityHigh, null, "") == null)
+                throw new InvalidOperationException("Task creation through DI must work.");
+            taskVm.RefreshCommand.Execute(null);
+            if (!taskVm.Items.Any(x => x.Title.Contains("ZXCVBNM")))
+                throw new InvalidOperationException("Task created through the service did not reach the Tasks page.");
+            if (taskService.AddReminder("minione smoke", DateTime.Now.AddMinutes(-1), "") != null)
+                throw new InvalidOperationException("A past reminder must be refused.");
+            // Chat reminder flow is accept-only: the proposal alone must not persist anything.
+            await memoryEngine.ExecuteAsync("przypomnij mi jutro o 18 o sprawdzeniu wiadomości ZXCVBNM");
+            if (taskService.GetReminders().Any(x => x.Text.Contains("ZXCVBNM")))
+                throw new InvalidOperationException("A reminder must not exist before the explicit yes.");
+            await memoryEngine.ExecuteAsync("tak");
+            if (!taskService.GetReminders().Any(x => x.Text.Contains("ZXCVBNM")))
+                throw new InvalidOperationException("The explicit yes must materialize the proposed reminder.");
+            taskVm.RefreshCommand.Execute(null);
+            if (!taskVm.Reminders.Any(x => x.Text.Contains("ZXCVBNM")))
+                throw new InvalidOperationException("Reminder created in chat did not reach the Tasks page.");
             var engine = services.GetRequiredService<IActionEngine>();
             await engine.ExecuteAsync("zamknij notatnik"); // requests permission only; never closes a process in CI.
             vm.SelectedItem = vm.NavItems[^1];

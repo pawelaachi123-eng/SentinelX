@@ -31,11 +31,18 @@ Stan na 2026-09-22. Zasada: każda pojedyncza pozycja znika z listy dopiero, gdy
 - Własny magazyn `projects.json`: zapis atomowy, kopia uszkodzonego pliku, odczyt zwrotny z SHA-256, limit 200 projektów, strażnik duplikatów nazw.
 - Zestaw regresji `tests/ProjectRegression.cs` + sekcja projektowa w `--ui-smoke`, uruchamiane w CI.
 
+## Gotowe w 0.88 (ten przyrost — patrz git)
+
+- Moduł **Zadania i przypomnienia**: priorytety, terminy, wiązanie z projektem, statusy otwarte/w toku/zrobione, filtry (Dzisiaj/Wszystkie/Przeterminowane/Zrobione), 11. strona shella.
+- Polski parser terminów offline z testowalnym zegarzem; wszystkie wyniki to konkretna widoczna data+godzina przed zapisem.
+- Przypomnienia z czatu accept-only („tak”/„nie”, wygaśnięcie 5 min); przegapione przy starcie oznaczane jawnie; brak obietnicy przypomnień przy zamkniętej aplikacji.
+- Komendy: „dodaj zadanie:”, „zadania”, „zadanie N zrobione”, „przypomnienia”; usuwanie tylko przyciskiem w panelu.
+- Własny magazyn `tasks.json`: zapis atomowy, kopia uszkodzonego pliku, odczyt zwrotny z SHA-256. Zestaw `tests/TaskRegression.cs` + sekcje w `--ui-smoke`.
+
 ## Priorytet P0 — kolejny przyrost
 
-1. **Zadania i przypomnienia**: model zadania (priorytet/termin/projekt/status), widok Dzisiaj, przypomnienia lokalne z poprawną strefą czasową i obsługą przegapionych terminów; parser „jutro o 18" → konkretna data do zatwierdzenia.
-2. **Diagnoza-streaming odpowiedzi AI**: istniejący `LocalAiService` wspiera fallback; dodać strumieniowanie do UI + przycisk stop generacji widoczny stale.
-3. **Snapshoty diagnostyczne**: zapis + porównanie dwóch snapshotów + eksport raportu (istniejące serwisy diagnostyczne rozszerzyć).
+1. **Diagnoza-streaming odpowiedzi AI**: istniejący `LocalAiService` wspiera fallback; dodać strumieniowanie do UI + przycisk stop generacji widoczny stale.
+2. **Snapshoty diagnostyczne**: zapis + porównanie dwóch snapshotów + eksport raportu (istniejące serwisy diagnostyczne rozszerzyć).
 
 ## Priorytet P1
 

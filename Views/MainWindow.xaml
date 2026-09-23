@@ -28,6 +28,9 @@
         <DataTemplate DataType="{x:Type vm:ProjectViewModel}">
             <pages:ProjectsPage/>
         </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:TaskViewModel}">
+            <pages:TasksPage/>
+        </DataTemplate>
         <DataTemplate DataType="{x:Type vm:SettingsViewModel}">
             <pages:SettingsPage/>
         </DataTemplate>
