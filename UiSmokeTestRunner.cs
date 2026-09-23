@@ -133,8 +133,8 @@ public static class UiSmokeTestRunner
             var repaired = await memoryEngine.ExecuteAsync("ile mam ramuu");
             if (!repaired.Text.Contains("Zrozumiałem jako") || !repaired.Text.Contains("ile mam ramu"))
                 throw new InvalidOperationException("A mistyped command must be understood and disclosed: " + repaired.Text);
-            if (!(await memoryEngine.ExecuteAsync("wlacz kalcuator")).Text.Contains("Zrozumiałem jako"))
-                throw new InvalidOperationException("A mistyped app name must be disclosed as a repair.");
+            if (!(await memoryEngine.ExecuteAsync("ststus pamieci")).Text.Contains("Zrozumiałem jako"))
+                throw new InvalidOperationException("A mistyped memory command must be disclosed as a repair.");
             // Offline tools through the real chat pipeline.
             foreach (var (command, expected) in new[]
             {

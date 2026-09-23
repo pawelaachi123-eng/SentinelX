@@ -28,6 +28,9 @@ internal static class UtilityRegression
         Check(UtilityToolbox.ConvertUnit(1, "gb", "mb") == "1024 mb", "gigabytes to megabytes");
         Check(UtilityToolbox.ConvertUnit(100, "kmh", "ms") == "27,7778 ms", "km/h to m/s");
         Check(UtilityToolbox.ConvertUnit(1, "kg", "lb").StartsWith("2,2046"), "kilograms to pounds");
+        Check(UtilityToolbox.ConvertUnit(1, "kilogram", "lb").StartsWith("2,2046"), "spelled-out Polish unit names must resolve");
+        Check(UtilityToolbox.ConvertUnit(21, "celsjusz", "fahrenheit") == "69,8 °F", "spelled-out temperature names must resolve");
+        Check(UtilityToolbox.ConvertUnit(100, "km/h", "m/s") == "27,7778 m/s", "slash units must resolve and echo the requested name");
         Check(UtilityToolbox.ConvertUnit(1, "parsec", "km").StartsWith("Nie znam jednostki"), "an unknown unit must say so");
 
         // --- dates ---
