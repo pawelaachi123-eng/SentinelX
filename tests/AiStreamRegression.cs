@@ -55,7 +55,8 @@ internal static class AiStreamRegression
         var tail = new StreamThinkFilter();
         Check(tail.Push("końcówka<th") == "końcówka", "a possible tag prefix is held until it is resolved");
         Check(tail.Flush() == "<th", "flush releases text that turned out not to be a tag");
-        Check(StreamThinkFilter.HeldBackLength("abc<thi", "<think>") == 5, "held-back length is measured against the tag");
+        Check(StreamThinkFilter.HeldBackLength("abc<thi", "<think>") == 4, "held-back length is the longest tag prefix at the end");
+        Check(StreamThinkFilter.HeldBackLength("x<thin", "<think>") == 5, "a longer tag prefix is held back in full");
         Check(StreamThinkFilter.HeldBackLength("abc", "<think>") == 0, "plain text holds nothing back");
 
         // --- end to end: chunks arrive in order and assemble into the final answer ---
