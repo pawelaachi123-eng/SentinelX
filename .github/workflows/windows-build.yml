@@ -63,6 +63,10 @@ jobs:
           Get-ChildItem $output
       - name: Publish portable Windows application
         run: dotnet publish SENTINEL-X.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=false -o bin/portable
+      - name: Portable package checksums
+        shell: pwsh
+        run: |
+          Get-ChildItem 'bin/portable' -File | ForEach-Object { "$((Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant())  $($_.Name)" } | Set-Content 'bin/portable/SHA256SUMS.txt'
       - name: Verify portable package
         shell: pwsh
         run: |
@@ -90,6 +94,11 @@ jobs:
           $installer = Get-ChildItem 'bin/installer/*.exe' | Select-Object -First 1
           $hash = (Get-FileHash $installer.FullName -Algorithm SHA256).Hash
           "$hash  $($installer.Name)" | Set-Content 'bin/installer/SHA256SUMS.txt'
+          "INSTALLER_SHA256=$hash" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+          Write-Output "::notice title=SHA256 instalatora::$hash  $($installer.Name)"
+          $exeHash = (Get-FileHash 'bin/portable/SentinelX.exe' -Algorithm SHA256).Hash
+          "PORTABLE_EXE_SHA256=$exeHash" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+          Write-Output "::notice title=SHA256 portable::bin/portable/z SHA256SUMS.txt · $exeHash  SentinelX.exe"
       - name: Install EXE and smoke-test installed application
         shell: pwsh
         run: |
