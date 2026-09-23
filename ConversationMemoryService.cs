@@ -135,8 +135,15 @@ public sealed class ConversationMemoryService : Services.Memory.IConversationMem
         lock (syncRoot)
         {
             var privacy = Privacy;
+            // Private mode: no trace at all — neither a conversation turn nor a profile update from private content.
+            if (PrivateMode) return;
             if (role == "user" && privacy.SaveMemories) ExtractProfile(text);
-            if (PrivateMode || !privacy.SaveConversations) return;
+            if (!privacy.SaveConversations)
+            {
+                // Conversation saving is off, but an explicit fact like "mam na imię …" is a memory the user chose to keep.
+                if (role == "user" && privacy.SaveMemories) { SaveLocked(); fire = true; }
+                return;
+            }
             AddEntryLocked(role, text, source);
             var conversation = EnsureConversationLocked(state.ActiveSessionId);
             if (role == "user" && (conversation.Title.Length == 0 || conversation.Title == "Nowa rozmowa"))

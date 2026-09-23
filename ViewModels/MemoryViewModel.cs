@@ -129,11 +129,10 @@ public partial class MemoryViewModel : ObservableObject, IDisposable
         if (text.Length == 0) { Status = "Wpisz treść wspomnienia przed zapisaniem."; return; }
         var similar = memory.FindSimilarNotes(text);
         Status = memoryActions.AddNoteVerified(text, NewCategory, "panel pamięci");
-        ConflictHint = similar.Count > 0
-            ? "Podobne istniejące wspomnienia:\n" + string.Join("\n", similar.Take(3).Select(x => "• " + x.Text)) + "\nJeśli wpisy się wykluczają, oznacz stare jako nieaktualne."
-            : ConflictHint;
         NewText = "";
         Refresh();
+        if (similar.Count > 0)
+            ConflictHint = "Podobne istniejące wspomnienia:\n" + string.Join("\n", similar.Take(3).Select(x => "• " + x.Text)) + "\nJeśli wpisy się wykluczają, oznacz stare jako nieaktualne.";
     }
 
     [RelayCommand]
