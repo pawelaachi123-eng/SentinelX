@@ -39,5 +39,5 @@ for path in (ROOT / "ViewModels").glob("*.cs"):
 project = ET.parse(ROOT / "SENTINEL-X.csproj")
 assert project.findtext(".//TargetFramework") == "net9.0-windows"
 assert project.findtext(".//UseWindowsForms") != "true"
-assert len(list((ROOT / "Views/Pages").glob("*Page.xaml"))) == 9
-print("PASS: XML, resources, 9 views, thin code-behind, VM boundaries, target framework, no WinForms flag")
+assert len(list((ROOT / "Views/Pages").glob("*Page.xaml"))) == 10
+print("PASS: XML, resources, 10 views, thin code-behind, VM boundaries, target framework, no WinForms flag")

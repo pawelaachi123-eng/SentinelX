@@ -31,6 +31,7 @@ public static class UiSmokeTestRunner
             await Tests.ProductRegression.RunAsync(Path.Combine(output, "product"));
             await Tests.ReleaseRegression.RunAsync(Path.Combine(output, "release"));
             await Tests.MemoryRegression.RunAsync(Path.Combine(output, "memory"));
+            await Tests.ProjectRegression.RunAsync(Path.Combine(output, "projects"));
             var vm = services.GetRequiredService<MainViewModel>();
             vm.Readiness.IsOpen = false;
             if (vm.InitializeCommand.IsRunning) await vm.InitializeCommand.ExecutionTask!;
@@ -55,6 +56,28 @@ public static class UiSmokeTestRunner
             if (!memoryService.PrivateMode) throw new InvalidOperationException("Private mode toggle must apply immediately.");
             chat.TogglePrivateModeCommand.Execute(null);
             if (memoryService.PrivateMode) throw new InvalidOperationException("Private mode toggle must turn back off.");
+            // Projects roundtrip through the real DI graph and the real page VM.
+            var projectService = services.GetRequiredService<ProjectService>();
+            var projectVm = services.GetRequiredService<ProjectViewModel>();
+            var other = projectService.Create("Smoke projekt pomocniczy", "", activate: true);
+            if (other == null) throw new InvalidOperationException("Project creation through DI must work.");
+            memoryService.AddNote("smoke izolacja ZXCVBNM-inny");
+            var smoke = projectService.Create("Smoke projekt", "canary ZXCVBNM", activate: true);
+            if (smoke == null) throw new InvalidOperationException("Second project creation must work.");
+            projectVm.RefreshCommand.Execute(null);
+            if (projectVm.Cards.Count(x => x.Name.StartsWith("Smoke projekt")) != 2)
+                throw new InvalidOperationException("Projects created through the service did not reach the Projects page.");
+            if (!projectVm.ActiveLine.Contains("Smoke projekt"))
+                throw new InvalidOperationException("Active project banner must name the activated project.");
+            // The project must isolate the memory context immediately, without a restart.
+            var isolatedContext = memoryService.GetStableContext();
+            if (isolatedContext.Contains("ZXCVBNM-inny"))
+                throw new InvalidOperationException("Another project's note leaked into the active project's AI context.");
+            if (!isolatedContext.Contains("cyjan"))
+                throw new InvalidOperationException("Global notes must stay visible inside every project context.");
+            projectService.Deactivate();
+            projectService.Archive(smoke.Id);
+            projectService.Archive(other.Id);
             var engine = services.GetRequiredService<IActionEngine>();
             await engine.ExecuteAsync("zamknij notatnik"); // requests permission only; never closes a process in CI.
             vm.SelectedItem = vm.NavItems[^1];

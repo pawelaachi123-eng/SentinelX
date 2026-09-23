@@ -31,8 +31,12 @@ public static class ServiceLocator
         services.AddSingleton<ActionTaskRegistry>();
         services.AddSingleton<ISystemMonitorService, SystemMonitorService>();
         services.AddSingleton<ActionHistoryService>(_ => new());
+        services.AddSingleton<ProjectService>(_ => new ProjectService());
         services.AddSingleton<ConversationMemoryService>(sp => new ConversationMemoryService
-        { PrivacyProvider = () => MapPrivacy(sp.GetRequiredService<ISettingsService>().Current.Memory) });
+        {
+            PrivacyProvider = () => MapPrivacy(sp.GetRequiredService<ISettingsService>().Current.Memory),
+            ActiveProjectIdProvider = () => sp.GetRequiredService<ProjectService>().ActiveProjectId,
+        });
         services.AddSingleton<Services.Memory.MemoryActionService>(sp => new(sp.GetRequiredService<ConversationMemoryService>(),
             sp.GetRequiredService<Services.Permissions.IPermissionService>(), sp.GetRequiredService<ActionHistoryService>()));
         services.AddSingleton<IHistoryService, HistoryService>();
@@ -70,6 +74,7 @@ public static class ServiceLocator
         services.AddSingleton<HistoryViewModel>();
         services.AddSingleton<SettingsViewModel>();
         services.AddSingleton<MemoryViewModel>();
+        services.AddSingleton<ProjectViewModel>();
         services.AddSingleton<OverlayViewModel>();
         services.AddSingleton<MainViewModel>();
         services.AddSingleton<Views.MainWindow>();

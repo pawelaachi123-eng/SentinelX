@@ -22,12 +22,20 @@ Stan na 2026-09-22. Zasada: pojedyncza pozycja znika z listy dopiero, gdy jest *
 - Migracja v1/v2→v3 z kopią zapasową przed pierwszym zapisem.
 - Zestaw regresji `tests/MemoryRegression.cs` (odpalany w `--ui-smoke`).
 
+## Gotowe w 0.87 (ten przyrost — patrz git)
+
+- Moduł **Projekty**: tworzenie (auto-aktywacja), zmiana nazwy/opisu, statusy (aktywny/wstrzymany/zakończony), archiwizacja i przywracanie bez utraty danych.
+- Izolacja kontekstu AI: aktywny projekt widzi wpisy projektu + globalne; wpisy innych projektów nie trafiają do modelu. Nowe notatki/rozmowy stemplowane `ProjectId`. Wyszukiwanie w panelu Pamięć celowo globalne.
+- Rozmowy powiązane z projektem (dziedziczenie, przypisanie, odmowa wznowienia między projektami z wyjaśnieniem), „gdzie skończyliśmy?" z zapisanych danych, eksport projektu (JSON).
+- Strona Projekty w shellu (łącznie 10 stron), komendy `nowy projekt: X` / `projekty` / `użyj projektu N` / `aktywny projekt` / `wyłącz projekt`.
+- Własny magazyn `projects.json`: zapis atomowy, kopia uszkodzonego pliku, odczyt zwrotny z SHA-256, limit 200 projektów, strażnik duplikatów nazw.
+- Zestaw regresji `tests/ProjectRegression.cs` + sekcja projektowa w `--ui-smoke`, uruchamiane w CI.
+
 ## Priorytet P0 — kolejny przyrost
 
-1. **Projekty** (moduł): tworzenie/archiwizacja/status, pamięć projektu (jako przestrzeń nazw nad Notes: `ProjectId`), powiązanie rozmów z projektem, „gdzie skończyliśmy", eksport projektu, izolacja kontekstu.
-2. **Zadania i przypomnienia**: model zadania (priorytet/termin/projekt/status), widok Dzisiaj, przypomnienia lokalne z poprawną strefą czasową i obsługą przegapionych terminów; parser „jutro o 18" → konkretna data do zatwierdzenia.
-3. **Diagnoza-streaming odpowiedzi AI**: istniejący `LocalAiService` wspiera fallback; dodać strumieniowanie do UI + przycisk stop generacji widoczny stale.
-4. **Snapshoty diagnostyczne**: zapis + porównanie dwóch snapshotów + eksport raportu (istniejące serwisy diagnostyczne rozszerzyć).
+1. **Zadania i przypomnienia**: model zadania (priorytet/termin/projekt/status), widok Dzisiaj, przypomnienia lokalne z poprawną strefą czasową i obsługą przegapionych terminów; parser „jutro o 18" → konkretna data do zatwierdzenia.
+2. **Diagnoza-streaming odpowiedzi AI**: istniejący `LocalAiService` wspiera fallback; dodać strumieniowanie do UI + przycisk stop generacji widoczny stale.
+3. **Snapshoty diagnostyczne**: zapis + porównanie dwóch snapshotów + eksport raportu (istniejące serwisy diagnostyczne rozszerzyć).
 
 ## Priorytet P1
 

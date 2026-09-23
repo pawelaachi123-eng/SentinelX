@@ -12,11 +12,12 @@ public sealed class CommandRouter
     private readonly SystemInfoService systemInfo;
     private readonly LocalAiService localAi;
     private readonly ConversationMemoryService memory;
+    private readonly ProjectService? projects;
     private string lastTopic = "";
     private DateTime lastTopicTime;
 
-    public CommandRouter(SystemMonitor systemMonitor, SystemInfoService systemInfo, LocalAiService localAi, ConversationMemoryService memory)
-    { this.systemMonitor = systemMonitor; this.systemInfo = systemInfo; this.localAi = localAi; this.memory = memory; }
+    public CommandRouter(SystemMonitor systemMonitor, SystemInfoService systemInfo, LocalAiService localAi, ConversationMemoryService memory, ProjectService? projects = null)
+    { this.systemMonitor = systemMonitor; this.systemInfo = systemInfo; this.localAi = localAi; this.memory = memory; this.projects = projects; }
 
     public async Task<string> ProcessAsync(string command, CancellationToken cancellationToken = default)
     {
@@ -25,6 +26,8 @@ public sealed class CommandRouter
         string text = Normalize(command).TrimEnd('?', '!', '.', ' ');
         string? memoryResponse = TryHandleMemoryCommand(command.Trim(), text);
         if (memoryResponse != null) return memoryResponse;
+        string? projectResponse = TryHandleProjectCommand(command.Trim(), text);
+        if (projectResponse != null) return projectResponse;
         if (text is "modele ai" or "lista modeli" or "status ai" or "test ai" or "sprawdz ai")
             return await localAi.GetStatusAsync(cancellationToken);
         Match model = Regex.Match(command.Trim(), @"^(?:ustaw\s+)?model\s+ai\s+(.+)$", RegexOptions.IgnoreCase);
@@ -71,6 +74,49 @@ public sealed class CommandRouter
         bool includeSystemFacts = string.IsNullOrEmpty(topicForContext) ? MentionsComputerStateNoTopic(text, followUp) : topicForContext is "RAM" or "CPU" or "SYSTEM" or "DISK";
         if (!Regex.IsMatch(followUp, @"^(?:czy to|czy jest|a |dlaczego|czemu|co z tym)")) lastTopic = "";
         return await localAi.AskAsync(command, BuildSystemContext(topicForContext, includeSystemFacts, includeRecentHistory), cancellationToken);
+    }
+
+    private string? TryHandleProjectCommand(string command, string text)
+    {
+        if (projects == null) return null;
+        if (text is "aktywny projekt" or "status projektu")
+        {
+            var active = projects.ActiveProject;
+            return active == null
+                ? "Żaden projekt nie jest aktywny — kontekst AI jest globalny. Wpisz „nowy projekt: nazwa” albo „projekty”."
+                : StorageResult($"Aktywny projekt: {active.Name} ({active.Status}). Kontekst AI widzi tylko wpisy globalne i ten projekt.");
+        }
+        if (text is "projekty" or "lista projektow" or "moje projekty" or "pokaz projekty")
+        {
+            var list = projects.GetProjects();
+            if (list.Count == 0) return "Nie ma jeszcze żadnego projektu. Wpisz „nowy projekt: nazwa”, aby utworzyć pierwszy.";
+            var active = projects.ActiveProjectId;
+            return "Projekty:\n" + string.Join("\n", list.Select((x, i) => $"{i + 1}. {(x.Id == active ? "▶ " : "")}{x.Name}  ({x.Status})"))
+                + "\nWpisz „użyj projektu N”, aby aktywować wybrany.";
+        }
+        var create = Regex.Match(command.Trim(), @"^nowy projekt[:\s]\s*(.+)$", RegexOptions.IgnoreCase);
+        if (create.Success)
+        {
+            var created = projects.Create(create.Groups[1].Value.Trim(), "", activate: true);
+            return created != null
+                ? StorageResult($"Utworzono i aktywowano projekt „{created.Name}”. Nowe notatki i rozmowy trafiają do niego do czasu wyłączenia.")
+                : projects.LastStorageError ?? "Nie utworzono projektu.";
+        }
+        var use = Regex.Match(command.Trim(), @"^(?:użyj|uzyj|aktywuj) projektu?\s+(\d{1,3})$", RegexOptions.IgnoreCase);
+        if (use.Success && int.TryParse(use.Groups[1].Value, out int index))
+        {
+            var list = projects.GetProjects();
+            if (index < 1 || index > list.Count) return "Podaj numer projektu z listy (1…" + Math.Max(1, list.Count) + ").";
+            return projects.Activate(list[index - 1].Id)
+                ? StorageResult($"Aktywowano projekt „{list[index - 1].Name}”.")
+                : projects.LastStorageError ?? "Nie udało się aktywować projektu.";
+        }
+        if (text is "wylacz projekt" or "zdezaktywuj projekt" or "bez projektu")
+        {
+            projects.Deactivate();
+            return StorageResult("Kontekst projektu wyłączony — AI znów widzi całą pamięć globalną.");
+        }
+        return null;
     }
 
     private static bool MentionedComputerState(string text)

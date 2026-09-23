@@ -22,6 +22,8 @@ public sealed class ConversationMemoryEntry
     public bool Pinned { get; set; }
     public DateTime? UpdatedAt { get; set; }
     public DateTime? SupersededAt { get; set; }
+    /// <summary>Empty = global memory. Project memories are included in context only while that project is active.</summary>
+    public string ProjectId { get; set; } = "";
 }
 
 public sealed class ConversationInfo
@@ -30,6 +32,8 @@ public sealed class ConversationInfo
     public string Title { get; set; } = "";
     public DateTime CreatedAt { get; set; }
     public DateTime LastActiveAt { get; set; }
+    /// <summary>Empty = global conversation. Active project filtering isolates contexts between projects.</summary>
+    public string ProjectId { get; set; } = "";
 }
 
 public sealed class MemoryChange
@@ -84,6 +88,9 @@ public sealed class ConversationMemoryService : Services.Memory.IConversationMem
     public string StoragePath => memoryPath;
     /// <summary>Set by the host (per settings). Null = everything allowed, matching historical behaviour.</summary>
     public Func<MemoryPrivacy>? PrivacyProvider { get; set; }
+    /// <summary>Current project id supplied by the host (ProjectService). Null/empty = no project filtering.</summary>
+    public Func<string?>? ActiveProjectIdProvider { get; set; }
+    private string? ActiveProject => ActiveProjectIdProvider?.Invoke();
     /// <summary>Runtime-only switch: nothing entered in private mode is written to disk or audits. Never persisted.</summary>
     public bool PrivateMode { get; private set; }
     public string ActiveSessionId { get { lock (syncRoot) return state.ActiveSessionId; } }
@@ -166,7 +173,7 @@ public sealed class ConversationMemoryService : Services.Memory.IConversationMem
     {
         var conversation = state.Conversations.FirstOrDefault(x => x.Id == sessionId);
         if (conversation != null) return conversation;
-        conversation = new() { Id = sessionId, Title = "Nowa rozmowa", CreatedAt = DateTime.Now, LastActiveAt = DateTime.Now };
+        conversation = new() { Id = sessionId, Title = "Nowa rozmowa", CreatedAt = DateTime.Now, LastActiveAt = DateTime.Now, ProjectId = ActiveProject ?? "" };
         state.Conversations.Add(conversation);
         if (state.Conversations.Count > MaxConversations)
             foreach (var old in state.Conversations.Where(x => x.Id != state.ActiveSessionId).OrderBy(x => x.LastActiveAt).Take(state.Conversations.Count - MaxConversations).ToArray())
@@ -207,7 +214,7 @@ public sealed class ConversationMemoryService : Services.Memory.IConversationMem
             else if (state.Notes.Count >= MaxNotes) { LastStorageError = "Osiągnięto limit 500 wspomnień. Usuń niepotrzebne wspomnienia."; return NoteAddResult.Limit; }
             else
             {
-                var note = new ConversationMemoryEntry { Timestamp = DateTime.Now, Role = "note", Text = text, Source = source, Id = Guid.NewGuid().ToString("N")[..12], Category = ValidateCategory(category ?? InferCategory(text)) };
+                var note = new ConversationMemoryEntry { Timestamp = DateTime.Now, Role = "note", Text = text, Source = source, Id = Guid.NewGuid().ToString("N")[..12], Category = ValidateCategory(category ?? InferCategory(text)), ProjectId = ActiveProject ?? "" };
                 state.Notes.Add(note);
                 RecordChangeLocked(note, "utworzone", "", note.Text);
                 ExtractProfile(text);
@@ -405,13 +412,22 @@ public sealed class ConversationMemoryService : Services.Memory.IConversationMem
         get { lock (syncRoot) return state.Conversations.FirstOrDefault(x => x.Id == state.ActiveSessionId)?.Title ?? "Nowa rozmowa"; }
     }
 
-    public bool ResumeSession(string sessionId)
+    public bool ResumeSession(string sessionId) => ResumeSession(sessionId, out _);
+
+    public bool ResumeSession(string sessionId, out string reason)
     {
+        reason = "";
         lock (syncRoot)
         {
-            if (!state.Conversations.Any(x => x.Id == sessionId) || state.ActiveSessionId == sessionId) return false;
+            var conversation = state.Conversations.FirstOrDefault(x => x.Id == sessionId);
+            if (conversation == null || state.ActiveSessionId == sessionId) { reason = conversation == null ? "Rozmowa nie istnieje." : "Ta rozmowa jest już aktywna."; return false; }
+            string? project = ActiveProject;
+            if (!string.IsNullOrEmpty(project) && conversation.ProjectId != project)
+            { reason = conversation.ProjectId.Length == 0
+                    ? "Rozmowa jest globalna, a aktywny jest projekt — konteksty projektów nie mieszają się. Wyłącz projekt albo rozpocznij rozmowę w projekcie."
+                    : "Rozmowa należy do innego projektu. Aktywuj tamten projekt albo odłącz rozmowę od niego — konteksty projektów nie mieszają się."; return false; }
             state.ActiveSessionId = sessionId;
-            EnsureConversationLocked(sessionId).LastActiveAt = DateTime.Now;
+            conversation.LastActiveAt = DateTime.Now;
             state.Draft = "";
             SaveLocked();
         }
@@ -462,10 +478,12 @@ public sealed class ConversationMemoryService : Services.Memory.IConversationMem
             ConversationMemoryEntry[] pinned;
             ConversationMemoryEntry[] recent;
             Dictionary<string, string> profile;
+            string? project = ActiveProject;
             lock (syncRoot)
             {
                 profile = new Dictionary<string, string>(state.Profile, StringComparer.OrdinalIgnoreCase);
-                var active = state.Notes.Where(x => x.SupersededAt == null).ToArray();
+                // With an active project only global and this project's memories apply — nothing leaks between projects.
+                var active = state.Notes.Where(x => x.SupersededAt == null && (project == null || project.Length == 0 || x.ProjectId.Length == 0 || x.ProjectId == project)).ToArray();
                 pinned = active.Where(x => x.Pinned).Select(Clone).ToArray();
                 recent = active.Where(x => !x.Pinned).OrderByDescending(x => x.UpdatedAt ?? x.Timestamp).Take(30).Select(Clone).ToArray();
             }
@@ -487,7 +505,7 @@ public sealed class ConversationMemoryService : Services.Memory.IConversationMem
                 trace.Add(new("wspomnienie", note.Id, Short(note.Text), "ostatnie wspomnienie w budżecie"));
             }
         }
-        if (includeRecent && privacy.UseHistoryForAi && privacy.SaveConversations)
+        if (includeRecent && privacy.UseHistoryForAi && privacy.SaveConversations && ConversationMatchesActiveProject())
         {
             ConversationMemoryEntry[] entries;
             lock (syncRoot) entries = state.Entries.Where(x => x.SessionId == state.ActiveSessionId).TakeLast(Math.Clamp(maxEntries, 0, 120)).Select(Clone).ToArray();
@@ -509,6 +527,42 @@ public sealed class ConversationMemoryService : Services.Memory.IConversationMem
         if (privacy.ContextPreview) { LastContextTrace = trace; LastContextBuiltAt = DateTime.Now; }
         else { LastContextTrace = []; LastContextBuiltAt = null; }
         return builder.ToString().Trim();
+    }
+
+    private bool ConversationMatchesActiveProject()
+    {
+        string? project = ActiveProject;
+        if (project == null || project.Length == 0) return true;
+        lock (syncRoot)
+        {
+            var conversation = state.Conversations.FirstOrDefault(x => x.Id == state.ActiveSessionId);
+            // An unassigned (global) conversation stays out of an active project's context by design.
+            return conversation != null && conversation.ProjectId == project;
+        }
+    }
+
+    /// <summary>Moves a conversation between projects (or detaches it back to global). Direct, low risk, but auditable via change events.</summary>
+    public bool AssignConversationToProject(string sessionId, string projectId)
+    {
+        bool fire = false;
+        lock (syncRoot)
+        {
+            var conversation = state.Conversations.FirstOrDefault(x => x.Id == sessionId);
+            if (conversation == null || conversation.ProjectId == projectId) return false;
+            conversation.ProjectId = projectId;
+            SaveLocked();
+            fire = true;
+        }
+        if (fire) Changed?.Invoke();
+        return true;
+    }
+
+    public IReadOnlyList<ConversationInfo> GetConversationsForProject(string? projectId)
+    {
+        lock (syncRoot)
+            return string.IsNullOrEmpty(projectId)
+                ? state.Conversations.OrderByDescending(x => x.LastActiveAt).ToArray()
+                : state.Conversations.Where(x => x.ProjectId == projectId).OrderByDescending(x => x.LastActiveAt).ToArray();
     }
 
     private static string Short(string text) => text.Length <= 48 ? text : text[..45] + "…";
