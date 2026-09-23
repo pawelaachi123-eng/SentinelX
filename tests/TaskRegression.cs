@@ -52,7 +52,7 @@ internal static class TaskRegression
 
         // --- status cycle ---
         Check(reloaded.SetTaskStatus(task!.Id, TaskRecord.StatusDoing) && reloaded.GetTasks().Single().Status == TaskRecord.StatusDoing, "open → w toku");
-        Check(reloaded.SetTaskStatus(task.Id, TaskRecord.StatusDone) && reloaded.GetTasks().Single().Status == TaskRecord.StatusDone, "w toku → zrobione");
+        Check(reloaded.SetTaskStatus(task.Id, TaskRecord.StatusDone) && reloaded.GetTasks(includeDone: true).Single().Status == TaskRecord.StatusDone, "w toku → zrobione");
         Check(reloaded.GetTasks().Count == 0 && reloaded.GetTasks(includeDone: true).Count == 1, "done tasks leave the open list");
         Check(reloaded.SetTaskStatus(task.Id, TaskRecord.StatusOpen), "done can be restored");
 
