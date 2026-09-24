@@ -59,15 +59,24 @@ Argumenty zachowują znaki użytkownika (wielkość liter, polskie ogonki) — d
 ### Dystrybucja
 47. `.github/workflows/release.yml`: tag `v*.*.*` → publikacja assetów (portable ZIP, instalator EXE, `SHA256SUMS.txt`, `BUILD.txt`); ręczny dispatch buduje i weryfikuje, ale nie publikuje.
 
-## 3. Jak pobrać
+## 3. Jak pobrać (zweryfikowane)
 
-- **Wydanie:** <https://github.com/pawelaachi123-eng/SentinelX/releases> → najnowszy tag `v0.90.0` → pliki w sekcji *Assets*.
-- **Portable:** rozpakuj `SentinelX-0.90.0-win-x64-portable.zip` i uruchom `SentinelX.exe` (runtime .NET 9 jest w środku).
-- **Instalator:** `SentinelX-0.90.0-win-x64-setup.exe` — instalacja per-user, bez uprawnień administratora.
-- **Weryfikacja:** porównaj sumy z `SHA256SUMS.txt` (`Get-FileHash plik -Algorithm SHA256`).
-- **Z builda CI** (gałąź, bez tagu): artefakty `SentinelX-Portable-win-x64` i `SentinelX-Setup-win-x64` w podsumowaniu workflow `Windows build and WPF smoke`.
+Wydanie **`v0.90.0`** jest opublikowane: <https://github.com/pawelaachi123-eng/SentinelX/releases/tag/v0.90.0>
+Workflow `release.yml`, run **`36048392383`** — wszystkie kroki `success` (checki architektury, restore, build, MVVM UI smoke, zestaw regresji, publish portable, smoke portable, instalator Inno, złożenie assetów, publikacja wydania).
 
-Pliki **nie są podpisane cyfrowo**. SmartScreen pokaże „Nieznany wydawca” — to stan rzeczywisty, nie błąd paczki, i nie jest ukrywany.
+Assety (nazwy i rozmiary odczytane z API GitHub):
+
+| Plik | Rozmiar | Co to jest |
+| --- | --- | --- |
+| `SentinelX-0.90.0-win-x64-portable.zip` | 83,6 MB | Wersja przenośna z własnym runtime .NET 9: rozpakuj i uruchom `SentinelX.exe` |
+| `SentinelX-0.90.0-win-x64-setup.exe` | 71,1 MB | Instalator per-user (Inno Setup), bez uprawnień administratora |
+| `SHA256SUMS.txt` | — | Sumy kontrolne wszystkich plików wydania |
+| `BUILD.txt` | — | Wersja, commit, platforma, status podpisu, położenie danych |
+
+- **Weryfikacja:** `Get-FileHash SentinelX-0.90.0-win-x64-portable.zip -Algorithm SHA256` i porównanie z `SHA256SUMS.txt`.
+- **Z builda CI bez tagu:** artefakty `SentinelX-Portable-win-x64` i `SentinelX-Setup-win-x64` w podsumowaniu workflow `Windows build and WPF smoke`.
+- Pliki **nie są podpisane cyfrowo** — SmartScreen pokaże „Nieznany wydawca”. To stan rzeczywisty, nie błąd paczki.
+- Z tego środowiska nie da się pobrać zawartości assetów (host assetów GitHub jest zablokowany), więc sumy SHA-256 są **wygenerowane w CI i widoczne w `SHA256SUMS.txt`**, ale nie zostały tu odczytane ponownie.
 
 ## 4. Wymagania
 
@@ -110,7 +119,7 @@ W kroku UI smoke przechodzą kolejno: Backend, Product, Release, Memory, Project
 | `35926408788` (`8088ed0`) | błąd asercji: `Contains("Archiw")` wobec odpowiedzi „Brak archiwów” (wielkość liter) |
 
 ### Czego nie potwierdzono
-- Treści `ui-smoke.txt` i artefaktów nie da się odczytać z tego środowiska (blokada dostępu do magazynu logów GitHub) — dowodem są **stany kroków z API**, nie wydrukowany tekst „PASS”.
+- Treści `ui-smoke.txt`, logów CI i zawartości assetów nie da się odczytać z tego środowiska (blokada hostów magazynu GitHub) — dowodem są **stany kroków i metadane assetów z API**, nie wydrukowany tekst „PASS” ani odczytane sumy.
 - Uruchamiania gier i aplikacji na komputerze ze Steam i tytułami — CI nie ma gier; weryfikowany jest kod ścieżki i protokół `steam://rungameid`, nie samo uruchomienie.
 - Odpowiedzi żywego modelu (brak Ollama w CI) — transport i logika fragmentów testowane na wstrzykniętym HTTP.
 - Mikrofonu, rozpoznawania mowy, trybu gry.
