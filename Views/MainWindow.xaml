@@ -90,7 +90,7 @@
             <Ellipse Width="860" Height="860" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="-300,0,0,-360" Opacity="0.10">
                 <Ellipse.Fill>
                     <RadialGradientBrush>
-                        <GradientStop Color="#A98BFF" Offset="0"/>
+                        <GradientStop Color="{DynamicResource SxAccentVioletColor}" Offset="0"/>
                         <GradientStop Color="Transparent" Offset="1"/>
                     </RadialGradientBrush>
                 </Ellipse.Fill>
