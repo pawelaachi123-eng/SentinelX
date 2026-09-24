@@ -133,11 +133,15 @@ jobs:
             - Ollama nie jest dołączone — modele pobierasz osobno i tylko za swoją zgodą.
             - Wszystkie dane (rozmowy, wspomnienia, raporty, archiwa) zostają lokalnie w `%LocalAppData%\SentinelX`.
       - uses: actions/upload-artifact@v4
+        # Krótka retencja: trwałą dystrybucją są assety wydania, artefakty CI są tylko diagnostyczne.
+        # Bez tego limit magazynu artefaktów blokuje kolejne przebiegi (quota hit 2026-09-24).
         with:
           name: SentinelX-release-assets
           path: dist/
+          retention-days: 2
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: sentinel-release-validation
           path: test-results/
+          retention-days: 2
