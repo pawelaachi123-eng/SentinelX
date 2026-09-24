@@ -140,6 +140,38 @@ public static class CommandUnderstanding
             text.StartsWith(phrase + " ", StringComparison.Ordinal) ||
             phrase.StartsWith(text + " ", StringComparison.Ordinal));
 
+    /// <summary>Below this similarity Sentinel does not even guess.</summary>
+    public const double SuggestFloor = 0.62;
+    /// <summary>At or above this similarity the command is executed (repair band) instead of asked about.</summary>
+    public const double SuggestCeiling = 0.80;
+    /// <summary>Stems that may never be guessed: a suggestion must not steer towards anything destructive.</summary>
+    private static readonly string[] DestructiveStems = ["usun", "zamknij", "wylacz", "czysc", "kill", "sformatuj", "potwierdz", "zatrzymaj", "skasuj"];
+
+    /// <summary>The grey zone between "understood" and "no idea": Sentinel proposes up to three known commands
+    /// and asks, instead of guessing silently. Suggestions never execute anything on their own.</summary>
+    public static IReadOnlyList<string> Suggest(string input) => Suggest(input, IntentCatalog.Phrases);
+
+    public static IReadOnlyList<string> Suggest(string input, IReadOnlyList<string> catalogue)
+    {
+        string normalized = ConversationMemoryService.Normalize(input ?? "").TrimEnd('?', '!', '.', ' ');
+        if (normalized.Length is < 3 or > 60 || normalized.Contains('\n')) return [];
+        if (catalogue.Contains(normalized, StringComparer.Ordinal)) return [];
+        if (DestructiveStems.Any(stem => normalized.Contains(stem, StringComparison.Ordinal))) return [];
+
+        string firstWord = Words(normalized).FirstOrDefault() ?? "";
+        var ranked = catalogue
+            .Select(phrase => (Phrase: phrase, Score: PhraseSimilarity(normalized, phrase)))
+            .Where(x => x.Score >= SuggestFloor && x.Score < SuggestCeiling)
+            // A suggestion must at least start from the same verb — otherwise a typo could be steered
+            // into a completely different intent (e.g. „zamknij notatnk” must never suggest launching).
+            .Where(x => firstWord.Length > 0 && Distance(firstWord, Words(x.Phrase).FirstOrDefault() ?? "", 3) <= 1)
+            .OrderByDescending(x => x.Score)
+            .Take(3)
+            .Select(x => x.Phrase)
+            .ToList();
+        return ranked;
+    }
+
     private static string Describe(string from, string to)
     {
         string[] a = Words(from), b = Words(to);

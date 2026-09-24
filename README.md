@@ -1,6 +1,19 @@
-# SENTINEL X 0.90 — Windows / MVVM
+# SENTINEL X 0.91 · CENTRUM — Windows / MVVM
 
 Lokalny asystent Windows 10/11, C# 13, .NET 9, WPF. Nowe GUI jest domyślnym interfejsem. Poprzedni interfejs i jego funkcje nadal są dostępne przez `--legacy`.
+
+## Nowe w 0.91 — CENTRUM: jeden hub, paleta `//`, głos od startu i ~50 nowych narzędzi
+
+- **Centrum zamiast wielu kart**: sidebar ma 4 pozycje (Centrum, Pamięć, Projekty, Ustawienia), a w Centrum ikony bez podpisów: 💬 rozmowa, 📓 zadania, 🕘 historia, 🎤 głos, 🖥 system, 🎮 gry, ✨ AI, ⚡ akcje, 🩺 diagnostyka. „Command Center” przemianowane na „Centrum” wszędzie.
+- **Paleta `//` w czacie**: wpisz `//`, Tab/Shift+Tab wybiera, Enter wykonuje, Esc zamyka. ~40 wpisów (`//diag`, `//ram`, `//backup`, `//lekcje`, `//samokontrola`, …). Wysłanie `//diag` uruchamia diagnostykę komputera.
+- **Głos domyślnie nasłuchuje od startu** (świadoma decyzja użytkownika): wskaźnik 🎤 zawsze widoczny, jeden klik wyłącza, ustawienie zostaje w Ogólnych.
+- **Pytam zamiast zgadywać**: polecenie podobne do znanego w 62–80% wywołuje „Czy chodziło Ci o: …” — „tak” wykonuje propozycję. Propozycje nigdy nie dotyczą poleceń niszczących.
+- **`lekcje` — uczenie się na poprawkach**: każda naprawiona literówka trafia do lokalnego `Memory/Lessons.jsonl`; `lekcje` pokazuje najczęstsze korekty. Deterministycznie, lokalnie, bez modelu.
+- **`zrob zadanie: treść`** dodaje zadanie wprost do zakładki 📓 (nie tylko odpowiedź w czacie); `notatka:` to szybki alias „zapamiętaj”; `szukaj w zadaniach:` przeszukuje zadania.
+- **`samokontrola`** (spójność własnych plików, tylko odczyt) i **`propozycje`** (lista porządków z „wpisz: …” — nic nie wykona się samo).
+- **Uczciwe odmowy wbudowane**: modele 3D, modyfikacja własnego kodu, automatyczne skanowanie dysku — Sentinel wyjaśnia, czego nie robi i dlaczego.
+- **~50 nowych narzędzi offline**: `pierwiastek` · `silnia` · `nwd`/`nww` · `czy pierwsza` · `dzielniki` · `fibonacci` · `srednia/mediana/suma/min/max` · `zaokraglij` · `zmiana z A do B` · `ile znakow` · `ile zdan` · `palindrom` · `anagram` · `rot13` · `tytul` · `morse`/`dekoduj morse` · `binarnie`/`dekoduj binarnie` · `hex`/`dekoduj hex` · `pesel:` (suma kontrolna + data + płeć) · `nip:` · `iban:` · `rgb R G B` · `tydzien roku` · `dzien roku` · `ile dni do konca roku` · `wiek:` · `dni robocze A do B` · `wielkanoc ROK` · `czas w toki/londyn/…` · `nazwa komputera` · `ile rdzeni` · `architektura` · `moje ip` · `rzut moneta` · `lotto` · `pin N`. Wszystkie bez sieci; `pomoc` pokazuje pełną listę.
+- **Zakres spoza 0.91** (uczciwie): brak samomodyfikacji kodu (zaprojektowana odmowa), brak modeli 3D, brak integracji GitHub/Gmail (odłożone), okno nie jest przezroczyste (aurora to warstwa dekoracyjna), ~50 poleceń zamiast 100 — reszta w [docs/BACKLOG.md](docs/BACKLOG.md). Szczegóły: [docs/RELEASE-0.91.md](docs/RELEASE-0.91.md).
 
 ## Nowe w 0.90 — rozumienie poleceń, narzędzia offline i własny folder pamięci
 

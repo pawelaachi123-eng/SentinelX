@@ -25,7 +25,12 @@ public static class IntentCatalog
         ["ti"] = "test internetu",
         ["zd"] = "zadania",
         ["pr"] = "projekty",
-        ["pm"] = "co pamietasz"
+        ["pm"] = "co pamietasz",
+        ["sd"] = "samokontrola",
+        ["pp"] = "propozycje",
+        ["lk"] = "lekcje",
+        ["im"] = "moje ip",
+        ["nc"] = "nazwa komputera"
     };
 
     public static IReadOnlyList<string> Phrases { get; } = Build();
@@ -69,7 +74,20 @@ public static class IntentCatalog
             "base64", "dekoduj base64", "hash tekstu", "sha256", "json", "sprawdz json", "slug",
             "transliteruj", "wielkie litery", "male litery", "odwroc tekst", "losuj", "rzuc kostka",
             "wybierz losowo", "bmi", "rzymskie", "z rzymskich", "kolor", "kalkulator", "policz",
-            "szukaj wszystkiego", "podsumuj dzien", "plan dnia", "co dzis"
+            "szukaj wszystkiego", "podsumuj dzien", "plan dnia", "co dzis",
+            // 0.91 · CENTRUM: offline tools, Polish identifiers, system facts and meta commands
+            "ile znakow", "ile zdan", "palindrom", "anagram", "rot13", "tytul",
+            "morse", "dekoduj morse", "binarnie", "dekoduj binarnie", "hex", "dekoduj hex",
+            "pesel", "nip", "iban", "rgb",
+            "pierwiastek", "silnia", "nwd", "nww", "czy pierwsza", "dzielniki", "fibonacci",
+            "srednia", "mediana", "suma", "min", "max", "zaokraglij", "zmiana procentowa",
+            "rzut moneta", "lotto", "pin",
+            "czas w toki", "czas w londyn", "czas w berlin", "czas w paryz", "czas w nowy jork",
+            "czas w chicago", "czas w los angeles", "czas w seoul",
+            "tydzien roku", "dzien roku", "ile dni do konca roku", "wiek", "dni robocze", "wielkanoc",
+            "moje ip", "nazwa komputera", "ile rdzeni", "architektura",
+            "wersja", "co nowego", "lekcje", "samokontrola", "propozycje",
+            "szukaj zadan", "zrob zadanie", "notatka"
         ];
         foreach (string phrase in extra) phrases.Add(phrase);
         return phrases.OrderBy(x => x, StringComparer.Ordinal).ToArray();

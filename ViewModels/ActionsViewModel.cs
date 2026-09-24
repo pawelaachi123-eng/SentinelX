@@ -12,7 +12,7 @@ public partial class ActionsViewModel : ObservableObject, IDisposable
     public ObservableCollection<ActionRecord> Tasks { get; } = [];
     [ObservableProperty] private string permissionSummary = "Brak oczekujących zgód.";
     [ObservableProperty] private bool hasPermission;
-    [ObservableProperty] private string status = "Brak zadań w tej sesji. Zleć polecenie w Command Center.";
+    [ObservableProperty] private string status = "Brak zadań w tej sesji. Zleć polecenie w Centrum.";
     public ActionsViewModel(IActionEngine engine, IUiDispatcher dispatcher)
     { this.engine = engine; this.dispatcher = dispatcher; engine.ActionStarted += Started; engine.Changed += Sync; }
     private void Started(ActionRecord action) => dispatcher.Post(() =>

@@ -1,6 +1,6 @@
 # Trwały backlog rozwoju SentinelX
 
-Stan na 2026-09-23. Zasada: każda pojedyncza pozycja znika z listy dopiero, gdy jest **zbudowana i przetestowana na Windows (CI)**, nie „gdy wygląda na zrobioną".
+Stan na 2026-09-24. Zasada: każda pojedyncza pozycja znika z listy dopiero, gdy jest **zbudowana i przetestowana na Windows (CI)**, nie „gdy wygląda na zrobioną".
 
 ## Gotowe i zweryfikowane (0.85 i wcześniejsze)
 
@@ -61,12 +61,27 @@ Stan na 2026-09-23. Zasada: każda pojedyncza pozycja znika z listy dopiero, gdy
 - Zestawy `tests/UnderstandingRegression.cs`, `tests/UtilityRegression.cs`, `tests/MemoryArchiveRegression.cs` w `--ui-smoke` (CI) + 31 dodatkowych sprawdzeń end-to-end przez prawdziwy silnik czatu.
 - Dokument `docs/ARCHITECTURE.md`: warstwy, ścieżka polecenia, reguły dowodów, granice.
 
+## Gotowe w 0.91 (ten przyrost — patrz git)
+
+- **GUI „CENTRUM”**: sidebar 4 pozycje (Centrum/Pamięć/Projekty/Ustawienia), w Centrum 9 zakładek-ikon bez podpisów (💬📓🕘🎤🖥🎮✨⚡🩺), rename „Command Center”→„Centrum”, poświata aurora za treścią, przełącznik mikrofonu w nagłówku. Smoke renderuje każdą zakładkę.
+- **Paleta `//`** w czacie (`Core/SlashCatalog` + `Utilities/SlashKeys`): Tab/Shift+Tab/Enter/Esc, ~40 wpisów, dokładne skróty działają też jako wysłane polecenia (`//diag` → diagnostyka komputera).
+- **Głos domyślnie WŁ** przy starcie (świadoma decyzja użytkownika) + wskaźnik i szybkie wyłączenie.
+- **Szara strefa rozumienia** (`CommandUnderstanding.Suggest`): podobieństwo 0,62–0,80 → pytanie „Czy chodziło Ci o: …”, „tak” wykonuje; bez propozycji dla poleceń niszczących.
+- **Dziennik lekcji** (`Services/Intent/UnderstandingJournal`, `Memory/Lessons.jsonl`, limit 500) + komenda `lekcje`.
+- **`zrob zadanie:`** tworzy zadanie w zakładce 📓; `notatka:` alias zapamiętaj; `szukaj w zadaniach:`.
+- **`samokontrola`** i **`propozycje`** (`WorkspaceInsightsService`) — tylko odczyt i lista „wpisz: …”, nic bez zgody.
+- **~50 narzędzi offline** w `UtilityToolbox`: matematyka (pierwiastek/silnia/nwd/nww/pierwsze/dzielniki/fibonacci/statystyki/zaokrąglenia/zmiana %), tekst (znaki/zdania/palindrom/anagram/rot13/tytuł), kodowania (morse/binarnie/hex w obie strony), PL identyfikatory (PESEL/NIP/IBAN — walidacja lokalna), rgb→hex, kalendarz (tydzień/dzień roku/koniec roku/wiek/dni robocze/wielkanoc), zegary świata (8 miast), fakty systemu (nazwa/rdzenie/architektura/lokalne IP), losowe (moneta/lotto/PIN).
+- **Uczciwe odmowy wbudowane**: modele 3D, samomodyfikacja kodu, automatyczne skanowanie dysku.
+- 5 nowych skrótów (razem 23), katalog fraz rozszerzony, `tests/UtilityRegression` + `tests/UnderstandingRegression` + `UiSmokeTestRunner` rozszerzone.
+
 ## Priorytet P0 — kolejny przyrost
 
 1. **Pliki**: plan porządkowania folderu z podglądem przed wykonaniem, zbiorcze zmiany nazw z podglądem, duplikaty po treści (SHA-256), usuwanie do Kosza jako domyślne.
 2. **Sekwencje działań**: nazwane kroki, plan z podglądem, statusy kroków, zatrzymanie na błędzie, wznowienie tam, gdzie to sensowne.
 3. **Panel archiwum w UI**: strona/panel z listą archiwów (miesiąc, rozmowy, wypowiedzi, rozmiar, hash), podglądem Markdowna i usuwaniem — dziś archiwum działa z czatu i z ustawień, ale nie ma własnego widoku.
 4. **Podpisywanie buildów**: certyfikat (płatny) albo jawnie opisana ścieżka bez podpisu z instrukcją odblokowania SmartScreen; dziś pliki są niepodpisane i tak jest opisane.
+5. **Integracje odłożone z 0.91** (decyzja użytkownika): GitHub i Gmail — dopiero jako osobny przyrost, wyłącznie za jawną zgodą i z lokalnym przechowywaniem poświadczeń stockowym crypto Windows.
+6. **Motywy**: pełny motyw „szkło/Jarvis” (dziś aurora to warstwa dekoracyjna; okno nieprzezroczyste z powodów wydajności/kompatybilności).
 
 ## Priorytet P1
 
@@ -76,7 +91,10 @@ Stan na 2026-09-23. Zasada: każda pojedyncza pozycja znika z listy dopiero, gdy
 - Rozmowa: edycja wypowiedzi i ponowne wysłanie z oznaczeniem alternatywy; zakładanie odgałęzień rozmowy.
 - Wyszukiwanie (wspomnienia, rozmowa, `szukaj wszystkiego`) z tolerancją literówek — dziś naprawa dotyczy poleceń, nie treści wyszukiwania.
 - Narzędzia: przelicznik walut (wymaga kursu — offline nieuczciwe), własne stawki VAT (8/5/0%), przywracanie archiwum do nowej rozmowy, skróty konfigurowalne przez użytkownika.
-- Rozbicie `CommandRouter` (510 linii) na osobne moduły: pamięć, projekty/zadania, snapshoty, narzędzia — dopiero przy zielonym CI.
+- Rozbicie `CommandRouter` (~640 linii po 0.91) na osobne moduły: pamięć, projekty/zadania, snapshoty, narzędzia, meta — dopiero przy zielonym CI.
+- Z 0.91 odłożone: dalsze ~40 pozycji z listy „100 funkcji” (m.in. edycja plików konfiguracyjnych z podglądem diff, rozszerzony zegar świata, profile skrótów użytkownika, `czas w` dla dowolnej strefy, święta w `dni robocze`) — bez udawania, że istnieją.
+- Modele 3D i generowanie modeli — poza zakresem produktu (wbudowana uczciwa odmowa); gdyby wróciły, to jako integracja z zewnętrznym narzędziem za zgodą.
+- Samomodyfikacja kodu — odrzucona na stałe decyzją użytkownika; odpowiednikiem są `samokontrola` i `propozycje`.
 
 ## Priorytet P2
 
@@ -90,7 +108,7 @@ Stan na 2026-09-23. Zasada: każda pojedyncza pozycja znika z listy dopiero, gdy
 - Build niepodpisany: SmartScreen może ostrzegać (zgodnie z README; nie wyłączamy zabezpieczeń).
 - Ollama, mikrofon i gry wymagają testów na komputerze docelowym; CI nie ma mikrofonu ani gier.
 - Wyszukiwanie **treści** (wspomnienia, rozmowa, `szukaj wszystkiego`) jest tekstowe (normalizacja, bez fuzzy) — literówki mogą nie trafić. Tolerancja literówek dotyczy **poleceń**, nie wyników wyszukiwania.
-- Naprawa poleceń działa na stałym katalogu 184 fraz: nie rozumie odmiany ani kontekstu, a przy niejednoznaczności celowo nic nie poprawia.
+- Naprawa poleceń działa na stałym katalogu ~240 fraz (0.91): nie rozumie odmiany ani kontekstu, a przy niejednoznaczności celowo nic nie poprawia.
 - `przelicz` nie przelicza walut, brak zrzutów ekranu i sterowania głośnością — świadomie odłożone, nie „zrobione częściowo”.
 - VAT liczy tylko stawkę 23%.
 - Archiwum rozmów jest kopią do odczytu: nie ma przywracania do aktywnej rozmowy.

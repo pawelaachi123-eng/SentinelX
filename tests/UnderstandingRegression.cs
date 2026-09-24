@@ -1,5 +1,7 @@
+using System.IO;
 using System.Linq;
 using SentinelX.Core;
+using SentinelX.Services.Intent;
 
 namespace SentinelX.Tests;
 
@@ -70,6 +72,31 @@ internal static class UnderstandingRegression
         Check(!CommandUnderstanding.Repair("zamknij notatnk").Success, "a mistyped destructive command must stay unhandled");
         Check(!CommandUnderstanding.Repair("usun wszystko").Success, "a destructive command must never be invented by repair");
         Check(!CommandUnderstanding.Repair("potwierdz akcje").Success, "confirmations must never be produced by repair");
+
+        // --- 0.91: the grey zone asks instead of guessing ---
+        var suggestions = CommandUnderstanding.Suggest("ile mam ramu dzis");
+        Check(suggestions.Count > 0 && suggestions[0] == "ile mam ramu", "a near command must be suggested, not guessed: " + string.Join("|", suggestions));
+        Check(CommandUnderstanding.Suggest("ile mam ramu").Count == 0, "an exact command must not produce a suggestion");
+        Check(CommandUnderstanding.Suggest("zamknij notatnk").Count == 0, "destructive stems may never be suggested");
+        Check(CommandUnderstanding.Suggest("usun wszystko").Count == 0, "destructive input may never be suggested");
+        Check(CommandUnderstanding.Suggest("napisz mi wiersz o jesieni").Count == 0, "free conversation must not produce suggestions");
+        Check(CommandUnderstanding.Suggest("").Count == 0, "empty input must not produce suggestions");
+        Check(CommandUnderstanding.Suggest("napisz mi wiersz o jesieni i o zimie i o wiośnie i o lecie też").Count == 0, "long input must not produce suggestions");
+        var topSuggestion = CommandUnderstanding.Suggest("ile mam ramu dzis")[0];
+        Check(!topSuggestion.Contains("usun") && !topSuggestion.Contains("zamknij") && !topSuggestion.Contains("wylacz"), "a suggestion may never point at a destructive command");
+
+        // --- 0.91: the lessons journal records repairs locally and stays readable ---
+        var journal = new UnderstandingJournal(Path.Combine(directory, "journal"));
+        journal.Append("ile mam ramuu", "ile mam ramu", "ramuu → ramu");
+        journal.Append("ile mam ramuu", "ile mam ramu", "ramuu → ramu");
+        journal.Append("ststus pamieci", "status pamieci", "ststus → status");
+        Check(journal.TotalCount == 3, "the journal must count every repair");
+        var topPair = journal.TopPairs(1).Single();
+        Check(topPair.From == "ile mam ramuu" && topPair.To == "ile mam ramu" && topPair.Count == 2, "the most frequent correction must come first");
+        Check(journal.Report().Contains("Zapisane poprawki: 3"), "the lekcje report must name the count: " + journal.Report());
+        Check(journal.Recent(2).Count == 2, "recent entries must respect the limit");
+        journal.Append("", "cos", "");
+        Check(journal.TotalCount == 3, "empty repairs must not be recorded");
 
         // --- the catalogue is real: every phrase is a command the product handles ---
         Check(IntentCatalog.Phrases.Count >= 180, "the catalogue must cover the real command surface, got " + IntentCatalog.Phrases.Count);

@@ -44,7 +44,10 @@ public static class ServiceLocator
             KeepMonthsProvider = () => sp.GetRequiredService<ISettingsService>().Current.Memory.ArchiveMonths
         });
         services.AddSingleton<WorkspaceInsightsService>(sp => new(sp.GetRequiredService<ConversationMemoryService>(), sp.GetRequiredService<TaskService>(),
-            sp.GetRequiredService<ProjectService>(), sp.GetRequiredService<DiagnosticSnapshotService>(), sp.GetRequiredService<ActionHistoryService>()));
+            sp.GetRequiredService<ProjectService>(), sp.GetRequiredService<DiagnosticSnapshotService>(), sp.GetRequiredService<ActionHistoryService>(),
+            sp.GetRequiredService<MemoryArchiveService>()));
+        // 0.91: the local lessons journal („lekcje”) records typo repairs — deterministic learning.
+        services.AddSingleton<UnderstandingJournal>();
         services.AddSingleton<Services.Memory.MemoryActionService>(sp => new(sp.GetRequiredService<ConversationMemoryService>(),
             sp.GetRequiredService<Services.Permissions.IPermissionService>(), sp.GetRequiredService<ActionHistoryService>()));
         services.AddSingleton<IHistoryService, HistoryService>();

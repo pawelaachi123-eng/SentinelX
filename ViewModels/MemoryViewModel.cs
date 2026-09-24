@@ -168,7 +168,7 @@ public partial class MemoryViewModel : ObservableObject, IDisposable
     {
         if (item == null) return;
         Status = memoryActions.RequestDeleteNote(item.Id, item.Text)
-            + " Usuwanie wymaga zgody — zatwierdź ją klawiaturą w Command Center.";
+            + " Usuwanie wymaga zgody — zatwierdź ją klawiaturą w Centrum.";
         Refresh();
     }
 
@@ -185,7 +185,7 @@ public partial class MemoryViewModel : ObservableObject, IDisposable
     {
         if (item == null) return;
         Status = memory.ResumeSession(item.Id)
-            ? $"Wznowiono rozmowę „{item.Title}”. Command Center pokazuje jej treść."
+            ? $"Wznowiono rozmowę „{item.Title}”. Centrum pokazuje jej treść."
             : "Ta rozmowa jest już aktywna.";
         Refresh();
     }

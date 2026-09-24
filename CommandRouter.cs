@@ -3,6 +3,8 @@ using System.Globalization;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using SentinelX.Core;
+using SentinelX.Services.Intent;
 
 namespace SentinelX;
 
@@ -17,16 +19,18 @@ public sealed class CommandRouter
     private readonly DiagnosticSnapshotService? snapshots;
     private readonly MemoryArchiveService? archives;
     private readonly WorkspaceInsightsService? insights;
+    private readonly UnderstandingJournal? journal;
     private string lastTopic = "";
     private DateTime lastTopicTime;
     private (string Text, DateTime When, string Description, DateTime Expires)? pendingReminder;
 
     public CommandRouter(SystemMonitor systemMonitor, SystemInfoService systemInfo, LocalAiService localAi, ConversationMemoryService memory,
         ProjectService? projects = null, TaskService? tasks = null, DiagnosticSnapshotService? snapshots = null,
-        MemoryArchiveService? archives = null, WorkspaceInsightsService? insights = null)
+        MemoryArchiveService? archives = null, WorkspaceInsightsService? insights = null, UnderstandingJournal? journal = null)
     {
         this.systemMonitor = systemMonitor; this.systemInfo = systemInfo; this.localAi = localAi; this.memory = memory;
         this.projects = projects; this.tasks = tasks; this.snapshots = snapshots; this.archives = archives; this.insights = insights;
+        this.journal = journal;
     }
 
     public async Task<string> ProcessAsync(string command, CancellationToken cancellationToken = default, Action<string>? onDelta = null)
@@ -38,6 +42,8 @@ public sealed class CommandRouter
         if (snapshotResponse != null) return snapshotResponse;
         string? utilityResponse = UtilityToolbox.Process(command.Trim(), text);
         if (utilityResponse != null) return utilityResponse;
+        string? metaResponse = TryHandleMetaCommand(text);
+        if (metaResponse != null) return metaResponse;
         string? workspaceResponse = TryHandleWorkspaceCommand(command.Trim(), text);
         if (workspaceResponse != null) return workspaceResponse;
         string? memoryResponse = TryHandleMemoryCommand(command.Trim(), text);
@@ -92,6 +98,59 @@ public sealed class CommandRouter
         bool includeSystemFacts = string.IsNullOrEmpty(topicForContext) ? MentionsComputerStateNoTopic(text, followUp) : topicForContext is "RAM" or "CPU" or "SYSTEM" or "DISK";
         if (!Regex.IsMatch(followUp, @"^(?:czy to|czy jest|a |dlaczego|czemu|co z tym)")) lastTopic = "";
         return await localAi.AskAsync(command, BuildSystemContext(topicForContext, includeSystemFacts, includeRecentHistory), cancellationToken, onDelta);
+    }
+
+    /// <summary>0.91 · CENTRUM: Sentinel talking honestly about itself — version, changelog, lessons,
+    /// self-check, suggestions, capability boundaries. All read-only; refusals are intentional design,
+    /// not missing features.</summary>
+    private string? TryHandleMetaCommand(string text)
+    {
+        if (text is "wersja" or "jaka wersja" or "wersja sentinel" or "wersja aplikacji")
+            return "Sentinel X " + AppConstants.Version + " · " + systemInfo.GetWindowsVersion() + " · .NET " + Environment.Version;
+        if (text is "co nowego" or "lista zmian" or "changelog" or "co sie zmienilo")
+            return "CO NOWEGO W 0.91 · CENTRUM\n" +
+                "· Jedna zakładka CENTRUM zamiast wielu kart — rozmowa plus ikony: 📓 zadania, 🕘 historia, 🎤 głos, 🖥 system, 🎮 gry, ✨ AI, ⚡ akcje, 🩺 diagnostyka.\n" +
+                "· Paleta // w polu wpisywania: wpisz „//”, a Tab wybiera polecenie.\n" +
+                "· Głos domyślnie nasłuchuje od startu (możesz wyłączyć jednym kliknięciem).\n" +
+                "· Gdy nie jestem pewien polecenia — pytam zamiast zgadywać.\n" +
+                "· Nowe narzędzia offline: PESEL, NIP, IBAN, morse, binarnie, hex, wielkanoc, dni robocze, świat, lotto i inne — wpisz „pomoc”.\n" +
+                "· „zrob zadanie: treść” dodaje zadanie wprost do zakładki 📓.\n" +
+                "· „lekcje” pokazuje, czego nauczyłem się z Twoich poprawek; „samokontrola” sprawdza moje pliki; „propozycje” podpowiada porządki — nic bez Twojej zgody.";
+        if (text is "lekcje" or "czego sie nauczyles" or "pokaz lekcje" or "uczenie")
+            return journal?.Report() ?? "Dziennik lekcji nie jest dostępny w tym trybie.";
+        if (text is "samokontrola" or "sprawdz sie" or "sprawdz sentinel" or "test sentinel")
+            return insights?.SelfCheck() ?? "Samokontrola nie jest dostępna w tym trybie.";
+        if (text is "propozycje" or "co proponujesz" or "sugestie")
+            return insights?.Suggestions() ?? "Propozycje nie są dostępne w tym trybie.";
+
+        // Honest capability boundaries: these are deliberate refusals, not gaps.
+        if (text is "model 3d" or "zbuduj model 3d" or "modeluj 3d" or "generuj model 3d" or "zrob model 3d" or "druk 3d")
+            return "Uczciwie: nie buduję modeli 3D. Nie mam tu silnika graficznego ani narzędzi CAD i nie chcę udawać, że mam.\n" +
+                "Mogę za to: policzyć wymiary („policz”), przeliczyć jednostki („przelicz”), zapisać zadanie związane z projektem („zrob zadanie: …”) i przypomnieć o nim w terminie.\n" +
+                "Do samego modelowania polecam Blendera (darmowy) — mogę dodać zadanie „pobrać Blendera”, jeśli chcesz.";
+        if (text is "zmien swoj kod" or "napraw swoj kod" or "napraw sie" or "zmodyfikuj swoj kod" or "ulepsz sie" or "zaktualizuj sie" or "przepisz sie")
+            return "Nie modyfikuję własnego kodu — i to jest świadoma decyzja, nie brak umiejętności.\n" +
+                "Samodzielna zmiana kodu bez kontroli mogłaby zepsuć aplikację, w której masz swoje dane. Zamiast tego mam bezpieczny odpowiednik:\n" +
+                "· „samokontrola” — sprawdzam spójność swoich plików i raportuję,\n" +
+                "· „propozycje” — proponuję porządki, ale nic nie wykonuję bez Twojego polecenia,\n" +
+                "· aktualizacje przychodzą jako nowe wersje publikowane w Releases repozytorium.";
+        if (Regex.IsMatch(text, @"^(?:skanuj|przeskanuj) (?:caly )?dysk"))
+            return "Nie skanuję całych dysków automatycznie — to kosztowne i narusza prywatność. Zamiast tego: „pokaz dyski” (pojemność), „top procesy” (co zużywa zasoby), „zabezpieczenia” (stan ochrony Windows).";
+
+        if (tasks != null)
+        {
+            var searchTasks = Regex.Match(text, @"^szukaj (?:w )?zadaniach[:\s]+(.+)$");
+            if (searchTasks.Success)
+            {
+                string needle = ConversationMemoryService.Normalize(searchTasks.Groups[1].Value);
+                var found = tasks.GetTasks(includeDone: true)
+                    .Where(x => ConversationMemoryService.Normalize(x.Title).Contains(needle, StringComparison.Ordinal)).Take(10).ToArray();
+                if (found.Length == 0) return "Nie znalazłem zadań pasujących do: " + searchTasks.Groups[1].Value.Trim();
+                return "Znalezione zadania (" + found.Length + "):\n" + string.Join("\n", found.Select((x, i) =>
+                    $"{i + 1}. {x.Title}  [{x.Status}{(x.DueAt == null ? "" : ", termin " + x.DueAt.Value.ToString("dd.MM HH:mm"))}]"));
+            }
+        }
+        return null;
     }
 
     private string? TryHandleProjectCommand(string command, string text)
@@ -167,7 +226,9 @@ public sealed class CommandRouter
             pendingReminder = (reminderText, when, description, DateTime.Now.AddMinutes(5));
             return $"Rozumiem: przypomnienie „{reminderText}” na {description} (czas lokalny). Zapiszę to dopiero po Twojej zgodzie — odpowiedz „tak” albo „nie”.";
         }
-        var addTask = Regex.Match(command, @"^dodaj zadanie[:\s]\s*(.+)$", RegexOptions.IgnoreCase);
+        // „dodaj zadanie”, „zrob zadanie” and „nowe zadanie” are one explicit command — the task lands
+        // directly in the Tasks tab (Centrum → 📓), not just in the chat reply.
+        var addTask = Regex.Match(command, @"^(?:dodaj|zrob|nowe) zadanie[:\s]\s*(.+)$", RegexOptions.IgnoreCase);
         if (addTask.Success)
         {
             string title = addTask.Groups[1].Value.Trim();
@@ -176,7 +237,7 @@ public sealed class CommandRouter
             { title = cleanTitle; due = parsedDue; dueNote = $" z terminem {dueDescription} (czas lokalny)"; }
             string projectId = projects?.ActiveProjectId ?? "";
             return tasks.AddTask(title, TaskRecord.PriorityNormal, due, projectId) != null
-                ? StorageResult("Zadanie zapisane" + dueNote + ". Zarządzasz nim w panelu Zadania.")
+                ? StorageResult("Zadanie zapisane" + dueNote + ". Znajdziesz je w Centrum → zakładka 📓 Zadania.")
                 : tasks.LastStorageError ?? "Nie zapisano zadania.";
         }
         if (text is "zadania" or "moje zadania" or "lista zadan")
@@ -291,9 +352,12 @@ public sealed class CommandRouter
             if (memory.UserName.Length > 0) return StorageResult($"Zapamiętam: {memory.UserName}.");
         }
         if (Regex.IsMatch(text, @"^(?:wole|preferuje) (?:krotkie|zwiezle|dlugie|dokladne|szczegolowe) odpowiedzi$")) return StorageResult("Zapamiętam tę preferencję odpowiedzi.");
-        if (text.StartsWith("zapamietaj ", StringComparison.Ordinal) || text.StartsWith("zapamietaj:", StringComparison.Ordinal))
+        bool isNote = text.StartsWith("zapamietaj ", StringComparison.Ordinal) || text.StartsWith("zapamietaj:", StringComparison.Ordinal)
+            || text.StartsWith("notatka ", StringComparison.Ordinal) || text.StartsWith("notatka:", StringComparison.Ordinal);
+        if (isNote)
         {
-            string noteText = command[(command.IndexOf(' ') + 1)..];
+            int prefix = text.StartsWith("zapamietaj", StringComparison.Ordinal) ? "zapamietaj".Length : "notatka".Length;
+            string noteText = command[Math.Min(command.Length, prefix)..].TrimStart(':', ' ').Trim();
             var result = memory.AddNote(noteText);
             IReadOnlyList<ConversationMemoryEntry> similar = result == NoteAddResult.Added ? memory.FindSimilarNotes(noteText) : [];
             string hint = similar.Count > 0 ? $"\nPodobne istniejące wspomnienie: „{similar[0].Text}”. Jeśli wpisy się wykluczają, oznacz stare jako nieaktualne w panelu Pamięć." : "";
@@ -487,19 +551,26 @@ public sealed class CommandRouter
     private const string Help = """
         SENTINEL X — CO UMIEM (wszystko działa lokalnie)
 
-        Pomiary i system: ile mam RAM · użycie CPU · użycie GPU · dyski · top procesy · czas pracy komputera · która godzina · dzisiejsza data
+        Interfejs: wpisz „//” w polu czatu — lista poleceń, Tab wybiera, Enter wykonuje. Centrum mieści zakładki: 📓 zadania, 🕘 historia, 🎤 głos, 🖥 system, 🎮 gry, ✨ AI, ⚡ akcje, 🩺 diagnostyka.
+        Pomiary i system: ile mam RAM · użycie CPU · użycie GPU · dyski · top procesy · czas pracy komputera · która godzina · dzisiejsza data · nazwa komputera · ile rdzeni · architektura · moje ip
         Aplikacje: włącz <nazwa> (cs2, discord, steam, chrome, brave, spotify, notatnik, kalkulator, VS Code, Firefox, VLC, OBS…) · otwórz pobrane / dokumenty / pulpit · skróty
-        Diagnostyka: diagnostyka komputera · eksportuj raport · status zabezpieczeń · zdarzenia windows · programy autostartu · lista usług
+        Diagnostyka: diagnostyka komputera (albo //diag) · eksportuj raport · status zabezpieczeń · zdarzenia windows · programy autostartu · lista usług
         Odczyty stanu: snapshot · snapshoty · porównaj snapshoty · eksportuj porównanie · usuń snapshot N
-        Pamięć: zapamiętaj: … · co pamiętasz · pokaż rozmowy · nowa rozmowa · szukaj w rozmowie: fraza · eksportuj rozmowę markdown
+        Pamięć: zapamiętaj: … · notatka: … · co pamiętasz · pokaż rozmowy · nowa rozmowa · szukaj w rozmowie: fraza · eksportuj rozmowę markdown
         Archiwum: archiwizuj rozmowy · archiwa · usuń archiwum RRRR-MM
         Projekty: nowy projekt: nazwa · projekty · użyj projektu N · aktywny projekt
-        Zadania: dodaj zadanie: treść · zadania · zadanie N zrobione · przypomnienia · przypomnij mi jutro o 18 o …
-        Narzędzia: policz 12,5*4 · procent 15 z 240 · vat 100 · przelicz 5 km na mile · ile dni do 24.12 · jaki dzien tygodnia 1.1.2030 · haslo 20 · uuid · ile slow: tekst · base64: tekst · dekoduj base64: … · hash tekstu: … · json: {…} · slug: tekst · transliteruj: tekst · wielkie litery: … · male litery: … · odwroc tekst: … · losuj 1-100 · rzuc kostka · wybierz losowo: a, b · bmi 80 180 · rzymskie 2026 · z rzymskich XIV · kolor 1fa2c3
+        Zadania: dodaj zadanie: treść · zrob zadanie: treść · zadania · zadanie N zrobione · szukaj w zadaniach: fraza · przypomnienia · przypomnij mi jutro o 18 o …
+        Sentinel: samokontrola · propozycje · lekcje · wersja · co nowego
+        Matematyka: policz 12,5*4 · pierwiastek 144 · silnia 10 · nwd 12 8 · nww 4 6 · czy pierwsza 97 · dzielniki 12 · fibonacci 10 · srednia: 2, 4, 6 · mediana: … · suma: … · min: … · max: … · zaokraglij 3,14159 do 2 · zmiana z 50 do 80 · procent 15 z 240 · ile to procent 30 z 240 · vat 100
+        Konwersje: przelicz 5 km na mile · rgb 31 162 195 · kolor 1fa2c3 · rzymskie 2026 · z rzymskich XIV · base64: tekst · dekoduj base64: … · morse: sos · dekoduj morse: … · binarnie: A · dekoduj binarnie: … · hex: Ala · dekoduj hex: …
+        Tekst: ile slow: tekst · ile znakow: tekst · ile zdan: tekst · palindrom: kajak · anagram: kot, tok · rot13: ala · tytul: ala ma kota · wielkie litery: … · male litery: … · odwroc tekst: … · slug: tekst · transliteruj: tekst · json: {…} · hash tekstu: …
+        Kalendarz: ile dni do 24.12 · jaki dzien tygodnia 1.1.2030 · tydzien roku · dzien roku · ile dni do konca roku · wiek: 01.01.1990 · dni robocze 1.1.2024 do 31.1.2024 · wielkanoc 2027 · czas w toki / londyn / berlin / paryz / nowy jork / chicago / los angeles / seoul
+        Dokumenty PL: pesel: 11 cyfr · nip: 10 cyfr · iban: PL61… (walidacja lokalna, nic nie jest wysyłane)
+        Losowe: losuj 1-100 · rzuc kostka · rzut moneta · lotto · pin 6 · haslo 20 · uuid · wybierz losowo: a, b · bmi 80 180
         Podsumowania: plan dnia · szukaj wszystkiego: fraza · statystyki · backup
-        Czat: ponów (przycisk „Ponów") · zatrzymaj generowanie (przycisk widoczny zawsze)
+        Czat: ponów (przycisk „Ponów”) · zatrzymaj generowanie (przycisk widoczny zawsze)
 
-        Rozumienie: literówki i skróty są poprawiane, ale zawsze pokazuję, co zrozumiałem. Nie zgaduję poleceń niszczących — usuwanie wymaga świadomego kliknięcia lub osobnej zgody.
+        Rozumienie: literówki i skróty są poprawiane i zawsze pokazuję, co zrozumiałem. Gdy nie jestem pewien — pytam zamiast zgadywać („Czy chodziło Ci o…”). Nie zgaduję poleceń niszczących — usuwanie wymaga świadomego kliknięcia lub osobnej zgody.
         """;
 
     private string SnapshotStorage(string success) => snapshots?.LastStorageError == null ? success : snapshots.LastStorageError;

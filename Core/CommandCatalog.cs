@@ -31,7 +31,7 @@ public static class CommandCatalog
         new("Ponów odpowiedź", "Powtarza ostatnie polecenie; wynik może się różnić", "ponow powtorz jeszcze raz", CommandText: "ponów"),
         new("Dodaj zadanie", "Zadanie z terminem i priorytetem", "zadanie task lista", CommandText: "dodaj zadanie: "),
         new("Ustaw przypomnienie", "Termin musi być konkretny i zapisany za zgodą", "przypomnienie reminder alarm", CommandText: "przypomnij mi jutro o 18 o "),
-        new("Command Center", "Rozmowa i lokalne polecenia", "czat chat rozmowa centrum", PageKey: "command"),
+        new("Centrum", "Rozmowa i lokalne polecenia — wszystkie zakładki w jednym miejscu", "czat chat rozmowa centrum center", PageKey: "command"),
         new("Pamięć", "Wspomnienia, profil i prywatność", "pamiec memory wspomnienia", PageKey: "memory"),
         new("Projekty", "Kontekst projektów i ich notatki", "projekt projects kontekst", PageKey: "projects"),
         new("Zadania", "Zadania, terminy i przypomnienia", "zadania task przypomnienia", PageKey: "tasks"),

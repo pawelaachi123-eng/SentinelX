@@ -148,6 +148,11 @@ public static class UiSmokeTestRunner
                 ("rzymskie 2026", "MMXXVI"), ("z rzymskich MMXXVI", "= 2026"), ("kolor 1fa2c3", "RGB(31, 162, 195)"),
                 ("jaki dzien tygodnia 1.1.2030", "wtorek"), ("plan dnia", "PLAN NA"), ("statystyki", "STATYSTYKI"),
                 ("skroty", "→"), ("pomoc", "CO UMIEM"), ("archiwa", "archiw"), ("backup", "SHA-256"),
+                ("pierwiastek 144", "= 12"), ("silnia 10", "3628800"), ("nwd 12 8", "= 4"),
+                ("palindrom: kajak", "palindromem"), ("morse: sos", "... --- ..."),
+                ("pesel: 90010112349", "PESEL poprawny"), ("wielkanoc 2027", "28.03.2027"),
+                ("lotto", "Lotto (6 z 49)"), ("wersja", "0.91"), ("co nowego", "CENTRUM"),
+                ("nazwa komputera", "Komputer:"), ("samokontrola", "SAMOKONTROLA"),
             })
             {
                 string toolResponse = (await memoryEngine.ExecuteAsync(command)).Text;
@@ -158,6 +163,63 @@ public static class UiSmokeTestRunner
             string unified = (await memoryEngine.ExecuteAsync("szukaj wszystkiego: cyjan")).Text;
             if (!unified.Contains("Znalezione w danych lokalnych"))
                 throw new InvalidOperationException("Unified search is not wired: " + unified);
+            // 0.91 · CENTRUM: the grey zone must ask instead of guessing, and an explicit „tak” runs the known command.
+            var ambiguous = await memoryEngine.ExecuteAsync("ile mam ramu dzis");
+            if (!ambiguous.Text.Contains("Czy chodziło Ci o") || !ambiguous.Text.Contains("ile mam ramu"))
+                throw new InvalidOperationException("An ambiguous command must produce a question, not a guess: " + ambiguous.Text);
+            var confirmed = await memoryEngine.ExecuteAsync("tak");
+            if (!confirmed.Text.Contains("GB"))
+                throw new InvalidOperationException("Saying „tak” to a suggestion must execute the known command: " + confirmed.Text);
+            // 0.91: „zrob zadanie: …” is an explicit command — it lands in the Tasks tab, not only in chat.
+            var madeTask = await memoryEngine.ExecuteAsync("zrob zadanie: przetestowac centrum QX77");
+            if (!madeTask.Text.Contains("Zadanie zapisane"))
+                throw new InvalidOperationException("zrob zadanie must create a task directly: " + madeTask.Text);
+            taskVm.RefreshCommand.Execute(null);
+            if (!taskVm.Items.Any(x => x.Title.Contains("QX77")))
+                throw new InvalidOperationException("A task created with „zrob zadanie” did not reach the Tasks tab.");
+            // 0.91: quick note alias, lessons journal, self-check and suggestions through the real engine.
+            await memoryEngine.ExecuteAsync("notatka: ulubiona kawa to flat white QX77");
+            memoryVm.RefreshDataCommand.Execute(null);
+            if (!memoryVm.Items.Any(x => x.Text.Contains("flat white QX77")))
+                throw new InvalidOperationException("A note created with „notatka:” did not reach the Memory page.");
+            string lessons = (await memoryEngine.ExecuteAsync("lekcje")).Text;
+            if (!lessons.Contains("LEKCJE") || !lessons.Contains("ramuu"))
+                throw new InvalidOperationException("The lessons journal must show the earlier typo repair: " + lessons);
+            string selfCheck = (await memoryEngine.ExecuteAsync("samokontrola")).Text;
+            if (!selfCheck.Contains("SAMOKONTROLA") || !selfCheck.Contains("tylko do odczytu"))
+                throw new InvalidOperationException("Self-check report is not wired: " + selfCheck);
+            string suggestions = (await memoryEngine.ExecuteAsync("propozycje")).Text;
+            if (!suggestions.Contains("PROPOZYCJE") || !suggestions.Contains("bez Twojej zgody") )
+                throw new InvalidOperationException("Suggestions must stay informational only: " + suggestions);
+            // 0.91: honest capability boundaries — refusals instead of invented abilities.
+            string modelRefusal = (await memoryEngine.ExecuteAsync("zbuduj model 3d")).Text;
+            if (!modelRefusal.Contains("nie buduję modeli 3D"))
+                throw new InvalidOperationException("3D modeling must be refused honestly: " + modelRefusal);
+            string selfModRefusal = (await memoryEngine.ExecuteAsync("ulepsz sie")).Text;
+            if (!selfModRefusal.Contains("Nie modyfikuję własnego kodu"))
+                throw new InvalidOperationException("Self-code modification must be refused honestly: " + selfModRefusal);
+            // 0.91: „//” shortcuts resolve through the catalogue without touching the AI.
+            string slashHelp = (await memoryEngine.ExecuteAsync("//pomoc")).Text;
+            if (!slashHelp.Contains("CO UMIEM"))
+                throw new InvalidOperationException("//pomoc must resolve to the help command: " + slashHelp);
+            if (SentinelX.Core.SlashCatalog.TryResolve("diag")?.Target != "diagnostyka komputera")
+                throw new InvalidOperationException("//diag must map to the full diagnostic command.");
+            // 0.91: voice listens by default after launch (explicit user decision; visible indicator + one-click stop).
+            if (!services.GetRequiredService<AppSettingsService>().Settings.Startup.StartVoiceOnLaunch)
+                throw new InvalidOperationException("Voice must be on by default in 0.91.");
+            // 0.91: the // palette opens on „//”, Tab cycles it, and it closes on cleared input.
+            chat.UserInput = "//";
+            if (!chat.SlashOpen || chat.SlashItems.Count == 0)
+                throw new InvalidOperationException("Typing // must open the command palette.");
+            int slashStart = chat.SlashIndex;
+            chat.SlashNextCommand.Execute(null);
+            if (chat.SlashIndex == slashStart && chat.SlashItems.Count > 1)
+                throw new InvalidOperationException("Tab (SlashNext) must cycle the palette selection.");
+            chat.UserInput = "//diag";
+            if (chat.SlashItems.All(x => x.Entry.Trigger != "diag"))
+                throw new InvalidOperationException("Filtering //diag must list the diagnostic entry.");
+            chat.UserInput = "";
+            if (chat.SlashOpen) throw new InvalidOperationException("Clearing the input must close the palette.");
             // Streaming surface: the stop control must answer honestly when nothing is generating.
             chat.StopGenerationCommand.Execute(null);
             if (!chat.Status.Contains("Nic teraz nie jest generowane"))
@@ -183,6 +245,20 @@ public static class UiSmokeTestRunner
                 var png = new PngBitmapEncoder(); png.Frames.Add(BitmapFrame.Create(image));
                 using var imageFile = File.Create(Path.Combine(output, item.Key + ".png")); png.Save(imageFile);
             }
+            // 0.91 · CENTRUM: every embedded tab inside Centrum must render without binding errors.
+            foreach (var tab in chat.Sections)
+            {
+                chat.SelectedTab = tab;
+                await shell.Dispatcher.InvokeAsync(shell.UpdateLayout, DispatcherPriority.ContextIdle);
+                await Task.Delay(150);
+                var tabImage = new RenderTargetBitmap((int)shell.ActualWidth, (int)shell.ActualHeight, 96, 96, PixelFormats.Pbgra32);
+                tabImage.Render(shell);
+                var tabPng = new PngBitmapEncoder(); tabPng.Frames.Add(BitmapFrame.Create(tabImage));
+                using var tabFile = File.Create(Path.Combine(output, "centrum-" + tab.Key + ".png")); tabPng.Save(tabFile);
+                visited.Add("centrum:" + tab.Key);
+            }
+            chat.SelectedTab = chat.Sections[0];
+            await shell.Dispatcher.InvokeAsync(shell.UpdateLayout, DispatcherPriority.ContextIdle);
             var historyVm = services.GetRequiredService<HistoryViewModel>();
             await historyVm.RefreshCommand.ExecuteAsync(null);
             historyVm.StatusFilter = "VERIFIED";
@@ -243,7 +319,7 @@ public static class UiSmokeTestRunner
             string errors = buffer.ToString();
             File.WriteAllText(Path.Combine(output, "bindings.log"), errors);
             if (errors.Length != 0) throw new InvalidOperationException("WPF binding errors: " + errors);
-            File.WriteAllText(Path.Combine(output, "ui-smoke.txt"), "PASS\nPages: " + string.Join(", ", visited) + "\nDark/DeepDark/System themes rendered\nSTOP/Resume/voice approval passed\nPalette, readiness, draft preservation and execution-scoped evidence passed\nTypo repair, offline tools, archives, insights and unified search passed\n");
+            File.WriteAllText(Path.Combine(output, "ui-smoke.txt"), "PASS\nPages: " + string.Join(", ", visited) + "\nCentrum tabs, // palette and voice default verified\nDark/DeepDark/System themes rendered\nSTOP/Resume/voice approval passed\nPalette, readiness, draft preservation and execution-scoped evidence passed\nTypo repair, grey-zone questions, lessons, self-check, offline tools, archives, insights and unified search passed\n");
         }
         finally { PresentationTraceSources.DataBindingSource.Listeners.Remove(listener); }
     }

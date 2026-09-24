@@ -5,11 +5,14 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using SentinelX.Services.Intent;
 
 namespace SentinelX;
 
 /// <summary>Cross-module insights: one-click local backup with proof, honest statistics, unified search
-/// and a daily briefing. Read-only except for the backup, which only copies files inside the app folder.</summary>
+/// and a daily briefing. Read-only except for the backup, which only copies files inside the app folder.
+/// Since 0.91 also runs the „samokontrola” integrity report and writes the „propozycje” list — both
+/// strictly informational: they never change anything on their own.</summary>
 public sealed class WorkspaceInsightsService
 {
     private readonly ConversationMemoryService memory;
@@ -17,18 +20,20 @@ public sealed class WorkspaceInsightsService
     private readonly ProjectService projects;
     private readonly DiagnosticSnapshotService snapshots;
     private readonly ActionHistoryService history;
+    private readonly MemoryArchiveService? archives;
 
     public Func<DateTime> NowProvider { get; set; } = () => DateTime.Now;
     public string? LastError { get; private set; }
 
     public WorkspaceInsightsService(ConversationMemoryService? memory = null, TaskService? tasks = null, ProjectService? projects = null,
-        DiagnosticSnapshotService? snapshots = null, ActionHistoryService? history = null)
+        DiagnosticSnapshotService? snapshots = null, ActionHistoryService? history = null, MemoryArchiveService? archives = null)
     {
         this.memory = memory ?? new ConversationMemoryService();
         this.tasks = tasks ?? new TaskService();
         this.projects = projects ?? new ProjectService();
         this.snapshots = snapshots ?? new DiagnosticSnapshotService();
         this.history = history ?? new ActionHistoryService();
+        this.archives = archives;
     }
 
     public string Statistics()
@@ -54,6 +59,119 @@ public sealed class WorkspaceInsightsService
             builder.AppendLine("· " + Path.GetFileName(file) + ": " + (File.Exists(file) ? Size(new FileInfo(file).Length) : "brak"));
         builder.AppendLine("Folder danych: " + AppPaths.Root + " (" + Size(DirectoryBytes(AppPaths.Root)) + ")");
         builder.AppendLine("To są ilości zapisanych danych, nie miara jakości pamięci ani stanu komputera.");
+        return builder.ToString().TrimEnd();
+    }
+
+    /// <summary>„samokontrola”: verifies that Sentinel's own files are readable and parseable.
+    /// Pure read-only — never writes, never repairs silently; every problem is reported with the file's name.</summary>
+    public string SelfCheck()
+    {
+        var builder = new StringBuilder();
+        builder.AppendLine("SAMOKONTROLA SENTINEL X");
+        int problems = 0;
+
+        void CheckFile(string path, bool json)
+        {
+            string name = Path.GetFileName(path);
+            try
+            {
+                if (!File.Exists(path)) { builder.AppendLine("· ✓ " + name + " — jeszcze nie istnieje (powstanie przy pierwszym zapisie)"); return; }
+                string content = File.ReadAllText(path);
+                if (json && content.Trim().Length > 0) JsonSerializer.Deserialize<JsonElement>(content);
+                builder.AppendLine("· ✓ " + name + " — czytelny" + (json ? ", składnia JSON poprawna" : "") + " (" + Size(new FileInfo(path).Length) + ")");
+            }
+            catch (Exception ex) when (ex is IOException or JsonException or UnauthorizedAccessException)
+            { problems++; builder.AppendLine("· ⚠ " + name + " — problem: " + ex.GetType().Name.Replace("Exception", "").ToLower(PlCulture)); }
+        }
+
+        foreach (string file in StoreFiles()) CheckFile(file, json: true);
+
+        string lessons = Path.Combine(AppPaths.MemoryDirectory, UnderstandingJournal.FileName);
+        if (File.Exists(lessons))
+        {
+            int bad = 0, all = 0;
+            foreach (string line in File.ReadLines(lessons))
+            {
+                if (string.IsNullOrWhiteSpace(line)) continue;
+                all++;
+                try { JsonSerializer.Deserialize<JsonElement>(line); } catch (JsonException) { bad++; }
+            }
+            if (bad == 0) builder.AppendLine("· ✓ " + UnderstandingJournal.FileName + " — " + all + " lekcji, wszystkie czytelne");
+            else { problems++; builder.AppendLine("· ⚠ " + UnderstandingJournal.FileName + " — " + bad + " z " + all + " linii niepoprawne"); }
+        }
+        else builder.AppendLine("· ✓ " + UnderstandingJournal.FileName + " — jeszcze nie istnieje");
+
+        string archiveRoot = Path.Combine(AppPaths.MemoryDirectory, "Archives");
+        if (Directory.Exists(archiveRoot))
+        {
+            int archivesOk = 0, archivesBad = 0;
+            foreach (string archive in Directory.EnumerateFiles(archiveRoot, "*.json", SearchOption.AllDirectories))
+            {
+                try { JsonSerializer.Deserialize<JsonElement>(File.ReadAllText(archive)); archivesOk++; }
+                catch (Exception ex) when (ex is IOException or JsonException or UnauthorizedAccessException) { archivesBad++; }
+            }
+            if (archivesBad == 0) builder.AppendLine("· ✓ archiwa — " + archivesOk + " plików, wszystkie czytelne");
+            else { problems++; builder.AppendLine("· ⚠ archiwa — " + archivesBad + " plików nieczytelnych (poprawnych: " + archivesOk + ")"); }
+        }
+        else builder.AppendLine("· ✓ archiwa — brak folderu (nie było jeszcze archiwizacji)");
+
+        try
+        {
+            var drive = new DriveInfo(Path.GetPathRoot(Path.GetFullPath(AppPaths.Root)) ?? "C:\\");
+            double freePercent = drive.TotalSize > 0 ? 100d * drive.AvailableFreeSpace / drive.TotalSize : 0;
+            if (freePercent < 10) { problems++; builder.AppendLine("· ⚠ dysk " + drive.Name + " — tylko " + freePercent.ToString("0.0", PlCulture) + "% wolnego miejsca"); }
+            else builder.AppendLine("· ✓ dysk " + drive.Name + " — " + freePercent.ToString("0.0", PlCulture) + "% wolnego miejsca");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { builder.AppendLine("· ⚠ dysk — nie udało się odczytać wolnego miejsca"); }
+
+        builder.AppendLine();
+        builder.AppendLine(problems == 0
+            ? "Wszystkie sprawdzenia przeszły. Raport jest tylko do odczytu — nic nie zostało zmienione."
+            : "Problemy: " + problems + ". Nic nie zmieniałem automatycznie — naprawa wymaga Twojej decyzji (np. „backup”, a uszkodzony plik możesz usunąć ręcznie).");
+        return builder.ToString().TrimEnd();
+    }
+
+    private static readonly CultureInfo PlCulture = CultureInfo.GetCultureInfo("pl-PL");
+
+    /// <summary>„propozycje”: maintenance ideas computed from real state. Every line tells the user what to
+    /// type — Sentinel never runs any of these on its own (explicit-approval autonomy).</summary>
+    public string Suggestions()
+    {
+        DateTime now = NowProvider();
+        var lines = new List<string>();
+
+        try
+        {
+            string backups = AppPaths.BackupsDirectory;
+            DateTime? lastBackup = Directory.Exists(backups)
+                ? Directory.EnumerateDirectories(backups).Select(d => new DirectoryInfo(d).CreationTime).DefaultIfEmpty().Max()
+                : null;
+            if (lastBackup == null) lines.Add("Nie ma jeszcze żadnej kopii zapasowej danych — wpisz: backup");
+            else if (now - lastBackup.Value > TimeSpan.FromDays(30))
+                lines.Add("Ostatnia kopia zapasowa ma " + (int)(now - lastBackup.Value).TotalDays + " dni — wpisz: backup");
+        }
+        catch (IOException) { /* the suggestion list must not fail because of one folder */ }
+
+        if (archives != null)
+        {
+            var due = archives.ArchiveDue().ToList();
+            if (due.Count > 0) lines.Add("Rozmowy z " + due.Count + " mies. czekają na archiwizację — wpisz: archiwizuj rozmowy");
+        }
+
+        int openTasks = tasks.GetTasks().Count;
+        if (openTasks > 0) lines.Add("Masz " + openTasks + " otwartych zadań — wpisz: zadania, aby je przejrzeć");
+        int missed = tasks.GetReminders().Count(x => x.Missed);
+        if (missed > 0) lines.Add("Przegapione przypomnienia: " + missed + " — wpisz: przypomnienia");
+        int superseded = memory.GetNotes().Count(x => x.SupersededAt != null);
+        if (superseded > 0) lines.Add("Nieaktualne wspomnienia: " + superseded + " — znajdziesz je w zakładce Pamięć (🧠 w Centrum)");
+        if (memory.PrivateMode) lines.Add("Tryb prywatny jest włączony — rozmowa nie jest zapisywana; wyłącz go przyciskiem w Centrum, jeśli chcesz pamiętać");
+
+        var builder = new StringBuilder();
+        builder.AppendLine("PROPOZYCJE · nic nie wykona się samo");
+        if (lines.Count == 0) builder.AppendLine("Wszystko wygląda dobrze: kopia zapasowa świeża, brak zaległości. Zajrzyj tu kiedy indziej albo wpisz: samokontrola");
+        else foreach (string line in lines) builder.AppendLine("· " + line);
+        builder.AppendLine();
+        builder.AppendLine("Każda propozycja czeka na Twoją decyzję — Sentinel niczego nie uruchamia bez polecenia.");
         return builder.ToString().TrimEnd();
     }
 

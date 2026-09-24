@@ -85,6 +85,74 @@ internal static class UtilityRegression
         Check(UtilityToolbox.Password("haslo 4").StartsWith("Długość"), "a too-short password must be refused");
         Check(UtilityToolbox.Password("haslo 16") != UtilityToolbox.Password("haslo 16"), "two generations must differ (cryptographic source)");
 
+        // --- 0.91 · CENTRUM: math beyond the calculator ---
+        Check(Require(UtilityToolbox.Process("pierwiastek 144", "pierwiastek 144"), "sqrt").Contains("= 12"), "square root");
+        Check(UtilityToolbox.Process("pierwiastek -4", "pierwiastek -4")!.StartsWith("Nie liczę pierwiastka"), "negative sqrt must be refused");
+        Check(Require(UtilityToolbox.Process("silnia 10", "silnia 10"), "factorial").Contains("3628800"), "10! is a published constant");
+        Check(Require(UtilityToolbox.Process("nwd 12 8", "nwd 12 8"), "gcd").Contains("= 4"), "greatest common divisor");
+        Check(Require(UtilityToolbox.Process("nww 4 6", "nww 4 6"), "lcm").Contains("= 12"), "least common multiple");
+        Check(UtilityToolbox.Process("czy pierwsza 97", "czy pierwsza 97")!.Contains("jest liczbą pierwszą"), "97 is prime");
+        Check(UtilityToolbox.Process("czy pierwsza 98", "czy pierwsza 98")!.Contains("nie jest liczbą pierwszą"), "98 is not prime");
+        Check(UtilityToolbox.Process("dzielniki 12", "dzielniki 12")!.Contains("1, 2, 3, 4, 6, 12"), "divisors of 12");
+        Check(UtilityToolbox.Process("fibonacci 10", "fibonacci 10")!.Contains("= 55"), "F(10)=55");
+        Check(UtilityToolbox.Process("srednia: 2, 4, 6", "srednia: 2, 4, 6")!.Contains("Średnia: 4"), "mean of 2,4,6");
+        Check(UtilityToolbox.Process("mediana: 3, 1, 2", "mediana: 3, 1, 2")!.Contains("Mediana: 2"), "median of 3,1,2");
+        Check(UtilityToolbox.Process("suma: 1, 2, 3", "suma: 1, 2, 3")!.Contains("Suma: 6"), "sum of 1,2,3");
+        Check(UtilityToolbox.Process("min: 5, 2, 9", "min: 5, 2, 9")!.Contains("Minimum: 2"), "minimum");
+        Check(UtilityToolbox.Process("max: 5, 2, 9", "max: 5, 2, 9")!.Contains("Maksimum: 9"), "maximum");
+        Check(UtilityToolbox.Process("zaokraglij 3,14159 do 2", "zaokraglij 3,14159 do 2")!.Contains("3,14"), "rounding to 2 places");
+        Check(UtilityToolbox.Process("zmiana z 50 do 80", "zmiana z 50 do 80")!.Contains("+60%"), "percent change up");
+        Check(UtilityToolbox.Process("zmiana z 80 do 50", "zmiana z 80 do 50")!.Contains("-37,5%"), "percent change down");
+
+        // --- 0.91 · CENTRUM: text analysis ---
+        Check(UtilityToolbox.Process("ile znakow: ala", "ile znakow: ala")!.Contains("Znaki: 3"), "character counting");
+        Check(UtilityToolbox.Process("ile zdan: Ala ma kota. Kot śpi.", "ile zdan: Ala ma kota. Kot śpi.")!.Contains("Zdania: 2"), "sentence counting");
+        Check(UtilityToolbox.Process("palindrom: kajak", "palindrom: kajak")!.Contains("jest palindromem"), "kajak is a palindrome");
+        Check(UtilityToolbox.Process("palindrom: Sentinel", "palindrom: Sentinel")!.Contains("nie jest palindromem"), "Sentinel is not a palindrome");
+        Check(UtilityToolbox.Process("anagram: kot, tok", "anagram: kot, tok")!.Contains("są anagramami"), "kot/tok are anagrams");
+        Check(UtilityToolbox.Process("rot13: ala", "rot13: ala")!.Contains("ROT13: nyn"), "rot13 of ala");
+        Check(UtilityToolbox.Process("tytul: ala ma kota", "tytul: ala ma kota")!.Contains("Tytuł: Ala Ma Kota"), "title case");
+
+        // --- 0.91 · CENTRUM: encodings ---
+        Check(UtilityToolbox.Process("morse: sos", "morse: sos")!.Contains("... --- ..."), "SOS in Morse");
+        Check(UtilityToolbox.Process("dekoduj morse: ... --- ...", "dekoduj morse: ... --- ...")!.Contains("Zdekodowane: SOS"), "Morse decoding");
+        Check(UtilityToolbox.Process("binarnie: A", "binarnie: A")!.Contains("01000001"), "binary encoding of A");
+        Check(UtilityToolbox.Process("dekoduj binarnie: 01000001", "dekoduj binarnie: 01000001")!.Contains("Zdekodowane: A"), "binary decoding");
+        Check(UtilityToolbox.Process("hex: Ala", "hex: Ala")!.Contains("41 6C 61"), "hex encoding");
+        Check(UtilityToolbox.Process("dekoduj hex: 416C61", "dekoduj hex: 416C61")!.Contains("Zdekodowane: Ala"), "hex decoding");
+
+        // --- 0.91 · CENTRUM: Polish identifiers (checksums are public constants) ---
+        Check(UtilityToolbox.Pesel("90010112349").Contains("PESEL poprawny"), "a checksum-valid PESEL must pass: " + UtilityToolbox.Pesel("90010112349"));
+        Check(UtilityToolbox.Pesel("90010112349").Contains("01.01.1990"), "the PESEL encodes the birth date");
+        Check(UtilityToolbox.Pesel("90010112349").Contains("kobieta"), "an even 10th digit means female");
+        Check(UtilityToolbox.Pesel("90010112345").StartsWith("PESEL niepoprawny"), "a broken checksum must be rejected");
+        Check(UtilityToolbox.Nip("1234567802").Contains("NIP poprawny"), "a checksum-valid NIP must pass");
+        Check(UtilityToolbox.Nip("1234567890").StartsWith("NIP niepoprawny"), "a broken NIP checksum must be rejected");
+        Check(UtilityToolbox.Iban("PL61 1090 1014 0000 0712 1981 2874").Contains("IBAN poprawny"), "the published IBAN example must validate");
+        Check(UtilityToolbox.Iban("PL61109010140000071219812875").StartsWith("IBAN niepoprawny"), "a flipped check digit must fail");
+        Check(UtilityToolbox.Process("rgb 31 162 195", "rgb 31 162 195")!.Contains("#1FA2C3"), "RGB to hex");
+
+        // --- 0.91 · CENTRUM: calendar ---
+        Check(Require(UtilityToolbox.Process("tydzien roku", "tydzien roku"), "week").Contains("Tydzień:"), "ISO week number");
+        Check(Require(UtilityToolbox.Process("dzien roku", "dzien roku"), "day").Contains("Dzień roku:"), "day of year");
+        Check(Require(UtilityToolbox.Process("ile dni do konca roku", "ile dni do konca roku"), "year end").Contains("Do końca roku:"), "days to year end");
+        Check(UtilityToolbox.Easter(2027).Contains("28.03.2027"), "Easter 2027 falls on 28 March: " + UtilityToolbox.Easter(2027));
+        Check(UtilityToolbox.Workdays("1.1.2024", "31.1.2024").Contains("Dni robocze: 23"), "January 2024 had 23 weekdays: " + UtilityToolbox.Workdays("1.1.2024", "31.1.2024"));
+        Check(UtilityToolbox.Age("01.01.1990").Contains("36 lat"), "someone born 01.01.1990 turns 36 in 2026: " + UtilityToolbox.Age("01.01.1990"));
+        Check(UtilityToolbox.WorldClock("tokio").Contains("UTC+9"), "Tokyo is always UTC+9 (no DST): " + UtilityToolbox.WorldClock("tokio"));
+        Check(UtilityToolbox.WorldClock("atlantyda").StartsWith("Nie znam"), "an unknown city must say so honestly");
+
+        // --- 0.91 · CENTRUM: randomness and read-only system facts ---
+        Check(Require(UtilityToolbox.Process("rzut moneta", "rzut moneta"), "coin").StartsWith("Moneta:"), "a coin flip answers");
+        string lotto = Require(UtilityToolbox.Process("lotto", "lotto"), "lotto");
+        Check(lotto.Contains("Lotto (6 z 49):") && lotto.Split(':')[1].Split('·')[0].Split(',').Length == 6, "lotto must return six numbers: " + lotto);
+        Check(Require(UtilityToolbox.Process("pin 6", "pin 6"), "pin").Contains("PIN (6 cyfr):"), "PIN generation");
+        Check(UtilityToolbox.Pin(2).StartsWith("PIN może mieć"), "a too-short PIN must be refused");
+        Check(Require(UtilityToolbox.Process("nazwa komputera", "nazwa komputera"), "hostname").StartsWith("Komputer: "), "machine name is readable offline");
+        Check(Require(UtilityToolbox.Process("ile rdzeni", "ile rdzeni"), "cores").StartsWith("Rdzenie logiczne:"), "core count is readable offline");
+        Check(Require(UtilityToolbox.Process("architektura", "architektura"), "arch").StartsWith("Architektura"), "architecture is readable offline");
+        Check(Require(UtilityToolbox.Process("moje ip", "moje ip"), "ip").Contains("adres"), "local IP listing answers offline (address or honest absence)");
+
         // --- the router surface: handled tools versus everything else ---
         Check(Require(UtilityToolbox.Process("policz 12+8", "policz 12+8"), "policz").Contains("= 20"), "the chat form must reach the calculator");
         Check(Require(UtilityToolbox.Process("przelicz 100 km na mile", "przelicz 100 km na mile"), "przelicz").StartsWith("62,1371"), "the chat form must reach the converter");
