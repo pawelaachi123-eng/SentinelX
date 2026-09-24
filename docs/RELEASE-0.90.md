@@ -90,7 +90,7 @@ CI: GitHub Actions, `windows-latest`, .NET 9. Stan **rzeczywiście zaobserwowany
 
 ### Zielony przebieg (podstawa wydania)
 
-**Run `35926684000`** (commit `140c3eb`, zdarzenie `push`) — **13/13 kroków `success`**, oraz identyczny wynik na pull requeście: run `35926688000`.
+**Run `35926684000`** (commit `140c3eb`, zdarzenie `push`) — **13/13 kroków `success`**, oraz identyczny wynik na pull requeście: run `35926688000`. Powtórzone w pełności (17/17 kroków) na runie `36050343515` (push `d80f098`) i równoległym PR-runie `36050348046` — włącznie z uploadem artefaktów, gdy zwolnił się limit magazynu.
 
 | # | Krok | Wynik |
 | --- | --- | --- |
@@ -117,6 +117,8 @@ W kroku UI smoke przechodzą kolejno: Backend, Product, Release, Memory, Project
 | `35924089578` (`ca437bd`) | test wykrył **realny brak produktu**: przelicznik nie znał „mile” ani nazw słownych (`kilogram`, `celsjusz`, `km/h`) |
 | `35924608501` (`5a8c500`) | błąd asercji: `Contains("kontrast z czernią …")`, produkt wypisuje „z czernią …”; przy okazji wyszła niespójność separatora dziesiętnego (brak kultury pl-PL) |
 | `35926408788` (`8088ed0`) | błąd asercji: `Contains("Archiw")` wobec odpowiedzi „Brak archiwów” (wielkość liter) |
+
+- Po drodze limit magazynu artefaktów GitHub Actions dwukrotnie popsuł kroki `upload-artifact` (runy `36049020743`, `36049545510`) mimo 13/13 kroków merytorycznych `success`; retencja skrócona do 2 dni i kroki uploadu mają `continue-on-error`, żeby stan runu odzwierciedlał wyniki testów, nie stan magazynu. Limit jest po stronie GitHub i przelicza się co 6–12 godzin.
 
 ### Czego nie potwierdzono
 - Treści `ui-smoke.txt`, logów CI i zawartości assetów nie da się odczytać z tego środowiska (blokada hostów magazynu GitHub) — dowodem są **stany kroków i metadane assetów z API**, nie wydrukowany tekst „PASS” ani odczytane sumy.
