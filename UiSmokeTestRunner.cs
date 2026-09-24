@@ -189,7 +189,7 @@ public static class UiSmokeTestRunner
             if (!selfCheck.Contains("SAMOKONTROLA") || !selfCheck.Contains("tylko do odczytu"))
                 throw new InvalidOperationException("Self-check report is not wired: " + selfCheck);
             string suggestions = (await memoryEngine.ExecuteAsync("propozycje")).Text;
-            if (!suggestions.Contains("PROPOZYCJE") || !suggestions.Contains("bez Twojej zgody") )
+            if (!suggestions.Contains("PROPOZYCJE") || !suggestions.Contains("czeka na Twoją decyzję"))
                 throw new InvalidOperationException("Suggestions must stay informational only: " + suggestions);
             // 0.91: honest capability boundaries — refusals instead of invented abilities.
             string modelRefusal = (await memoryEngine.ExecuteAsync("zbuduj model 3d")).Text;
