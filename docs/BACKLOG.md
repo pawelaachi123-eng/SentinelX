@@ -94,4 +94,5 @@ Stan na 2026-09-23. Zasada: każda pojedyncza pozycja znika z listy dopiero, gdy
 - `przelicz` nie przelicza walut, brak zrzutów ekranu i sterowania głośnością — świadomie odłożone, nie „zrobione częściowo”.
 - VAT liczy tylko stawkę 23%.
 - Archiwum rozmów jest kopią do odczytu: nie ma przywracania do aktywnej rozmowy.
+- Limit magazynu artefaktów GitHub Actions został osiągnięty 2026-09-24: przebieg `36049020743` miał **13/13 kroków merytorycznych `success`**, a czerwony znacznik pochodzi wyłącznie z `upload-artifact` („Artifact storage quota has been hit”). Retencja artefaktów skrócona do 2 dni; trwałą dystrybucją są assety wydania. Gdyby limit dalej blokował, kolejne kroki: `retention-days: 1` albo rezygnacja z uploadu binariów w buildzie gałęzi.
 - Streaming AI nie jest weryfikowany z żywym modelem w CI (brak Ollama w środowisku testowym) — transport i logika fragmentów są testowane na wstrzykniętym HTTP.
