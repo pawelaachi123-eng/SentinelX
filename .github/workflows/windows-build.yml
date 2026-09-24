@@ -120,6 +120,7 @@ jobs:
             throw "Installed application smoke failed: $($p.ExitCode)"
           }
       - uses: actions/upload-artifact@v4
+        continue-on-error: true  # limit magazynu artefaktów nie może zamieniać wyników testów na czerwone
         # Krótka retencja: trwałą dystrybucją są assety wydania, artefakty CI są tylko diagnostyczne.
         # Bez tego limit magazynu artefaktów blokuje kolejne przebiegi (quota hit 2026-09-24).
         if: always()
@@ -128,18 +129,21 @@ jobs:
           path: test-results/
           retention-days: 2
       - uses: actions/upload-artifact@v4
+        continue-on-error: true  # limit magazynu artefaktów nie może zamieniać wyników testów na czerwone
         with:
           name: SentinelX-windows-x64
           path: bin/Release/net9.0-windows/
           retention-days: 2
 
       - uses: actions/upload-artifact@v4
+        continue-on-error: true  # limit magazynu artefaktów nie może zamieniać wyników testów na czerwone
         with:
           name: SentinelX-Portable-win-x64
           path: bin/portable/
           retention-days: 2
 
       - uses: actions/upload-artifact@v4
+        continue-on-error: true  # limit magazynu artefaktów nie może zamieniać wyników testów na czerwone
         with:
           name: SentinelX-Setup-win-x64
           path: bin/installer/

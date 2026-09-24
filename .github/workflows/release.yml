@@ -133,6 +133,7 @@ jobs:
             - Ollama nie jest dołączone — modele pobierasz osobno i tylko za swoją zgodą.
             - Wszystkie dane (rozmowy, wspomnienia, raporty, archiwa) zostają lokalnie w `%LocalAppData%\SentinelX`.
       - uses: actions/upload-artifact@v4
+        continue-on-error: true  # limit magazynu artefaktów nie może zamieniać wyników testów na czerwone
         # Krótka retencja: trwałą dystrybucją są assety wydania, artefakty CI są tylko diagnostyczne.
         # Bez tego limit magazynu artefaktów blokuje kolejne przebiegi (quota hit 2026-09-24).
         with:
@@ -140,6 +141,7 @@ jobs:
           path: dist/
           retention-days: 2
       - uses: actions/upload-artifact@v4
+        continue-on-error: true  # limit magazynu artefaktów nie może zamieniać wyników testów na czerwone
         if: always()
         with:
           name: sentinel-release-validation
