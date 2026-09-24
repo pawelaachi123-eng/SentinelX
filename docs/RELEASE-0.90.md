@@ -77,20 +77,44 @@ Pliki **nie są podpisane cyfrowo**. SmartScreen pokaże „Nieznany wydawca” 
 
 ## 5. Wyniki testów
 
-CI: GitHub Actions, `windows-latest`, .NET 9.
+CI: GitHub Actions, `windows-latest`, .NET 9. Stan **rzeczywiście zaobserwowany** podczas pracy nad 0.90.
 
-| Run | Zakres | Wynik |
+### Zielony przebieg (podstawa wydania)
+
+**Run `35926684000`** (commit `140c3eb`, zdarzenie `push`) — **13/13 kroków `success`**, oraz identyczny wynik na pull requeście: run `35926688000`.
+
+| # | Krok | Wynik |
 | --- | --- | --- |
-| `35924089578` | kod: checki architektury, restore, build, smoke UI, regresje, publish portable, sumy, smoke portable, instalator Inno, instalacja + smoke, artefakty | **WYNIKI_PONIŻEJ** |
-| `35924096153` | ten sam pipeline na pull requeście | **WYNIKI_PONIŻEJ** |
+| 1 | Portable architecture checks (`scripts/check-architecture.py`) | success |
+| 2 | Restore | success |
+| 3 | Build (`-c Release`) | success |
+| 4 | MVVM UI smoke (11 zestawów regresji + renderowanie stron + walidacja wiązań) | success |
+| 5 | Existing regression suite (`--self-test`) | success |
+| 6 | Publish portable Windows application (self-contained win-x64) | success |
+| 7 | Portable package checksums (SHA-256) | success |
+| 8 | Verify portable package (smoke uruchomionego portable EXE) | success |
+| 9 | Build per-user EXE installer (Inno Setup) | success |
+| 10 | Install EXE and smoke-test installed application | success |
+| 11–13 | Artefakty: `sentinel-validation`, `SentinelX-windows-x64`, `SentinelX-Portable-win-x64`, `SentinelX-Setup-win-x64` | success |
 
-Zestawy regresji uruchamiane przez `--ui-smoke` (11): Backend, Product, Release, Memory, Project, Task, DiagnosticSnapshot, AiStream, **Understanding**, **Utility**, **MemoryArchive** — plus renderowanie 12 stron z wyłapywaniem błędów wiązań WPF i 31 sprawdzeń end-to-end przez prawdziwy silnik czatu (28 narzędzi i komend w pętli + naprawa literówek w pomiarze RAM, naprawa nazwy aplikacji i `szukaj wszystkiego`).
+W kroku UI smoke przechodzą kolejno: Backend, Product, Release, Memory, Project, Task, DiagnosticSnapshot, AiStream oraz trzy nowe zestawy 0.90 — **Understanding** (naprawa literówek, 18 skrótów, katalog bez czasowników niszczących), **Utility** (kalkulator, jednostki z nazwami słownymi, daty, tekst, kody, losowość, hasła) i **MemoryArchive** (archiwum miesięczne, hash z odczytem zwrotnym, retencja, tryb prywatny, `statystyki`, `szukaj wszystkiego`, `backup`) — a następnie 28 sprawdzeń narzędzi i komend przez prawdziwy silnik czatu (`policz 12+8` → „= 20”, `przelicz 5 km na mile` → „3,1069”, `hash tekstu: abc` → `ba7816bf8f01cfea…`, `plan dnia`, `pomoc`, `skróty`, `archiwa`, `backup`), naprawa literówek w pomiarze RAM i w `status pamieci` oraz `szukaj wszystkiego` sięgające wszystkich modułów.
 
-### Niezweryfikowane w tym wydaniu
-- Uruchamianie gier i aplikacji na komputerze z zainstalowanym Steam/tytułami — CI nie ma gier; weryfikowany jest kod ścieżki i protokół `steam://rungameid`, a nie samo uruchomienie.
-- Odpowiedzi żywego modelu (brak Ollama w CI) — transport i logika fragmentów są testowane na wstrzykniętym HTTP.
-- Mikrofon, rozpoznawanie mowy, tryb gry.
-- Podpis cyfrowy — go nie ma.
+### Historia błędów znalezionych i naprawionych po drodze (bez ukrywania)
+
+| Run (commit) | Co się wywaliło |
+| --- | --- |
+| `35923476203` (`2db8d13`) | build: `Unrecognized escape sequence` w `AppLauncherService.cs` — ścieżki instalacji bez `@` |
+| `35923817638` (`d774183`) | build: przesłonięcie `value` w parserze wyrażeń + `AddUserMessage` bez `source` w teście |
+| `35924089578` (`ca437bd`) | test wykrył **realny brak produktu**: przelicznik nie znał „mile” ani nazw słownych (`kilogram`, `celsjusz`, `km/h`) |
+| `35924608501` (`5a8c500`) | błąd asercji: `Contains("kontrast z czernią …")`, produkt wypisuje „z czernią …”; przy okazji wyszła niespójność separatora dziesiętnego (brak kultury pl-PL) |
+| `35926408788` (`8088ed0`) | błąd asercji: `Contains("Archiw")` wobec odpowiedzi „Brak archiwów” (wielkość liter) |
+
+### Czego nie potwierdzono
+- Treści `ui-smoke.txt` i artefaktów nie da się odczytać z tego środowiska (blokada dostępu do magazynu logów GitHub) — dowodem są **stany kroków z API**, nie wydrukowany tekst „PASS”.
+- Uruchamiania gier i aplikacji na komputerze ze Steam i tytułami — CI nie ma gier; weryfikowany jest kod ścieżki i protokół `steam://rungameid`, nie samo uruchomienie.
+- Odpowiedzi żywego modelu (brak Ollama w CI) — transport i logika fragmentów testowane na wstrzykniętym HTTP.
+- Mikrofonu, rozpoznawania mowy, trybu gry.
+- Podpisu cyfrowego — go nie ma.
 
 ## 6. Znane ograniczenia 0.90
 
