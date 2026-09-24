@@ -168,7 +168,7 @@ public static class UiSmokeTestRunner
             if (!ambiguous.Text.Contains("Czy chodziło Ci o") || !ambiguous.Text.Contains("ile mam ramu"))
                 throw new InvalidOperationException("An ambiguous command must produce a question, not a guess: " + ambiguous.Text);
             var confirmed = await memoryEngine.ExecuteAsync("tak");
-            if (!confirmed.Text.Contains("GB"))
+            if (!confirmed.Text.Contains("GiB"))
                 throw new InvalidOperationException("Saying „tak” to a suggestion must execute the known command: " + confirmed.Text);
             // 0.91: „zrob zadanie: …” is an explicit command — it lands in the Tasks tab, not only in chat.
             var madeTask = await memoryEngine.ExecuteAsync("zrob zadanie: przetestowac centrum QX77");
