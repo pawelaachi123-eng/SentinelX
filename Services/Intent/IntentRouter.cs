@@ -4,13 +4,25 @@ namespace SentinelX.Services.Intent;
 
 /// <summary>Deterministic tools first. The language model cannot execute arbitrary commands.
 /// Unknown input is repaired against the known-command catalogue before it reaches the model,
-/// and the user is always told what was understood. Since 0.91, inputs in the grey zone between
-/// "understood" and "unknown" produce a question instead of a silent guess, and every successful
-/// repair is recorded in the local lessons journal („lekcje”).</summary>
-public sealed class IntentRouter(SentinelToolboxService toolbox, Services.Files.IFileService files,
-    CommandRouter router, Services.Monitoring.ReadOnlyCommandService reads, UnderstandingJournal? journal = null) : IIntentRouter
+/// and the user is always told what was understood. Since 0.91, inputs that would otherwise fall
+/// through to the AI produce a "did you mean…?" question instead of a silent guess, and every
+/// successful repair is recorded in the local lessons journal („lekcje”).</summary>
+public sealed class IntentRouter : IIntentRouter
 {
+    private readonly SentinelToolboxService toolbox;
+    private readonly Services.Files.IFileService files;
+    private readonly CommandRouter router;
+    private readonly Services.Monitoring.ReadOnlyCommandService reads;
+    private readonly UnderstandingJournal? journal;
     private string? pendingSuggestion;
+
+    public IntentRouter(SentinelToolboxService toolbox, Services.Files.IFileService files,
+        CommandRouter router, Services.Monitoring.ReadOnlyCommandService reads, UnderstandingJournal? journal = null)
+    {
+        this.toolbox = toolbox; this.files = files; this.router = router; this.reads = reads; this.journal = journal;
+        // The router raises this exactly when it would otherwise hand the input to the AI model.
+        router.SuggestionPending += suggestion => pendingSuggestion = suggestion;
+    }
 
     public Task<string> ProcessAsync(string input, CancellationToken token) => ProcessAsync(input, token, null);
 
@@ -54,21 +66,6 @@ public sealed class IntentRouter(SentinelToolboxService toolbox, Services.Files.
         string? file = await files.ProcessAsync(effective, token);
         if (file != null) return note + file;
         var result = await toolbox.ProcessAsync(effective, token);
-        if (result.Handled) return note + result.Response;
-
-        // Grey zone: a command-like phrase close to a known one gets a question, never a silent guess.
-        if (!repair.Success)
-        {
-            var suggestions = CommandUnderstanding.Suggest(input);
-            if (suggestions.Count > 0)
-            {
-                pendingSuggestion = suggestions[0];
-                string options = string.Join("\n", suggestions.Select(x => "· „" + x + "”"));
-                return "Nie jestem pewien, o co chodzi. Czy chodziło Ci o:\n" + options +
-                    "\nOdpisz „tak”, aby wykonać pierwszą opcję, albo napisz polecenie dokładniej. Niczego nie wykonałem.";
-            }
-        }
-
-        return note + await router.ProcessAsync(effective, token, onDelta);
+        return result.Handled ? note + result.Response : note + await router.ProcessAsync(effective, token, onDelta);
     }
 }

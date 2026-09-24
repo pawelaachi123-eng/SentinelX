@@ -24,6 +24,10 @@ public sealed class CommandRouter
     private DateTime lastTopicTime;
     private (string Text, DateTime When, string Description, DateTime Expires)? pendingReminder;
 
+    /// <summary>Raised with the best candidate when an input is about to fall through to the AI model
+    /// but is close to a known command — the host turns it into a question instead of a silent guess.</summary>
+    public event Action<string>? SuggestionPending;
+
     public CommandRouter(SystemMonitor systemMonitor, SystemInfoService systemInfo, LocalAiService localAi, ConversationMemoryService memory,
         ProjectService? projects = null, TaskService? tasks = null, DiagnosticSnapshotService? snapshots = null,
         MemoryArchiveService? archives = null, WorkspaceInsightsService? insights = null, UnderstandingJournal? journal = null)
@@ -97,6 +101,16 @@ public sealed class CommandRouter
         bool includeRecentHistory = IsFollowUpQuestion(text, followUp, topicForContext);
         bool includeSystemFacts = string.IsNullOrEmpty(topicForContext) ? MentionsComputerStateNoTopic(text, followUp) : topicForContext is "RAM" or "CPU" or "SYSTEM" or "DISK";
         if (!Regex.IsMatch(followUp, @"^(?:czy to|czy jest|a |dlaczego|czemu|co z tym)")) lastTopic = "";
+
+        // 0.91: this is the single honest "I would otherwise guess" point — every deterministic handler
+        // above already declined, so a close-but-not-quite known command becomes a question, not a guess.
+        var suggestions = CommandUnderstanding.Suggest(text);
+        if (suggestions.Count > 0)
+        {
+            SuggestionPending?.Invoke(suggestions[0]);
+            return "Nie jestem pewien, o co chodzi. Czy chodziło Ci o:\n" + string.Join("\n", suggestions.Select(x => "· „" + x + "”")) +
+                "\nOdpisz „tak”, aby wykonać pierwszą opcję, albo napisz polecenie dokładniej. Niczego nie wykonałem.";
+        }
         return await localAi.AskAsync(command, BuildSystemContext(topicForContext, includeSystemFacts, includeRecentHistory), cancellationToken, onDelta);
     }
 

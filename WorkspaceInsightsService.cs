@@ -144,7 +144,7 @@ public sealed class WorkspaceInsightsService
         {
             string backups = AppPaths.BackupsDirectory;
             DateTime? lastBackup = Directory.Exists(backups)
-                ? Directory.EnumerateDirectories(backups).Select(d => new DirectoryInfo(d).CreationTime).DefaultIfEmpty().Max()
+                ? Directory.EnumerateDirectories(backups).Select(d => (DateTime?)new DirectoryInfo(d).CreationTime).Max()
                 : null;
             if (lastBackup == null) lines.Add("Nie ma jeszcze żadnej kopii zapasowej danych — wpisz: backup");
             else if (now - lastBackup.Value > TimeSpan.FromDays(30))
