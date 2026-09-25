@@ -46,15 +46,17 @@ public sealed class FileCleanupService
     private static readonly Regex Duplicates = new(@"^(?:duplikaty|duplikatow|duplikatów|znajdź duplikaty|znajdz duplikaty)(?::\s*|\s+|w\s+)(?<dir>.+)$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
     private static readonly Regex TidyReport = new(@"^(?:porzadki|porządki|raport porzadkowy|raport porządkowy|plan porzadkow|plan porządków)(?::\s*|\s+|w\s+)(?<dir>.+)$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
     private static readonly Regex RecycleFile = new(@"^(?:usuń do kosza|usun do kosza|przenieś do kosza|przenies do kosza|wyrzuć do kosza|wyrzuc do kosza)(?::\s*|\s+)(?<path>.+)$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static readonly Regex CleanDuplicates = new(@"^(?:usuń duplikaty|usun duplikaty|wyczysc duplikaty|wyczyść duplikaty)(?::\s*|\s+|w\s+)(?<dir>.+)$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
     // Compared against ConversationMemoryService.Normalize(input) — diacritics are already stripped there.
     private static readonly string[] Confirmations = ["tak", "potwierdz", "tak usun", "tak, usun", "usun to", "ok"];
     private static readonly string[] Cancellations = ["nie", "anuluj", "stop", "nie usuwaj"];
 
     private readonly ActionHistoryService history;
     private readonly IFileRecycler recycler;
-    private PendingDeletion? pending;
+    private PendingBatch? pending;
 
-    private sealed record PendingDeletion(string Path, long Size);
+    /// <summary>One pending batch: the exact list of files a confirmed command will send to the Recycle Bin.</summary>
+    private sealed record PendingBatch(string Label, List<(string Path, long Size)> Files);
 
     public FileCleanupService(ActionHistoryService? history = null, IFileRecycler? recycler = null)
     {
@@ -69,11 +71,11 @@ public sealed class FileCleanupService
         token.ThrowIfCancellationRequested();
         string normalized = ConversationMemoryService.Normalize(command).Trim().TrimEnd('.', '!', '?');
 
-        // A pending Recycle-Bin deletion is one-shot: confirm executes it, cancel drops it,
+        // A pending Recycle-Bin batch is one-shot: confirm executes it, cancel drops it,
         // anything else drops it too — a stale pending delete must never fire on a later „tak”.
         if (pending is { } waiting)
         {
-            if (Array.Exists(Confirmations, c => c == normalized)) { pending = null; return Recycle(waiting, command); }
+            if (Array.Exists(Confirmations, c => c == normalized)) { pending = null; return ExecuteBatch(waiting, command); }
             if (Array.Exists(Cancellations, c => c == normalized)) { pending = null; return "Anulowane — nic nie zostało usunięte."; }
             pending = null;
         }
@@ -83,11 +85,15 @@ public sealed class FileCleanupService
             return "Podaj folder, np. „duplikaty: C:\\Dane” albo „porzadki: C:\\Dane”. Raport jest tylko do odczytu.";
         if (normalized is "usun do kosza" or "usun do kosza:")
             return "Podaj pełną ścieżkę pliku, np. „usuń do kosza: C:\\Dane\\stary raport.txt”. Foldery zostawiam w spokoju.";
+        if (normalized is "usun duplikaty" or "usun duplikaty:")
+            return "Podaj folder, np. „usuń duplikaty: C:\\Dane”. Z każdej grupy duplikatów zostawię 1 plik, resztę zaproponuję do Kosza.";
 
         var dup = Duplicates.Match(command.Trim());
         if (dup.Success) return await DuplicatesReportAsync(CleanDir(dup.Groups["dir"].Value), token);
         var tidy = TidyReport.Match(command.Trim());
         if (tidy.Success) return await TidyReportAsync(CleanDir(tidy.Groups["dir"].Value), token);
+        var cleanDup = CleanDuplicates.Match(command.Trim());
+        if (cleanDup.Success) return await ProposeDuplicateCleanupAsync(CleanDir(cleanDup.Groups["dir"].Value), token);
         var recycle = RecycleFile.Match(command.Trim());
         if (recycle.Success) return ProposeRecycle(recycle.Groups["path"].Value.Trim().Trim('"'));
         return null;
@@ -266,7 +272,7 @@ public sealed class FileCleanupService
         catch (OperationCanceledException) { history.AddCancelled(id, "FILE_SCAN_TIDY", "porzadki: " + opened, "Skanowanie przerwane."); throw; }
     }
 
-    // ---------- Recycle-Bin deletion (two-step) ----------
+    // ---------- Recycle-Bin deletion (two-step, single file or duplicate batch) ----------
 
     private string ProposeRecycle(string rawPath)
     {
@@ -277,42 +283,69 @@ public sealed class FileCleanupService
         var info = new FileInfo(path);
         if (!info.Exists) return "Taki plik nie istnieje: " + path;
         if ((info.Attributes & FileAttributes.ReparsePoint) != 0) return "To dowiązanie (junction/symlink) — nie usuwam dowiązań.";
-        pending = new PendingDeletion(path, info.Length);
+        pending = new PendingBatch("KOSZ", [(path, info.Length)]);
         return "KOSZ • Gotowy do usunięcia:\n" + path + " (" + FormatBytes(info.Length) + ")"
             + "\nPlik trafi do Kosza Windows — można go stamtąd przywrócić. Napisz „potwierdz”, aby usunąć, albo „anuluj”.";
     }
 
-    private string Recycle(PendingDeletion item, string command)
+    /// <summary>Proposes recycling the redundant copies of every duplicate group. Exactly one file per
+    /// group is kept (the shortest path — usually the original), everything else is listed for consent.</summary>
+    private async Task<string> ProposeDuplicateCleanupAsync(string directory, CancellationToken token)
+    {
+        string opened = TryOpenDirectory(directory);
+        if (!Directory.Exists(opened)) return opened;
+        var scan = await ScanAsync(opened, token);
+        var (groups, reclaimable, _, _) = await FindDuplicatesAsync(scan, token);
+        if (groups.Count == 0) return "Brak duplikatów w " + opened + " — nie ma czego sprzątać.";
+        var victims = new List<(string Path, long Size)>();
+        foreach (var group in groups)
+        {
+            string keep = group.Paths.OrderBy(p => p.Length).ThenBy(p => p, StringComparer.OrdinalIgnoreCase).First();
+            foreach (string path in group.Paths.Where(p => p != keep)) victims.Add((path, group.Size));
+        }
+        pending = new PendingBatch("KOSZ-DUPLIKATY", victims);
+        var lines = new List<string>
+        {
+            "KOSZ-DUPLIKATY • " + opened,
+            "W każdej grupie duplikatów zostawiam 1 plik (najkrótsza ścieżka), resztę przeniosę do Kosza:",
+        };
+        foreach (var (path, size) in victims.Take(MaxListedPaths)) lines.Add("   · " + path + " (" + FormatBytes(size) + ")");
+        if (victims.Count > MaxListedPaths) lines.Add("   · …i " + (victims.Count - MaxListedPaths) + " kolejnych");
+        lines.Add("");
+        lines.Add("Razem: " + victims.Count + " plików, ok. " + FormatBytes(reclaimable) + " do odzyskania. Napisz „potwierdz”, aby przenieść je do Kosza, albo „anuluj”.");
+        return string.Join(Environment.NewLine, lines);
+    }
+
+    private string ExecuteBatch(PendingBatch batch, string command)
     {
         string id = history.CreateActionId();
         history.AddRunning(id, "FILE_RECYCLE", command);
-        try
+        var done = new List<string>();
+        var failed = new List<string>();
+        foreach (var (path, size) in batch.Files)
         {
-            if (!File.Exists(item.Path))
+            try
             {
-                history.AddResult(id, "FILE_RECYCLE", command, ActionExecutionResult.Failure("Plik już nie istnieje: " + item.Path));
-                return "FAILED • " + id + "\nPlik już nie istnieje: " + item.Path;
+                if (!File.Exists(path)) { failed.Add(path + " (plik już nie istnieje)"); continue; }
+                if (!recycler.TryRecycle(path, out string error)) { failed.Add(path + " (Kosz odmówił: " + error + ")"); continue; }
+                if (File.Exists(path)) { failed.Add(path + " (plik nadal istnieje po operacji)"); continue; }
+                done.Add(path + " (" + FormatBytes(size) + ")");
             }
-            if (!recycler.TryRecycle(item.Path, out string error))
-            {
-                history.AddResult(id, "FILE_RECYCLE", command, ActionExecutionResult.Failure("Kosz Windows odmówił: " + error));
-                return "FAILED • " + id + "\nKosz Windows odmówił: " + error;
-            }
-            if (File.Exists(item.Path))
-            {
-                history.AddResult(id, "FILE_RECYCLE", command, ActionExecutionResult.Failure("Plik nadal istnieje po operacji Kosza."));
-                return "FAILED • " + id + "\nPlik nadal istnieje — operacja Kosza nie została potwierdzona.";
-            }
-            var result = ActionExecutionResult.VerifiedSuccess("Plik przeniesiony do Kosza.",
-                item.Path + " (" + FormatBytes(item.Size) + ")\nUsunięcie można cofnąć w Koszu Windows.");
-            history.AddResult(id, "FILE_RECYCLE", command, result);
-            return "VERIFIED • " + id + "\n" + result.Message + "\n" + result.Evidence;
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { failed.Add(path + " (" + ex.Message + ")"); }
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        if (done.Count == 0)
         {
-            history.AddResult(id, "FILE_RECYCLE", command, ActionExecutionResult.Failure(ex.Message));
-            return "FAILED • " + id + "\n" + ex.Message;
+            history.AddResult(id, "FILE_RECYCLE", command, ActionExecutionResult.Failure("Żaden plik nie został usunięty: " + string.Join("; ", failed)));
+            return "FAILED • " + id + "\nŻaden plik nie został usunięty.\n" + string.Join("\n", failed.Select(f => "   · " + f));
         }
+        string message = batch.Label == "KOSZ-DUPLIKATY"
+            ? "Duplikaty przeniesione do Kosza: " + done.Count + (failed.Count > 0 ? ", pominięte: " + failed.Count : "") + "."
+            : "Plik przeniesiony do Kosza.";
+        var result = ActionExecutionResult.VerifiedSuccess(message,
+            string.Join("\n", done) + (failed.Count > 0 ? "\nPominięte:\n" + string.Join("\n", failed.Select(f => "   · " + f)) : "")
+            + "\nUsunięcie można cofnąć w Koszu Windows.");
+        history.AddResult(id, "FILE_RECYCLE", command, failed.Count == 0 ? result : ActionExecutionResult.Failure(result.Message + " Część plików pominięta: " + failed.Count));
+        return (failed.Count == 0 ? "VERIFIED • " : "PARTIAL • ") + id + "\n" + result.Message + "\n" + result.Evidence;
     }
 
     internal static string FormatBytes(long bytes)

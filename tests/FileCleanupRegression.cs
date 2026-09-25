@@ -101,5 +101,22 @@ internal static class FileCleanupRegression
         Check(ghost.Contains("nie istnieje"), "a missing file must be reported: " + ghost);
         string bare = await service.ProcessAsync("duplikaty", ct) ?? "";
         Check(bare.Contains("Podaj folder"), "a bare command must show usage: " + bare);
+        string bareClean = await service.ProcessAsync("usun duplikaty", ct) ?? "";
+        Check(bareClean.Contains("Podaj folder"), "a bare „usun duplikaty” must show usage: " + bareClean);
+
+        // --- duplicate cleanup: keep one copy per group, recycle the rest, only after consent ---
+        string aOriginal = Path.Combine(root, "a.txt");
+        string aCopy = Path.Combine(root, "sub", "a-kopia.txt");
+        Check(File.Exists(aOriginal) && File.Exists(aCopy), "fixture duplicates must exist before cleanup");
+        string cleanProposal = await service.ProcessAsync("usuń duplikaty: " + root, ct) ?? "";
+        Check(cleanProposal.Contains("KOSZ-DUPLIKATY"), "cleanup proposal header missing: " + cleanProposal);
+        Check(cleanProposal.Contains("a-kopia.txt"), "the redundant copy must be proposed: " + cleanProposal);
+        Check(File.Exists(aCopy) && recycler.Recycled.Count == 1, "nothing may be recycled before consent");
+        string cleanConfirmed = await service.ProcessAsync("potwierdz", ct) ?? "";
+        Check(cleanConfirmed.Contains("VERIFIED"), "confirmed duplicate cleanup must verify: " + cleanConfirmed);
+        Check(File.Exists(aOriginal) && !File.Exists(aCopy), "exactly one copy per group must survive");
+        Check(recycler.Recycled.Count == 2 && recycler.Recycled[1] == aCopy, "only the redundant copy may reach the recycler");
+        string cleanAgain = await service.ProcessAsync("usuń duplikaty: " + root, ct) ?? "";
+        Check(cleanAgain.Contains("nie ma czego sprzątać"), "a folder without duplicates must say so: " + cleanAgain);
     }
 }

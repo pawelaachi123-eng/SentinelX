@@ -122,11 +122,13 @@ public sealed class CommandRouter
         if (text is "wersja" or "jaka wersja" or "wersja sentinel" or "wersja aplikacji")
             return "Sentinel X " + AppConstants.Version + " · " + systemInfo.GetWindowsVersion() + " · .NET " + Environment.Version;
         if (text is "co nowego" or "lista zmian" or "changelog" or "co sie zmienilo")
-            return "CO NOWEGO W 0.92 · BEZPIECZNE PLIKI\n" +
+            return "CO NOWEGO W 0.93 · PORZĄDKI\n" +
+                "· „usuń duplikaty: folder” — z każdej grupy identycznych plików zostawia 1, resztę po Twoim „potwierdz” przenosi do Kosza.\n" +
+                "· Publikacja EXE na GitHubie tylko dla wydań milowych albo na żądanie (bez automatycznego wydania przy każdym pushu).\n" +
+                "\nCO NOWEGO W 0.92 · BEZPIECZNE PLIKI\n" +
                 "· Bezpieczne pliki: „duplikaty: folder” znajduje identyczne treści (SHA-256), „porzadki: folder” pokazuje, co zajmuje miejsce — oba tylko do odczytu.\n" +
                 "· „usuń do kosza: ścieżka” przenosi JEDEN plik do Kosza i dopiero po Twoim „potwierdz” — nic bez zgody.\n" +
                 "· Głos: polecenie działa tylko, gdy w zdaniu pada „sentinel” (w dowolnym miejscu); bez niego Sentinel tylko nasłuchuje.\n" +
-                "· Każdy upgrade publikuje pliki do pobrania na GitHubie (wydanie „rolling”).\n" +
                 "\nCO NOWEGO W 0.91 · CENTRUM\n" +
                 "· Jedna zakładka CENTRUM zamiast wielu kart — rozmowa plus ikony: 📓 zadania, 🕘 historia, 🎤 głos, 🖥 system, 🎮 gry, ✨ AI, ⚡ akcje, 🩺 diagnostyka.\n" +
                 "· Paleta // w polu wpisywania: wpisz „//”, a Tab wybiera polecenie.\n" +

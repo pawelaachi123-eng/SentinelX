@@ -113,7 +113,7 @@ podawane jako działające.
 
 ## Pliki wydania
 
-**Zasada od 0.91.1: każdy upgrade publikuje pliki do pobrania.** Workflow `release.yml` działa
+**Zasada od 0.91.1: każdy upgrade publikuje pliki do pobrania.** Workflow `release.yml` działał
 w dwóch trybach:
 
 - `workflow_dispatch` → wydanie **rolling**: tag `rolling` jest przesuwany na najnowszy build, więc
@@ -125,3 +125,8 @@ w dwóch trybach:
 
 Obie ścieżki publikują dopiero po pełnej walidacji: check architektury, build, smoke UI (wszystkie
 strony + zero błędów wiązań), pełna regresja i smoke wersji portable.
+
+> **Aktualizacja 2026-09-25:** na prośbę użytkownika automatyczne wydanie „rolling” przy każdym
+> pushu zostało **wyłączone**. Publikacja EXE/ZIP na GitHubie dzieje się teraz tylko dla tagów
+> milowych `v*.*.*` albo na ręczne żądanie (`workflow_dispatch`); zwykły push na gałąź buduje
+> i testuje, ale nic nie publikuje. Ostatnie opublikowane wydanie rolling: `0.92.0`.

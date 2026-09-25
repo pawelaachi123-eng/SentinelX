@@ -1,29 +1,26 @@
 name: Release (portable ZIP, installer, checksums)
 
-# Zasada 0.91: KAŻDY upgrade dostarcza pliki do pobrania z GitHuba.
-#   - push do gałęzi roboczej / workflow_dispatch → wydanie „rolling”: stabilny tag `rolling`
-#     jest przesuwany na najnowszy ZWALIDOWANY build, więc
-#     https://github.com/.../releases/tag/rolling zawsze oferuje aktualny EXE/ZIP.
-#   - push tagu v*.*.* → wydanie milowe (np. v0.91.0) z pełną notatką.
-# Obie ścieżki przechodzą najpierw pełną walidację (architektura, build, smoke UI, regresja,
-# smoke wersji portable) — nic nie zostaje opublikowane bez zielonych testów. Push, który
-# obleje testy, kończy bieg przed krokiem publikacji i niczego nie wydaje.
+# Publikacja EXE/ZIP na GitHubie — TYLKO na żądanie (decyzja użytkownika 2026-09-25:
+# automatyczne wydanie „rolling” przy każdym pushu zostało wyłączone).
+#   - push tagu v*.*.*   → wydanie milowe (np. v0.91.2) z pełną walidacją.
+#   - workflow_dispatch  → ręczne wydanie pod wskazanym tagiem (domyślnie „rolling”).
+# Zwykłe push na gałąź budują i testują kod w „Windows build and WPF smoke”, ale nic nie publikują.
+# Publikacja następuje wyłącznie po pełnej walidacji (architektura, build, smoke UI, regresja,
+# smoke wersji portable) — nic nie zostaje opublikowane bez zielonych testów.
 on:
   push:
     tags: ['v*.*.*']
-    branches: [arena/01a0ca99-sentinelx]
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Tag wydania rolling (domyślnie „rolling”)'
+        description: 'Tag wydania (domyślnie „rolling”)'
         required: false
         default: 'rolling'
 
 permissions:
   contents: write
 
-# Push na tę samą gałąź anuluje wcześniejszy przebieg — liczy się najnowszy build
-# (chroni tag `rolling` przed wyścigiem dwóch publikacji naraz).
+# Publikacje na różne tagi nie mogą sobie wchodzić w drogę (usuwanie + tworzenie wydania).
 concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: true
@@ -149,8 +146,8 @@ jobs:
               smoke test UI. Nie jest testowana na Windows 10.
             - Ollama nie jest dołączone — modele pobierasz osobno i tylko za swoją zgodą.
             - Wszystkie dane (rozmowy, wspomnienia, raporty, archiwa) zostają lokalnie w `%LocalAppData%\SentinelX`.
-      - name: Publish rolling release (every upgrade)
-        if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/'))
+      - name: Publish release on demand (workflow_dispatch)
+        if: github.event_name == 'workflow_dispatch'
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
