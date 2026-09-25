@@ -248,7 +248,7 @@ public static class UiSmokeTestRunner
             string ekranInfo = (await memoryEngine.ExecuteAsync("ekran")).Text;
             if (!ekranInfo.Contains("WSPÓŁPRACA EKRANOWA") || !ekranInfo.Contains("Tylko przyciskiem"))
                 throw new InvalidOperationException("Collaboration info must be shown and mention button-only: " + ekranInfo);
-            var voiceBlocked = await engine.ExecuteAsync("włącz współpracę", fromVoice: true);
+            var voiceBlocked = await memoryEngine.ExecuteAsync("włącz współpracę", fromVoice: true);
             if (!voiceBlocked.Text.Contains("Tylko przyciskiem") || voiceBlocked.Action != null)
                 throw new InvalidOperationException("Voice must not enable collaboration: " + voiceBlocked.Text);
             if (SentinelX.Core.SlashCatalog.TryResolve("ekran")?.Target != "ekran")

@@ -96,7 +96,7 @@ public sealed class FileCleanupService
                     PendingDeletion d => Recycle(d, command),
                     PendingBatchRename r => ExecuteBatchRename(r, command),
                     PendingTidyCleanup t => await ExecuteTidyCleanupAsync(t, command, token),
-                    PendingDuplicateCleanup dup => await ExecuteDuplicateCleanupAsync(dup, command, token),
+                    PendingDuplicateCleanup dupOp => await ExecuteDuplicateCleanupAsync(dupOp, command, token),
                     _ => null
                 };
             }
@@ -232,7 +232,11 @@ public sealed class FileCleanupService
                 {
                     await using var stream = new FileStream(file.Path, FileMode.Open, FileAccess.Read, FileShare.Read, 65536, true);
                     string hash = Convert.ToHexString(await SHA256.HashDataAsync(stream, token));
-                    if (!byHash.TryGetValue(hash, out var list)) byHash[hash] = list = [];
+                    if (!byHash.TryGetValue(hash, out var list))
+                    {
+                        list = new List<string>();
+                        byHash[hash] = list;
+                    }
                     list.Add(file.Path);
                 }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { inaccessible++; }

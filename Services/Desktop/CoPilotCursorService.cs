@@ -82,7 +82,7 @@ public sealed class CoPilotCursorService : ICoPilotCursorService, IDisposable
             catch { }
         });
         StateChanged?.Invoke();
-        AppLog.Write("CoPilot cursor enabled");
+        AppLog.Write(new Exception("CoPilot cursor enabled"));
     }
 
     public void Disable()
@@ -99,7 +99,7 @@ public sealed class CoPilotCursorService : ICoPilotCursorService, IDisposable
             try { border?.Close(); border = null; } catch { }
         });
         StateChanged?.Invoke();
-        AppLog.Write("CoPilot cursor disabled");
+        AppLog.Write(new Exception("CoPilot cursor disabled"));
     }
 
     public void MoveTo(int x, int y) => MoveTo(new Point(x, y));
@@ -127,7 +127,7 @@ public sealed class CoPilotCursorService : ICoPilotCursorService, IDisposable
             mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, UIntPtr.Zero);
             Thread.Sleep(30);
             mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, UIntPtr.Zero);
-            AppLog.Write($"CoPilot click at {Position}");
+            AppLog.Write(new Exception($"CoPilot click at {Position}"));
         }
         catch { }
     }
