@@ -170,6 +170,15 @@ public static class UiSmokeTestRunner
             var confirmed = await memoryEngine.ExecuteAsync("tak");
             if (!confirmed.Text.Contains("GiB"))
                 throw new InvalidOperationException("Saying „tak” to a suggestion must execute the known command: " + confirmed.Text);
+            // 0.91 · WAKE-WORD: commands run only when „sentinel” appears — anywhere in the sentence.
+            if (!SentinelX.Core.CommandText.ContainsWakeWord("ile mam ramu sentinel"))
+                throw new InvalidOperationException("Wake word must be recognized anywhere in the sentence.");
+            if (SentinelX.Core.CommandText.ContainsWakeWord("sentinelowy kot"))
+                throw new InvalidOperationException("Wake word must match whole words only.");
+            if (SentinelX.Core.CommandText.StripWakeWord("ile mam ramu, sentinel") != "ile mam ramu")
+                throw new InvalidOperationException("Wake word must be removable from any position.");
+            if (SentinelX.Core.CommandText.StripWakeWord("Sentinel, ile mam RAM") != "ile mam RAM")
+                throw new InvalidOperationException("Wake word must still be removable from the sentence start.");
             // 0.91: „zrob zadanie: …” is an explicit command — it lands in the Tasks tab, not only in chat.
             var madeTask = await memoryEngine.ExecuteAsync("zrob zadanie: przetestowac centrum QX77");
             if (!madeTask.Text.Contains("Zadanie zapisane"))

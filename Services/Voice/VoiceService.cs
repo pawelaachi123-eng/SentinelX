@@ -1,4 +1,3 @@
-using System.Text.RegularExpressions;
 using System.Windows.Threading;
 using SentinelX.Core;
 using SentinelX.Models;
@@ -66,10 +65,11 @@ public sealed class VoiceService : IVoiceService, IDisposable
         {
             if (disposed || version != generation || State == VoiceState.Off || engine.IsStopped) return;
             bool wakeAllowed = VoiceTranscriptFilter.ContainsWakeWord(text, settings.Current.Voice.WakeWordMode);
-            var match = Regex.Match(text.Trim(), @"^(?:hej\s+)?(?:sentinel|sentynel|sentinelu|sentynelu|centinel|centynel|centenel|santinel|sentnel|centinelu|sentinelka|senty nel)(?:\s+x)?(?=[\s,.!?]|$)[\s,.!?]*(.*)$", RegexOptions.IgnoreCase);
-            if (State == VoiceState.Standby && (!match.Success || !wakeAllowed)) return;
-            if (State == VoiceState.Active && DateTime.Now > activeUntil && (!match.Success || !wakeAllowed)) return;
-            string command = match.Success ? match.Groups[1].Value.Trim() : text.Trim();
+            // Since 0.91 the wake word may sit anywhere in the sentence — without it Sentinel simply
+            // keeps listening (early return), exactly as the user asked.
+            if (State == VoiceState.Standby && !wakeAllowed) return;
+            if (State == VoiceState.Active && DateTime.Now > activeUntil && !wakeAllowed) return;
+            string command = wakeAllowed ? CommandText.StripWakeWord(text) : text.Trim();
             State = VoiceState.Active; capture.SetWakeOnlyMode(false);
             activeUntil = DateTime.Now.AddMinutes(settings.Current.Voice.ConversationTimeoutMinutes);
             SetStatus("ACTIVE · słucham");

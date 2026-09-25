@@ -1,12 +1,20 @@
 name: Release (portable ZIP, installer, checksums)
 
-# A tag (v*) publishes a GitHub Release with downloadable assets.
-# A manual dispatch builds and validates the same assets but publishes nothing,
-# so a branch run can never create a stray release.
+# Zasada 0.91: KAŻDY upgrade dostarcza pliki do pobrania z GitHuba.
+#   - workflow_dispatch  → wydanie „rolling”: stabilny tag `rolling` jest przesuwany na najnowszy
+#     build, więc https://github.com/.../releases/tag/rolling zawsze oferuje aktualny EXE/ZIP.
+#   - push tagu v*.*.*   → wydanie milowe (np. v0.91.0) z pełną notatką.
+# Obie ścieżki przechodzą najpierw pełną walidację (architektura, build, smoke UI, regresja,
+# smoke wersji portable) — nic nie zostaje opublikowane bez zielonych testów.
 on:
   push:
     tags: ['v*.*.*']
   workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag wydania rolling (domyślnie „rolling”)'
+        required: false
+        default: 'rolling'
 
 permissions:
   contents: write
@@ -108,7 +116,7 @@ jobs:
           } | Set-Content 'dist/SHA256SUMS.txt'
           Get-Content 'dist/SHA256SUMS.txt'
           Get-Content 'dist/SHA256SUMS.txt' | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
-      - name: Publish GitHub Release
+      - name: Publish milestone release (version tag)
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
@@ -132,6 +140,37 @@ jobs:
               smoke test UI. Nie jest testowana na Windows 10.
             - Ollama nie jest dołączone — modele pobierasz osobno i tylko za swoją zgodą.
             - Wszystkie dane (rozmowy, wspomnienia, raporty, archiwa) zostają lokalnie w `%LocalAppData%\SentinelX`.
+      - name: Publish rolling release (every upgrade)
+        if: github.event_name == 'workflow_dispatch'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          [xml]$project = Get-Content SENTINEL-X.csproj
+          $version = $project.Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
+          $commit = (git rev-parse --short HEAD)
+          $tag = '${{ inputs.tag }}'
+          if ([string]::IsNullOrWhiteSpace($tag)) { $tag = 'rolling' }
+          $notes = @(
+            "Najnowszy build SentinelX — każdy upgrade publikuje tu świeże pliki do pobrania.",
+            "",
+            "Wersja: **$version** · commit: ``$commit`` · gałąź: ``${{ github.ref_name }}``",
+            "",
+            "| Plik | Co to jest |",
+            "| --- | --- |",
+            "| ``SentinelX-$version-win-x64-portable.zip`` | Portable: rozpakuj i uruchom ``SentinelX.exe`` (własny runtime .NET 9). |",
+            "| ``SentinelX-$version-win-x64-setup.exe`` | Instalator per-user (bez uprawnień administratora). |",
+            "| ``SHA256SUMS.txt`` / ``BUILD.txt`` | Sumy kontrolne i metryka buildu. |",
+            "",
+            "Bez podpisu cyfrowego — SmartScreen pokaże „Nieznany wydawca” (status rzeczywisty).",
+            "Dane zostają lokalnie w ``%LocalAppData%\SentinelX``. Ollama opcjonalne, nigdy bez zgody."
+          ) -join "`n"
+          # Przesuń stabilny tag na nowy build: usuń poprzednie wydanie rolling, jeśli istnieje.
+          gh release view $tag --json tagName 2>$null | Out-Null
+          if ($LASTEXITCODE -eq 0) { gh release delete $tag --cleanup-tag --yes }
+          gh release create $tag dist/* --title "SentinelX $version — najnowszy build ($commit)" --latest --notes $notes
+          if ($LASTEXITCODE -ne 0) { throw 'Rolling release publish failed' }
+          Write-Output "Rolling release opublikowany pod tagiem: $tag"
       - uses: actions/upload-artifact@v4
         continue-on-error: true  # limit magazynu artefaktów nie może zamieniać wyników testów na czerwone
         # Krótka retencja: trwałą dystrybucją są assety wydania, artefakty CI są tylko diagnostyczne.

@@ -1,6 +1,6 @@
 # Sentinel X 0.91 „CENTRUM” — notatki wydania
 
-Data: 2026-09-24 · Tag: `v0.91.0` · Wersja aplikacji: `0.91 · CENTRUM`
+Data: 2026-09-24 (tag `v0.91.0`) · aktualizacja 0.91.1: 2026-09-25 · Wersja aplikacji: `0.91 · CENTRUM`
 
 To wydanie przebudowuje interfejs wokół jednej zakładki **Centrum**, dodaje paletę poleceń `//`,
 włącza domyślnie nasłuch głosowy (świadoma decyzja użytkownika), wprowadza mechanizm „pytam zamiast
@@ -30,6 +30,12 @@ podawane jako działające.
 - Prywatność: wskaźnik stanu głosu jest zawsze widoczny (nagłówek Centrum + sidebar), mikrofon można
   wyłączyć jednym kliknięciem, ustawienie „Głos przy uruchomieniu” zostaje w Ustawieniach → Ogólne.
   Nagrania nie są zapisywane domyślnie (próbki audio to osobny, domyślnie wyłączony przełącznik).
+- **0.91.1 · Słowo-klucz „Sentinel” decyduje o wykonaniu.** Polecenie głosowe zostaje wykonane tylko
+  wtedy, gdy zdanie zawiera „sentinel” (akceptowane warianty pisowni: sentinel/sentynel/centinel/
+  centenel/santinel/sentinelu itd.). Słowo może być w DOWOLNYM miejscu zdania — „ile mam ramu,
+  sentinel” działa tak samo jak „Sentinel, ile mam ramu”. Bez słowa-klucza Sentinel niczego nie
+  wykonuje i dalej nasłuchuje (tryb STANDBY). Po wybudzeniu trwa okno rozmowy, w którym można wydawać
+  kolejne polecenia bez powtarzania słowa-klucza; po jego upływie wraca nasłuch na „sentinel”.
 
 ## Rozumienie — pytam zamiast zgadywać
 
@@ -107,5 +113,15 @@ podawane jako działające.
 
 ## Pliki wydania
 
-Publikuje workflow `release.yml` po tagu `v0.91.0`: `SentinelX-0.91.0-win-x64-portable.zip`,
-`SentinelX-0.91.0-win-x64-setup.exe`, `SHA256SUMS.txt`, `BUILD.txt`.
+**Zasada od 0.91.1: każdy upgrade publikuje pliki do pobrania.** Workflow `release.yml` działa
+w dwóch trybach:
+
+- `workflow_dispatch` → wydanie **rolling**: tag `rolling` jest przesuwany na najnowszy build, więc
+  https://github.com/pawelaachi123-eng/SentinelX/releases/tag/rolling zawsze oferuje aktualne pliki:
+  `SentinelX-<wersja>-win-x64-portable.zip`, `SentinelX-<wersja>-win-x64-setup.exe`,
+  `SHA256SUMS.txt`, `BUILD.txt`.
+- tag `v*.*.*` → wydanie milowe (np. `v0.91.0` publikowało `SentinelX-0.91.0-win-x64-portable.zip`,
+  `SentinelX-0.91.0-win-x64-setup.exe`, `SHA256SUMS.txt`, `BUILD.txt`).
+
+Obie ścieżki publikują dopiero po pełnej walidacji: check architektury, build, smoke UI (wszystkie
+strony + zero błędów wiązań), pełna regresja i smoke wersji portable.

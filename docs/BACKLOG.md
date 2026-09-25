@@ -1,6 +1,6 @@
 # Trwały backlog rozwoju SentinelX
 
-Stan na 2026-09-24. Zasada: każda pojedyncza pozycja znika z listy dopiero, gdy jest **zbudowana i przetestowana na Windows (CI)**, nie „gdy wygląda na zrobioną".
+Stan na 2026-09-25. Zasada: każda pojedyncza pozycja znika z listy dopiero, gdy jest **zbudowana i przetestowana na Windows (CI)**, nie „gdy wygląda na zrobioną".
 
 ## Gotowe i zweryfikowane (0.85 i wcześniejsze)
 
@@ -73,6 +73,12 @@ Stan na 2026-09-24. Zasada: każda pojedyncza pozycja znika z listy dopiero, gdy
 - **~50 narzędzi offline** w `UtilityToolbox`: matematyka (pierwiastek/silnia/nwd/nww/pierwsze/dzielniki/fibonacci/statystyki/zaokrąglenia/zmiana %), tekst (znaki/zdania/palindrom/anagram/rot13/tytuł), kodowania (morse/binarnie/hex w obie strony), PL identyfikatory (PESEL/NIP/IBAN — walidacja lokalna), rgb→hex, kalendarz (tydzień/dzień roku/koniec roku/wiek/dni robocze/wielkanoc), zegary świata (8 miast), fakty systemu (nazwa/rdzenie/architektura/lokalne IP), losowe (moneta/lotto/PIN).
 - **Uczciwe odmowy wbudowane**: modele 3D, samomodyfikacja kodu, automatyczne skanowanie dysku.
 - 5 nowych skrótów (razem 23), katalog fraz rozszerzony, `tests/UtilityRegression` + `tests/UnderstandingRegression` + `UiSmokeTestRunner` rozszerzone.
+
+## Gotowe w 0.91.1 (ten przyrost — patrz git)
+
+- **Słowo-klucz w dowolnym miejscu zdania** (żądanie użytkownika): `CommandText.ContainsWakeWord/StripWakeWord` rozpoznaje i wycina „sentinel” (z wariantami pisowni) z dowolnego miejsca wypowiedzi; `VoiceService` wykonuje polecenie tylko ze słowem-kluczem — bez niego nic nie robi i dalej nasłuchuje. Zdania zaczynające się inaczej niż „Sentinel…” (np. „ile mam ramu, sentinel”) wreszcie działają. Pokryte nowymi asercjami w `UiSmokeTestRunner`.
+- **Naprawa limitywnika `Suggest`**: podpowiedź szarej strefy działa tylko dla krótkich poleceń (≤60 znaków i ≤4 wyrazy) — dłuższe pytania konwersacyjne („Czy moje obecne użycie CPU i RAM wygląda dobrze do grania?”) idą prosto do modelu zamiast utknąć w podpowiedzi (regresja `--self-test`).
+- **Wydanie rolling**: `release.yml` na `workflow_dispatch` publikuje każdy upgrade pod stabilnym tagiem `rolling` (ZIP portable + instalator EXE + sumy SHA-256 + BUILD.txt) po pełnej walidacji; tagi `v*.*.*` pozostają wydaniami milowymi. Link: `releases/tag/rolling` w README i `docs/RELEASE-0.91.md`.
 
 ## Priorytet P0 — kolejny przyrost
 

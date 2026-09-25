@@ -155,6 +155,8 @@ public static class CommandUnderstanding
     {
         string normalized = ConversationMemoryService.Normalize(input ?? "").TrimEnd('?', '!', '.', ' ');
         if (normalized.Length is < 3 or > 60 || normalized.Contains('\n')) return [];
+        // Real commands are short; a multi-word sentence is conversation and goes to the model, never to guessing.
+        if (Words(normalized).Length > 4) return [];
         if (catalogue.Contains(normalized, StringComparer.Ordinal)) return [];
         if (DestructiveStems.Any(stem => normalized.Contains(stem, StringComparison.Ordinal))) return [];
 
