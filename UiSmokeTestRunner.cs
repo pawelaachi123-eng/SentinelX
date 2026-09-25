@@ -152,7 +152,7 @@ public static class UiSmokeTestRunner
                 ("pierwiastek 144", "= 12"), ("silnia 10", "3628800"), ("nwd 12 8", "= 4"),
                 ("palindrom: kajak", "palindromem"), ("morse: sos", "... --- ..."),
                 ("pesel: 90010112349", "PESEL poprawny"), ("wielkanoc 2027", "28.03.2027"),
-                ("lotto", "Lotto (6 z 49)"), ("wersja", "0.92"), ("co nowego", "BEZPIECZNE PLIKI"),
+                ("lotto", "Lotto (6 z 49)"), ("wersja", "0.93"), ("co nowego", "PORZĄDKI WYKONAWCZE"),
                 ("nazwa komputera", "Komputer:"), ("samokontrola", "SAMOKONTROLA"),
             })
             {
@@ -191,6 +191,58 @@ public static class UiSmokeTestRunner
             string bareDup = (await memoryEngine.ExecuteAsync("duplikaty")).Text;
             if (!bareDup.Contains("Podaj folder"))
                 throw new InvalidOperationException("A bare „duplikaty” must show usage, not fall through to the model: " + bareDup);
+            // 0.93 · batch rename, executable tidy and duplicate batch cleanup through real engine
+            string renameDir = Path.Combine(output, "smoke-rename");
+            Directory.CreateDirectory(renameDir);
+            File.WriteAllText(Path.Combine(renameDir, "IMG_001.txt"), "foto");
+            File.WriteAllText(Path.Combine(renameDir, "IMG_002.txt"), "foto");
+            string renamePreview = (await memoryEngine.ExecuteAsync($"zmien nazwy: {renameDir} z IMG_ na zdjecie_")).Text;
+            if (!renamePreview.Contains("ZMIANA NAZW") || !renamePreview.Contains("potwierdz"))
+                throw new InvalidOperationException("Batch rename preview must be shown: " + renamePreview);
+            if (!File.Exists(Path.Combine(renameDir, "IMG_001.txt")))
+                throw new InvalidOperationException("Rename must not happen before confirmation.");
+            string renameConfirmed = (await memoryEngine.ExecuteAsync("potwierdz")).Text;
+            if (!renameConfirmed.Contains("VERIFIED") || !File.Exists(Path.Combine(renameDir, "zdjecie_001.txt")))
+                throw new InvalidOperationException("Batch rename confirmation must execute: " + renameConfirmed);
+            string tidyDir = Path.Combine(output, "smoke-tidy");
+            Directory.CreateDirectory(tidyDir);
+            File.WriteAllText(Path.Combine(tidyDir, "empty.txt"), "");
+            File.WriteAllText(Path.Combine(tidyDir, "full.txt"), "content");
+            string tidyPreview = (await memoryEngine.ExecuteAsync($"uporzadkuj: {tidyDir}")).Text;
+            if (!tidyPreview.Contains("PORZĄDKOWANIE") || !tidyPreview.Contains("potwierdz"))
+                throw new InvalidOperationException("Tidy exec preview must be shown: " + tidyPreview);
+            string tidyConfirmed = (await memoryEngine.ExecuteAsync("potwierdz")).Text;
+            if (!tidyConfirmed.Contains("VERIFIED"))
+                throw new InvalidOperationException("Tidy exec confirmation must succeed: " + tidyConfirmed);
+            string dupCleanDir = Path.Combine(output, "smoke-dup-clean");
+            Directory.CreateDirectory(dupCleanDir);
+            File.WriteAllText(Path.Combine(dupCleanDir, "a.txt"), "same QX77");
+            File.WriteAllText(Path.Combine(dupCleanDir, "b.txt"), "same QX77");
+            string dupCleanPreview = (await memoryEngine.ExecuteAsync($"usun duplikaty: {dupCleanDir}")).Text;
+            if (!dupCleanPreview.Contains("USUWANIE DUPLIKATÓW") || !dupCleanPreview.Contains("potwierdz"))
+                throw new InvalidOperationException("Duplicate cleanup preview must be shown: " + dupCleanPreview);
+            string dupCleanConfirmed = (await memoryEngine.ExecuteAsync("potwierdz")).Text;
+            if (!dupCleanConfirmed.Contains("VERIFIED"))
+                throw new InvalidOperationException("Duplicate cleanup confirmation must succeed: " + dupCleanConfirmed);
+            if (Directory.GetFiles(dupCleanDir).Length != 1)
+                throw new InvalidOperationException("Duplicate cleanup must leave exactly one file.");
+            // bare new commands must show usage
+            string bareRename = (await memoryEngine.ExecuteAsync("zmien nazwy")).Text;
+            if (!bareRename.Contains("Podaj folder"))
+                throw new InvalidOperationException("Bare „zmien nazwy” must show usage: " + bareRename);
+            string bareTidy = (await memoryEngine.ExecuteAsync("uporzadkuj")).Text;
+            if (!bareTidy.Contains("Podaj folder"))
+                throw new InvalidOperationException("Bare „uporzadkuj” must show usage: " + bareTidy);
+            string bareDupClean = (await memoryEngine.ExecuteAsync("usun duplikaty")).Text;
+            if (!bareDupClean.Contains("Podaj folder"))
+                throw new InvalidOperationException("Bare „usun duplikaty” must show usage: " + bareDupClean);
+            // slash catalogue for new commands
+            if (SentinelX.Core.SlashCatalog.TryResolve("zmien-nazwy")?.Target != "zmien nazwy: ")
+                throw new InvalidOperationException("//zmien-nazwy must map to batch rename.");
+            if (SentinelX.Core.SlashCatalog.TryResolve("uporzadkuj")?.Target != "uporzadkuj: ")
+                throw new InvalidOperationException("//uporzadkuj must map to tidy exec.");
+            if (SentinelX.Core.SlashCatalog.TryResolve("usun-duplikaty")?.Target != "usun duplikaty: ")
+                throw new InvalidOperationException("//usun-duplikaty must map to duplicate cleanup.");
             // 0.91: „zrob zadanie: …” is an explicit command — it lands in the Tasks tab, not only in chat.
             var madeTask = await memoryEngine.ExecuteAsync("zrob zadanie: przetestowac centrum QX77");
             if (!madeTask.Text.Contains("Zadanie zapisane"))

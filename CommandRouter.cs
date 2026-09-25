@@ -122,11 +122,14 @@ public sealed class CommandRouter
         if (text is "wersja" or "jaka wersja" or "wersja sentinel" or "wersja aplikacji")
             return "Sentinel X " + AppConstants.Version + " · " + systemInfo.GetWindowsVersion() + " · .NET " + Environment.Version;
         if (text is "co nowego" or "lista zmian" or "changelog" or "co sie zmienilo")
-            return "CO NOWEGO W 0.92 · BEZPIECZNE PLIKI\n" +
+            return "CO NOWEGO W 0.93 · PORZĄDKI WYKONAWCZE\n" +
+                "· Zbiorcze zmiany nazw: „zmien nazwy: C:\\Dane z IMG_ na zdjecie_” pokazuje podgląd i dopiero po „potwierdz” zmienia nazwy (max 200, bez nadpisywania).\n" +
+                "· Wykonywalny plan porządków: „uporzadkuj: C:\\Dane” proponuje usunięcie pustych plików (0 B) do Kosza — z podglądem i potwierdzeniem.\n" +
+                "· Usuwanie duplikatów hurtowo: „usun duplikaty: C:\\Dane” zachowuje pierwszy plik z grupy, resztę do Kosza po „potwierdz” (limit 100, przywracalne).\n" +
+                "· Wszystkie operacje mutujące są dwustopniowe, jednorazowe i logowane w audycie (FILE_BATCH_RENAME, FILE_TIDY_EXEC, FILE_DUPLICATES_CLEANUP).\n" +
+                "\nCO NOWEGO W 0.92 · BEZPIECZNE PLIKI\n" +
                 "· Bezpieczne pliki: „duplikaty: folder” znajduje identyczne treści (SHA-256), „porzadki: folder” pokazuje, co zajmuje miejsce — oba tylko do odczytu.\n" +
                 "· „usuń do kosza: ścieżka” przenosi JEDEN plik do Kosza i dopiero po Twoim „potwierdz” — nic bez zgody.\n" +
-                "· Głos: polecenie działa tylko, gdy w zdaniu pada „sentinel” (w dowolnym miejscu); bez niego Sentinel tylko nasłuchuje.\n" +
-                "· Każdy upgrade publikuje pliki do pobrania na GitHubie (wydanie „rolling”).\n" +
                 "\nCO NOWEGO W 0.91 · CENTRUM\n" +
                 "· Jedna zakładka CENTRUM zamiast wielu kart — rozmowa plus ikony: 📓 zadania, 🕘 historia, 🎤 głos, 🖥 system, 🎮 gry, ✨ AI, ⚡ akcje, 🩺 diagnostyka.\n" +
                 "· Paleta // w polu wpisywania: wpisz „//”, a Tab wybiera polecenie.\n" +
@@ -575,6 +578,7 @@ public sealed class CommandRouter
         Aplikacje: włącz <nazwa> (cs2, discord, steam, chrome, brave, spotify, notatnik, kalkulator, VS Code, Firefox, VLC, OBS…) · otwórz pobrane / dokumenty / pulpit · skróty
         Diagnostyka: diagnostyka komputera (albo //diag) · eksportuj raport · status zabezpieczeń · zdarzenia windows · programy autostartu · lista usług
         Odczyty stanu: snapshot · snapshoty · porównaj snapshoty · eksportuj porównanie · usuń snapshot N
+        Pliki: duplikaty: folder · porzadki: folder · usun do kosza: plik · zmien nazwy: folder z X na Y · uporzadkuj: folder · usun duplikaty: folder (wszystko z podglądem + „potwierdz”, do Kosza, przywracalne)
         Pamięć: zapamiętaj: … · notatka: … · co pamiętasz · pokaż rozmowy · nowa rozmowa · szukaj w rozmowie: fraza · eksportuj rozmowę markdown
         Archiwum: archiwizuj rozmowy · archiwa · usuń archiwum RRRR-MM
         Projekty: nowy projekt: nazwa · projekty · użyj projektu N · aktywny projekt

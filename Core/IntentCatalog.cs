@@ -87,7 +87,10 @@ public static class IntentCatalog
             "tydzien roku", "dzien roku", "ile dni do konca roku", "wiek", "dni robocze", "wielkanoc",
             "moje ip", "nazwa komputera", "ile rdzeni", "architektura",
             "wersja", "co nowego", "lekcje", "samokontrola", "propozycje",
-            "szukaj zadan", "zrob zadanie", "notatka"
+            "szukaj zadan", "zrob zadanie", "notatka",
+            // 0.93 · executable file tidy
+            "zmien nazwy", "przemianuj", "uporzadkuj", "posprzataj", "wykonaj porzadki",
+            "usun duplikaty", "wyczysc duplikaty", "usun do kosza"
         ];
         foreach (string phrase in extra) phrases.Add(phrase);
         return phrases.OrderBy(x => x, StringComparer.Ordinal).ToArray();

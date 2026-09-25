@@ -89,11 +89,20 @@ Stan na 2026-09-25 (0.92). Zasada: każda pojedyncza pozycja znika z listy dopie
 
 - **Bezpieczna praca na plikach (P0.1 — część)**: `Services/Files/FileCleanupService` — `duplikaty: <folder>` (SHA-256, grupy + odzyskiwalne bajty, tylko odczyt), `porzadki: <folder>` (największe/puste/najstarsze/rozmiar, tylko odczyt), `usuń do kosza: <ścieżka>` z dwustopniowym potwierdzeniem i jednorazowym pending (późniejsze „tak” nie usuwa). Limity: 50 000 plików, ≤256 MB hashowane, junction/symlinki nieprzechodzone, dowiązania nieusuwalne. Audyt: FILE_SCAN_DUPLICATES/FILE_SCAN_TIDY/FILE_RECYCLE.
 - `tests/FileCleanupRegression.cs` (w tym test junction przez `mklink /J`) + asercje end-to-end w smoke UI; skróty `//duplikaty`, `//porzadki` w palecie.
-- Z P0.1 wciąż otwarte: zbiorcze zmiany nazw z podglądem, „plan porządkowania” z wykonaniem kroków (raport już jest), usuwanie wielu plików z listy duplikatów za jedną zgodą per plik.
+
+## Gotowe w 0.93 (ten przyrost — patrz git)
+
+- **Wykonywalne porządki (dokończenie P0.1)**: `FileCleanupService` rozszerzony o:
+  - `zmien nazwy: <folder> z <old> na <new>` oraz `zmien nazwy: <folder>: <old> -> <new>` — skan top-level (max 200), podgląd old→new (max 20), walidacja kolizji i nieprawidłowych znaków, wykonanie dopiero po „potwierdz”, jednorazowy pending, audyt FILE_BATCH_RENAME / FILE_BATCH_RENAME_PREVIEW.
+  - `uporzadkuj: <folder>` (aliasy: `posprzątaj`, `wykonaj porzadki`) — znajduje puste pliki 0 B (rekurencyjnie, limit 50k), proponuje przeniesienie do Kosza (max 100 na raz) z podglądem i potwierdzeniem, audyt FILE_TIDY_EXEC.
+  - `usun duplikaty: <folder>` — skan duplikatów jak w 0.92, proponuje zachowanie pierwszego pliku z grupy (alfabetycznie) i przeniesienie reszty do Kosza (max 100), podgląd grup (max 10), potwierdzenie, audyt FILE_DUPLICATES_CLEANUP.
+- Wszystkie operacje mutujące: dwustopniowe, jednorazowe (późniejsze „tak” nie odpala starego pending), tylko do Kosza (przywracalne) lub rename bez nadpisywania, junction/symlinki nieprzechodzone i nieusuwalne, limity twarde.
+- `tests/FileCleanupRegression.cs` rozszerzony o pełny cykl rename (podgląd → brak zmian → stale tak → ponowna propozycja → potwierdz → zweryfikowane przemianowanie), arrow syntax, kolizje, bare commands, tidy exec (puste pliki), duplicate batch cleanup (zachowanie jednego). Smoke UI: nowe polecenia przez prawdziwy silnik + skróty `//zmien-nazwy`, `//uporzadkuj`, `//usun-duplikaty` w palecie.
 
 ## Priorytet P0 — kolejny przyrost
 
-1. **Pliki (częściowo zrobione w 0.92)**: zostało — zbiorcze zmiany nazw z podglądem, wykonywalny plan porządkowania (raport `porzadki` już istnieje), usuwanie wielu duplikatów z listy (zgoda per plik). Zrobione: duplikaty po treści (SHA-256), raport porządkowy, usuwanie do Kosza jako domyślne z potwierdzeniem.
+1. **Pliki — domknięte w 0.93**: P0.1 w całości zrobione (duplikaty SHA-256, raport porządkowy, kosz pojedynczy, zbiorcze zmiany nazw z podglądem, wykonywalny plan porządkowy dla pustych plików, usuwanie wielu duplikatów z listą i potwierdzeniem). Zostały rozszerzenia P1 (diff, filtry).
+2. **Sekwencje działań**: nazwane kroki, plan z podglądem, statusy kroków, zatrzymanie na błędzie, wznowienie tam, gdzie to sensowne.
 2. **Sekwencje działań**: nazwane kroki, plan z podglądem, statusy kroków, zatrzymanie na błędzie, wznowienie tam, gdzie to sensowne.
 3. **Panel archiwum w UI**: strona/panel z listą archiwów (miesiąc, rozmowy, wypowiedzi, rozmiar, hash), podglądem Markdowna i usuwaniem — dziś archiwum działa z czatu i z ustawień, ale nie ma własnego widoku.
 4. **Podpisywanie buildów**: certyfikat (płatny) albo jawnie opisana ścieżka bez podpisu z instrukcją odblokowania SmartScreen; dziś pliki są niepodpisane i tak jest opisane.

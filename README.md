@@ -1,6 +1,19 @@
-# SENTINEL X 0.91 · CENTRUM — Windows / MVVM
+# SENTINEL X 0.93 · PORZĄDKI WYKONAWCZE — Windows / MVVM
 
 Lokalny asystent Windows 10/11, C# 13, .NET 9, WPF. Nowe GUI jest domyślnym interfejsem. Poprzedni interfejs i jego funkcje nadal są dostępne przez `--legacy`.
+
+## Nowe w 0.93 — PORZĄDKI WYKONAWCZE: zbiorcze zmiany nazw, wykonywalny plan porządków i hurtowe usuwanie duplikatów
+
+- **Zbiorcze zmiany nazw z podglądem**: `zmien nazwy: C:\Dane z IMG_ na zdjecie_` lub `zmien nazwy: C:\Dane: IMG_ -> zdjecie_` — skan top-level (max 200), podgląd old→new (max 20), wykrywa kolizje i nieprawidłowe znaki, wykonanie dopiero po Twoim `potwierdz`, bez nadpisywania. Audyt `FILE_BATCH_RENAME`.
+- **Wykonywalny plan porządków**: `uporzadkuj: C:\Dane` znajduje puste pliki 0 B (rekurencyjnie, limit 50k) i proponuje przeniesienie do Kosza Windows (max 100 na raz, przywracalne) z listą i potwierdzeniem. `porzadki: C:\Dane` nadal jest raportem tylko do odczytu.
+- **Hurtowe usuwanie duplikatów**: `usun duplikaty: C:\Dane` — ten sam silnik SHA-256 co `duplikaty:`, ale proponuje zachowanie pierwszego pliku z grupy (alfabetycznie) i przeniesienie reszty do Kosza po `potwierdz` (limit 100, pokazuje ile można odzyskać). Audyt `FILE_DUPLICATES_CLEANUP`.
+- **Bezpieczeństwo wbudowane**: junction/symlinki nieprzechodzone i nieusuwalne, wszystkie usuwania do Kosza (przywracalne), brak trwałego usuwania, jednorazowy pending (późniejsze „tak” nie odpala starej operacji), limity twarde, audyt VERIFIED/FAILED.
+- **Paleta `//`**: nowe skróty `//zmien-nazwy`, `//uporzadkuj`, `//usun-duplikaty` — uzupełnij folder i wyślij.
+- **Domknięcie P0.1**: pozycja „bezpieczne pliki” z backloga jest w całości zrobiona (raporty + pojedynczy kosz + batch rename + wykonywalny plan porządków + hurtowe duplikaty). Szczegóły: [docs/RELEASE-0.93.md](docs/RELEASE-0.93.md).
+
+## Nowe w 0.92 — BEZPIECZNE PLIKI: duplikaty, raport porządkowy i Kosz
+
+- **Bezpieczne pliki**: `duplikaty: folder` znajduje identyczne treści (SHA-256) z grupami i odzyskiwalnymi bajtami — tylko do odczytu; `porzadki: folder` pokazuje największe/puste/najstarsze/rozmiar — tylko do odczytu; `usuń do kosza: ścieżka` przenosi JEDEN plik do Kosza dopiero po `potwierdz` (przywracalne, jednorazowy pending). Limity: 50k plików, ≤256 MB hashowane, junction nieprzechodzone. Szczegóły: [docs/RELEASE-0.92.md](docs/RELEASE-0.92.md).
 
 ## Nowe w 0.91 — CENTRUM: jeden hub, paleta `//`, głos od startu i ~50 nowych narzędzi
 

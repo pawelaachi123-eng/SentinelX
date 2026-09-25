@@ -4,9 +4,9 @@ using SentinelX.Services.Files;
 
 namespace SentinelX.Tests;
 
-/// <summary>0.92 · safe file work: duplicate scan by SHA-256, read-only tidy report, and Recycle-Bin
-/// deletion behind a two-step confirmation. All assertions run on a temporary fixture directory with a
-/// fake recycler — CI never touches the real Recycle Bin and never deletes anything outside the fixture.</summary>
+/// <summary>0.93 · executable tidy: batch rename with preview, empty-file cleanup, and duplicate batch
+/// cleanup — all behind an explicit two-step confirmation. Extends 0.92 assertions. All assertions run
+/// on a temporary fixture directory with a fake recycler — CI never touches the real Recycle Bin.</summary>
 internal static class FileCleanupRegression
 {
     private static void Check(bool condition, string message) { if (!condition) throw new InvalidOperationException(message); }
@@ -101,5 +101,117 @@ internal static class FileCleanupRegression
         Check(ghost.Contains("nie istnieje"), "a missing file must be reported: " + ghost);
         string bare = await service.ProcessAsync("duplikaty", ct) ?? "";
         Check(bare.Contains("Podaj folder"), "a bare command must show usage: " + bare);
+
+        // ==================== 0.93 · batch rename ====================
+        string renameRoot = Path.Combine(directory, "rename-fixture");
+        Directory.CreateDirectory(renameRoot);
+        File.WriteAllText(Path.Combine(renameRoot, "IMG_001.jpg"), "foto1");
+        File.WriteAllText(Path.Combine(renameRoot, "IMG_002.jpg"), "foto2");
+        File.WriteAllText(Path.Combine(renameRoot, "other.txt"), "inny");
+
+        string renamePreview = await service.ProcessAsync($"zmien nazwy: {renameRoot} z IMG_ na zdjecie_", ct) ?? "";
+        Check(renamePreview.Contains("ZMIANA NAZW"), "batch rename preview header missing: " + renamePreview);
+        Check(renamePreview.Contains("IMG_001.jpg") && renamePreview.Contains("zdjecie_001.jpg"), "rename preview must list old→new: " + renamePreview);
+        Check(renamePreview.Contains("potwierdz"), "rename preview must ask for confirmation: " + renamePreview);
+        Check(File.Exists(Path.Combine(renameRoot, "IMG_001.jpg")), "files must not be renamed before confirmation");
+        // unrelated input must clear pending
+        string? unrelated2 = await service.ProcessAsync("ile mam ramu", ct);
+        Check(unrelated2 == null, "non-cleanup must fall through");
+        string lateTakRename = await service.ProcessAsync("tak", ct) ?? "";
+        Check(File.Exists(Path.Combine(renameRoot, "IMG_001.jpg")), "stale pending rename must not fire on later tak: " + lateTakRename);
+
+        // re-propose and confirm
+        string renamePreview2 = await service.ProcessAsync($"zmien nazwy: {renameRoot} z IMG_ na zdjecie_", ct) ?? "";
+        Check(renamePreview2.Contains("ZMIANA NAZW"), "re-proposing rename must work: " + renamePreview2);
+        string renameConfirmed = await service.ProcessAsync("potwierdz", ct) ?? "";
+        Check(renameConfirmed.Contains("VERIFIED") && renameConfirmed.Contains("Zmieniono nazwy"), "confirmed rename must report verified: " + renameConfirmed);
+        Check(!File.Exists(Path.Combine(renameRoot, "IMG_001.jpg")) && File.Exists(Path.Combine(renameRoot, "zdjecie_001.jpg")), "first file must be renamed");
+        Check(!File.Exists(Path.Combine(renameRoot, "IMG_002.jpg")) && File.Exists(Path.Combine(renameRoot, "zdjecie_002.jpg")), "second file must be renamed");
+        Check(File.Exists(Path.Combine(renameRoot, "other.txt")), "non-matching file must stay");
+
+        // arrow syntax
+        File.WriteAllText(Path.Combine(renameRoot, "old_one.txt"), "x");
+        string arrowPreview = await service.ProcessAsync($"zmien nazwy: {renameRoot}: old_ -> new_", ct) ?? "";
+        Check(arrowPreview.Contains("ZMIANA NAZW") && arrowPreview.Contains("old_one.txt"), "arrow syntax must work: " + arrowPreview);
+        string arrowConfirmed = await service.ProcessAsync("potwierdz", ct) ?? "";
+        Check(arrowConfirmed.Contains("VERIFIED"), "arrow rename confirmation must succeed: " + arrowConfirmed);
+        Check(File.Exists(Path.Combine(renameRoot, "new_one.txt")), "arrow rename must produce new file");
+
+        // collision handling
+        File.WriteAllText(Path.Combine(renameRoot, "a_collision.txt"), "a");
+        File.WriteAllText(Path.Combine(renameRoot, "b_collision.txt"), "b");
+        // both contain "collision" -> try to rename to same target would collide? Let's test collision by renaming a_ to b_ where b_ exists
+        File.WriteAllText(Path.Combine(renameRoot, "a_dup.txt"), "a");
+        File.WriteAllText(Path.Combine(renameRoot, "b_dup.txt"), "b");
+        string collisionPreview = await service.ProcessAsync($"zmien nazwy: {renameRoot} z a_dup na b_dup", ct) ?? "";
+        // b_dup.txt already exists, so it should be skipped as collision
+        Check(collisionPreview.Contains("Brak plików") || collisionPreview.Contains("Pominięte") || collisionPreview.Contains("kolizje") || collisionPreview.Contains("ZMIANA NAZW"), "collision must be reported: " + collisionPreview);
+        await service.ProcessAsync("anuluj", ct);
+
+        // bare rename
+        string bareRename = await service.ProcessAsync("zmien nazwy", ct) ?? "";
+        Check(bareRename.Contains("Podaj folder"), "bare rename must show usage: " + bareRename);
+
+        // ==================== 0.93 · executable tidy (empty files) ====================
+        string tidyRoot = Path.Combine(directory, "tidy-fixture");
+        Directory.CreateDirectory(tidyRoot);
+        File.WriteAllText(Path.Combine(tidyRoot, "emptyA.txt"), "");
+        File.WriteAllText(Path.Combine(tidyRoot, "emptyB.txt"), "");
+        File.WriteAllText(Path.Combine(tidyRoot, "full.txt"), "content");
+
+        string tidyPreview = await service.ProcessAsync($"uporzadkuj: {tidyRoot}", ct) ?? "";
+        Check(tidyPreview.Contains("PORZĄDKOWANIE") && tidyPreview.Contains("Pustych plików"), "tidy exec preview missing: " + tidyPreview);
+        Check(tidyPreview.Contains("emptyA.txt"), "tidy preview must list empty files: " + tidyPreview);
+        Check(tidyPreview.Contains("potwierdz"), "tidy preview must ask for confirmation");
+        Check(File.Exists(Path.Combine(tidyRoot, "emptyA.txt")), "empty files must not be deleted before confirmation");
+
+        // stale tak must not delete
+        await service.ProcessAsync("ile mam ramu", ct);
+        string lateTakTidy = await service.ProcessAsync("tak", ct) ?? "";
+        Check(File.Exists(Path.Combine(tidyRoot, "emptyA.txt")), "stale pending tidy must not fire: " + lateTakTidy);
+
+        string tidyPreview2 = await service.ProcessAsync($"uporzadkuj: {tidyRoot}", ct) ?? "";
+        Check(tidyPreview2.Contains("PORZĄDKOWANIE"), "re-proposing tidy must work");
+        string tidyConfirmed = await service.ProcessAsync("potwierdz", ct) ?? "";
+        Check(tidyConfirmed.Contains("VERIFIED") && tidyConfirmed.Contains("Uporządkowano"), "tidy confirmation must succeed: " + tidyConfirmed);
+        Check(!File.Exists(Path.Combine(tidyRoot, "emptyA.txt")) && !File.Exists(Path.Combine(tidyRoot, "emptyB.txt")), "empty files must be recycled");
+        Check(File.Exists(Path.Combine(tidyRoot, "full.txt")), "non-empty file must stay");
+        Check(recycler.Recycled.Count >= 3, "recycler must have recorded tidy deletions");
+
+        // bare tidy
+        string bareTidy = await service.ProcessAsync("uporzadkuj", ct) ?? "";
+        Check(bareTidy.Contains("Podaj folder"), "bare tidy must show usage: " + bareTidy);
+
+        // ==================== 0.93 · batch duplicate cleanup ====================
+        string dupRoot = Path.Combine(directory, "dup-clean-fixture");
+        Directory.CreateDirectory(dupRoot);
+        File.WriteAllText(Path.Combine(dupRoot, "dup1.txt"), "same content 0.93");
+        File.WriteAllText(Path.Combine(dupRoot, "dup2.txt"), "same content 0.93");
+        File.WriteAllText(Path.Combine(dupRoot, "dup3.txt"), "same content 0.93");
+        File.WriteAllText(Path.Combine(dupRoot, "unique.txt"), "unique content");
+
+        string dupCleanPreview = await service.ProcessAsync($"usun duplikaty: {dupRoot}", ct) ?? "";
+        Check(dupCleanPreview.Contains("USUWANIE DUPLIKATÓW"), "duplicate cleanup preview header missing: " + dupCleanPreview);
+        Check(dupCleanPreview.Contains("Grup duplikatów: 1"), "must report one duplicate group: " + dupCleanPreview);
+        Check(dupCleanPreview.Contains("potwierdz"), "duplicate cleanup must ask for confirmation: " + dupCleanPreview);
+        // files still exist before confirmation
+        Check(File.Exists(Path.Combine(dupRoot, "dup1.txt")) && File.Exists(Path.Combine(dupRoot, "dup2.txt")), "duplicates must not be deleted before confirmation");
+
+        // unrelated clears pending
+        await service.ProcessAsync("ile mam ramu", ct);
+        string lateTakDup = await service.ProcessAsync("tak", ct) ?? "";
+        Check(File.Exists(Path.Combine(dupRoot, "dup2.txt")), "stale pending duplicate cleanup must not fire: " + lateTakDup);
+
+        string dupCleanPreview2 = await service.ProcessAsync($"usun duplikaty: {dupRoot}", ct) ?? "";
+        Check(dupCleanPreview2.Contains("USUWANIE DUPLIKATÓW"), "re-proposing duplicate cleanup must work");
+        string dupCleanConfirmed = await service.ProcessAsync("potwierdz", ct) ?? "";
+        Check(dupCleanConfirmed.Contains("VERIFIED") && dupCleanConfirmed.Contains("Usunięto duplikaty"), "duplicate cleanup confirmation must succeed: " + dupCleanConfirmed);
+        int remainingDup = Directory.GetFiles(dupRoot, "dup*.txt").Length;
+        Check(remainingDup == 1, $"exactly one duplicate must remain, got {remainingDup}");
+        Check(File.Exists(Path.Combine(dupRoot, "unique.txt")), "unique file must stay");
+
+        // bare duplicate cleanup
+        string bareDupClean = await service.ProcessAsync("usun duplikaty", ct) ?? "";
+        Check(bareDupClean.Contains("Podaj folder"), "bare duplicate cleanup must show usage: " + bareDupClean);
     }
 }

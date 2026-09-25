@@ -49,6 +49,10 @@ public static class SlashCatalog
         // 0.92 · safe file work
         new("duplikaty", "Duplikaty w folderze", "raport identycznych treści (SHA-256), tylko odczyt", SlashKind.Command, "duplikaty: "),
         new("porzadki", "Raport porządkowy", "co zajmuje miejsce w folderze, tylko odczyt", SlashKind.Command, "porzadki: "),
+        // 0.93 · executable tidy
+        new("zmien-nazwy", "Zmień nazwy plików", "zbiorcza zmiana nazw z podglądem, po „potwierdz”", SlashKind.Command, "zmien nazwy: "),
+        new("uporzadkuj", "Uporządkuj folder", "usuwa puste pliki (0 B) do Kosza, po potwierdzeniu", SlashKind.Command, "uporzadkuj: "),
+        new("usun-duplikaty", "Usuń duplikaty", "zachowuje pierwszy z grupy, resztę do Kosza po „potwierdz”", SlashKind.Command, "usun duplikaty: "),
         // panels inside Centrum and pages
         new("rozmowa", "Rozmowa", "wróć do czatu", SlashKind.Tab, "rozmowa"),
         new("historia", "Historia", "zakładka Historii", SlashKind.Tab, "historia"),
