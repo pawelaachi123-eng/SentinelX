@@ -1,9 +1,12 @@
+using System.Linq;
 using System.Windows;
 using System.Windows.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using SentinelX;
 using SentinelX.Core;
 using SentinelX.Services.Desktop;
+using SentinelX.Services.Settings;
 
 namespace SentinelX.ViewModels;
 
