@@ -37,6 +37,7 @@ public static class UiSmokeTestRunner
             await Tests.AiStreamRegression.RunAsync(Path.Combine(output, "ai-stream"));
             await Tests.UnderstandingRegression.RunAsync(Path.Combine(output, "understanding"));
             await Tests.UtilityRegression.RunAsync(Path.Combine(output, "utility"));
+            await Tests.FileCleanupRegression.RunAsync(Path.Combine(output, "file-cleanup"));
             await Tests.MemoryArchiveRegression.RunAsync(Path.Combine(output, "archives"));
             var vm = services.GetRequiredService<MainViewModel>();
             vm.Readiness.IsOpen = false;
@@ -151,7 +152,7 @@ public static class UiSmokeTestRunner
                 ("pierwiastek 144", "= 12"), ("silnia 10", "3628800"), ("nwd 12 8", "= 4"),
                 ("palindrom: kajak", "palindromem"), ("morse: sos", "... --- ..."),
                 ("pesel: 90010112349", "PESEL poprawny"), ("wielkanoc 2027", "28.03.2027"),
-                ("lotto", "Lotto (6 z 49)"), ("wersja", "0.91"), ("co nowego", "CENTRUM"),
+                ("lotto", "Lotto (6 z 49)"), ("wersja", "0.92"), ("co nowego", "BEZPIECZNE PLIKI"),
                 ("nazwa komputera", "Komputer:"), ("samokontrola", "SAMOKONTROLA"),
             })
             {
@@ -179,6 +180,17 @@ public static class UiSmokeTestRunner
                 throw new InvalidOperationException("Wake word must be removable from any position.");
             if (SentinelX.Core.CommandText.StripWakeWord("Sentinel, ile mam RAM") != "ile mam RAM")
                 throw new InvalidOperationException("Wake word must still be removable from the sentence start.");
+            // 0.92 · PLIKI: safe file work through the real engine — duplicate scan stays read-only.
+            string filesDir = Path.Combine(output, "smoke-files");
+            Directory.CreateDirectory(filesDir);
+            File.WriteAllText(Path.Combine(filesDir, "jeden.txt"), "ta sama tresc QX77");
+            File.WriteAllText(Path.Combine(filesDir, "dwa.txt"), "ta sama tresc QX77");
+            string dupReport = (await memoryEngine.ExecuteAsync("duplikaty: " + filesDir)).Text;
+            if (!dupReport.Contains("Grup duplikatów: 1") || !dupReport.Contains("niczego nie usuwam"))
+                throw new InvalidOperationException("Duplicate scan must report groups and stay read-only: " + dupReport);
+            string bareDup = (await memoryEngine.ExecuteAsync("duplikaty")).Text;
+            if (!bareDup.Contains("Podaj folder"))
+                throw new InvalidOperationException("A bare „duplikaty” must show usage, not fall through to the model: " + bareDup);
             // 0.91: „zrob zadanie: …” is an explicit command — it lands in the Tasks tab, not only in chat.
             var madeTask = await memoryEngine.ExecuteAsync("zrob zadanie: przetestowac centrum QX77");
             if (!madeTask.Text.Contains("Zadanie zapisane"))

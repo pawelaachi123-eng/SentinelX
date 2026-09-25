@@ -1,6 +1,6 @@
 # Trwały backlog rozwoju SentinelX
 
-Stan na 2026-09-25 (0.91.2). Zasada: każda pojedyncza pozycja znika z listy dopiero, gdy jest **zbudowana i przetestowana na Windows (CI)**, nie „gdy wygląda na zrobioną".
+Stan na 2026-09-25 (0.92). Zasada: każda pojedyncza pozycja znika z listy dopiero, gdy jest **zbudowana i przetestowana na Windows (CI)**, nie „gdy wygląda na zrobioną".
 
 ## Gotowe i zweryfikowane (0.85 i wcześniejsze)
 
@@ -83,11 +83,17 @@ Stan na 2026-09-25 (0.91.2). Zasada: każda pojedyncza pozycja znika z listy dop
 ## Gotowe w 0.91.2 (ten przyrost — patrz git)
 
 - **Bezwzględna bramka słowa-klucza** (żądanie użytkownika): każde polecenie głosowe wymaga „sentinel” w zdaniu (dowolne miejsce); bez niego Sentinel niczego nie wykonuje i nasłuchuje dalej. Usunięty wyjątek „okna rozmowy”, który wykonywał zdania bez wybudzenia przez kilka minut po ostatnim poleceniu — to była luka względem zasady użytkownika.
-- Pierwsze automatyczne wydanie rolling opublikowane i zweryfikowane: `releases/tag/rolling` (SentinelX-0.91.1-win-x64-portable.zip 87,7 MB, SentinelX-0.91.1-win-x64-setup.exe 74,6 MB, SHA256SUMS.txt, BUILD.txt), publikacja po pełnej walidacji w CI.
+- Pierwsze automatyczne wydanie rolling opublikowane i zweryfikowane: `releases/tag/rolling` (SentinelX-0.91.1-win-x64-portable.zip 87,7 MB, SentinelX-0.91.1-win-x64-setup.exe 74,6 MB, SHA256SUMS.txt, BUILD.txt), publikacja po pełnej walidacji w CI. Tag milowy `v0.91.2` opublikowany tą samą ścieżką.
+
+## Gotowe w 0.92 (ten przyrost — patrz git)
+
+- **Bezpieczna praca na plikach (P0.1 — część)**: `Services/Files/FileCleanupService` — `duplikaty: <folder>` (SHA-256, grupy + odzyskiwalne bajty, tylko odczyt), `porzadki: <folder>` (największe/puste/najstarsze/rozmiar, tylko odczyt), `usuń do kosza: <ścieżka>` z dwustopniowym potwierdzeniem i jednorazowym pending (późniejsze „tak” nie usuwa). Limity: 50 000 plików, ≤256 MB hashowane, junction/symlinki nieprzechodzone, dowiązania nieusuwalne. Audyt: FILE_SCAN_DUPLICATES/FILE_SCAN_TIDY/FILE_RECYCLE.
+- `tests/FileCleanupRegression.cs` (w tym test junction przez `mklink /J`) + asercje end-to-end w smoke UI; skróty `//duplikaty`, `//porzadki` w palecie.
+- Z P0.1 wciąż otwarte: zbiorcze zmiany nazw z podglądem, „plan porządkowania” z wykonaniem kroków (raport już jest), usuwanie wielu plików z listy duplikatów za jedną zgodą per plik.
 
 ## Priorytet P0 — kolejny przyrost
 
-1. **Pliki**: plan porządkowania folderu z podglądem przed wykonaniem, zbiorcze zmiany nazw z podglądem, duplikaty po treści (SHA-256), usuwanie do Kosza jako domyślne.
+1. **Pliki (częściowo zrobione w 0.92)**: zostało — zbiorcze zmiany nazw z podglądem, wykonywalny plan porządkowania (raport `porzadki` już istnieje), usuwanie wielu duplikatów z listy (zgoda per plik). Zrobione: duplikaty po treści (SHA-256), raport porządkowy, usuwanie do Kosza jako domyślne z potwierdzeniem.
 2. **Sekwencje działań**: nazwane kroki, plan z podglądem, statusy kroków, zatrzymanie na błędzie, wznowienie tam, gdzie to sensowne.
 3. **Panel archiwum w UI**: strona/panel z listą archiwów (miesiąc, rozmowy, wypowiedzi, rozmiar, hash), podglądem Markdowna i usuwaniem — dziś archiwum działa z czatu i z ustawień, ale nie ma własnego widoku.
 4. **Podpisywanie buildów**: certyfikat (płatny) albo jawnie opisana ścieżka bez podpisu z instrukcją odblokowania SmartScreen; dziś pliki są niepodpisane i tak jest opisane.

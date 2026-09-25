@@ -46,6 +46,9 @@ public static class SlashCatalog
         new("haslo", "Generuj hasło", "16 znaków, lokalnie", SlashKind.Command, "haslo 16"),
         new("uuid", "Generuj UUID", "losowy identyfikator", SlashKind.Command, "uuid"),
         new("lotto", "Lotto", "6 losowych liczb z 49", SlashKind.Command, "lotto"),
+        // 0.92 · safe file work
+        new("duplikaty", "Duplikaty w folderze", "raport identycznych treści (SHA-256), tylko odczyt", SlashKind.Command, "duplikaty: "),
+        new("porzadki", "Raport porządkowy", "co zajmuje miejsce w folderze, tylko odczyt", SlashKind.Command, "porzadki: "),
         // panels inside Centrum and pages
         new("rozmowa", "Rozmowa", "wróć do czatu", SlashKind.Tab, "rozmowa"),
         new("historia", "Historia", "zakładka Historii", SlashKind.Tab, "historia"),

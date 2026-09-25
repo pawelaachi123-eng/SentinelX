@@ -14,12 +14,14 @@ public sealed class IntentRouter : IIntentRouter
     private readonly CommandRouter router;
     private readonly Services.Monitoring.ReadOnlyCommandService reads;
     private readonly UnderstandingJournal? journal;
+    private readonly Services.Files.FileCleanupService? cleanup;
     private string? pendingSuggestion;
 
     public IntentRouter(SentinelToolboxService toolbox, Services.Files.IFileService files,
-        CommandRouter router, Services.Monitoring.ReadOnlyCommandService reads, UnderstandingJournal? journal = null)
+        CommandRouter router, Services.Monitoring.ReadOnlyCommandService reads, UnderstandingJournal? journal = null,
+        Services.Files.FileCleanupService? cleanup = null)
     {
-        this.toolbox = toolbox; this.files = files; this.router = router; this.reads = reads; this.journal = journal;
+        this.toolbox = toolbox; this.files = files; this.router = router; this.reads = reads; this.journal = journal; this.cleanup = cleanup;
         // The router raises this exactly when it would otherwise hand the input to the AI model.
         router.SuggestionPending += suggestion => pendingSuggestion = suggestion;
     }
@@ -65,6 +67,8 @@ public sealed class IntentRouter : IIntentRouter
         if (read != null) return note + read;
         string? file = await files.ProcessAsync(effective, token);
         if (file != null) return note + file;
+        string? cleanupResult = cleanup is null ? null : await cleanup.ProcessAsync(effective, token);
+        if (cleanupResult != null) return note + cleanupResult;
         var result = await toolbox.ProcessAsync(effective, token);
         return result.Handled ? note + result.Response : note + await router.ProcessAsync(effective, token, onDelta);
     }

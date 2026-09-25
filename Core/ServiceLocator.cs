@@ -65,6 +65,7 @@ public static class ServiceLocator
             sp.GetRequiredService<Services.Memory.MemoryActionService>()));
         services.AddSingleton<FileWorkspaceService>(sp => new(history: sp.GetRequiredService<ActionHistoryService>()));
         services.AddSingleton<Services.Files.IFileService>(sp => sp.GetRequiredService<FileWorkspaceService>());
+        services.AddSingleton<Services.Files.FileCleanupService>(sp => new(history: sp.GetRequiredService<ActionHistoryService>()));
         services.AddSingleton<ReadOnlyCommandService>();
         services.AddSingleton<IIntentRouter, IntentRouter>();
         services.AddSingleton<IActionEngine, ActionEngine>();
