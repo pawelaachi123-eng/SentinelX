@@ -47,16 +47,20 @@ public sealed class FileCleanupService
     private static readonly Regex TidyReport = new(@"^(?:porzadki|porządki|raport porzadkowy|raport porządkowy|plan porzadkow|plan porządków)(?::\s*|\s+|w\s+)(?<dir>.+)$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
     private static readonly Regex RecycleFile = new(@"^(?:usuń do kosza|usun do kosza|przenieś do kosza|przenies do kosza|wyrzuć do kosza|wyrzuc do kosza)(?::\s*|\s+)(?<path>.+)$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
     private static readonly Regex CleanDuplicates = new(@"^(?:usuń duplikaty|usun duplikaty|wyczysc duplikaty|wyczyść duplikaty)(?::\s*|\s+|w\s+)(?<dir>.+)$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static readonly Regex CleanEmpty = new(@"^(?:usuń puste pliki|usun puste pliki|wyrzuć puste pliki|wyrzuc puste pliki|usun puste|usuń puste)(?::\s*|\s+|w\s+)(?<dir>.+)$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static readonly Regex RenameBatch = new(@"^(?:zmień nazwy|zmien nazwy|zmień nazwy plików|zmien nazwy plikow|zmien nazwe plikow)(?::\s*|\s+)(?<rest>.+)$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
     // Compared against ConversationMemoryService.Normalize(input) — diacritics are already stripped there.
-    private static readonly string[] Confirmations = ["tak", "potwierdz", "tak usun", "tak, usun", "usun to", "ok"];
-    private static readonly string[] Cancellations = ["nie", "anuluj", "stop", "nie usuwaj"];
+    private static readonly string[] Confirmations = ["tak", "potwierdz", "tak usun", "tak, usun", "usun to", "tak zmien", "ok"];
+    private static readonly string[] Cancellations = ["nie", "anuluj", "stop", "nie usuwaj", "nie zmieniaj"];
 
     private readonly ActionHistoryService history;
     private readonly IFileRecycler recycler;
-    private PendingBatch? pending;
+    private PendingOp? pending;
 
-    /// <summary>One pending batch: the exact list of files a confirmed command will send to the Recycle Bin.</summary>
-    private sealed record PendingBatch(string Label, List<(string Path, long Size)> Files);
+    /// <summary>One pending batch awaiting explicit consent. Confirm executes, anything else drops it.</summary>
+    private abstract record PendingOp(string Label);
+    private sealed record PendingRecycle(string Label, List<(string Path, long Size)> Files) : PendingOp(Label);
+    private sealed record PendingRename(string Folder, List<(string From, string To)> Pairs, List<string> Skipped) : PendingOp("ZMIANA-NAZW");
 
     public FileCleanupService(ActionHistoryService? history = null, IFileRecycler? recycler = null)
     {
@@ -71,13 +75,14 @@ public sealed class FileCleanupService
         token.ThrowIfCancellationRequested();
         string normalized = ConversationMemoryService.Normalize(command).Trim().TrimEnd('.', '!', '?');
 
-        // A pending Recycle-Bin batch is one-shot: confirm executes it, cancel drops it,
-        // anything else drops it too — a stale pending delete must never fire on a later „tak”.
+        // A pending operation is one-shot: confirm executes it, cancel drops it,
+        // anything else drops it too — a stale pending batch must never fire on a later „tak”.
         if (pending is { } waiting)
         {
-            if (Array.Exists(Confirmations, c => c == normalized)) { pending = null; return ExecuteBatch(waiting, command); }
-            if (Array.Exists(Cancellations, c => c == normalized)) { pending = null; return "Anulowane — nic nie zostało usunięte."; }
             pending = null;
+            if (Array.Exists(Confirmations, c => c == normalized))
+                return waiting is PendingRename rename ? ExecuteRename(rename, command) : ExecuteRecycle((PendingRecycle)waiting, command);
+            if (Array.Exists(Cancellations, c => c == normalized)) return "Anulowane — nic nie zostało zmienione.";
         }
 
         // Bare commands without an argument: show usage instead of falling through to the model.
@@ -87,6 +92,10 @@ public sealed class FileCleanupService
             return "Podaj pełną ścieżkę pliku, np. „usuń do kosza: C:\\Dane\\stary raport.txt”. Foldery zostawiam w spokoju.";
         if (normalized is "usun duplikaty" or "usun duplikaty:")
             return "Podaj folder, np. „usuń duplikaty: C:\\Dane”. Z każdej grupy duplikatów zostawię 1 plik, resztę zaproponuję do Kosza.";
+        if (normalized is "usun puste pliki" or "usun puste pliki:")
+            return "Podaj folder, np. „usuń puste pliki: C:\\Dane”. Pliki o rozmiarze 0 B zaproponuję do Kosza.";
+        if (normalized is "zmien nazwy" or "zmien nazwy:" or "zmien nazwy plikow")
+            return "Użyj: „zmien nazwy: C:\\Dane zamien IMG_ na wakacje_”. Najpierw pokażę listę zmian, nic nie zmienię bez „potwierdz”.";
 
         var dup = Duplicates.Match(command.Trim());
         if (dup.Success) return await DuplicatesReportAsync(CleanDir(dup.Groups["dir"].Value), token);
@@ -94,6 +103,10 @@ public sealed class FileCleanupService
         if (tidy.Success) return await TidyReportAsync(CleanDir(tidy.Groups["dir"].Value), token);
         var cleanDup = CleanDuplicates.Match(command.Trim());
         if (cleanDup.Success) return await ProposeDuplicateCleanupAsync(CleanDir(cleanDup.Groups["dir"].Value), token);
+        var cleanEmpty = CleanEmpty.Match(command.Trim());
+        if (cleanEmpty.Success) return await ProposeEmptyCleanupAsync(CleanDir(cleanEmpty.Groups["dir"].Value), token);
+        var rename = RenameBatch.Match(command.Trim());
+        if (rename.Success) return ProposeRename(CleanDir(rename.Groups["rest"].Value));
         var recycle = RecycleFile.Match(command.Trim());
         if (recycle.Success) return ProposeRecycle(recycle.Groups["path"].Value.Trim().Trim('"'));
         return null;
@@ -283,7 +296,7 @@ public sealed class FileCleanupService
         var info = new FileInfo(path);
         if (!info.Exists) return "Taki plik nie istnieje: " + path;
         if ((info.Attributes & FileAttributes.ReparsePoint) != 0) return "To dowiązanie (junction/symlink) — nie usuwam dowiązań.";
-        pending = new PendingBatch("KOSZ", [(path, info.Length)]);
+        pending = new PendingRecycle("KOSZ", [(path, info.Length)]);
         return "KOSZ • Gotowy do usunięcia:\n" + path + " (" + FormatBytes(info.Length) + ")"
             + "\nPlik trafi do Kosza Windows — można go stamtąd przywrócić. Napisz „potwierdz”, aby usunąć, albo „anuluj”.";
     }
@@ -303,7 +316,7 @@ public sealed class FileCleanupService
             string keep = group.Paths.OrderBy(p => p.Length).ThenBy(p => p, StringComparer.OrdinalIgnoreCase).First();
             foreach (string path in group.Paths.Where(p => p != keep)) victims.Add((path, group.Size));
         }
-        pending = new PendingBatch("KOSZ-DUPLIKATY", victims);
+        pending = new PendingRecycle("KOSZ-DUPLIKATY", victims);
         var lines = new List<string>
         {
             "KOSZ-DUPLIKATY • " + opened,
@@ -316,7 +329,106 @@ public sealed class FileCleanupService
         return string.Join(Environment.NewLine, lines);
     }
 
-    private string ExecuteBatch(PendingBatch batch, string command)
+    /// <summary>Proposes recycling every empty (0 B) file directly inside the folder and its subfolders.</summary>
+    private async Task<string> ProposeEmptyCleanupAsync(string directory, CancellationToken token)
+    {
+        string opened = TryOpenDirectory(directory);
+        if (!Directory.Exists(opened)) return opened;
+        var scan = await ScanAsync(opened, token);
+        var victims = scan.Files.Where(f => f.Length == 0).Select(f => (f.Path, f.Length)).ToList();
+        if (victims.Count == 0) return "Brak pustych plików (0 B) w " + opened + " — nie ma czego sprzątać.";
+        pending = new PendingRecycle("KOSZ-PUSTE", victims);
+        var lines = new List<string>
+        {
+            "KOSZ-PUSTE • " + opened,
+            "Pliki o rozmiarze 0 B przeniosę do Kosza:",
+        };
+        foreach (var (path, _) in victims.Take(MaxListedPaths)) lines.Add("   · " + path);
+        if (victims.Count > MaxListedPaths) lines.Add("   · …i " + (victims.Count - MaxListedPaths) + " kolejnych");
+        lines.Add("");
+        lines.Add("Razem: " + victims.Count + " pustych plików. Napisz „potwierdz”, aby je przenieść do Kosza, albo „anuluj”.");
+        return string.Join(Environment.NewLine, lines);
+    }
+
+    /// <summary>Proposes a bulk rename of direct children of one folder: replace one text fragment with
+    /// another in file names. Nothing changes before consent; collisions and unsafe results are skipped.</summary>
+    private string ProposeRename(string rest)
+    {
+        int zamienIdx = rest.LastIndexOf(" zamien ", StringComparison.OrdinalIgnoreCase);
+        if (zamienIdx <= 0)
+            return "Użyj: „zmien nazwy: C:\\Dane zamien IMG_ na wakacje_” — najpierw pokażę listę zmian.";
+        string dirPart = CleanDir(rest[..zamienIdx]);
+        string opened = TryOpenDirectory(dirPart);
+        if (!Directory.Exists(opened)) return opened;
+        string after = rest[(zamienIdx + " zamien ".Length)..];
+        int naIdx = after.LastIndexOf(" na ", StringComparison.OrdinalIgnoreCase);
+        if (naIdx <= 0)
+            return "Nie widzę, na co zmienić. Użyj: „… zamien IMG_ na wakacje_”.";
+        string from = after[..naIdx].Trim().Trim('"');
+        string to = after[(naIdx + " na ".Length)..].Trim().Trim('"');
+        if (from.Length == 0) return "Podaj tekst do zamiany, np. „… zamien IMG_ na wakacje_”.";
+
+        var pairs = new List<(string From, string To)>();
+        var skipped = new List<string>();
+        foreach (var info in new DirectoryInfo(opened).EnumerateFiles())
+        {
+            if ((info.Attributes & FileAttributes.ReparsePoint) != 0) continue;
+            string name = info.Name;
+            if (name.IndexOf(from, StringComparison.OrdinalIgnoreCase) < 0) continue;
+            string newName = name.Replace(from, to, StringComparison.OrdinalIgnoreCase);
+            if (newName == name) continue;
+            if (!FileWorkspaceService.IsSafeName(newName)) { skipped.Add(name + " → " + newName + " (wynikowa nazwa nie jest bezpieczna)"); continue; }
+            string target = Path.Combine(opened, newName);
+            if (File.Exists(target)) { skipped.Add(name + " → " + newName + " (taka nazwa już istnieje)"); continue; }
+            pairs.Add((info.FullName, target));
+        }
+        if (pairs.Count == 0)
+            return "Brak plików do zmiany" + (skipped.Count > 0 ? " — pominięte: " + string.Join("; ", skipped) : " — żaden plik bezpośrednio w " + opened + " nie zawiera „" + from + "”.");
+        pending = new PendingRename(opened, pairs, skipped);
+        var lines = new List<string>
+        {
+            "ZMIANA-NAZW • " + opened,
+            "Zmienię nazwy " + pairs.Count + " plików (tylko bezpośrednio w tym folderze):",
+        };
+        foreach (var (fromPath, toPath) in pairs.Take(MaxReportedGroups)) lines.Add("   · " + Path.GetFileName(fromPath) + " → " + Path.GetFileName(toPath));
+        if (pairs.Count > MaxReportedGroups) lines.Add("   · …i " + (pairs.Count - MaxReportedGroups) + " kolejnych");
+        if (skipped.Count > 0) { lines.Add(""); lines.Add("Pominięte: " + string.Join("; ", skipped)); }
+        lines.Add("");
+        lines.Add("Napisz „potwierdz”, aby zmienić nazwy, albo „anuluj”. Zmianę nazwy można cofnąć ręcznie.");
+        return string.Join(Environment.NewLine, lines);
+    }
+
+    private string ExecuteRename(PendingRename op, string command)
+    {
+        string id = history.CreateActionId();
+        history.AddRunning(id, "FILE_RENAME", command);
+        var done = new List<string>();
+        var failed = new List<string>();
+        foreach (var (from, to) in op.Pairs)
+        {
+            try
+            {
+                if (!File.Exists(from)) { failed.Add(Path.GetFileName(from) + " (plik już nie istnieje)"); continue; }
+                if (File.Exists(to)) { failed.Add(Path.GetFileName(from) + " (nazwa docelowa właśnie powstała)"); continue; }
+                File.Move(from, to, false);
+                if (File.Exists(from) || !File.Exists(to)) { failed.Add(Path.GetFileName(from) + " (weryfikacja niepowiedziona)"); continue; }
+                done.Add(Path.GetFileName(from) + " → " + Path.GetFileName(to));
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { failed.Add(Path.GetFileName(from) + " (" + ex.Message + ")"); }
+        }
+        if (done.Count == 0)
+        {
+            history.AddResult(id, "FILE_RENAME", command, ActionExecutionResult.Failure("Żadna nazwa nie została zmieniona."));
+            return "FAILED • " + id + "\nŻadna nazwa nie została zmieniona.\n" + string.Join("\n", failed.Select(f => "   · " + f));
+        }
+        string message = "Zmieniono nazwy: " + done.Count + (failed.Count > 0 ? ", pominięte: " + failed.Count : "") + ".";
+        var result = ActionExecutionResult.VerifiedSuccess(message,
+            string.Join("\n", done) + (failed.Count > 0 ? "\nPominięte:\n" + string.Join("\n", failed.Select(f => "   · " + f)) : ""));
+        history.AddResult(id, "FILE_RENAME", command, failed.Count == 0 ? result : ActionExecutionResult.Failure(result.Message + " Część plików pominięta: " + failed.Count));
+        return (failed.Count == 0 ? "VERIFIED • " : "PARTIAL • ") + id + "\n" + result.Message + "\n" + result.Evidence;
+    }
+
+    private string ExecuteRecycle(PendingRecycle batch, string command)
     {
         string id = history.CreateActionId();
         history.AddRunning(id, "FILE_RECYCLE", command);

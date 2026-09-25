@@ -90,18 +90,20 @@ Stan na 2026-09-25 (0.93). Zasada: każda pojedyncza pozycja znika z listy dopie
 
 - **Bezpieczna praca na plikach (P0.1 — część)**: `Services/Files/FileCleanupService` — `duplikaty: <folder>` (SHA-256, grupy + odzyskiwalne bajty, tylko odczyt), `porzadki: <folder>` (największe/puste/najstarsze/rozmiar, tylko odczyt), `usuń do kosza: <ścieżka>` z dwustopniowym potwierdzeniem i jednorazowym pending (późniejsze „tak” nie usuwa). Limity: 50 000 plików, ≤256 MB hashowane, junction/symlinki nieprzechodzone, dowiązania nieusuwalne. Audyt: FILE_SCAN_DUPLICATES/FILE_SCAN_TIDY/FILE_RECYCLE.
 - `tests/FileCleanupRegression.cs` (w tym test junction przez `mklink /J`) + asercje end-to-end w smoke UI; skróty `//duplikaty`, `//porzadki` w palecie.
-- Z P0.1 wciąż otwarte: zbiorcze zmiany nazw z podglądem, „plan porządkowania” z wykonaniem kroków (raport już jest). Usunięte z listy otwartej w 0.93: usuwanie duplikatów z listy (zrobione).
+- P0.1 domknięte w 0.93: usuwanie duplikatów z listy, sprzątanie pustych plików, zbiorcze zmiany nazw z podglądem — wszystko za jawną zgodą.
 
 ## Gotowe w 0.93 (ten przyrost — patrz git)
 
 - **`usuń duplikaty: <folder>`**: z każdej grupy identycznych treści zostawia 1 plik (najkrótsza ścieżka), resztę po jawnym `potwierdz` przenosi do Kosza; wynik per plik (VERIFIED/PARTIAL/FAILED) w audycie `FILE_RECYCLE`. Propozycja zawsze pokazuje pełną listę przed zgodą; `anuluj`/inne polecenie porzuca operację.
-- **Decyzja użytkownika**: automatyczne wydanie rolling WYŁĄCZONE — `release.yml` publikuje tylko tagi `v*.*.*` i ręczny dispatch; zwykły push tylko buduje i testuje.
-- Regresja rozszerzona (cykl zgody na sprzątanie duplikatów), `co nowego` i wersja zaktualizowane do 0.93.
-- Z P0.1 nadal otwarte: zbiorcze zmiany nazw z podglądem; wykonywalny „plan porządkowania” ponad duplikaty (np. puste pliki).
+- **`usuń puste pliki: <folder>`**: pliki 0 B po jawnym `potwierdz` do Kosza (ten sam mechanizm jednorazowej zgody).
+- **`zmien nazwy: <folder> zamien X na Y`**: zbiorcza zmiana nazw plików bezpośrednio w folderze — podgląd `stara → nowa`, kolizje i niebezpieczne nazwy pomijane i ogłoszone, wykonanie po `potwierdz` (`File.Move` bez nadpisywania), audyt `FILE_RENAME`.
+- **Decyzja użytkownika**: automatyczne wydanie rolling WYŁĄCZONE — `release.yml` publikuje tylko tagi `v*.*.*` i ręczny dispatch; zwykły push tylko buduje i testuje. **Nie publikować EXE bez wyraźnej prośby.**
+- Skróty `//sprzatanie`, `//nazwy` w palecie; `co nowego` zaktualizowane.
+- **P0.1 „plików” domknięte** — wszystkie pozycje zbudowane i testowane w CI.
 
 ## Priorytet P0 — kolejny przyrost
 
-1. **Pliki (w dużej części zrobione w 0.92/0.93)**: zostało — zbiorcze zmiany nazw z podglądem i ewentualnie sprzątanie pustych plików tym samym mechanizmem zgody. Zrobione: duplikaty po treści (SHA-256), raport porządkowy, usuwanie pojedynczych plików do Kosza z potwierdzeniem, usuwanie duplikatów (`usuń duplikaty:`) z pozostawieniem 1 kopii na grupę.
+1. **Pliki — DOMKNIĘTE w 0.92/0.93**: duplikaty po treści (SHA-256), raport porządkowy, usuwanie pojedynczych plików do Kosza z potwierdzeniem, usuwanie duplikatów (`usuń duplikaty:`) z pozostawieniem 1 kopii na grupę, sprzątanie pustych plików (`usuń puste pliki:`), zbiorcze zmiany nazw z podglądem (`zmien nazwy: … zamien … na …`). Ewentualne rozszerzenia (filtry rozmiaru, podfoldery w zmianach nazw) to P1.
 2. **Sekwencje działań**: nazwane kroki, plan z podglądem, statusy kroków, zatrzymanie na błędzie, wznowienie tam, gdzie to sensowne.
 3. **Panel archiwum w UI**: strona/panel z listą archiwów (miesiąc, rozmowy, wypowiedzi, rozmiar, hash), podglądem Markdowna i usuwaniem — dziś archiwum działa z czatu i z ustawień, ale nie ma własnego widoku.
 4. **Podpisywanie buildów**: certyfikat (płatny) albo jawnie opisana ścieżka bez podpisu z instrukcją odblokowania SmartScreen; dziś pliki są niepodpisane i tak jest opisane.

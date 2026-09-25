@@ -118,5 +118,51 @@ internal static class FileCleanupRegression
         Check(recycler.Recycled.Count == 2 && recycler.Recycled[1] == aCopy, "only the redundant copy may reach the recycler");
         string cleanAgain = await service.ProcessAsync("usuń duplikaty: " + root, ct) ?? "";
         Check(cleanAgain.Contains("nie ma czego sprzątać"), "a folder without duplicates must say so: " + cleanAgain);
+
+        // --- empty-file cleanup: consent required, only 0-byte files move ---
+        string emptyDir = Path.Combine(directory, "empties");
+        Directory.CreateDirectory(emptyDir);
+        string empty1 = Path.Combine(emptyDir, "pusty1.txt");
+        string empty2 = Path.Combine(emptyDir, "pusty2.log");
+        string full = Path.Combine(emptyDir, "pelny.txt");
+        File.WriteAllText(empty1, "");
+        File.WriteAllText(empty2, "");
+        File.WriteAllText(full, "cos");
+        int recycledBefore = recycler.Recycled.Count;
+        string emptyProposal = await service.ProcessAsync("usuń puste pliki: " + emptyDir, ct) ?? "";
+        Check(emptyProposal.Contains("KOSZ-PUSTE") && emptyProposal.Contains("pusty1.txt"), "empty-file proposal must list the victims: " + emptyProposal);
+        Check(File.Exists(empty1) && File.Exists(empty2) && recycler.Recycled.Count == recycledBefore, "nothing may move before consent");
+        string emptyConfirmed = await service.ProcessAsync("potwierdz", ct) ?? "";
+        Check(emptyConfirmed.Contains("VERIFIED"), "confirmed empty cleanup must verify: " + emptyConfirmed);
+        Check(!File.Exists(empty1) && !File.Exists(empty2) && File.Exists(full), "only 0-byte files may be recycled");
+        Check(recycler.Recycled.Count == recycledBefore + 2, "exactly the two empty files must reach the recycler");
+        string emptyAgain = await service.ProcessAsync("usuń puste pliki: " + emptyDir, ct) ?? "";
+        Check(emptyAgain.Contains("nie ma czego sprzątać"), "a folder without empty files must say so: " + emptyAgain);
+
+        // --- bulk rename with preview: consent required, collisions skipped, no overwrite ---
+        string renDir = Path.Combine(directory, "rename");
+        Directory.CreateDirectory(renDir);
+        string img1 = Path.Combine(renDir, "IMG_001.txt");
+        string img2 = Path.Combine(renDir, "IMG_002.txt");
+        string other = Path.Combine(renDir, "inne.txt");
+        string collision = Path.Combine(renDir, "nowe_001.txt");
+        File.WriteAllText(img1, "jeden");
+        File.WriteAllText(img2, "dwa");
+        File.WriteAllText(other, "trzy");
+        File.WriteAllText(collision, "kolizja");
+        string renameProposal = await service.ProcessAsync("zmien nazwy: " + renDir + " zamien IMG_ na nowe_", ct) ?? "";
+        Check(renameProposal.Contains("ZMIANA-NAZW") && renameProposal.Contains("IMG_002") && renameProposal.Contains("nowe_002.txt"),
+            "rename preview must list the planned change: " + renameProposal);
+        Check(renameProposal.Contains("już istnieje"), "the colliding rename must be announced and skipped: " + renameProposal);
+        Check(File.Exists(img1) && File.Exists(img2) && File.Exists(collision), "nothing may be renamed before consent");
+        string renameConfirmed = await service.ProcessAsync("potwierdz", ct) ?? "";
+        Check(renameConfirmed.Contains("VERIFIED"), "confirmed rename must verify: " + renameConfirmed);
+        Check(File.Exists(img1), "the colliding file must stay untouched");
+        Check(!File.Exists(img2) && File.Exists(Path.Combine(renDir, "nowe_002.txt")), "the planned rename must happen exactly once");
+        Check(File.Exists(other) && File.Exists(collision), "unrelated files must stay untouched");
+        string renameAgain = await service.ProcessAsync("zmien nazwy: " + renDir + " zamien IMG_ na nowe_", ct) ?? "";
+        Check(renameAgain.Contains("Brak plików do zmiany"), "a rename with only collisions left must say so: " + renameAgain);
+        string renameBare = await service.ProcessAsync("zmien nazwy", ct) ?? "";
+        Check(renameBare.Contains("Użyj"), "a bare rename command must show usage: " + renameBare);
     }
 }

@@ -124,6 +124,8 @@ public sealed class CommandRouter
         if (text is "co nowego" or "lista zmian" or "changelog" or "co sie zmienilo")
             return "CO NOWEGO W 0.93 · PORZĄDKI\n" +
                 "· „usuń duplikaty: folder” — z każdej grupy identycznych plików zostawia 1, resztę po Twoim „potwierdz” przenosi do Kosza.\n" +
+                "· „usuń puste pliki: folder” — pliki 0 B po Twoim „potwierdz” do Kosza.\n" +
+                "· „zmien nazwy: folder zamien X na Y” — podgląd zmian nazw, wykonuje dopiero po „potwierdz”, nigdy nie nadpisuje.\n" +
                 "· Publikacja EXE na GitHubie tylko dla wydań milowych albo na żądanie (bez automatycznego wydania przy każdym pushu).\n" +
                 "\nCO NOWEGO W 0.92 · BEZPIECZNE PLIKI\n" +
                 "· Bezpieczne pliki: „duplikaty: folder” znajduje identyczne treści (SHA-256), „porzadki: folder” pokazuje, co zajmuje miejsce — oba tylko do odczytu.\n" +
