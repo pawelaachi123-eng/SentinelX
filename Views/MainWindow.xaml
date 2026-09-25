@@ -113,29 +113,21 @@
                             <DataTemplate.Triggers>
                                 <DataTrigger Binding="{Binding Key}" Value="command">
                                     <Setter TargetName="Ico" Property="Data" Value="{StaticResource SxIconCommand}"/>
+                                    <Setter TargetName="Ico" Property="Visibility" Value="Visible"/>
+                                    <Setter TargetName="Glyph" Property="Visibility" Value="Collapsed"/>
                                 </DataTrigger>
                                 <DataTrigger Binding="{Binding Key}" Value="memory">
                                     <Setter TargetName="Ico" Property="Data" Value="{StaticResource SxIconMemory}"/>
+                                    <Setter TargetName="Ico" Property="Visibility" Value="Visible"/>
+                                    <Setter TargetName="Glyph" Property="Visibility" Value="Collapsed"/>
                                 </DataTrigger>
                                 <DataTrigger Binding="{Binding Key}" Value="projects">
                                     <Setter TargetName="Ico" Property="Data" Value="{StaticResource SxIconProjects}"/>
+                                    <Setter TargetName="Ico" Property="Visibility" Value="Visible"/>
+                                    <Setter TargetName="Glyph" Property="Visibility" Value="Collapsed"/>
                                 </DataTrigger>
                                 <DataTrigger Binding="{Binding Key}" Value="settings">
                                     <Setter TargetName="Ico" Property="Data" Value="{StaticResource SxIconSettings}"/>
-                                </DataTrigger>
-                                <DataTrigger Binding="{Binding Key}" Value="command">
-                                    <Setter TargetName="Ico" Property="Visibility" Value="Visible"/>
-                                    <Setter TargetName="Glyph" Property="Visibility" Value="Collapsed"/>
-                                </DataTrigger>
-                                <DataTrigger Binding="{Binding Key}" Value="memory">
-                                    <Setter TargetName="Ico" Property="Visibility" Value="Visible"/>
-                                    <Setter TargetName="Glyph" Property="Visibility" Value="Collapsed"/>
-                                </DataTrigger>
-                                <DataTrigger Binding="{Binding Key}" Value="projects">
-                                    <Setter TargetName="Ico" Property="Visibility" Value="Visible"/>
-                                    <Setter TargetName="Glyph" Property="Visibility" Value="Collapsed"/>
-                                </DataTrigger>
-                                <DataTrigger Binding="{Binding Key}" Value="settings">
                                     <Setter TargetName="Ico" Property="Visibility" Value="Visible"/>
                                     <Setter TargetName="Glyph" Property="Visibility" Value="Collapsed"/>
                                 </DataTrigger>
@@ -143,7 +135,7 @@
                                     <Setter TargetName="Chip" Property="Background" Value="{StaticResource SxPrimaryGradient}"/>
                                     <Setter TargetName="Mark" Property="Opacity" Value="1"/>
                                 </DataTrigger>
-                            </DataTemplate.Triggers>
+                        </DataTemplate.Triggers>
                         </DataTemplate>
                     </ListBox.ItemTemplate>
                 </ListBox>
