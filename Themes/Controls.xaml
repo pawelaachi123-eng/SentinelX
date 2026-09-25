@@ -713,6 +713,82 @@
         <Setter Property="SnapsToDevicePixels" Value="True"/>
     </Style>
 
+    <!--  0.94 · SxIconTile: kafelek 32x32 pod ikonę nagłówka. Właściciel może nadpisać Background pastą hue.  -->
+    <Style x:Key="SxIconTile" TargetType="Border">
+        <Setter Property="Width" Value="32"/>
+        <Setter Property="Height" Value="32"/>
+        <Setter Property="CornerRadius" Value="10"/>
+        <Setter Property="Background" Value="{StaticResource SxPrimaryGradient}"/>
+        <Setter Property="SnapsToDevicePixels" Value="True"/>
+    </Style>
+
+    <!--  0.94 · SxCenterTab: pikselki zakladek Centrum: pastylka z polyskiem, halo przy zaznaczeniu, animowany wskaznik.  -->
+    <Style x:Key="SxCenterTab" TargetType="ListBoxItem">
+        <Setter Property="Background" Value="{DynamicResource SxSurface}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource SxBorderSubtle}"/>
+        <Setter Property="Foreground" Value="{DynamicResource SxTextSecondary}"/>
+        <Setter Property="Padding" Value="12,8,12,9"/>
+        <Setter Property="Margin" Value="0,0,7,0"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Focusable" Value="False"/>
+        <Setter Property="u:SxMotion.HoverLift" Value="True"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ListBoxItem">
+                    <Grid>
+                        <Border x:Name="Glow" Margin="-4" CornerRadius="14" Background="{StaticResource SxHaloCyan}" Opacity="0"/>
+                        <Border x:Name="Chrome" CornerRadius="12" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1">
+                            <Grid>
+                                <Rectangle RadiusX="11" RadiusY="11" Fill="{StaticResource SxCardSheen}" IsHitTestVisible="False"/>
+                                <ContentPresenter Margin="{TemplateBinding Padding}" VerticalAlignment="Center"/>
+                            </Grid>
+                        </Border>
+                        <Border x:Name="Bar" Height="2.5" Width="28" CornerRadius="2" Background="{StaticResource SxPrimaryGradient}" VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="0,0,0,0" RenderTransformOrigin="0.5,1" Visibility="Collapsed">
+                            <Border.RenderTransform>
+                                <ScaleTransform x:Name="BarScale" ScaleX="0"/>
+                            </Border.RenderTransform>
+                        </Border>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource SxSurfaceHover}"/>
+                            <Setter TargetName="Chrome" Property="BorderBrush" Value="{DynamicResource SxBorderActive}"/>
+                            <Setter Property="Foreground" Value="{DynamicResource SxTextPrimary}"/>
+                        </Trigger>
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsSelected" Value="True"/>
+                                <Condition Property="IsMouseOver" Value="False"/>
+                            </MultiTrigger.Conditions>
+                            <Setter TargetName="Chrome" Property="BorderBrush" Value="{DynamicResource SxBorderActive}"/>
+                        </MultiTrigger>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource SxSurfaceActive}"/>
+                            <Setter TargetName="Bar" Property="Visibility" Value="Visible"/>
+                            <Setter Property="Foreground" Value="{DynamicResource SxTextPrimary}"/>
+                            <Trigger.EnterActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="BarScale" Storyboard.TargetProperty="ScaleX" From="0.1" To="1" Duration="{StaticResource SxDurationBase}" EasingFunction="{StaticResource SxFnPop}"/>
+                                        <DoubleAnimation Storyboard.TargetName="Glow" Storyboard.TargetProperty="Opacity" To="0.85" Duration="{StaticResource SxDurationSlow}"/>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.EnterActions>
+                            <Trigger.ExitActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="BarScale" Storyboard.TargetProperty="ScaleX" To="0" Duration="{StaticResource SxDurationFast}"/>
+                                        <DoubleAnimation Storyboard.TargetName="Glow" Storyboard.TargetProperty="Opacity" To="0" Duration="{StaticResource SxDurationBase}"/>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.ExitActions>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!--  0.94 · SxSearchTrigger: wyzwalacz palety w panelu bocznym — pigułka z podpowiedzią klawisza.  -->
     <Style x:Key="SxSearchTrigger" TargetType="Button">
         <Setter Property="Background" Value="{DynamicResource SxSurface}"/>

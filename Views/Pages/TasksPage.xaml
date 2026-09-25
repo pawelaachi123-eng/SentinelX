@@ -1,8 +1,18 @@
 <UserControl xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:u="clr-namespace:SentinelX.Utilities" x:Class="SentinelX.Views.Pages.TasksPage" u:PageTransitions.Enabled="True" u:UiInteraction.LoadedCommand="{Binding RefreshCommand}">
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-        <StackPanel Margin="28">
-            <TextBlock Text="Zadania i przypomnienia" Style="{StaticResource SxHeading}"/>
-            <TextBlock Text="Czasy to czas lokalny tego komputera · przypomnienia działają tylko, gdy aplikacja jest uruchomiona — spóźnione pokażą się jako przegapione, nigdy po cichu" Style="{StaticResource SxCaption}" Margin="0,0,0,24"/>
+        <StackPanel Margin="28" u:SxMotion.Stagger="True">
+            <StackPanel Margin="0,0,0,20">
+                <StackPanel Orientation="Horizontal">
+                    <Border Style="{StaticResource SxIconTile}" Background="{StaticResource SxAccentGradient}">
+                        <Path Style="{StaticResource SxIconSolid}" Data="{StaticResource SxIconTasks}" Width="16" Height="16" Fill="{DynamicResource SxWhite}"/>
+                    </Border>
+                    <StackPanel Margin="12,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="Zadania i przypomnienia" Style="{StaticResource SxHeading}"/>
+                        <TextBlock Text="Czasy to czas lokalny tego komputera · przypomnienia działają tylko, gdy aplikacja jest uruchomiona — spóźnione pokażą się jako przegapione, nigdy po cichu" Style="{StaticResource SxCaption}" Margin="0,3,0,0"/>
+                    </StackPanel>
+                </StackPanel>
+                <Border Style="{StaticResource SxAccentBar}" Height="3" Width="54" Margin="0,14,0,0" HorizontalAlignment="Left" Background="{DynamicResource SxHueLime}"/>
+            </StackPanel>
 
             <DockPanel Margin="0,0,0,12">
                 <Button Content="Odśwież" Command="{Binding RefreshCommand}" DockPanel.Dock="Right" Margin="12,0,0,0"/>

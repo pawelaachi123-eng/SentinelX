@@ -15,6 +15,16 @@
     <sys:Double x:Key="SxLiftDistance">2</sys:Double>
     <sys:Double x:Key="SxEntranceRise">14</sys:Double>
 
+    <!--  Te same czasy jako Duration (szablony nie mnożą literałów) oraz gotowe funkcje wygaszania.  -->
+    <Duration x:Key="SxDurationFast">0:0:0.11</Duration>
+    <Duration x:Key="SxDurationBase">0:0:0.18</Duration>
+    <Duration x:Key="SxDurationSlow">0:0:0.26</Duration>
+    <Duration x:Key="SxDurationShimmer">0:0:1.9</Duration>
+    <Duration x:Key="SxDurationAmbient">0:0:26</Duration>
+    <QuinticEase x:Key="SxFnOut" EasingMode="EaseOut"/>
+    <BackEase x:Key="SxFnPop" EasingMode="EaseOut" Amplitude="0.34"/>
+    <SineEase x:Key="SxFnSoft" EasingMode="EaseInOut"/>
+
     <!--  Delikatne wejście elementu: używane w DataTriggerach i z Utilities/SxMotion.cs. -->
     <Storyboard x:Key="SxEnterStory">
         <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.18">
@@ -35,7 +45,7 @@
             </DoubleAnimation.EasingFunction>
         </DoubleAnimation>
     </Storyboard>
-    <Storyboard x:Key="SxShimmerStory" RepeatBehavior="Forever">
-        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.X)" From="-320" To="520" Duration="0:0:1.9"/>
+    <Storyboard x:Key="SxShimmerStory">
+        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.X)" From="-320" To="520" Duration="{StaticResource SxDurationShimmer}" RepeatBehavior="Forever"/>
     </Storyboard>
 </ResourceDictionary>

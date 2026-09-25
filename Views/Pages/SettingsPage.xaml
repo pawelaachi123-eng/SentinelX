@@ -1,8 +1,18 @@
 <UserControl xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:u="clr-namespace:SentinelX.Utilities" x:Class="SentinelX.Views.Pages.SettingsPage" u:PageTransitions.Enabled="True">
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-        <StackPanel Margin="28">
-            <TextBlock Text="Settings" Style="{StaticResource SxHeading}"/>
-            <TextBlock Text="Ustawienia zachowują format istniejącej instalacji · JSON + kopia zapasowa" Style="{StaticResource SxCaption}" Margin="0,0,0,24"/>
+        <StackPanel Margin="28" u:SxMotion.Stagger="True">
+            <StackPanel Margin="0,0,0,20">
+                <StackPanel Orientation="Horizontal">
+                    <Border Style="{StaticResource SxIconTile}" Background="{StaticResource SxPrimaryGradient}">
+                        <Path Style="{StaticResource SxIconSolid}" Data="{StaticResource SxIconSettings}" Width="16" Height="16" Fill="{DynamicResource SxWhite}"/>
+                    </Border>
+                    <StackPanel Margin="12,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="Ustawienia" Style="{StaticResource SxHeading}"/>
+                        <TextBlock Text="Ustawienia zachowują format istniejącej instalacji · JSON + kopia zapasowa" Style="{StaticResource SxCaption}" Margin="0,3,0,0"/>
+                    </StackPanel>
+                </StackPanel>
+                <Border Style="{StaticResource SxAccentBar}" Height="3" Width="54" Margin="0,14,0,0" HorizontalAlignment="Left" Background="{DynamicResource SxHueAzure}"/>
+            </StackPanel>
             <TextBox Text="{Binding Search, UpdateSourceTrigger=PropertyChanged}" u:InputHint.Text="Szukaj…" AutomationProperties.Name="Szukaj ustawień" ToolTip="Szukaj: mikrofon, VAD, model, motyw…" Margin="0,0,0,16"/>
             <DockPanel Margin="0,0,0,16">
                 <Button Content="Przywróć sekcję" Command="{Binding ResetSectionCommand}" DockPanel.Dock="Right" Margin="12,0,0,0"/>

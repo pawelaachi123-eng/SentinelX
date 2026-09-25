@@ -38,6 +38,41 @@ public static class SxMotion
     public static void SetShimmer(DependencyObject d, bool value) => d.SetValue(ShimmerProperty, value);
     public static bool GetShimmer(DependencyObject d) => (bool)d.GetValue(ShimmerProperty);
 
+    /// <summary>
+    /// Wejście z rozłożeniem na raty: panel nada każdemu widocznemu dziecku EntranceIndex i włączy
+    /// mu Entrance. Jeden atrybut na stronie = kaskadowe pojawianie sekcji, bez zmian w ViewModelu.
+    /// </summary>
+    public static readonly DependencyProperty StaggerProperty = DependencyProperty.RegisterAttached(
+        "Stagger", typeof(bool), typeof(SxMotion), new PropertyMetadata(false, OnStaggerChanged));
+    public static void SetStagger(DependencyObject d, bool value) => d.SetValue(StaggerProperty, value);
+    public static bool GetStagger(DependencyObject d) => (bool)d.GetValue(StaggerProperty);
+
+    private static void OnStaggerChanged(DependencyObject sender, DependencyPropertyChangedEventArgs e)
+    {
+        if (sender is not FrameworkElement view) return;
+        view.Loaded -= StaggerLoaded;
+        if (e.NewValue is true) view.Loaded += StaggerLoaded;
+        if (e.NewValue is true && view.IsLoaded) ApplyStagger(view);
+    }
+
+    private static void StaggerLoaded(object sender, RoutedEventArgs args)
+    {
+        if (sender is FrameworkElement view) { view.Loaded -= StaggerLoaded; ApplyStagger(view); }
+    }
+
+    private static void ApplyStagger(FrameworkElement view)
+    {
+        if (view is not System.Windows.Controls.Panel panel || !MotionEnabled) return;
+        var order = 0;
+        foreach (System.Windows.UIElement child in panel.Children)
+        {
+            if (child is not FrameworkElement element || element.Visibility != Visibility.Visible) continue;
+            element.SetValue(EntranceIndexProperty, order++);
+            if (GetEntrance(element)) continue;
+            element.SetValue(EntranceProperty, true);
+        }
+    }
+
     /// <summary>Animacje są wyłączone, gdy użytkownik tak ustawił, gdy Windows wyłączył efekty albo gdy gra jest na pierwszym planie.</summary>
     public static bool MotionEnabled => Application.Current.TryFindResource("SxAnimationsEnabled") is true
         && SystemParameters.ClientAreaAnimation;

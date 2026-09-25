@@ -1,8 +1,18 @@
 <UserControl xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:u="clr-namespace:SentinelX.Utilities" x:Class="SentinelX.Views.Pages.ProjectsPage" u:PageTransitions.Enabled="True" u:UiInteraction.LoadedCommand="{Binding RefreshCommand}">
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-        <StackPanel Margin="28">
-            <TextBlock Text="Projekty" Style="{StaticResource SxHeading}"/>
-            <TextBlock Text="Przestrzenie robocze: notatki i rozmowy w projekcie tworzą odrębny kontekst AI — nic nie miesza się między projektami" Style="{StaticResource SxCaption}" Margin="0,0,0,24"/>
+        <StackPanel Margin="28" u:SxMotion.Stagger="True">
+            <StackPanel Margin="0,0,0,20">
+                <StackPanel Orientation="Horizontal">
+                    <Border Style="{StaticResource SxIconTile}" Background="{StaticResource SxSeaGradient}">
+                        <Path Style="{StaticResource SxIconSolid}" Data="{StaticResource SxIconProjects}" Width="16" Height="16" Fill="{DynamicResource SxWhite}"/>
+                    </Border>
+                    <StackPanel Margin="12,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="Projekty" Style="{StaticResource SxHeading}"/>
+                        <TextBlock Text="Przestrzenie robocze: notatki i rozmowy w projekcie tworzą odrębny kontekst AI — nic nie miesza się między projektami" Style="{StaticResource SxCaption}" Margin="0,3,0,0"/>
+                    </StackPanel>
+                </StackPanel>
+                <Border Style="{StaticResource SxAccentBar}" Height="3" Width="54" Margin="0,14,0,0" HorizontalAlignment="Left" Background="{DynamicResource SxHueTeal}"/>
+            </StackPanel>
 
             <DockPanel Margin="0,0,0,12">
                 <Button Content="Odśwież" Command="{Binding RefreshCommand}" DockPanel.Dock="Right" Margin="12,0,0,0"/>

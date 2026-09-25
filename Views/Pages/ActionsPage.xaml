@@ -1,8 +1,18 @@
 <UserControl xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:u="clr-namespace:SentinelX.Utilities" x:Class="SentinelX.Views.Pages.ActionsPage" u:PageTransitions.Enabled="True">
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-        <StackPanel Margin="28">
-            <TextBlock Text="Actions" Style="{StaticResource SxHeading}"/>
-            <TextBlock Text="Kontrola zadań, zgody i dowody wykonania. Anulowanie nie cofa ukończonych kroków." Style="{StaticResource SxCaption}" Margin="0,0,0,24"/>
+        <StackPanel Margin="28" u:SxMotion.Stagger="True">
+            <StackPanel Margin="0,0,0,20">
+                <StackPanel Orientation="Horizontal">
+                    <Border Style="{StaticResource SxIconTile}" Background="{StaticResource SxSunsetGradient}">
+                        <Path Style="{StaticResource SxIconSolid}" Data="{StaticResource SxIconActions}" Width="16" Height="16" Fill="{DynamicResource SxWhite}"/>
+                    </Border>
+                    <StackPanel Margin="12,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="Akcje" Style="{StaticResource SxHeading}"/>
+                        <TextBlock Text="Kontrola zadań, zgody i dowody wykonania. Anulowanie nie cofa ukończonych kroków." Style="{StaticResource SxCaption}" Margin="0,3,0,0"/>
+                    </StackPanel>
+                </StackPanel>
+                <Border Style="{StaticResource SxAccentBar}" Height="3" Width="54" Margin="0,14,0,0" HorizontalAlignment="Left" Background="{DynamicResource SxHueRose}"/>
+            </StackPanel>
             <TextBlock Text="{Binding Status}" Style="{StaticResource SxCaption}" Margin="0,0,0,16"/>
             <Border Style="{StaticResource SxCardElevated}" BorderBrush="{DynamicResource SxWarning}" Margin="0,0,0,16" Visibility="{Binding HasPermission, Converter={StaticResource BoolToVisibility}}">
                 <StackPanel>
