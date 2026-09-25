@@ -233,6 +233,7 @@
     <Style x:Key="SxMetricCard" TargetType="Border" BasedOn="{StaticResource SxCard}">
         <Setter Property="Background" Value="{DynamicResource SxSurfaceRaised}"/>
         <Setter Property="Padding" Value="18,14"/>
+        <Setter Property="u:SxMotion.HoverLift" Value="True"/>
     </Style>
     <Style x:Key="SxBadge" TargetType="Border">
         <Setter Property="Background" Value="{DynamicResource SxSurfaceActive}"/>

@@ -19,7 +19,7 @@
                         <TextBlock Text="CPU" Style="{StaticResource SxStatLabel}"/>
                         <TextBlock Text="{Binding Snapshot.CpuText}" Style="{StaticResource SxNumber}" FontSize="28" Margin="0,9,0,4"/>
                         <TextBlock Text="Całkowite użycie" Style="{StaticResource SxHint}"/>
-                        <Border Style="{StaticResource SxAccentBar}" Height="3" Width="Auto" Margin="0,11,0,0" HorizontalAlignment="Stretch" Background="{{DynamicResource SxHueAzure}}"/>
+                        <Border Style="{StaticResource SxAccentBar}" Height="3" Width="Auto" Margin="0,11,0,0" HorizontalAlignment="Stretch" Background="{DynamicResource SxHueAzure}"/>
                     </StackPanel>
                 </Border>
                 <Border Style="{StaticResource SxMetricCard}" Margin="4">
@@ -27,7 +27,7 @@
                         <TextBlock Text="RAM" Style="{StaticResource SxStatLabel}"/>
                         <TextBlock Text="{Binding Snapshot.RamText}" Style="{StaticResource SxNumber}" FontSize="21" Margin="0,9,0,4"/>
                         <TextBlock Text="Pamięć fizyczna" Style="{StaticResource SxHint}"/>
-                        <Border Style="{StaticResource SxAccentBar}" Height="3" Width="Auto" Margin="0,11,0,0" HorizontalAlignment="Stretch" Background="{{DynamicResource SxHueViolet}}"/>
+                        <Border Style="{StaticResource SxAccentBar}" Height="3" Width="Auto" Margin="0,11,0,0" HorizontalAlignment="Stretch" Background="{DynamicResource SxHueViolet}"/>
                     </StackPanel>
                 </Border>
                 <Border Style="{StaticResource SxMetricCard}" Margin="4">
@@ -35,7 +35,7 @@
                         <TextBlock Text="GPU" Style="{StaticResource SxStatLabel}"/>
                         <TextBlock Text="{Binding Snapshot.GpuText}" Style="{StaticResource SxNumber}" FontSize="28" Margin="0,9,0,4"/>
                         <TextBlock Text="Silnik 3D / Compute" Style="{StaticResource SxHint}"/>
-                        <Border Style="{StaticResource SxAccentBar}" Height="3" Width="Auto" Margin="0,11,0,0" HorizontalAlignment="Stretch" Background="{{DynamicResource SxHueMint}}"/>
+                        <Border Style="{StaticResource SxAccentBar}" Height="3" Width="Auto" Margin="0,11,0,0" HorizontalAlignment="Stretch" Background="{DynamicResource SxHueMint}"/>
                     </StackPanel>
                 </Border>
                 <Border Style="{StaticResource SxMetricCard}" Margin="4">
@@ -43,7 +43,7 @@
                         <TextBlock Text="VRAM" Style="{StaticResource SxStatLabel}"/>
                         <TextBlock Text="{Binding Snapshot.VramText}" Style="{StaticResource SxNumber}" FontSize="17" Margin="0,9,0,4"/>
                         <TextBlock Text="Brak wiarygodnego licznika" Style="{StaticResource SxHint}"/>
-                        <Border Style="{StaticResource SxAccentBar}" Height="3" Width="Auto" Margin="0,11,0,0" HorizontalAlignment="Stretch" Background="{{DynamicResource SxHueAmber}}"/>
+                        <Border Style="{StaticResource SxAccentBar}" Height="3" Width="Auto" Margin="0,11,0,0" HorizontalAlignment="Stretch" Background="{DynamicResource SxHueAmber}"/>
                     </StackPanel>
                 </Border>
             </UniformGrid>
