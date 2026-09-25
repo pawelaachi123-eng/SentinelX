@@ -172,7 +172,7 @@ public sealed class FileCleanupService
             foreach (var (hash, paths) in byHash.Where(x => x.Value.Count > 1))
                 groups.Add(new DuplicateGroup(hash, byLength.Key, paths));
         }
-        groups.Sort((a, b) => b.Size * (b.Paths.Count - 1)).CompareTo(a.Size * (a.Paths.Count - 1)));
+        groups.Sort((a, b) => (b.Size * (b.Paths.Count - 1)).CompareTo(a.Size * (a.Paths.Count - 1)));
         long reclaimable = groups.Sum(g => g.Size * (g.Paths.Count - 1));
         return (groups, reclaimable, tooLarge, inaccessible);
     }
