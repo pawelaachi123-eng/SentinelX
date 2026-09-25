@@ -163,7 +163,7 @@ public sealed class CommandRouter
 
         // Collaboration mode — only UI button enables it (user request: button_only to avoid accidental voice activation)
         if (text is "ekran" or "pokaz ekran" or "podglad ekranu" or "wspolpraca" or "tryb wspolpracy" or "wlacz wspolprace" or "włącz współpracę" or "pokaz pulpit" or "udostepnij ekran" or "udostępnij ekran")
-            return "🖥️ WSPÓŁPRACA EKRANOWA — włączenie TYLKO przyciskiem w UI (świadoma zgoda, bez głosu):\n" +
+            return "🖥️ WSPÓŁPRACA EKRANOWA — włączenie Tylko przyciskiem w UI (świadoma zgoda, bez głosu) — TYLKO przyciskiem:\n" +
                 "· Otwórz Centrum → zakładka 🖥️ Ekran (albo wpisz //ekran) → przycisk „WŁĄCZ TRYB WSPÓŁPRACY”.\n" +
                 "· Po włączeniu: LIVE podgląd całego pulpitu (wszystkie monitory, możesz przełączać), drugi kursor w innym kolorze (niebieski) obok Twojego, pełna kontrola myszki (kliki w Blenderze, przeglądarce).\n" +
                 "· Widoczny wskaźnik: czerwona ramka wokół ekranu + napis „TRYB WSPÓŁPRACY AKTYWNY”.\n" +
