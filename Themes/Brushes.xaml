@@ -56,7 +56,7 @@
     <DrawingBrush x:Key="SxGrain" TileMode="Tile" Viewport="0,0,90,90" ViewportUnits="Absolute" Opacity="0.55">
         <DrawingBrush.Drawing>
             <DrawingGroup>
-                <GeometryDrawing Brush="{DynamicResource SxGlass}">
+                <GeometryDrawing Brush="{StaticResource SxGlass}">
                     <GeometryDrawing.Geometry>
                         <GeometryGroup>
                             <EllipseGeometry Center="12,18" RadiusX="1" RadiusY="1"/>
@@ -67,7 +67,7 @@
                         </GeometryGroup>
                     </GeometryDrawing.Geometry>
                 </GeometryDrawing>
-                <GeometryDrawing Brush="{DynamicResource SxSheen}">
+                <GeometryDrawing Brush="{StaticResource SxSheen}">
                     <GeometryDrawing.Geometry>
                         <GeometryGroup>
                             <EllipseGeometry Center="66,74" RadiusX="1" RadiusY="1"/>

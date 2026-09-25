@@ -128,7 +128,7 @@ public sealed class DesktopService(ISettingsService settings, IActionEngine engi
         if (palette != null) dictionaries.Remove(palette);
         palette = new ResourceDictionary { Source = new Uri($"Themes/{theme}.xaml", UriKind.Relative) };
         dictionaries.Add(palette);
-        Application.Current.Resources["SxAccentCyanColor"] = (Color)ColorConverter.ConvertFromString(settings.Current.Ui.AccentColor);
+        ApplyAccent((Color)ColorConverter.ConvertFromString(settings.Current.Ui.AccentColor));
         Application.Current.Resources["SxAnimationsEnabled"] = settings.Current.Ui.AnimationsEnabled && string.IsNullOrEmpty(monitor.Current.Game);
         if (overlay != null) ApplyOverlay();
         if (Environment.GetEnvironmentVariable("SENTINEL_UI_SMOKE") == "1") return;
@@ -140,6 +140,28 @@ public sealed class DesktopService(ISettingsService settings, IActionEngine engi
             else SetStatus("Nie udało się zastosować autostartu w rejestrze Windows.");
         }
     }
+    /// <summary>
+    /// 0.94 · Wybrany akcent nie może być tylko kolorem tekstu: podpinamy pod niego gradienty,
+    /// halo tła, ramkę aktywnej pozycji i zaznaczenie w tabelach. Wszystko przez te same tokeny,
+    /// więc motywy (Dark / Deep Dark / Light) nadal decydują o reszcie palety.
+    /// </summary>
+    private static void ApplyAccent(Color accent)
+    {
+        var resources = Application.Current.Resources;
+        resources["SxAccentCyanColor"] = accent;
+        resources["SxAccentGradStartColor"] = accent;
+        resources["SxAccentCyanDimColor"] = Shade(accent, 0.62);
+        resources["SxVoiceActiveColor"] = accent;
+        resources["SxBorderActiveColor"] = Shade(accent, 1.24);
+        resources["SxSelectionColor"] = Color.FromArgb(0x4D, accent.R, accent.G, accent.B);
+        resources["SxAurora1Color"] = Color.FromArgb(0x4A, accent.R, accent.G, accent.B);
+    }
+
+    private static Color Shade(Color color, double factor) => Color.FromRgb(
+        (byte)Math.Clamp(color.R * factor, 0, 255),
+        (byte)Math.Clamp(color.G * factor, 0, 255),
+        (byte)Math.Clamp(color.B * factor, 0, 255));
+
     private void ApplyOverlay()
     {
         if (overlay == null) return;
