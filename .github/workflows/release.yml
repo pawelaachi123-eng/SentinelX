@@ -1,14 +1,17 @@
 name: Release (portable ZIP, installer, checksums)
 
 # Zasada 0.91: KAŻDY upgrade dostarcza pliki do pobrania z GitHuba.
-#   - workflow_dispatch  → wydanie „rolling”: stabilny tag `rolling` jest przesuwany na najnowszy
-#     build, więc https://github.com/.../releases/tag/rolling zawsze oferuje aktualny EXE/ZIP.
-#   - push tagu v*.*.*   → wydanie milowe (np. v0.91.0) z pełną notatką.
+#   - push do gałęzi roboczej / workflow_dispatch → wydanie „rolling”: stabilny tag `rolling`
+#     jest przesuwany na najnowszy ZWALIDOWANY build, więc
+#     https://github.com/.../releases/tag/rolling zawsze oferuje aktualny EXE/ZIP.
+#   - push tagu v*.*.* → wydanie milowe (np. v0.91.0) z pełną notatką.
 # Obie ścieżki przechodzą najpierw pełną walidację (architektura, build, smoke UI, regresja,
-# smoke wersji portable) — nic nie zostaje opublikowane bez zielonych testów.
+# smoke wersji portable) — nic nie zostaje opublikowane bez zielonych testów. Push, który
+# obleje testy, kończy bieg przed krokiem publikacji i niczego nie wydaje.
 on:
   push:
     tags: ['v*.*.*']
+    branches: [arena/01a0ca99-sentinelx]
   workflow_dispatch:
     inputs:
       tag:
@@ -18,6 +21,12 @@ on:
 
 permissions:
   contents: write
+
+# Push na tę samą gałąź anuluje wcześniejszy przebieg — liczy się najnowszy build
+# (chroni tag `rolling` przed wyścigiem dwóch publikacji naraz).
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   release:
@@ -141,7 +150,7 @@ jobs:
             - Ollama nie jest dołączone — modele pobierasz osobno i tylko za swoją zgodą.
             - Wszystkie dane (rozmowy, wspomnienia, raporty, archiwa) zostają lokalnie w `%LocalAppData%\SentinelX`.
       - name: Publish rolling release (every upgrade)
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/'))
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
