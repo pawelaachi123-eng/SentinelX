@@ -1,11 +1,24 @@
-<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" x:Class="SentinelX.Views.Overlay.OverlayWindow" WindowStyle="None" AllowsTransparency="True" Topmost="True" ShowInTaskbar="False" ShowActivated="False" Background="{DynamicResource SxTransparent}" SizeToContent="WidthAndHeight" ResizeMode="NoResize" Left="20" Top="20" MouseLeftButtonDown="DragOverlay">
-    <Border Background="{DynamicResource SxOverlayBg}" CornerRadius="12" Padding="16,12" BorderBrush="{DynamicResource SxBorder}" BorderThickness="1">
-        <StackPanel MinWidth="220">
-            <TextBlock Text="SENTINEL X   /   TELEMETRY" Foreground="{DynamicResource SxAccentCyan}" FontSize="11" Margin="0,0,0,12"/>
-            <TextBlock Text="RAM" Style="{StaticResource SxCaption}"/>
-            <TextBlock Text="{Binding System.Snapshot.RamText}" FontSize="22" FontWeight="Bold"/>
-            <TextBlock Text="{Binding System.Snapshot.CpuText, StringFormat=CPU  {0}}" Margin="0,8,0,0"/>
-            <TextBlock Text="{Binding System.Snapshot.GpuText, StringFormat=GPU  {0}}"/>
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:u="clr-namespace:SentinelX.Utilities" x:Class="SentinelX.Views.Overlay.OverlayWindow" WindowStyle="None" AllowsTransparency="True" Topmost="True" ShowInTaskbar="False" ShowActivated="False" Background="{DynamicResource SxTransparent}" SizeToContent="WidthAndHeight" ResizeMode="NoResize" Left="20" Top="20" MouseLeftButtonDown="DragOverlay">
+    <Border Background="{DynamicResource SxOverlayBg}" CornerRadius="16" Padding="18,14" BorderBrush="{DynamicResource SxBorder}" BorderThickness="1" u:SxMotion.Entrance="True">
+        <StackPanel MinWidth="226">
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                <Ellipse Width="7" Height="7" VerticalAlignment="Center" Fill="{DynamicResource SxAccentCyan}"/>
+                <TextBlock Text="SENTINEL X · TELEMETRIA" Style="{StaticResource SxEyebrow}" Margin="8,0,0,0"/>
+            </StackPanel>
+            <Border Style="{StaticResource SxDivider}" Margin="0,0,0,12"/>
+            <TextBlock Text="RAM" Style="{StaticResource SxStatLabel}"/>
+            <TextBlock Text="{Binding System.Snapshot.RamText}" Style="{StaticResource SxNumber}" FontSize="22" Margin="0,2,0,0"/>
+            <Grid Margin="0,10,0,0">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="CPU" Style="{StaticResource SxStatLabel}" Width="42"/>
+                    <TextBlock Text="{Binding System.Snapshot.CpuText}" Style="{StaticResource SxValueText}"/>
+                </StackPanel>
+                <TextBlock Text="{Binding System.Snapshot.GamingText, StringFormat=GRA · {0}}" Style="{StaticResource SxHint}" HorizontalAlignment="Right"/>
+            </Grid>
+            <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                <TextBlock Text="GPU" Style="{StaticResource SxStatLabel}" Width="42"/>
+                <TextBlock Text="{Binding System.Snapshot.GpuText}" Style="{StaticResource SxValueText}"/>
+            </StackPanel>
         </StackPanel>
     </Border>
 </Window>

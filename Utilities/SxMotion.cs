@@ -74,7 +74,7 @@ public static class SxMotion
     }
 
     /// <summary>Animacje są wyłączone, gdy użytkownik tak ustawił, gdy Windows wyłączył efekty albo gdy gra jest na pierwszym planie.</summary>
-    public static bool MotionEnabled => Application.Current.TryFindResource("SxAnimationsEnabled") is true
+    public static bool MotionEnabled => Application.Current?.TryFindResource("SxAnimationsEnabled") is true
         && SystemParameters.ClientAreaAnimation;
 
     private static void OnEntranceChanged(DependencyObject sender, DependencyPropertyChangedEventArgs e)
@@ -197,19 +197,14 @@ public static class SxMotion
     private static void PlayFloat(FrameworkElement view, bool on)
     {
         if (!on || !MotionEnabled || !view.IsVisible) return;
-        var shift = Rise(view);
-        if (shift == null) return;
         var cycle = TimeSpan.FromMilliseconds(26000);
-        var drift = new DoubleAnimationUsingKeyFrames
-        {
-            Duration = cycle,
-            AutoReverse = true,
-            RepeatBehavior = RepeatBehavior.Forever,
-            EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut }
-        };
-        drift.KeyFrames.Add(new EasingDoubleKeyFrame(14) { KeyTime = TimeSpan.Zero });
-        drift.KeyFrames.Add(new EasingDoubleKeyFrame(-12) { KeyTime = cycle });
-        shift.BeginAnimation(TranslateTransform.YProperty, drift);
+        if (Rise(view) is { } shift)
+            shift.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(14, -12, cycle)
+            {
+                AutoReverse = true,
+                RepeatBehavior = RepeatBehavior.Forever,
+                EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut }
+            });
         view.BeginAnimation(UIElement.OpacityProperty, new DoubleAnimation(0.72, 1.0, TimeSpan.FromMilliseconds(11000))
         {
             AutoReverse = true,
@@ -235,5 +230,5 @@ public static class SxMotion
     }
 
     private static double Number(DependencyObject target, string key, double fallback)
-        => Application.Current.TryFindResource(key) is double value ? value : fallback;
+        => Application.Current?.TryFindResource(key) is double value ? value : fallback;
 }

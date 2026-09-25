@@ -1,17 +1,24 @@
 <UserControl xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:u="clr-namespace:SentinelX.Utilities" x:Class="SentinelX.Views.Controls.CommandPalette">
-    <Border Style="{StaticResource SxCardElevated}" Width="680" Padding="24" KeyboardNavigation.TabNavigation="Cycle" KeyboardNavigation.ControlTabNavigation="Cycle">
+    <Border Style="{StaticResource SxCardElevated}" Width="700" Padding="24" u:SxMotion.Entrance="True" KeyboardNavigation.TabNavigation="Cycle" KeyboardNavigation.ControlTabNavigation="Cycle">
         <Border.InputBindings>
             <KeyBinding Key="Escape" Command="{Binding CloseCommand}"/>
         </Border.InputBindings>
         <StackPanel>
             <DockPanel Margin="0,0,0,16">
-                <Button DockPanel.Dock="Right" Content="Esc  ×" Command="{Binding CloseCommand}" Style="{StaticResource SxGhostButton}" AutomationProperties.Name="Zamknij paletę poleceń"/>
-                <StackPanel>
-                    <TextBlock Text="Co chcesz zrobić?" Style="{StaticResource SxHeading}"/>
-                    <TextBlock Text="Szukaj po polsku. Wszystko pod ręką, bez zapamiętywania komend." Style="{StaticResource SxCaption}"/>
+                <Button DockPanel.Dock="Right" Command="{Binding CloseCommand}" Style="{StaticResource SxIconButton}" AutomationProperties.Name="Zamknij paletę poleceń">
+                    <Path Style="{StaticResource SxIconSolid}" Data="{StaticResource SxIconClose}" Width="13" Height="13"/>
+                </Button>
+                <StackPanel Orientation="Horizontal">
+                    <Border Style="{StaticResource SxIconTile}" Background="{StaticResource SxAccentGradient}">
+                        <Path Style="{StaticResource SxIconSolid}" Data="{StaticResource SxIconCommand}" Width="15" Height="15" Fill="{DynamicResource SxWhite}"/>
+                    </Border>
+                    <StackPanel Margin="12,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="Co chcesz zrobić?" Style="{StaticResource SxHeading}"/>
+                        <TextBlock Text="Szukaj po polsku. Wszystko pod ręką, bez zapamiętywania komend." Style="{StaticResource SxCaption}" Margin="0,3,0,0"/>
+                    </StackPanel>
                 </StackPanel>
             </DockPanel>
-            <TextBox x:Name="SearchInput" Text="{Binding Query, UpdateSourceTrigger=PropertyChanged}" u:InputHint.Text="Szukaj: pamięć, mikrofon, ustawienia…" u:UiInteraction.FocusOnVisible="True" AutomationProperties.Name="Szukaj polecenia lub strony" Margin="0,0,0,16">
+            <TextBox x:Name="SearchInput" Text="{Binding Query, UpdateSourceTrigger=PropertyChanged}" u:InputHint.Text="Szukaj: pamięć, mikrofon, ustawienia…" u:UiInteraction.FocusOnVisible="True" AutomationProperties.Name="Szukaj polecenia lub strony" Margin="0,0,0,16" FontSize="15" Padding="14,11">
                 <TextBox.InputBindings>
                     <KeyBinding Key="Enter" Command="{Binding ChooseCommand}"/>
                     <KeyBinding Key="Down" Command="{Binding NextCommand}"/>
@@ -24,37 +31,73 @@
                 </ListBox.InputBindings>
                 <ListBox.ItemContainerStyle>
                     <Style TargetType="ListBoxItem" BasedOn="{StaticResource SxSidebarItem}">
-                        <Setter Property="Height" Value="72"/>
+                        <Setter Property="Height" Value="76"/>
                     </Style>
                 </ListBox.ItemContainerStyle>
                 <ListBox.ItemTemplate>
                     <DataTemplate>
-                        <Grid>
+                        <Grid Margin="0,2">
                             <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="34"/>
                                 <ColumnDefinition/>
-                                <ColumnDefinition Width="100"/>
+                                <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-                            <StackPanel VerticalAlignment="Center">
-                                <TextBlock Text="{Binding Title}" FontWeight="SemiBold"/>
-                                <TextBlock Text="{Binding Description}" Style="{StaticResource SxCaption}" Margin="0,6,8,0" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"/>
+                            <Border x:Name="Mark" Width="28" Height="28" CornerRadius="9" VerticalAlignment="Center" Background="{DynamicResource SxGlass}" BorderBrush="{DynamicResource SxBorderSubtle}" BorderThickness="1">
+                                <Path x:Name="MarkIcon" Style="{StaticResource SxIconSolid}" Data="{StaticResource SxIconSend}" Width="13" Height="13"/>
+                            </Border>
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0,0,0">
+                                <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                                <TextBlock Text="{Binding Description}" Style="{StaticResource SxCaption}" Margin="0,5,8,0" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"/>
                             </StackPanel>
-                            <TextBlock Grid.Column="1" Text="{Binding Kind}" Foreground="{DynamicResource SxTextMuted}" FontSize="10" VerticalAlignment="Center" HorizontalAlignment="Right"/>
+                            <StackPanel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right">
+                                <Border Style="{StaticResource SxChip}" HorizontalAlignment="Right">
+                                    <TextBlock Text="{Binding Kind}" Style="{StaticResource SxStatLabel}"/>
+                                </Border>
+                                <TextBlock Text="{Binding Hint}" Style="{StaticResource SxHint}" Margin="0,7,2,0" HorizontalAlignment="Right"/>
+                            </StackPanel>
+                            <DataTemplate.Triggers>
+                                <DataTrigger Binding="{Binding Kind}" Value="STRONA">
+                                    <Setter TargetName="MarkIcon" Property="Data" Value="{StaticResource SxIconGrid}"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True">
+                                    <Setter TargetName="Mark" Property="Background" Value="{StaticResource SxPrimaryGradient}"/>
+                                    <Setter TargetName="Mark" Property="BorderBrush" Value="{DynamicResource SxBorderActive}"/>
+                                    <Setter TargetName="MarkIcon" Property="Fill" Value="{DynamicResource SxWhite}"/>
+                                </DataTrigger>
+                            </DataTemplate.Triggers>
                         </Grid>
                     </DataTemplate>
                 </ListBox.ItemTemplate>
             </ListBox>
-            <Border Background="{DynamicResource SxSurfaceActive}" CornerRadius="12" Padding="16" Visibility="{Binding HasNoResults, Converter={StaticResource BoolToVisibility}}">
-                <StackPanel>
-                    <TextBlock Text="Nie ma takiej sugestii" FontWeight="SemiBold"/>
-                    <TextBlock Text="Enter wstawi Twój tekst do edytora. Nie wykona go automatycznie." Style="{StaticResource SxCaption}" Margin="0,8,0,0"/>
+            <Border Style="{StaticResource SxCard}" Padding="16" Margin="0,8,0,0" Visibility="{Binding HasNoResults, Converter={StaticResource BoolToVisibility}}">
+                <StackPanel Orientation="Horizontal">
+                    <Path Style="{StaticResource SxIconSolid}" Data="{StaticResource SxIconAlert}" Width="17" Height="17" Fill="{DynamicResource SxHueAmber}" VerticalAlignment="Top"/>
+                    <StackPanel Margin="12,0,0,0">
+                        <TextBlock Text="Nie ma takiej sugestii" FontWeight="SemiBold"/>
+                        <TextBlock Text="Enter wstawi Twój tekst do edytora. Nie wykona go automatycznie." Style="{StaticResource SxCaption}" Margin="0,6,0,0"/>
+                    </StackPanel>
                 </StackPanel>
             </Border>
-            <DockPanel Margin="0,20,0,0">
+            <Border Style="{StaticResource SxDivider}" Margin="0,18,0,0"/>
+            <DockPanel Margin="0,14,0,0">
                 <Button Content="Wybierz  ↵" Command="{Binding ChooseCommand}" Style="{StaticResource SxPrimaryButton}" DockPanel.Dock="Right"/>
                 <Button Content="ϟ  STOP" DockPanel.Dock="Left" Style="{StaticResource SxDangerButton}" Command="{Binding DataContext.EmergencyStopCommand, RelativeSource={RelativeSource AncestorType=Window}}" Margin="0,0,12,0" ToolTip="Ctrl+Shift+X · dostępny również w palecie"/>
-                <TextBlock Text="↑ ↓ wybierz    ↵ otwórz lub przygotuj    Esc zamknij" Style="{StaticResource SxCaption}" VerticalAlignment="Center"/>
+                <WrapPanel VerticalAlignment="Center">
+                    <Border Style="{StaticResource SxKbd}">
+                        <TextBlock Text="↑ ↓" Style="{StaticResource SxStatLabel}"/>
+                    </Border>
+                    <TextBlock Text="wybierz" Style="{StaticResource SxHint}" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                    <Border Style="{StaticResource SxKbd}" Margin="16,0,0,0">
+                        <TextBlock Text="↵" Style="{StaticResource SxStatLabel}"/>
+                    </Border>
+                    <TextBlock Text="otwórz lub przygotuj" Style="{StaticResource SxHint}" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                    <Border Style="{StaticResource SxKbd}" Margin="16,0,0,0">
+                        <TextBlock Text="Esc" Style="{StaticResource SxStatLabel}"/>
+                    </Border>
+                    <TextBlock Text="zamknij" Style="{StaticResource SxHint}" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                </WrapPanel>
             </DockPanel>
-            <TextBlock Text="Polecenia trafiają do edytora. Dopiero Wyślij uruchamia działanie." Style="{StaticResource SxCaption}" Margin="0,12,0,0"/>
+            <TextBlock Text="Polecenia trafiają do edytora. Dopiero Wyślij uruchamia działanie." Style="{StaticResource SxHint}" Margin="0,12,0,0"/>
         </StackPanel>
     </Border>
 </UserControl>
