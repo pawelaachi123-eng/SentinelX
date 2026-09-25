@@ -96,7 +96,7 @@ public sealed class FileCleanupService
     private static string CleanDir(string raw)
     {
         string dir = raw.Trim().Trim('"');
-        foreach (string lead in ["folderze ", "folderu ", "katalogu ", "katalog "])
+        foreach (string lead in new[] { "folderze ", "folderu ", "katalogu ", "katalog " })
             if (dir.StartsWith(lead, StringComparison.OrdinalIgnoreCase)) { dir = dir[lead.Length..]; break; }
         return Environment.ExpandEnvironmentVariables(dir.Trim());
     }
