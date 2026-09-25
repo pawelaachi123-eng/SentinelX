@@ -40,24 +40,49 @@
     </Window.Resources>
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="240"/>
+            <ColumnDefinition Width="252"/>
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
         <Border Background="{DynamicResource SxSidebar}" BorderBrush="{DynamicResource SxBorderSubtle}" BorderThickness="0,0,1,0">
             <DockPanel>
-                <StackPanel DockPanel.Dock="Top" Margin="24,28,20,24">
-                    <TextBlock Text="◈  SENTINEL X" Foreground="{DynamicResource SxAccentCyan}" FontSize="18" FontWeight="Bold"/>
-                    <TextBlock Text="{Binding Version}" Style="{StaticResource SxCaption}" Margin="26,6,0,24"/>
-                    <Button Content="⌕  Szukaj · Ctrl+K" Command="{Binding OpenPaletteCommand}" FontSize="12" Margin="0,0,0,16" AutomationProperties.Name="Otwórz paletę poleceń"/>
-                    <TextBlock Text="LOCAL INTELLIGENCE" FontSize="10" Foreground="{DynamicResource SxTextMuted}"/>
-                    <Border Height="1" Background="{DynamicResource SxBorderSubtle}" Margin="0,16,0,0"/>
+                <!--  MARKA · kafelek z gradientem + wersja w paście. EntranceIndex 0.  -->
+                <StackPanel DockPanel.Dock="Top" Margin="24,26,20,20" u:SxMotion.Entrance="True" u:SxMotion.EntranceIndex="0">
+                    <StackPanel Orientation="Horizontal">
+                        <Border Width="34" Height="34" CornerRadius="11" Background="{StaticResource SxPrimaryGradient}">
+                            <Path Data="{StaticResource SxIconSentinel}" Fill="{DynamicResource SxWhite}" Width="17" Height="17" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <StackPanel Margin="11,0,0,1" VerticalAlignment="Center">
+                            <TextBlock Text="SENTINEL X" Style="{StaticResource SxEyebrow}" FontSize="14" Foreground="{DynamicResource SxTextPrimary}" AutomationProperties.Name="Sentinel X"/>
+                            <TextBlock Text="{Binding Version}" Style="{StaticResource SxCaption}" Margin="0,2,0,0"/>
+                        </StackPanel>
+                    </StackPanel>
+                    <TextBlock Text="LOCAL INTELLIGENCE · BEZ CHMURY" Style="{StaticResource SxStatLabel}" Margin="0,16,0,0" Opacity="0.7"/>
                 </StackPanel>
-                <StackPanel DockPanel.Dock="Bottom" Margin="16,0,16,20">
+
+                <!--  PALETA · Ctrl+K  -->
+                <Button DockPanel.Dock="Top" Command="{Binding OpenPaletteCommand}" Style="{StaticResource SxSearchTrigger}" Margin="16,0,16,16" AutomationProperties.Name="Otwórz paletę poleceń" u:SxMotion.Entrance="True" u:SxMotion.EntranceIndex="1">
+                    <Grid>
+                        <StackPanel Orientation="Horizontal">
+                            <Path Data="{StaticResource SxIconSearch}" Fill="{DynamicResource SxTextMuted}" Width="13" Height="13" Stretch="Uniform" VerticalAlignment="Center"/>
+                            <TextBlock Text="Szukaj komend, stron, ustawień" FontSize="12" Margin="9,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource SxTextMuted}"/>
+                        </StackPanel>
+                        <Border Style="{StaticResource SxKbd}" HorizontalAlignment="Right">
+                            <TextBlock Text="Ctrl K" Style="{StaticResource SxStatLabel}"/>
+                        </Border>
+                    </Grid>
+                </Button>
+
+                <!--  STOPKA · gotowość, głos, awaryjne zatrzymanie  -->
+                <StackPanel DockPanel.Dock="Bottom" Margin="16,0,16,18" u:SxMotion.Entrance="True" u:SxMotion.EntranceIndex="5">
+                    <Border Style="{StaticResource SxDivider}" Margin="0,0,0,14"/>
                     <Button Content="◇  Konfiguracja i gotowość" Command="{Binding OpenReadinessCommand}" Style="{StaticResource SxGhostButton}" FontSize="12" Margin="0,0,0,8"/>
-                    <TextBlock Text="{Binding DesktopStatus}" Foreground="{DynamicResource SxWarning}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,12"/>
+                    <TextBlock Text="{Binding DesktopStatus}" Foreground="{DynamicResource SxWarning}" FontSize="11" TextWrapping="Wrap" Margin="2,0,2,12"/>
                     <Border Style="{StaticResource SxBadge}" Margin="0,0,0,12">
                         <StackPanel>
-                            <TextBlock Text="{Binding Voice.State, StringFormat=●  VOICE · {0}}" Foreground="{Binding Voice.State, Converter={StaticResource VoiceBrush}}" FontSize="12"/>
+                            <StackPanel Orientation="Horizontal">
+                                <Ellipse Width="7" Height="7" VerticalAlignment="Center" Fill="{Binding Voice.State, Converter={StaticResource VoiceBrush}}"/>
+                                <TextBlock Text="{Binding Voice.State, StringFormat=VOICE · {0}}" Foreground="{Binding Voice.State, Converter={StaticResource VoiceBrush}}" FontSize="12" FontWeight="SemiBold" Margin="8,0,0,0"/>
+                            </StackPanel>
                             <TextBlock Text="{Binding Voice.Status}" Style="{StaticResource SxCaption}" Margin="0,6,0,0" MaxHeight="60" TextTrimming="CharacterEllipsis"/>
                         </StackPanel>
                     </Border>
@@ -65,38 +90,44 @@
                     <Button Content="Wznów Sentinel" Command="{Binding ResumeCommand}" Visibility="{Binding IsStopped, Converter={StaticResource BoolToVisibility}}" Margin="0,8,0,0"/>
                     <Button Content="Wyjdź z aplikacji" Command="{Binding ExitCommand}" Style="{StaticResource SxGhostButton}" FontSize="11" Margin="0,8,0,0"/>
                 </StackPanel>
-                <ListBox ItemsSource="{Binding NavItems}" SelectedItem="{Binding SelectedItem}" ItemContainerStyle="{StaticResource SxSidebarItem}" Margin="8,0" VerticalAlignment="Top">
+
+                <TextBlock Text="NAWIGACJA" Style="{StaticResource SxNavCaption}"/>
+                <ListBox ItemsSource="{Binding NavItems}" SelectedItem="{Binding SelectedItem}" ItemContainerStyle="{StaticResource SxSidebarItem}" Margin="8,0" VerticalAlignment="Top" u:SxMotion.Entrance="True" u:SxMotion.EntranceIndex="2">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="{Binding Icon}" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Width="28" FontSize="20"/>
-                                <TextBlock Text="{Binding Label}" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Margin="12,0,0,0" VerticalAlignment="Center"/>
-                            </StackPanel>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="30"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Border x:Name="Chip" Grid.Column="0" Width="24" Height="24" CornerRadius="8" Background="{DynamicResource SxSurface}">
+                                    <TextBlock Text="{Binding Icon}" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="13"/>
+                                </Border>
+                                <TextBlock Grid.Column="1" Text="{Binding Label}" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Margin="10,0,0,0" VerticalAlignment="Center" FontSize="13"/>
+                                <Path x:Name="Mark" Grid.Column="2" Data="{StaticResource SxIconChevronRight}" Width="9" Height="9" Stretch="Uniform" Fill="{DynamicResource SxAccentCyan}" VerticalAlignment="Center" Margin="0,0,2,0" Opacity="0"/>
+                            </Grid>
+                            <DataTemplate.Triggers>
+                                <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True">
+                                    <Setter TargetName="Chip" Property="Background" Value="{StaticResource SxPrimaryGradient}"/>
+                                    <Setter TargetName="Mark" Property="Opacity" Value="1"/>
+                                </DataTrigger>
+                            </DataTemplate.Triggers>
                         </DataTemplate>
                     </ListBox.ItemTemplate>
                 </ListBox>
             </DockPanel>
         </Border>
-        <!-- 0.91 · CENTRUM: aurora glow behind the pages — decorative only, never intercepts input -->
+
+        <!--  0.94 · GŁĘBIA: wash tła + dwa dryfujące halo + ziarno + winieta. Wszystko IsHitTestVisible=False.  -->
         <Grid Grid.Column="1" IsHitTestVisible="False" ClipToBounds="True">
-            <Ellipse Width="760" Height="760" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-260,-200,0" Opacity="0.16">
-                <Ellipse.Fill>
-                    <RadialGradientBrush>
-                        <GradientStop Color="{DynamicResource SxAccentCyanColor}" Offset="0"/>
-                        <GradientStop Color="Transparent" Offset="1"/>
-                    </RadialGradientBrush>
-                </Ellipse.Fill>
-            </Ellipse>
-            <Ellipse Width="860" Height="860" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="-300,0,0,-360" Opacity="0.10">
-                <Ellipse.Fill>
-                    <RadialGradientBrush>
-                        <GradientStop Color="{DynamicResource SxAccentVioletColor}" Offset="0"/>
-                        <GradientStop Color="Transparent" Offset="1"/>
-                    </RadialGradientBrush>
-                </Ellipse.Fill>
-            </Ellipse>
+            <Rectangle Fill="{StaticResource SxAuroraWash}"/>
+            <Border x:Name="HaloCyan" Width="620" Height="620" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-240,-170,0" Background="{StaticResource SxHaloCyan}" CornerRadius="310" u:SxMotion.Float="True"/>
+            <Border x:Name="HaloViolet" Width="700" Height="700" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="-280,0,0,-320" Background="{StaticResource SxHaloViolet}" CornerRadius="350" u:SxMotion.Float="True"/>
+            <Rectangle Fill="{StaticResource SxVignette}"/>
+            <Rectangle Fill="{StaticResource SxGrain}" Opacity="0.55"/>
         </Grid>
-        <ContentControl Grid.Column="1" Content="{Binding CurrentPage}"/>
+        <ContentControl Grid.Column="1" Content="{Binding CurrentPage}" u:SxMotion.Entrance="True" u:SxMotion.EntranceIndex="3"/>
         <Grid Grid.ColumnSpan="2" Panel.ZIndex="10" Background="{DynamicResource SxScrim}" Visibility="{Binding Palette.IsOpen, Converter={StaticResource BoolToVisibility}}">
             <controls:CommandPalette DataContext="{Binding Palette}" VerticalAlignment="Center" HorizontalAlignment="Center"/>
         </Grid>

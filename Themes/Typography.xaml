@@ -1,5 +1,9 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:sys="clr-namespace:System;assembly=System.Runtime">
-    <FontFamily x:Key="SxFontFamily">Segoe UI Variable, Segoe UI</FontFamily>
+    <FontFamily x:Key="SxFontFamily">Segoe UI Variable Text, Segoe UI</FontFamily>
+    <FontFamily x:Key="SxFontDisplay">Segoe UI Variable Display, Segoe UI</FontFamily>
+    <FontFamily x:Key="SxFontMono">Cascadia Mono, Consolas</FontFamily>
+    <sys:Double x:Key="SxFontDisplay2">34</sys:Double>
+    <sys:Double x:Key="SxFontDisplay3">28</sys:Double>
     <sys:Double x:Key="SxFontHeading1">28</sys:Double>
     <sys:Double x:Key="SxFontHeading2">22</sys:Double>
     <sys:Double x:Key="SxFontHeading3">18</sys:Double>
@@ -8,24 +12,78 @@
     <sys:Double x:Key="SxFontCaption">12</sys:Double>
     <sys:Double x:Key="SxFontSmall">11</sys:Double>
     <sys:Double x:Key="SxFontMicro">10</sys:Double>
+    <GridLength x:Key="SxGap">12</GridLength>
+    <Thickness x:Key="SxPageMargin">28,24,28,20</Thickness>
+    <Thickness x:Key="SxCardPadding">20,18,20,18</Thickness>
+    <CornerRadius x:Key="SxRadius">16</CornerRadius>
+    <CornerRadius x:Key="SxRadiusSmall">10</CornerRadius>
+    <CornerRadius x:Key="SxRadiusPill">999</CornerRadius>
+
     <Style TargetType="TextBlock">
         <Setter Property="Foreground" Value="{DynamicResource SxTextPrimary}"/>
         <Setter Property="FontFamily" Value="{StaticResource SxFontFamily}"/>
-        <Setter Property="FontSize" Value="14"/>
+        <Setter Property="FontSize" Value="{StaticResource SxFontBody}"/>
+        <Setter Property="TextOptions.TextFormattingMode" Value="Ideal"/>
+        <Setter Property="TextOptions.TextRenderingMode" Value="ClearType"/>
     </Style>
+
+    <!-- 0.94 · TYPOGRAFIA SEMANTYCZNA. Rozmiary wyłącznie z kluczy skali: zmiana skali = jedna linia. -->
     <Style x:Key="SxHeading" TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
-        <Setter Property="FontSize" Value="28"/>
+        <Setter Property="FontFamily" Value="{StaticResource SxFontDisplay}"/>
+        <Setter Property="FontSize" Value="{StaticResource SxFontHeading1}"/>
         <Setter Property="FontWeight" Value="SemiBold"/>
         <Setter Property="Margin" Value="0,0,0,8"/>
     </Style>
-    <Style x:Key="SxCaption" TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
-        <Setter Property="Foreground" Value="{DynamicResource SxTextSecondary}"/>
-        <Setter Property="FontSize" Value="12"/>
-        <Setter Property="TextWrapping" Value="Wrap"/>
-    </Style>
     <Style x:Key="SxSectionTitle" TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
-        <Setter Property="FontSize" Value="18"/>
+        <Setter Property="FontSize" Value="{StaticResource SxFontHeading3}"/>
         <Setter Property="FontWeight" Value="SemiBold"/>
         <Setter Property="Margin" Value="0,0,0,16"/>
+    </Style>
+    <Style x:Key="SxCaption" TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+        <Setter Property="Foreground" Value="{DynamicResource SxTextSecondary}"/>
+        <Setter Property="FontSize" Value="{StaticResource SxFontCaption}"/>
+        <Setter Property="TextWrapping" Value="Wrap"/>
+    </Style>
+    <Style x:Key="SxHint" TargetType="TextBlock" BasedOn="{StaticResource SxCaption}">
+        <Setter Property="Foreground" Value="{DynamicResource SxTextMuted}"/>
+        <Setter Property="FontSize" Value="{StaticResource SxFontSmall}"/>
+        <Setter Property="Margin" Value="0,6,0,0"/>
+    </Style>
+    <Style x:Key="SxEyebrow" TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+        <Setter Property="FontSize" Value="{StaticResource SxFontMicro}"/>
+        <Setter Property="FontWeight" Value="Bold"/>
+        <Setter Property="Foreground" Value="{DynamicResource SxTextMuted}"/>
+        <Setter Property="Margin" Value="0,0,0,6"/>
+    </Style>
+    <Style x:Key="SxNumber" TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+        <Setter Property="FontFamily" Value="{StaticResource SxFontMono}"/>
+        <Setter Property="FontSize" Value="{StaticResource SxFontHeading1}"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="TextOptions.TextRenderingMode" Value="Grayscale"/>
+    </Style>
+    <Style x:Key="SxNumberBig" TargetType="TextBlock" BasedOn="{StaticResource SxNumber}">
+        <Setter Property="FontSize" Value="{StaticResource SxFontDisplay2}"/>
+        <Setter Property="LineHeight" Value="36"/>
+    </Style>
+    <Style x:Key="SxMono" TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+        <Setter Property="FontFamily" Value="{StaticResource SxFontMono}"/>
+        <Setter Property="FontSize" Value="{StaticResource SxFontSmall}"/>
+        <Setter Property="Foreground" Value="{DynamicResource SxTextSecondary}"/>
+        <Setter Property="TextWrapping" Value="Wrap"/>
+    </Style>
+    <Style x:Key="SxStatLabel" TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+        <Setter Property="FontSize" Value="{StaticResource SxFontMicro}"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="{DynamicResource SxTextMuted}"/>
+    </Style>
+    <Style x:Key="SxValueText" TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+        <Setter Property="FontFamily" Value="{StaticResource SxFontMono}"/>
+        <Setter Property="FontSize" Value="{StaticResource SxFontCaption}"/>
+        <Setter Property="Foreground" Value="{DynamicResource SxTextSecondary}"/>
+    </Style>
+
+    <!--  0.94 · SxNavCaption: etykieta sekcji panela bocznego (nawigacja / status).  -->
+    <Style x:Key="SxNavCaption" TargetType="TextBlock" BasedOn="{StaticResource SxStatLabel}">
+        <Setter Property="Margin" Value="26,0,0,8"/>
     </Style>
 </ResourceDictionary>
