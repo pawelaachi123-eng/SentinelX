@@ -65,14 +65,14 @@ public sealed class VoiceService : IVoiceService, IDisposable
         {
             if (disposed || version != generation || State == VoiceState.Off || engine.IsStopped) return;
             bool wakeAllowed = VoiceTranscriptFilter.ContainsWakeWord(text, settings.Current.Voice.WakeWordMode);
-            // Since 0.91 the wake word may sit anywhere in the sentence — without it Sentinel simply
-            // keeps listening (early return), exactly as the user asked.
-            if (State == VoiceState.Standby && !wakeAllowed) return;
-            if (State == VoiceState.Active && DateTime.Now > activeUntil && !wakeAllowed) return;
-            string command = wakeAllowed ? CommandText.StripWakeWord(text) : text.Trim();
+            // 0.91.2 · żelazna zasada użytkownika: polecenie głosowe zostaje wykonane TYLKO wtedy, gdy
+            // zdanie zawiera „sentinel” — w dowolnym miejscu. Bez słowa-klucza Sentinel niczego nie
+            // wykonuje i po prostu nasłuchuje dalej (żadnego okna rozmowy bez wybudzenia).
+            if (!wakeAllowed) return;
+            string command = CommandText.StripWakeWord(text);
             State = VoiceState.Active; capture.SetWakeOnlyMode(false);
             activeUntil = DateTime.Now.AddMinutes(settings.Current.Voice.ConversationTimeoutMinutes);
-            SetStatus("ACTIVE · słucham");
+            SetStatus("AKTYWNY · każde polecenie powiedz z „Sentinel”");
             if (command.Length > 0) CommandRecognized?.Invoke(command);
         });
     }

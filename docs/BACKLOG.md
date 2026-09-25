@@ -1,6 +1,6 @@
 # Trwały backlog rozwoju SentinelX
 
-Stan na 2026-09-25. Zasada: każda pojedyncza pozycja znika z listy dopiero, gdy jest **zbudowana i przetestowana na Windows (CI)**, nie „gdy wygląda na zrobioną".
+Stan na 2026-09-25 (0.91.2). Zasada: każda pojedyncza pozycja znika z listy dopiero, gdy jest **zbudowana i przetestowana na Windows (CI)**, nie „gdy wygląda na zrobioną".
 
 ## Gotowe i zweryfikowane (0.85 i wcześniejsze)
 
@@ -79,6 +79,11 @@ Stan na 2026-09-25. Zasada: każda pojedyncza pozycja znika z listy dopiero, gdy
 - **Słowo-klucz w dowolnym miejscu zdania** (żądanie użytkownika): `CommandText.ContainsWakeWord/StripWakeWord` rozpoznaje i wycina „sentinel” (z wariantami pisowni) z dowolnego miejsca wypowiedzi; `VoiceService` wykonuje polecenie tylko ze słowem-kluczem — bez niego nic nie robi i dalej nasłuchuje. Zdania zaczynające się inaczej niż „Sentinel…” (np. „ile mam ramu, sentinel”) wreszcie działają. Pokryte nowymi asercjami w `UiSmokeTestRunner`.
 - **Naprawa limitywnika `Suggest`**: podpowiedź szarej strefy działa tylko dla krótkich poleceń (≤60 znaków i ≤4 wyrazy) — dłuższe pytania konwersacyjne („Czy moje obecne użycie CPU i RAM wygląda dobrze do grania?”) idą prosto do modelu zamiast utknąć w podpowiedzi (regresja `--self-test`).
 - **Wydanie rolling**: `release.yml` na `workflow_dispatch` publikuje każdy upgrade pod stabilnym tagiem `rolling` (ZIP portable + instalator EXE + sumy SHA-256 + BUILD.txt) po pełnej walidacji; tagi `v*.*.*` pozostają wydaniami milowymi. Link: `releases/tag/rolling` w README i `docs/RELEASE-0.91.md`.
+
+## Gotowe w 0.91.2 (ten przyrost — patrz git)
+
+- **Bezwzględna bramka słowa-klucza** (żądanie użytkownika): każde polecenie głosowe wymaga „sentinel” w zdaniu (dowolne miejsce); bez niego Sentinel niczego nie wykonuje i nasłuchuje dalej. Usunięty wyjątek „okna rozmowy”, który wykonywał zdania bez wybudzenia przez kilka minut po ostatnim poleceniu — to była luka względem zasady użytkownika.
+- Pierwsze automatyczne wydanie rolling opublikowane i zweryfikowane: `releases/tag/rolling` (SentinelX-0.91.1-win-x64-portable.zip 87,7 MB, SentinelX-0.91.1-win-x64-setup.exe 74,6 MB, SHA256SUMS.txt, BUILD.txt), publikacja po pełnej walidacji w CI.
 
 ## Priorytet P0 — kolejny przyrost
 

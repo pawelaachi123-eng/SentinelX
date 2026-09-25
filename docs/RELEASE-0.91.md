@@ -1,6 +1,6 @@
 # Sentinel X 0.91 „CENTRUM” — notatki wydania
 
-Data: 2026-09-24 (tag `v0.91.0`) · aktualizacja 0.91.1: 2026-09-25 · Wersja aplikacji: `0.91 · CENTRUM`
+Data: 2026-09-24 (tag `v0.91.0`) · aktualizacje 0.91.1/0.91.2: 2026-09-25 · Wersja aplikacji: `0.91 · CENTRUM`
 
 To wydanie przebudowuje interfejs wokół jednej zakładki **Centrum**, dodaje paletę poleceń `//`,
 włącza domyślnie nasłuch głosowy (świadoma decyzja użytkownika), wprowadza mechanizm „pytam zamiast
@@ -30,12 +30,12 @@ podawane jako działające.
 - Prywatność: wskaźnik stanu głosu jest zawsze widoczny (nagłówek Centrum + sidebar), mikrofon można
   wyłączyć jednym kliknięciem, ustawienie „Głos przy uruchomieniu” zostaje w Ustawieniach → Ogólne.
   Nagrania nie są zapisywane domyślnie (próbki audio to osobny, domyślnie wyłączony przełącznik).
-- **0.91.1 · Słowo-klucz „Sentinel” decyduje o wykonaniu.** Polecenie głosowe zostaje wykonane tylko
-  wtedy, gdy zdanie zawiera „sentinel” (akceptowane warianty pisowni: sentinel/sentynel/centinel/
-  centenel/santinel/sentinelu itd.). Słowo może być w DOWOLNYM miejscu zdania — „ile mam ramu,
-  sentinel” działa tak samo jak „Sentinel, ile mam ramu”. Bez słowa-klucza Sentinel niczego nie
-  wykonuje i dalej nasłuchuje (tryb STANDBY). Po wybudzeniu trwa okno rozmowy, w którym można wydawać
-  kolejne polecenia bez powtarzania słowa-klucza; po jego upływie wraca nasłuch na „sentinel”.
+- **0.91.1/0.91.2 · Słowo-klucz „Sentinel” decyduje o wykonaniu.** Polecenie głosowe zostaje wykonane
+  tylko wtedy, gdy zdanie zawiera „sentinel” (akceptowane warianty pisowni: sentinel/sentynel/
+  centinel/centenel/santinel/sentinelu itd.). Słowo może być w DOWOLNYM miejscu zdania — „ile mam
+  ramu, sentinel” działa tak samo jak „Sentinel, ile mam ramu”. Od 0.91.2 zasada jest bezwzględna:
+  KAŻDE polecenie musi zawierać słowo-klucz (nie ma okna rozmowy wykonującego zdania bez
+  wybudzenia). Bez słowa-klucza Sentinel niczego nie wykonuje i dalej nasłuchuje.
 
 ## Rozumienie — pytam zamiast zgadywać
 
