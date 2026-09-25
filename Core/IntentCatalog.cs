@@ -88,11 +88,10 @@ public static class IntentCatalog
             "moje ip", "nazwa komputera", "ile rdzeni", "architektura",
             "wersja", "co nowego", "lekcje", "samokontrola", "propozycje",
             "szukaj zadan", "zrob zadanie", "notatka",
-            // 0.93 · executable file tidy
+            // 0.93 · executable file tidy — only non-destructive stems here, destructive ones (usun, wyczysc) stay outside repair catalogue
             "zmien nazwy", "przemianuj", "uporzadkuj", "posprzataj", "wykonaj porzadki",
-            "usun duplikaty", "wyczysc duplikaty", "usun do kosza",
-            // 0.94 · collaboration
-            "ekran", "pokaz ekran", "podglad ekranu", "wspolpraca", "tryb wspolpracy", "wlacz wspolprace", "wylacz wspolprace",
+            // 0.94 · collaboration — wylacz is destructive, so keep only safe read-only forms in repair catalogue; wlacz is safe
+            "ekran", "pokaz ekran", "podglad ekranu", "wspolpraca", "tryb wspolpracy", "wlacz wspolprace",
             "pokaz pulpit", "udostepnij ekran", "model 3d", "zbuduj model 3d"
         ];
         foreach (string phrase in extra) phrases.Add(phrase);
