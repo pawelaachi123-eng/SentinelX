@@ -122,7 +122,13 @@ public sealed class CommandRouter
         if (text is "wersja" or "jaka wersja" or "wersja sentinel" or "wersja aplikacji")
             return "Sentinel X " + AppConstants.Version + " · " + systemInfo.GetWindowsVersion() + " · .NET " + Environment.Version;
         if (text is "co nowego" or "lista zmian" or "changelog" or "co sie zmienilo")
-            return "CO NOWEGO W 0.93 · PORZĄDKI WYKONAWCZE\n" +
+            return "CO NOWEGO W 0.94 · WSPÓŁPRACA EKRANOWA — LIVE\n" +
+                "· WSPÓŁPRACA EKRANOWA: Centrum → 🖥️ Ekran → WŁĄCZ TRYB WSPÓŁPRACY (tylko przyciskiem, bez głosu — świadoma zgoda).\n" +
+                "· LIVE podgląd całego pulpitu (wszystkie monitory, przełączanie na Blendera, przeglądarkę) — nie tylko SS, widzi dokładnie co robisz.\n" +
+                "· Drugi kursor w innym kolorze (niebieski #00D4FF) obok Twojego, pełna kontrola myszki (SetCursorPos + click) gdy aktywny.\n" +
+                "· Czerwona ramka + napis TRYB WSPÓŁPRACY AKTYWNY gdy włączone, wyłączasz przyciskiem lub Ctrl+Shift+X (emergency stop).\n" +
+                "· Wszystko lokalne, bez sieci, logowane w Historii (COLLAB_ENABLE/DISABLE), zrzuty opcjonalnie w %LOCALAPPDATA%\\SentinelX\\ScreenCaptures\\\n" +
+                "\nCO NOWEGO W 0.93 · PORZĄDKI WYKONAWCZE\n" +
                 "· Zbiorcze zmiany nazw: „zmien nazwy: C:\\Dane z IMG_ na zdjecie_” pokazuje podgląd i dopiero po „potwierdz” zmienia nazwy (max 200, bez nadpisywania).\n" +
                 "· Wykonywalny plan porządków: „uporzadkuj: C:\\Dane” proponuje usunięcie pustych plików (0 B) do Kosza — z podglądem i potwierdzeniem.\n" +
                 "· Usuwanie duplikatów hurtowo: „usun duplikaty: C:\\Dane” zachowuje pierwszy plik z grupy, resztę do Kosza po „potwierdz” (limit 100, przywracalne).\n" +
