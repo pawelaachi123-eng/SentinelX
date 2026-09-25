@@ -37,8 +37,17 @@ jobs:
             $detail = (Get-Content build.log -Raw).Replace("`r", '').Replace("`n", '%0A')
             Write-Output "::error::$detail"
             Get-Content build.log
+            "# BUILD FAILURE LOG" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+            Get-Content build.log | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
             exit 1
           }
+      - name: Upload build log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: build.log
+          retention-days: 2
       - name: MVVM UI smoke (all pages and binding validation)
         shell: pwsh
         run: |
