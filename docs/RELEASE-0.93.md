@@ -47,6 +47,39 @@ publikuje. Wydania milowe na GitHubie: `v0.90.0`, `v0.91.2`; pod tagiem `rolling
 automatyczne wydanie `0.92.0` — tag nie jest już przesuwany. Wersja 0.93.0 zostanie opublikowana
 dopiero tagiem milowym (np. `v0.93.0`), kiedy użytkownik o to poprosi.
 
+### GUI: nowoczesna warstwa wizualna (bez nowych pakietów NuGet)
+
+Zakres: wyłącznie aktywny shell MVVM (`Views/**`, `Themes/**`, `Utilities/**`). Legacy UI za `--legacy`
+nie zmieniło ani jednego znaku; wersja aplikacji zostaje `0.93`.
+
+- **Tokeny designu `Sx*`** zamiast pojedynczych kolorów: 68 tokenów koloru (tła, powierzchnie, trzy
+  poziomy tekstu, pięć akcentów z wariantami `Dim`/`Soft`, semantyka z końcami gradientów, obramowania,
+  fokus, cienie, shimmer, reveal, dymki czatu, aurora, overlay, scrim) oraz tokeny promieni i odstępów
+  (`CornerRadius`/`Thickness`). W `Views/**` nie ma dosłownych hexów, rodzin czcionek ani rozmiarów
+  czcionek — sprawdza to `scripts/check-architecture.py`.
+- **Trzy motywy z generatora**: `python3 scripts/generate-themes.py` tworzy `DarkTheme.xaml`,
+  `DeepDarkTheme.xaml` i `LightTheme.xaml` (nadpisują wyłącznie tokeny `*Color`) i liczy kontrast WCAG
+  dla par krytycznych; `--check` kończy się `PASS: 68 tokenów × 3 motywy, kontrast OK`. Kolor akcentu
+  z ustawień nadpisuje `SxAccentCyanColor` w trakcie działania, więc każdy motyw działa z każdym
+  akcentem.
+- **Animacje**: 4 krzywe łatwości i 35 storyboardów (wejście strony, wejścia modalne, scrim, hover,
+  press, glow, sheen, lift, pasek nawigacji, linia, chevron, puls, ripple, oddech, busy, shimmer, pasy
+  postępu, dryf aurory). Animacje pętlące są bramkowane przez `ClientAreaAnimation` Windows **i**
+  ustawienie „Animacje”, a podczas gry wyłączają się automatycznie.
+- **Nowe zachowania w `Utilities/`, nie w code-behind**: `Motion` (attached `Entrance`, `BubbleIn`,
+  `Hover`, `Pulse`, `Shimmer`, `Stripes`, `Aurora`, `ModalIn`), `Reveal` (poświata pod kursorem),
+  `PageTransitions` (wejście strony). Code-behind każdego widoku ma mniej niż 20 linii i nie zawiera
+  obsługi `Click=`.
+- **Shell**: sidebar 268 px z gradientem i paskiem akcentu przy zaznaczeniu, „orb” marki, pill `Ctrl+K`,
+  badge głosu z pulsującą kropką i kolorem z konwertera stanu, aurora w tle treści, modalne paleta
+  (`//`, `Esc`, `Enter`, strzałki) i panel gotowości ze scrimem. Zakładki Centrum mają widoczne podpisy.
+- **12 stron i overlay** zbudowane od nowa na tokenach: spójny nagłówek (pasek akcentu + eyebrow +
+  tytuł + opis), kafelki metryk z gradientowym paskiem, karty z reveal i animowanym wejściem, paski
+  stanu, chipy, stany zajętości z shimmerem, stany puste. Stan jest zawsze opisany słowem — kolor go
+  tylko wzmacnia, a brak odczytu pozostaje „Niedostępne” (VRAM nie jest zmyślany).
+- **Nowy konwerter** `StringNotEmptyToVisibility` (`Converters/StatusConverters.cs`, klucz w `App.xaml`)
+  do pokazywania komunikatów tekstowych: błędów walidacji pól ustawień i potwierdzenia „Zapisano”.
+
 ## Weryfikacja
 
 - `tests/FileCleanupRegression.cs` rozszerzony: cykl zgody na sprzątanie duplikatów, cykl zgody na
@@ -55,6 +88,13 @@ dopiero tagiem milowym (np. `v0.93.0`), kiedy użytkownik o to poprosi.
   do zmiany”, gołe komendy pokazują użycie). Plus wszystkie testy 0.92 (skany, raporty, pojedynczy
   Kosz, junction).
 - Smoke UI + pełna regresja przez `--ui-smoke`, `--self-test` i smoke wersji portable w CI.
+- `UiSmokeTestRunner.cs`: **zero usuniętych asercji**, ~120 nowych sprawdzeń warstwy wizualnej — po
+  przełożeniu każdego motywu tokeny koloru muszą być osiągalne jako `Color`, tokeny promieni i odstępów
+  jako `CornerRadius`/`Thickness`, style jako zasoby, storyboardy jako `Storyboard`, gradienty jako
+  `Brush`, cienie i poświata jako `Effect`; do tego dotychczasowa bramka „zero błędów wiązań” po
+  wyrenderowaniu każdej strony i zakładki.
+- Bramki statyczne: `python3 scripts/check-architecture.py` → `PASS` oraz
+  `python3 scripts/generate-themes.py --check` → `PASS`.
 
 ## Uczciwie o ograniczeniach
 
@@ -67,3 +107,18 @@ dopiero tagiem milowym (np. `v0.93.0`), kiedy użytkownik o to poprosi.
 - Kosz Windows testowany w CI na atrapie recyklera — rzeczywisty Kosz potwierdzi dopiero komputer
   użytkownika.
 - P0.1 „plików” jest domknięte; dalsze pomysły (np. filtry rozmiaru w `porzadki`) wracają do P1.
+- Warstwy wizualnej nie dało się obejrzeć na żywo w środowisku deweloperskim (brak lokalnego kompilatora
+  .NET i brak dostępu do hostów Microsoft/NuGet): dowodem są bramki statyczne i `--ui-smoke` w CI na
+  Windows. Ostateczna ocena wyglądu (DPI 125/150%, kilka ekranów, realny koszt aurory na słabszym GPU)
+  należy do komputera użytkownika.
+- Kontrola kontrastu obejmuje zdefiniowane pary tokenów, nie każdą kombinację użytą w XAML; końce
+  gradientów pod białymi etykietami są celowo przyciemnione.
+- Okno główne pozostaje nieprzezroczyste — motyw „szkło/Jarvis” z `AllowsTransparency` to świadomie
+  niezaakceptowany koszt wydajności i kompatybilności (pozostaje w P0 backlogu).
+- Rozbieżność zgłoszona, nie naprawiana „przy okazji”: stare `Views/Pages/SettingsPage.xaml` wiązało
+  `AutomationProperties.Name="{Binding Name}"`, a `SettingViewModel` nie ma właściwości `Name` (ma
+  `Label`) — każde takie wiązanie kończyło się błędem w logu wiązań. Nowa strona wiąże `Label`, więc
+  błąd znika; nie zmieniano ani `SettingViewModel`, ani `SettingsCatalog`.
+- Pole `Kolor akcentu` w `SettingsCatalog` ma jako wartości i etykiety dosłowne hexy
+  (`#00D4FF`, `#66F2C2`, …). To kontrakt ustawień (Dopiski: etykiet nie zmieniamy), więc hexy zostają
+  w katalogu; w `Views/**` nadal obowiązuje zakaz dosłownych hexów i jest on sprawdzany bramką.

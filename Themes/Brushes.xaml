@@ -1,6 +1,131 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- ============================================================
+         PĘDZLE ZŁOŻONE: gradienty akcentu, powierzchnie, aurora,
+         połysk (shimmer), prążki postępu i cienie.
+         Każdy gradient czyta tokeny *Color przez DynamicResource, więc
+         motyw oraz „Kolor akcentu" z ustawień działają też na gradientach.
+         ============================================================ -->
+
+    <!-- Akcent główny: cyjan → fiolet (SxPrimaryButton, wskaźniki, nagłówki). -->
     <LinearGradientBrush x:Key="SxAccentGradient" StartPoint="0,0" EndPoint="1,1">
-        <GradientStop Color="{DynamicResource SxAccentCyanColor}" Offset="0"/>
-        <GradientStop Color="{DynamicResource SxAccentVioletColor}" Offset="1"/>
+        <GradientStop Color="{DynamicResource SxAccentGradStartColor}" Offset="0"/>
+        <GradientStop Color="{DynamicResource SxAccentGradEndColor}" Offset="1"/>
     </LinearGradientBrush>
+    <!-- Akcent rozszerzony: cyjan → fiolet → róż (paski nagłówków, aurora). -->
+    <LinearGradientBrush x:Key="SxAccentGradientSoft" StartPoint="0,0" EndPoint="1,0">
+        <GradientStop Color="{DynamicResource SxAccentGradStartColor}" Offset="0"/>
+        <GradientStop Color="{DynamicResource SxAccentGradEndColor}" Offset="0.55"/>
+        <GradientStop Color="{DynamicResource SxAccentPinkColor}" Offset="1"/>
+    </LinearGradientBrush>
+    <!-- Akcent przyciemniony: tła pillów i pasków w spoczynku. -->
+    <LinearGradientBrush x:Key="SxAccentGradientDim" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Color="{DynamicResource SxAccentCyanDimColor}" Offset="0"/>
+        <GradientStop Color="{DynamicResource SxAccentVioletDimColor}" Offset="1"/>
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="SxVioletPinkGradient" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Color="{DynamicResource SxAccentVioletColor}" Offset="0"/>
+        <GradientStop Color="{DynamicResource SxAccentPinkColor}" Offset="1"/>
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="SxBlueCyanGradient" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Color="{DynamicResource SxAccentBlueColor}" Offset="0"/>
+        <GradientStop Color="{DynamicResource SxAccentCyanColor}" Offset="1"/>
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="SxTealLimeGradient" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Color="{DynamicResource SxAccentTealColor}" Offset="0"/>
+        <GradientStop Color="{DynamicResource SxAccentLimeColor}" Offset="1"/>
+    </LinearGradientBrush>
+    <!-- Przycisk niebezpieczny: cała powierzchnia ciemna, bo napis jest biały.
+         Jasny akcent stanu zostaje w krawędzi i w tekstowych znacznikach. -->
+    <!-- Dekoracyjny pasek ostrzeżenia (nagłówki kart zgody): gradient, nie tło tekstu. -->
+    <LinearGradientBrush x:Key="SxWarningGradient" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Color="{DynamicResource SxWarningColor}" Offset="0"/>
+        <GradientStop Color="{DynamicResource SxAccentPinkColor}" Offset="1"/>
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="SxDangerGradient" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Color="{DynamicResource SxErrorDimColor}" Offset="0"/>
+        <GradientStop Color="{DynamicResource SxErrorGradEndColor}" Offset="1"/>
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="SxSuccessGradient" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Color="{DynamicResource SxSuccessDimColor}" Offset="0"/>
+        <GradientStop Color="{DynamicResource SxSuccessGradEndColor}" Offset="1"/>
+    </LinearGradientBrush>
+
+    <!-- Powierzchnie: delikatne przejście zamiast płaskiego koloru. -->
+    <LinearGradientBrush x:Key="SxSurfaceGradient" StartPoint="0,0" EndPoint="0.4,1">
+        <GradientStop Color="{DynamicResource SxSurfaceRaisedColor}" Offset="0"/>
+        <GradientStop Color="{DynamicResource SxSurfaceColor}" Offset="1"/>
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="SxShellGradient" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Color="{DynamicResource SxBackgroundColor}" Offset="0"/>
+        <GradientStop Color="{DynamicResource SxSurfaceSunkenColor}" Offset="0.55"/>
+        <GradientStop Color="{DynamicResource SxBackgroundColor}" Offset="1"/>
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="SxSidebarGradient" StartPoint="0,0" EndPoint="0.3,1">
+        <GradientStop Color="{DynamicResource SxSidebarColor}" Offset="0"/>
+        <GradientStop Color="{DynamicResource SxBackgroundColor}" Offset="1"/>
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="SxHeaderGradient" StartPoint="0,0" EndPoint="1,0">
+        <GradientStop Color="{DynamicResource SxSurfaceGlassColor}" Offset="0"/>
+        <GradientStop Color="{DynamicResource SxTransparentColor}" Offset="1"/>
+    </LinearGradientBrush>
+    <!-- Krawędź karty: włosowata linia rozjaśniona u góry (efekt szkła). -->
+    <LinearGradientBrush x:Key="SxHairlineGradient" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="{DynamicResource SxBorderStrongColor}" Offset="0"/>
+        <GradientStop Color="{DynamicResource SxBorderSubtleColor}" Offset="0.35"/>
+        <GradientStop Color="{DynamicResource SxBorderSubtleColor}" Offset="1"/>
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="SxAccentHairlineGradient" StartPoint="0,0" EndPoint="1,0">
+        <GradientStop Color="{DynamicResource SxAccentCyanColor}" Offset="0"/>
+        <GradientStop Color="{DynamicResource SxAccentVioletColor}" Offset="0.5"/>
+        <GradientStop Color="{DynamicResource SxTransparentColor}" Offset="1"/>
+    </LinearGradientBrush>
+
+    <!-- Rozmowa: bańki użytkownika i Sentinela. -->
+    <LinearGradientBrush x:Key="SxUserBubbleGradient" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Color="{DynamicResource SxUserBubbleColor}" Offset="0"/>
+        <GradientStop Color="{DynamicResource SxAccentBlueSoftColor}" Offset="1"/>
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="SxAssistantBubbleGradient" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Color="{DynamicResource SxAssistantBubbleColor}" Offset="0"/>
+        <GradientStop Color="{DynamicResource SxSurfaceColor}" Offset="1"/>
+    </LinearGradientBrush>
+
+    <!-- Połysk przesuwany po elemencie (stan „pracuje"). -->
+    <LinearGradientBrush x:Key="SxShimmerGradient" StartPoint="0,0" EndPoint="1,0">
+        <GradientStop Color="{DynamicResource SxTransparentColor}" Offset="0"/>
+        <GradientStop Color="{DynamicResource SxShimmerColor}" Offset="0.45"/>
+        <GradientStop Color="{DynamicResource SxTransparentColor}" Offset="1"/>
+    </LinearGradientBrush>
+    <!-- Prążki paska postępu (okres wzoru = 0.1 → 600 px przesunięcia = jedna pętla). -->
+    <LinearGradientBrush x:Key="SxProgressStripeGradient" StartPoint="0,0" EndPoint="0.1,0" SpreadMethod="Repeat">
+        <GradientStop Color="{DynamicResource SxShimmerColor}" Offset="0"/>
+        <GradientStop Color="{DynamicResource SxTransparentColor}" Offset="0.5"/>
+        <GradientStop Color="{DynamicResource SxShimmerColor}" Offset="1"/>
+    </LinearGradientBrush>
+
+    <!-- Aurora: trzy radialne poświaty tła (dekoracja, IsHitTestVisible=False). -->
+    <RadialGradientBrush x:Key="SxAuroraCyanBrush">
+        <GradientStop Color="{DynamicResource SxAuroraAColor}" Offset="0"/>
+        <GradientStop Color="{DynamicResource SxTransparentColor}" Offset="1"/>
+    </RadialGradientBrush>
+    <RadialGradientBrush x:Key="SxAuroraVioletBrush">
+        <GradientStop Color="{DynamicResource SxAuroraBColor}" Offset="0"/>
+        <GradientStop Color="{DynamicResource SxTransparentColor}" Offset="1"/>
+    </RadialGradientBrush>
+    <RadialGradientBrush x:Key="SxAuroraPinkBrush">
+        <GradientStop Color="{DynamicResource SxAuroraCColor}" Offset="0"/>
+        <GradientStop Color="{DynamicResource SxTransparentColor}" Offset="1"/>
+    </RadialGradientBrush>
+    <!-- Reveal: poświata podążająca za kursorem (Utilities/Reveal.cs). -->
+    <RadialGradientBrush x:Key="SxRevealBrush" MappingMode="Absolute" GradientOrigin="0,0" Center="0,0" RadiusX="190" RadiusY="190">
+        <GradientStop Color="{DynamicResource SxRevealColor}" Offset="0"/>
+        <GradientStop Color="{DynamicResource SxTransparentColor}" Offset="1"/>
+    </RadialGradientBrush>
+
+    <!-- Cienie statyczne: animowany cień w WPF wyłącza akcelerację sprzętową. -->
+    <DropShadowEffect x:Key="SxShadowSoft" BlurRadius="18" ShadowDepth="4" Direction="270" Opacity="0.32" Color="{DynamicResource SxShadowColor}"/>
+    <DropShadowEffect x:Key="SxShadowRaised" BlurRadius="34" ShadowDepth="10" Direction="270" Opacity="0.45" Color="{DynamicResource SxShadowColor}"/>
+    <DropShadowEffect x:Key="SxShadowModal" BlurRadius="60" ShadowDepth="18" Direction="270" Opacity="0.60" Color="{DynamicResource SxShadowColor}"/>
+    <DropShadowEffect x:Key="SxGlowAccent" BlurRadius="22" ShadowDepth="0" Direction="0" Opacity="0.50" Color="{DynamicResource SxAccentCyanColor}"/>
 </ResourceDictionary>

@@ -1,99 +1,198 @@
 <UserControl xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:u="clr-namespace:SentinelX.Utilities" x:Class="SentinelX.Views.Pages.TasksPage" u:PageTransitions.Enabled="True" u:UiInteraction.LoadedCommand="{Binding RefreshCommand}">
-    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-        <StackPanel Margin="28">
-            <TextBlock Text="Zadania i przypomnienia" Style="{StaticResource SxHeading}"/>
-            <TextBlock Text="Czasy to czas lokalny tego komputera · przypomnienia działają tylko, gdy aplikacja jest uruchomiona — spóźnione pokażą się jako przegapione, nigdy po cichu" Style="{StaticResource SxCaption}" Margin="0,0,0,24"/>
+    <!-- 0.93 · NOWOCZESNE GUI: zadania i przypomnienia jako karty z paskiem stanu,
+         chipem priorytetu i etykietą tekstową terminu. Wszystko wiąże się wyłącznie
+         z TaskViewModel / TaskItemViewModel / ReminderItemViewModel. -->
+    <Grid ClipToBounds="True">
+        <Border Style="{StaticResource SxPageWash}" Opacity="0.14"/>
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Margin="{StaticResource SxSpacePage}">
+                <DockPanel Margin="0,0,0,18">
+                    <Button Content="Odśwież" Command="{Binding RefreshCommand}" DockPanel.Dock="Right" Style="{StaticResource SxChipButton}" Margin="12,0,0,0" VerticalAlignment="Top"/>
+                    <StackPanel Orientation="Horizontal">
+                        <Border Style="{StaticResource SxHeaderAccentBar}" Background="{StaticResource SxTealLimeGradient}"/>
+                        <StackPanel>
+                            <TextBlock Text="ZADANIA, TERMINY I PRZYPOMNIENIA" Style="{StaticResource SxEyebrow}" Foreground="{DynamicResource SxAccentLime}"/>
+                            <TextBlock Text="Zadania" Style="{StaticResource SxHeading}" Margin="0"/>
+                            <TextBlock Text="Wpisz zadanie zwykłym językiem — parser rozpozna termin i podgląd pokaże przed zapisem." Style="{StaticResource SxCaption}" Margin="0,6,0,0"/>
+                        </StackPanel>
+                    </StackPanel>
+                </DockPanel>
 
-            <DockPanel Margin="0,0,0,12">
-                <Button Content="Odśwież" Command="{Binding RefreshCommand}" DockPanel.Dock="Right" Margin="12,0,0,0"/>
-                <ComboBox ItemsSource="{Binding FilterOptions}" SelectedItem="{Binding Filter}" Width="190" DockPanel.Dock="Right" Margin="12,0,0,0" AutomationProperties.Name="Filtr listy zadań"/>
-                <TextBlock/>
-            </DockPanel>
-            <TextBlock Text="{Binding Banner}" Foreground="{DynamicResource SxAccentCyan}" TextWrapping="Wrap" FontSize="12" Margin="0,0,0,8"/>
-            <TextBlock Text="{Binding Status}" Style="{StaticResource SxCaption}" TextWrapping="Wrap" Margin="0,0,0,16"/>
+                <Border Style="{StaticResource SxCardElevated}" Margin="0,0,0,14" u:Reveal.Enabled="True">
+                    <StackPanel>
+                        <TextBlock Text="NOWE ZADANIE" Style="{StaticResource SxEyebrow}" Foreground="{DynamicResource SxAccentCyan}"/>
+                        <TextBlock Text="Dodaj zadanie" Style="{StaticResource SxSectionTitle}"/>
+                        <TextBox Text="{Binding NewTitle, UpdateSourceTrigger=PropertyChanged}" u:InputHint.Text="np. Napraw build w piątek" Margin="0,0,0,8" AutomationProperties.Name="Treść nowego zadania"/>
+                        <UniformGrid Columns="3" Margin="-5,0,-5,8">
+                            <TextBox Text="{Binding NewDueText, UpdateSourceTrigger=PropertyChanged}" Margin="5,0" u:InputHint.Text="Termin — np. jutro o 18, za 2 godziny" ToolTip="Rozpoznawane: za N minut/godzin/dni, pojutrze, jutro HH:MM, w piątek, konkretna data" AutomationProperties.Name="Termin nowego zadania"/>
+                            <ComboBox ItemsSource="{Binding PriorityOptions}" SelectedItem="{Binding NewPriority}" Margin="5,0" AutomationProperties.Name="Priorytet nowego zadania"/>
+                            <ComboBox ItemsSource="{Binding ProjectOptions}" SelectedIndex="{Binding NewProjectIndex}" Margin="5,0" AutomationProperties.Name="Projekt nowego zadania"/>
+                        </UniformGrid>
+                        <DockPanel Margin="0,0,0,12">
+                            <Border Style="{StaticResource SxBadgeAccent}" DockPanel.Dock="Right" VerticalAlignment="Center" Margin="10,0,0,0" Padding="12,6">
+                                <TextBlock Text="{Binding NewDuePreview}" Foreground="{DynamicResource SxAccentCyan}" Style="{StaticResource SxBadgeText}" MaxWidth="420" TextWrapping="Wrap"/>
+                            </Border>
+                            <TextBlock Text="Zapowiedź terminu" Style="{StaticResource SxLabel}" VerticalAlignment="Center"/>
+                        </DockPanel>
+                        <Button Content="Dodaj zadanie" Command="{Binding AddTaskCommand}" Style="{StaticResource SxPrimaryButton}"/>
+                    </StackPanel>
+                </Border>
 
-            <Border Style="{StaticResource SxCard}" Margin="0,0,0,16">
-                <StackPanel>
-                    <TextBlock Text="Nowe zadanie" Style="{StaticResource SxSectionTitle}"/>
-                    <TextBox Text="{Binding NewTitle, UpdateSourceTrigger=PropertyChanged}" u:InputHint.Text="Treść zadania — np. Wysłać raport" Margin="0,12,0,8" AutomationProperties.Name="Treść nowego zadania"/>
-                    <TextBox Text="{Binding NewDueText, UpdateSourceTrigger=PropertyChanged}" u:InputHint.Text="Termin opcjonalny: jutro o 18, za 2 godziny, 24.12 o 12" Margin="0,0,0,4" AutomationProperties.Name="Termin nowego zadania"/>
-                    <TextBlock Text="{Binding NewDuePreview}" Style="{StaticResource SxCaption}" Margin="0,0,0,8"/>
+                <Border Style="{StaticResource SxCardElevated}" Margin="0,0,0,14">
+                    <StackPanel>
+                        <TextBlock Text="NOWE PRZYPOMNIENIE" Style="{StaticResource SxEyebrow}" Foreground="{DynamicResource SxAccentViolet}"/>
+                        <TextBlock Text="Ustaw przypomnienie" Style="{StaticResource SxSectionTitle}"/>
+                        <DockPanel Margin="0,0,0,8">
+                            <TextBox Text="{Binding NewReminderWhen, UpdateSourceTrigger=PropertyChanged}" Width="260" DockPanel.Dock="Right" Margin="8,0,0,0" u:InputHint.Text="Kiedy — np. za 30 minut" AutomationProperties.Name="Termin przypomnienia"/>
+                            <TextBox Text="{Binding NewReminderText, UpdateSourceTrigger=PropertyChanged}" u:InputHint.Text="Treść przypomnienia…" AutomationProperties.Name="Treść przypomnienia"/>
+                        </DockPanel>
+                        <DockPanel Margin="0,0,0,12">
+                            <Border Style="{StaticResource SxBadge}" DockPanel.Dock="Right" VerticalAlignment="Center" Margin="10,0,0,0" Padding="12,6">
+                                <TextBlock Text="{Binding NewReminderPreview}" Foreground="{DynamicResource SxAccentViolet}" Style="{StaticResource SxBadgeText}" MaxWidth="420" TextWrapping="Wrap"/>
+                            </Border>
+                            <TextBlock Text="Zapowiedź przypomnienia" Style="{StaticResource SxLabel}" VerticalAlignment="Center"/>
+                        </DockPanel>
+                        <Button Content="Ustaw przypomnienie" Command="{Binding AddReminderCommand}" Style="{StaticResource SxPrimaryButton}"/>
+                        <TextBlock Text="Przypomnienie działa tylko, gdy Sentinel jest uruchomiony. Spóźnione oznaczamy jako przegapione — nic nie udajemy." Style="{StaticResource SxMuted}" Margin="0,10,0,0"/>
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource SxCard}" Padding="{StaticResource SxSpaceLg}" Margin="0,0,0,14">
                     <DockPanel>
-                        <Button Content="Dodaj zadanie" Command="{Binding AddTaskCommand}" Style="{StaticResource SxPrimaryButton}" DockPanel.Dock="Right"/>
-                        <ComboBox ItemsSource="{Binding PriorityOptions}" SelectedItem="{Binding NewPriority}" Width="140" HorizontalAlignment="Left" Margin="0,0,8,0" AutomationProperties.Name="Priorytet nowego zadania"/>
-                        <ComboBox ItemsSource="{Binding ProjectOptions}" SelectedIndex="{Binding NewProjectIndex}" Width="190" HorizontalAlignment="Left" AutomationProperties.Name="Projekt nowego zadania"/>
+                        <TextBlock Text="{Binding Status}" DockPanel.Dock="Right" VerticalAlignment="Center" Margin="12,0,0,0" Style="{StaticResource SxMuted}" MaxWidth="520" TextWrapping="Wrap"/>
+                        <StackPanel>
+                            <TextBlock Text="FILTR" Style="{StaticResource SxEyebrow}" Foreground="{DynamicResource SxAccentTeal}"/>
+                            <ComboBox ItemsSource="{Binding FilterOptions}" SelectedItem="{Binding Filter}" AutomationProperties.Name="Filtr zadań"/>
+                        </StackPanel>
                     </DockPanel>
-                </StackPanel>
-            </Border>
+                </Border>
+                <Border Style="{StaticResource SxBadgeWarning}" HorizontalAlignment="Left" Padding="14,8" Margin="0,0,0,16" Visibility="{Binding Banner, Converter={StaticResource StringNotEmptyToVisibility}}">
+                    <StackPanel Orientation="Horizontal">
+                        <Ellipse Width="8" Height="8" VerticalAlignment="Center" Margin="0,0,10,0" Fill="{DynamicResource SxWarning}" u:Motion.Pulse="True"/>
+                        <TextBlock Text="{Binding Banner}" Foreground="{DynamicResource SxWarning}" Style="{StaticResource SxBadgeText}" TextWrapping="Wrap" MaxWidth="880"/>
+                    </StackPanel>
+                </Border>
 
-            <Border Style="{StaticResource SxCard}" Margin="0,0,0,16">
-                <StackPanel>
-                    <TextBlock Text="Nowe przypomnienie" Style="{StaticResource SxSectionTitle}"/>
-                    <TextBox Text="{Binding NewReminderText, UpdateSourceTrigger=PropertyChanged}" u:InputHint.Text="O czym przypomnieć — np. Zadzwoń do mamy" Margin="0,12,0,8" AutomationProperties.Name="Treść nowego przypomnienia"/>
-                    <TextBox Text="{Binding NewReminderWhen, UpdateSourceTrigger=PropertyChanged}" u:InputHint.Text="Kiedy: za 30 minut, jutro o 18, w piątek o 15, 24.12 o 12" Margin="0,0,0,4" AutomationProperties.Name="Termin nowego przypomnienia"/>
-                    <TextBlock Text="{Binding NewReminderPreview}" Style="{StaticResource SxCaption}" Margin="0,0,0,8"/>
-                    <DockPanel>
-                        <Button Content="Ustaw przypomnienie" Command="{Binding AddReminderCommand}" Style="{StaticResource SxPrimaryButton}" DockPanel.Dock="Right"/>
-                    </DockPanel>
-                </StackPanel>
-            </Border>
+                <Border Margin="0,0,0,16">
+                    <Border.Style>
+                        <Style TargetType="Border" BasedOn="{StaticResource SxAccentCard}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding SelectedTask}" Value="{x:Null}">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                    <StackPanel>
+                        <TextBlock Text="EDYCJA" Style="{StaticResource SxEyebrow}" Foreground="{DynamicResource SxAccentCyan}"/>
+                        <TextBlock Text="Edycja wybranego zadania" Style="{StaticResource SxSectionTitle}"/>
+                        <TextBox Text="{Binding EditorTitle, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8" AutomationProperties.Name="Tytuł edytowanego zadania"/>
+                        <DockPanel Margin="0,0,0,12">
+                            <TextBlock Text="{Binding EditorDuePreview}" DockPanel.Dock="Right" VerticalAlignment="Center" Margin="10,0,0,0" Foreground="{DynamicResource SxAccentTeal}" Style="{StaticResource SxBadgeText}"/>
+                            <TextBox Text="{Binding EditorDueText, UpdateSourceTrigger=PropertyChanged}" u:InputHint.Text="Nowy termin — puste pole nie zmienia terminu" AutomationProperties.Name="Nowy termin zadania"/>
+                        </DockPanel>
+                        <Button Content="Zapisz zmiany" Command="{Binding SaveSelectedCommand}" Style="{StaticResource SxPrimaryButton}"/>
+                    </StackPanel>
+                </Border>
 
-            <Border Margin="0,0,0,16">
-                <Border.Style>
-                    <Style TargetType="Border" BasedOn="{StaticResource SxCard}">
-                        <Style.Triggers>
-                            <DataTrigger Binding="{Binding SelectedTask}" Value="{x:Null}">
-                                <Setter Property="Visibility" Value="Collapsed"/>
-                            </DataTrigger>
-                        </Style.Triggers>
-                    </Style>
-                </Border.Style>
-                <StackPanel>
-                    <TextBlock Text="Edycja wybranego zadania" Style="{StaticResource SxSectionTitle}"/>
-                    <TextBox Text="{Binding EditorTitle, UpdateSourceTrigger=PropertyChanged}" Margin="0,12,0,8" AutomationProperties.Name="Tytuł edytowanego zadania"/>
-                    <TextBox Text="{Binding EditorDueText, UpdateSourceTrigger=PropertyChanged}" u:InputHint.Text="Nowy termin (puste = bez zmian)" Margin="0,0,0,4" AutomationProperties.Name="Nowy termin zadania"/>
-                    <TextBlock Text="{Binding EditorDuePreview}" Style="{StaticResource SxCaption}" Margin="0,0,0,8"/>
-                    <WrapPanel>
-                        <Button Content="Zapisz zmiany" Command="{Binding SaveSelectedCommand}" Style="{StaticResource SxPrimaryButton}" Margin="0,0,8,0"/>
-                    </WrapPanel>
-                </StackPanel>
-            </Border>
+                <TextBlock Text="ZADANIA" Style="{StaticResource SxEyebrow}" Foreground="{DynamicResource SxAccentCyan}" Margin="0,0,0,10"/>
+                <ItemsControl ItemsSource="{Binding Items}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Style="{StaticResource SxCardInteractive}" Margin="0,0,0,12" Padding="0" u:Reveal.Enabled="True" u:Motion.Entrance="True">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Border Width="4" CornerRadius="{StaticResource SxRadiusCardEdge}">
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Setter Property="Background" Value="{StaticResource SxTealLimeGradient}"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding HighPriority}" Value="True">
+                                                        <Setter Property="Background" Value="{StaticResource SxDangerGradient}"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Margin="{StaticResource SxSpaceCard}">
+                                        <DockPanel Margin="0,0,0,8">
+                                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                                <Border Style="{StaticResource SxBadgeAccent}" Padding="9,3" Margin="0,0,6,0">
+                                                    <TextBlock Text="{Binding StatusLabel}" Style="{StaticResource SxBadgeText}" Foreground="{DynamicResource SxAccentCyan}"/>
+                                                </Border>
+                                                <Border Style="{StaticResource SxBadgeWarning}" Padding="9,3" Visibility="{Binding HighPriority, Converter={StaticResource BoolToVisibility}}">
+                                                    <TextBlock Text="{Binding Priority, StringFormat=PRIORYTET: {0}}" Style="{StaticResource SxBadgeText}" Foreground="{DynamicResource SxWarning}"/>
+                                                </Border>
+                                            </StackPanel>
+                                            <TextBlock Text="{Binding Title}" FontSize="{StaticResource SxFontSubheading}" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,0,12,0"/>
+                                        </DockPanel>
+                                        <TextBlock Text="{Binding MetaText}" Style="{StaticResource SxCaption}" TextWrapping="Wrap" Margin="0,0,0,12"/>
+                                        <WrapPanel>
+                                            <Button Content="{Binding StatusCycleLabel}" Command="{Binding DataContext.CycleStatusCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" Style="{StaticResource SxPrimaryButton}" Padding="16,7" MinHeight="34" FontSize="{StaticResource SxFontCaption}" Margin="0,0,8,8" ToolTip="otwarte → w toku → zrobione → otwarte"/>
+                                            <Button Content="Wybierz do edycji" Command="{Binding DataContext.SelectTaskCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" Style="{StaticResource SxChipButton}"/>
+                                            <Button Content="Usuń zadanie" Command="{Binding DataContext.DeleteTaskCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" Style="{StaticResource SxDangerButton}" Padding="14,6" MinHeight="32" FontSize="{StaticResource SxFontCaption}" Margin="0,0,8,8" ToolTip="Nieodwracalne; usuwa wyłącznie ten wpis"/>
+                                        </WrapPanel>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
 
-            <TextBlock Text="Zadania" Style="{StaticResource SxSectionTitle}" Margin="0,0,0,8"/>
-            <ItemsControl ItemsSource="{Binding Items}">
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                        <Border Style="{StaticResource SxCard}" Margin="0,0,0,12">
-                            <StackPanel>
-                                <TextBlock Text="{Binding Title}" TextWrapping="Wrap"/>
-                                <TextBlock Text="{Binding MetaText}" Style="{StaticResource SxCaption}" Margin="0,8,0,12"/>
-                                <WrapPanel>
-                                    <Button Content="{Binding StatusCycleLabel}" Command="{Binding DataContext.CycleStatusCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" Style="{StaticResource SxPrimaryButton}" Margin="0,0,8,4"/>
-                                    <Button Content="Wybierz do edycji" Command="{Binding DataContext.SelectTaskCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" Style="{StaticResource SxGhostButton}" Margin="0,0,8,4"/>
-                                    <Button Content="Usuń" Command="{Binding DataContext.DeleteTaskCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" Style="{StaticResource SxDangerButton}" Margin="0,0,8,4" ToolTip="Nieodwracalnie usuwa wyłącznie ten wpis"/>
-                                </WrapPanel>
-                            </StackPanel>
-                        </Border>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
+                <Border Margin="0,0,0,16">
+                    <Border.Style>
+                        <Style TargetType="Border" BasedOn="{StaticResource SxEmptyState}">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Items.Count}" Value="0">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                    <StackPanel HorizontalAlignment="Center">
+                        <TextBlock Text="☑" FontSize="{StaticResource SxFontDisplay1}" Foreground="{DynamicResource SxBorder}" HorizontalAlignment="Center"/>
+                        <TextBlock Text="Brak zadań w tym filtrze" Style="{StaticResource SxSubheading}" HorizontalAlignment="Center" Margin="0,10,0,6"/>
+                        <TextBlock Text="Dodaj zadanie powyżej albo napisz w Centrum: „dodaj zadanie …”." Style="{StaticResource SxCaption}" HorizontalAlignment="Center" TextAlignment="Center"/>
+                    </StackPanel>
+                </Border>
 
-            <TextBlock Text="Przypomnienia" Style="{StaticResource SxSectionTitle}" Margin="8,0,0,8"/>
-            <ItemsControl ItemsSource="{Binding Reminders}">
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                        <Border Style="{StaticResource SxCard}" Margin="0,0,0,12">
-                            <StackPanel>
-                                <TextBlock Text="{Binding Text}" TextWrapping="Wrap"/>
-                                <TextBlock Text="{Binding MetaText}" Style="{StaticResource SxCaption}" Margin="0,8,0,12"/>
-                                <WrapPanel>
-                                    <Button Content="Usuń" Command="{Binding DataContext.DeleteReminderCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" Style="{StaticResource SxDangerButton}" Margin="0,0,8,4"/>
-                                </WrapPanel>
-                            </StackPanel>
-                        </Border>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
-        </StackPanel>
-    </ScrollViewer>
+                <Border Style="{StaticResource SxCard}">
+                    <StackPanel>
+                        <TextBlock Text="PRZYPOMNIENIA" Style="{StaticResource SxEyebrow}" Foreground="{DynamicResource SxAccentViolet}"/>
+                        <TextBlock Text="Przypomnienia" Style="{StaticResource SxSectionTitle}"/>
+                        <ItemsControl ItemsSource="{Binding Reminders}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Style="{StaticResource SxPanelSunken}" Margin="0,0,0,8" Padding="14,11" u:Motion.Entrance="True">
+                                        <DockPanel>
+                                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                                                <Border Style="{StaticResource SxBadge}" Padding="9,3" Margin="0,0,6,0" Visibility="{Binding Awaiting, Converter={StaticResource BoolToVisibility}}">
+                                                    <TextBlock Text="OCZEKUJE" Style="{StaticResource SxBadgeText}" Foreground="{DynamicResource SxAccentViolet}"/>
+                                                </Border>
+                                                <Border Style="{StaticResource SxBadgeWarning}" Padding="9,3" Margin="0,0,6,0" Visibility="{Binding Missed, Converter={StaticResource BoolToVisibility}}">
+                                                    <TextBlock Text="PRZEGAPIONE" Style="{StaticResource SxBadgeText}" Foreground="{DynamicResource SxWarning}"/>
+                                                </Border>
+                                                <Button Content="Usuń" Command="{Binding DataContext.DeleteReminderCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" Style="{StaticResource SxGhostButton}" FontSize="{StaticResource SxFontSmall}"/>
+                                            </StackPanel>
+                                            <StackPanel Margin="0,0,12,0">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <Ellipse Width="8" Height="8" VerticalAlignment="Center" Margin="0,0,8,0" Fill="{DynamicResource SxAccentViolet}" u:Motion.Pulse="True"/>
+                                                    <TextBlock Text="{Binding Text}" FontSize="{StaticResource SxFontSubheading}" TextWrapping="Wrap"/>
+                                                </StackPanel>
+                                                <TextBlock Text="{Binding MetaText}" Style="{StaticResource SxMuted}" Margin="16,3,0,0"/>
+                                            </StackPanel>
+                                        </DockPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
 </UserControl>

@@ -100,6 +100,15 @@ Stan na 2026-09-25 (0.93). Zasada: każda pojedyncza pozycja znika z listy dopie
 - **Decyzja użytkownika**: automatyczne wydanie rolling WYŁĄCZONE — `release.yml` publikuje tylko tagi `v*.*.*` i ręczny dispatch; zwykły push tylko buduje i testuje. **Nie publikować EXE bez wyraźnej prośby.**
 - Skróty `//sprzatanie`, `//nazwy` w palecie; `co nowego` zaktualizowane.
 - **P0.1 „plików” domknięte** — wszystkie pozycje zbudowane i testowane w CI.
+- **GUI: pełna warstwa wizualna 0.93 (nowoczesny design bez nowych pakietów NuGet)** — żądanie użytkownika: „o wiele bardziej nowoczesne, nie tylko 2 kolory i zero animacji”.
+  - System tokenów `Sx*` w `Themes/`: 68 tokenów koloru (tła, powierzchnie, 3 poziomy tekstu, 5 akcentów + warianty Dim/Soft, semantyka z końcami gradientów, obramowania, fokus, cienie, shimmer, reveal, dymki czatu, aurora, overlay, scrim), tokeny promieni i odstępów (`CornerRadius`/`Thickness`), typografia (3 rodziny, 12 rozmiarów, 12 styli), gradienty i efekty (akcent, fiolet–róż, mięta–limonka, błękit–cyjan, success, danger, warning, shimmer, pasek postępu, reveal, aurora, 3 cienie, poświata).
+  - `scripts/generate-themes.py` generuje `DarkTheme/DeepDarkTheme/LightTheme.xaml` i liczy kontrast WCAG dla par krytycznych (tekst/tło, biały na końcach gradientów akcentu i semantyki, tekst stanu na jego tle) — `--check` jest bramką: `PASS: 68 tokenów × 3 motywy, kontrast OK`.
+  - `Themes/Animations.xaml`: 4 krzywe łatwości i 35 storyboardów (wejście strony, wejścia modalne, scrim, hover, press, glow, sheen, lift, pasek nawigacji, nudge, linia, suwak, chevron, puls twardy i miękki, ripple, oddech, busy, shimmer, pasy postępu, dryf aurory).
+  - `Utilities/Motion.cs` (attached: `Entrance`, `BubbleIn`, `Hover`, `Pulse`, `Shimmer`, `Stripes`, `Aurora`, `ModalIn`) i `Utilities/Reveal.cs` — animacje pętlące są bramkowane przez `ClientAreaAnimation` Windows **i** `SxAnimationsEnabled` (ustawienie „Animacje” + automatyczne wyłączenie podczas gry); animacje jednorazowe hover/press zostają w triggerach szablonów i szanują ustawienie systemu.
+  - Shell: sidebar 268 px z gradientem, „orb” marki, pill `Ctrl+K`, badge głosu z pulsującą kropką, aurora w tle treści, przejścia stron, modalne paleta i panel gotowości ze scrimem; zakładki Centrum mają **widoczne podpisy** (nie tylko ikony).
+  - 12 stron + overlay zbudowane od nowa na tokenach: nagłówek (pasek akcentu + eyebrow + tytuł + opis), kafelki metryk z gradientowym paskiem, karty z reveal i wejściem, paski stanu z kolorem **i** etykietą tekstową, stany zajętości z shimmerem, stany puste, uczciwe „Niedostępne” zamiast zmyślonych procentów (VRAM/RAM bez fabriczkowanych wartości).
+  - `UiSmokeTestRunner.cs`: zero usuniętych asercji, ~120 nowych sprawdzeń tokenów (kolory po przełożeniu motywu, promienie/odstępy, style, storyboardy, gradienty, efekty) + dotychczasowa bramka „zero błędów wiązań”.
+  - Bez zmian: wersja 0.93, etykiety i listy wyborów w `SettingsCatalog`, `Ui.SelectedPage`, legacy UI (`MainWindow.xaml`, `Theme.xaml`) — ani jednego znaku.
 
 ## Priorytet P0 — kolejny przyrost
 
@@ -108,7 +117,7 @@ Stan na 2026-09-25 (0.93). Zasada: każda pojedyncza pozycja znika z listy dopie
 3. **Panel archiwum w UI**: strona/panel z listą archiwów (miesiąc, rozmowy, wypowiedzi, rozmiar, hash), podglądem Markdowna i usuwaniem — dziś archiwum działa z czatu i z ustawień, ale nie ma własnego widoku.
 4. **Podpisywanie buildów**: certyfikat (płatny) albo jawnie opisana ścieżka bez podpisu z instrukcją odblokowania SmartScreen; dziś pliki są niepodpisane i tak jest opisane.
 5. **Integracje odłożone z 0.91** (decyzja użytkownika): GitHub i Gmail — dopiero jako osobny przyrost, wyłącznie za jawną zgodą i z lokalnym przechowywaniem poświadczeń stockowym crypto Windows.
-6. **Motywy**: pełny motyw „szkło/Jarvis” (dziś aurora to warstwa dekoracyjna; okno nieprzezroczyste z powodów wydajności/kompatybilności).
+6. **Motywy**: system tokenów `Sx*` z generatorem i kontrolą kontrastu jest domknięty w 0.93 (Dark/Deep Dark/Light + akcent w trakcie działania). Zostaje: pełny motyw „szkło/Jarvis” z przezroczystym oknem głównym (aurora jest dziś warstwą dekoracyjną wewnątrz okna; `AllowsTransparency` na oknie głównym to świadomie niezaakceptowany koszt wydajności/kompatybilności).
 
 ## Priorytet P1
 
@@ -141,3 +150,7 @@ Stan na 2026-09-25 (0.93). Zasada: każda pojedyncza pozycja znika z listy dopie
 - Archiwum rozmów jest kopią do odczytu: nie ma przywracania do aktywnej rozmowy.
 - Limit magazynu artefaktów GitHub Actions został osiągnięty 2026-09-24: przebieg `36049020743` miał **13/13 kroków merytorycznych `success`**, a czerwony znacznik pochodzi wyłącznie z `upload-artifact` („Artifact storage quota has been hit”). Retencja artefaktów skrócona do 2 dni; trwałą dystrybucją są assety wydania. Gdyby limit dalej blokował, kolejne kroki: `retention-days: 1` albo rezygnacja z uploadu binariów w buildzie gałęzi.
 - Streaming AI nie jest weryfikowany z żywym modelem w CI (brak Ollama w środowisku testowym) — transport i logika fragmentów są testowane na wstrzykniętym HTTP.
+- Warstwa wizualna 0.93 nie była oglądana na żywo w środowisku deweloperskim (brak lokalnego kompilatora .NET): dowodem są bramki statyczne (`check-architecture.py`, `generate-themes.py --check`) oraz `--ui-smoke` w CI na Windows (render każdej strony i zakładki, zero błędów wiązań, asercje tokenów). Ocena „czy to wygląda dobrze” wymaga uruchomienia na komputerze użytkownika.
+- Kontrola kontrastu w generatorze obejmuje zdefiniowane pary tokenów (tekst/tło, biały na końcach gradientów, tekst stanu na jego tle), nie każdą kombinację użytą w XAML; gradienty pod etykietami mają celowo przyciemnione końce.
+- Animacje pętlące (aurora, shimmer, pasy postępu, puls) są bramkowane ustawieniem Windows i ustawieniem „Animacje”, ale ich realny koszt GPU/CPU na słabszych maszynach nie został zmierzony — gdyby okazał się zauważalny, pierwszym krokiem jest wyłączenie aurory (`Motion.Aurora`) na stronie Centrum.
+- Panel „Motywy” nie ma podglądu motywu na żywo przed zapisem (zmiana działa natychmiast, ale nie ma miniatur).

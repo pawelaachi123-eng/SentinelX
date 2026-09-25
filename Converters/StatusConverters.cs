@@ -41,3 +41,15 @@ public sealed class ReadinessToBrushConverter : IValueConverter
     });
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => Binding.DoNothing;
 }
+
+/// <summary>
+/// 0.93 NOWOCZESNE GUI: pokazuje komunikat tylko gdy tekst nie jest pusty.
+/// Używany przy błędach walidacji pól ustawień i podpowiedziach stanu.
+/// </summary>
+[ValueConversion(typeof(string), typeof(Visibility))]
+public sealed class StringNotEmptyToVisibilityConverter : IValueConverter
+{
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) => string.IsNullOrWhiteSpace(value as string) ? Visibility.Collapsed : Visibility.Visible;
+
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => throw new NotSupportedException("Konwersja tylko w jedną stronę.");
+}

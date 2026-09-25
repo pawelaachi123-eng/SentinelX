@@ -3,6 +3,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Threading;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using Microsoft.Extensions.DependencyInjection;
 using SentinelX.Services.Actions;
@@ -326,6 +327,42 @@ public static class UiSmokeTestRunner
                 store.Settings.Ui.Theme = theme; store.Save();
                 shell.UpdateLayout();
             }
+            // 0.93 · NOWOCZESNE GUI: asercje warstwy wizualnej.
+            // Motyw po zastosowaniu musi dalej zawierać komplet tokenów koloru,
+            // a tokeny układu i animacje muszą być osiągalne z App.Resources.
+            string[] tokenColors = ["SxBackgroundColor", "SxSurfaceColor", "SxSurfaceSunkenColor", "SxSurfaceActiveColor",
+                "SxTextPrimaryColor", "SxTextSecondaryColor", "SxTextMutedColor", "SxAccentCyanColor", "SxAccentVioletColor",
+                "SxAccentTealColor", "SxAccentLimeColor", "SxAccentPinkColor", "SxAccentBlueColor", "SxSuccessColor", "SxWarningColor",
+                "SxErrorColor", "SxBorderColor", "SxBorderSubtleColor", "SxBorderStrongColor", "SxScrimColor", "SxOverlayBgColor"];
+            foreach (string token in tokenColors)
+                if (Application.Current.TryFindResource(token) is not Color) throw new InvalidOperationException("Theme token missing after theme switch: " + token);
+            string[] tokenLayout = ["SxRadiusXs", "SxRadiusSm", "SxRadiusMd", "SxRadiusLg", "SxRadiusCircle", "SxRadiusModalTop",
+                "SxRadiusCardEdge", "SxSpaceXs", "SxSpaceSm", "SxSpaceMd", "SxSpaceLg", "SxSpaceXl", "SxSpaceCard", "SxSpacePage",
+                "SxHairlineThickness", "SxEdgeThickness"];
+            foreach (string token in tokenLayout)
+                if (Application.Current.TryFindResource(token) is not (CornerRadius or Thickness)) throw new InvalidOperationException("Layout token missing: " + token);
+            string[] tokenStyles = ["SxPrimaryButton", "SxSecondaryButton", "SxDangerButton", "SxGhostButton", "SxChipButton", "SxPillButton",
+                "SxNavTile", "SxSidebarItem", "SxListItem", "SxTabItem", "SxIconChip", "SxIconChipAccent", "SxPageWash", "SxCard",
+                "SxCardElevated", "SxCardInteractive", "SxMetricCard", "SxAccentCard", "SxPanelSunken", "SxModalCard", "SxBadge",
+                "SxBadgeAccent", "SxBadgeSuccess", "SxBadgeWarning", "SxBadgeError", "SxBadgeInfo", "SxEmptyState", "SxHeaderAccentBar",
+                "SxDivider", "SxDividerAccent", "SxTextBox", "SxProgressBar", "SxProgressBarSlim", "SxStatusDot", "SxShimmerBar",
+                "SxBubbleAssistant", "SxBubbleUser", "SxBubbleStreaming", "SxGradientTitle", "SxEyebrow", "SxMetricValue", "SxMono"];
+            foreach (string token in tokenStyles)
+                if (!Application.Current.Resources.ContainsResource(token, true)) throw new InvalidOperationException("Design token style missing: " + token);
+            string[] tokenBoards = ["SxPageIn", "SxModalIn", "SxScrimIn", "SxFadeIn", "SxFadeOut", "SxHoverIn", "SxHoverOut", "SxPressIn",
+                "SxPressOut", "SxGlowIn", "SxGlowOut", "SxSheenIn", "SxLiftIn", "SxLiftOut", "SxNavBarGrow", "SxNavBarShrink", "SxLineGrow",
+                "SxLineShrink", "SxPulse", "SxPulseSoft", "SxBreathe", "SxShimmerSlide", "SxStripeSlide", "SxAuroraDriftA", "SxAuroraDriftB", "SxAuroraDriftC", "SxFadeSlideIn"];
+            foreach (string token in tokenBoards)
+                if (Application.Current.TryFindResource(token) is not Storyboard) throw new InvalidOperationException("Animation storyboard missing: " + token);
+            if (Application.Current.TryFindResource("SxAnimationsEnabled") is not bool) throw new InvalidOperationException("Animation gate token missing.");
+            string[] tokenBrushes = ["SxAccentGradient", "SxVioletPinkGradient", "SxTealLimeGradient", "SxBlueCyanGradient",
+                "SxDangerGradient", "SxSuccessGradient", "SxWarningGradient", "SxShimmerGradient", "SxRevealBrush",
+                "SxAuroraCyanBrush", "SxAuroraVioletBrush", "SxAuroraPinkBrush"];
+            foreach (string token in tokenBrushes)
+                if (Application.Current.TryFindResource(token) is not Brush) throw new InvalidOperationException("Gradient token missing: " + token);
+            foreach (string token in new[] { "SxShadowSoft", "SxShadowRaised", "SxShadowModal", "SxGlowAccent" })
+                if (Application.Current.TryFindResource(token) is not System.Windows.Media.Effects.Effect) throw new InvalidOperationException("Effect token missing: " + token);
+
             services.GetRequiredService<Services.Desktop.IDesktopService>().ToggleOverlay();
             await shell.Dispatcher.InvokeAsync(shell.UpdateLayout, DispatcherPriority.ContextIdle);
             services.GetRequiredService<Services.Desktop.IDesktopService>().ToggleOverlay();

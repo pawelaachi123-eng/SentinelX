@@ -14,6 +14,8 @@
             <c:VoiceStateToBrushConverter x:Key="VoiceBrush"/>
             <c:RiskLevelToBrushConverter x:Key="RiskBrush"/>
             <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
+            <!-- 0.93 NOWOCZESNE GUI: widoczność komunikatów tekstowych (błędy walidacji, potwierdzenia zapisu). -->
+            <c:StringNotEmptyToVisibilityConverter x:Key="StringNotEmptyToVisibility"/>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

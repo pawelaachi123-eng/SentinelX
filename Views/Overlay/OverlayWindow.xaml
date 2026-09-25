@@ -1,11 +1,33 @@
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" x:Class="SentinelX.Views.Overlay.OverlayWindow" WindowStyle="None" AllowsTransparency="True" Topmost="True" ShowInTaskbar="False" ShowActivated="False" Background="{DynamicResource SxTransparent}" SizeToContent="WidthAndHeight" ResizeMode="NoResize" Left="20" Top="20" MouseLeftButtonDown="DragOverlay">
-    <Border Background="{DynamicResource SxOverlayBg}" CornerRadius="12" Padding="16,12" BorderBrush="{DynamicResource SxBorder}" BorderThickness="1">
-        <StackPanel MinWidth="220">
-            <TextBlock Text="SENTINEL X   /   TELEMETRY" Foreground="{DynamicResource SxAccentCyan}" FontSize="11" Margin="0,0,0,12"/>
-            <TextBlock Text="RAM" Style="{StaticResource SxCaption}"/>
-            <TextBlock Text="{Binding System.Snapshot.RamText}" FontSize="22" FontWeight="Bold"/>
-            <TextBlock Text="{Binding System.Snapshot.CpuText, StringFormat=CPU  {0}}" Margin="0,8,0,0"/>
-            <TextBlock Text="{Binding System.Snapshot.GpuText, StringFormat=GPU  {0}}"/>
+    <!-- 0.93 · NOWOCZESNE GUI: nakładka z gradientową krawędzią, paskami odczytów
+         i znacznikiem wykrytej gry. Zero dosłownych rozmiarów czcionek i kolorów —
+         wszystko z tokenów, więc motyw, akcent i skala nakładki działają razem. -->
+    <Border Background="{DynamicResource SxOverlayBg}" CornerRadius="{StaticResource SxRadiusLg}" Padding="16,13" BorderBrush="{DynamicResource SxBorder}" BorderThickness="1" Effect="{StaticResource SxShadowModal}">
+        <StackPanel MinWidth="248">
+            <Border Height="3" CornerRadius="2" Background="{StaticResource SxAccentGradient}" Margin="-16,-13,-16,11"/>
+            <DockPanel Margin="0,0,0,10">
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Ellipse Width="7" Height="7" VerticalAlignment="Center" Margin="0,0,6,0" Fill="{DynamicResource SxAccentLime}"/>
+                    <TextBlock Text="{Binding System.Snapshot.GamingText}" Style="{StaticResource SxBadgeText}" Foreground="{DynamicResource SxTextSecondary}"/>
+                </StackPanel>
+                <TextBlock Text="SENTINEL X   /   TELEMETRY" Style="{StaticResource SxEyebrow}" Foreground="{DynamicResource SxAccentCyan}"/>
+            </DockPanel>
+
+            <TextBlock Text="RAM" Style="{StaticResource SxEyebrow}" Foreground="{DynamicResource SxAccentViolet}"/>
+            <TextBlock Text="{Binding System.Snapshot.RamText}" Style="{StaticResource SxMetricValue}" FontSize="{StaticResource SxFontHeading1}" Margin="0,0,0,10"/>
+
+            <TextBlock Text="CPU" Style="{StaticResource SxEyebrow}" Foreground="{DynamicResource SxAccentCyan}"/>
+            <TextBlock Text="{Binding System.Snapshot.CpuText}" FontSize="{StaticResource SxFontSubheading}" FontWeight="SemiBold"/>
+            <ProgressBar Value="{Binding System.Snapshot.Cpu, Mode=OneWay}" Maximum="100" Height="3" Style="{StaticResource SxProgressBarSlim}" Margin="0,5,0,10"/>
+
+            <TextBlock Text="GPU" Style="{StaticResource SxEyebrow}" Foreground="{DynamicResource SxAccentTeal}"/>
+            <TextBlock Text="{Binding System.Snapshot.GpuText}" FontSize="{StaticResource SxFontSubheading}" FontWeight="SemiBold"/>
+            <ProgressBar Value="{Binding System.Snapshot.Gpu, Mode=OneWay}" Maximum="100" Height="3" Foreground="{StaticResource SxTealLimeGradient}" Style="{StaticResource SxProgressBarSlim}" Margin="0,5,0,10"/>
+
+            <Border Height="1" Background="{DynamicResource SxBorderSubtle}" Margin="-16,0,-16,9"/>
+            <TextBlock Text="{Binding System.Snapshot.VramText, StringFormat=VRAM  {0}}" Style="{StaticResource SxBadgeText}" Foreground="{DynamicResource SxTextSecondary}"/>
+            <TextBlock Text="{Binding System.Snapshot.Network}" Style="{StaticResource SxBadgeText}" Foreground="{DynamicResource SxTextSecondary}" TextWrapping="Wrap" MaxWidth="248"/>
+            <TextBlock Text="Przeciągnij, aby przenieść · pozycję i skalę zmienisz w Settings → Wygląd" Style="{StaticResource SxBadgeText}" Foreground="{DynamicResource SxTextSecondary}" Opacity="0.7" TextWrapping="Wrap" MaxWidth="248" Margin="0,6,0,0"/>
         </StackPanel>
     </Border>
 </Window>
