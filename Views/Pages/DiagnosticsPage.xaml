@@ -1,0 +1,51 @@
+<UserControl xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:u="clr-namespace:SentinelX.Utilities" x:Class="SentinelX.Views.Pages.DiagnosticsPage" u:PageTransitions.Enabled="True" u:UiInteraction.LoadedCommand="{Binding RefreshCommand}">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="28">
+            <TextBlock Text="Diagnostyka — odczyty i porównania" Style="{StaticResource SxHeading}"/>
+            <TextBlock Text="Odczyt to obraz stanu w jednej chwili (dyski, usługi, zdarzenia, sieć). Porównanie pokazuje wyłącznie różnice — nie wyjaśnia przyczyny i nie jest diagnozą kondycji sprzętu." Style="{StaticResource SxCaption}" TextWrapping="Wrap" Margin="0,0,0,20"/>
+
+            <Border Style="{StaticResource SxCard}" Margin="0,0,0,16">
+                <StackPanel>
+                    <TextBlock Text="Nowy odczyt" Style="{StaticResource SxSectionTitle}"/>
+                    <TextBox Text="{Binding Label, UpdateSourceTrigger=PropertyChanged}" u:InputHint.Text="Opis opcjonalny — np. przed aktualizacją sterownika" Margin="0,12,0,8" AutomationProperties.Name="Opis nowego odczytu"/>
+                    <DockPanel>
+                        <Button Content="Zapisz odczyt" Command="{Binding CaptureCommand}" Style="{StaticResource SxPrimaryButton}" DockPanel.Dock="Right"/>
+                        <Button Content="Przerwij" Command="{Binding CaptureCancelCommand}" Style="{StaticResource SxGhostButton}" DockPanel.Dock="Right" Margin="0,0,8,0"/>
+                        <TextBlock/>
+                    </DockPanel>
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource SxCard}" Margin="0,0,0,16">
+                <StackPanel>
+                    <TextBlock Text="Porównanie dwóch odczytów" Style="{StaticResource SxSectionTitle}"/>
+                    <UniformGrid Columns="2" Margin="0,12,0,8">
+                        <ComboBox ItemsSource="{Binding Items}" SelectedItem="{Binding FirstSnapshot}" Margin="0,0,8,0" AutomationProperties.Name="Odczyt A"/>
+                        <ComboBox ItemsSource="{Binding Items}" SelectedItem="{Binding SecondSnapshot}" AutomationProperties.Name="Odczyt B"/>
+                    </UniformGrid>
+                    <WrapPanel>
+                        <Button Content="Porównaj" Command="{Binding CompareCommand}" IsEnabled="{Binding CanCompare}" Style="{StaticResource SxPrimaryButton}" Margin="0,0,8,4"/>
+                        <Button Content="Eksportuj porównanie" Command="{Binding ExportCommand}" IsEnabled="{Binding HasComparison}" Margin="0,0,8,4" ToolTip="Zapis lokalny Markdown + JSON z odczytem zwrotnym i SHA-256"/>
+                        <Button Content="Usuń odczyt B" Command="{Binding DeleteCommand}" CommandParameter="{Binding SecondSnapshot}" Style="{StaticResource SxDangerButton}" Margin="0,0,8,4" ToolTip="Nieodwracalnie usuwa wyłącznie wybrany odczyt"/>
+                    </WrapPanel>
+                    <ScrollViewer MaxHeight="320" VerticalScrollBarVisibility="Auto" Margin="0,12,0,0" Visibility="{Binding HasComparison, Converter={StaticResource BoolToVisibility}}">
+                        <TextBlock Text="{Binding Comparison}" TextWrapping="Wrap" FontSize="12"/>
+                    </ScrollViewer>
+                </StackPanel>
+            </Border>
+
+            <TextBlock Text="Zapisane odczyty" Style="{StaticResource SxSectionTitle}" Margin="0,0,0,8"/>
+            <TextBlock Text="Limit 20 odczytów — najstarsze są usuwane automatycznie. Eksport zapisuje pliki tylko na tym komputerze." Style="{StaticResource SxCaption}" Margin="0,0,0,12"/>
+            <ItemsControl ItemsSource="{Binding Items}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border Style="{StaticResource SxCard}" Margin="0,0,0,8" Padding="14,10">
+                            <TextBlock Text="{Binding Detail}" TextWrapping="Wrap" FontSize="12"/>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <TextBlock Text="{Binding Status}" Foreground="{DynamicResource SxAccentCyan}" TextWrapping="Wrap" FontSize="12" Margin="0,8,0,0"/>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

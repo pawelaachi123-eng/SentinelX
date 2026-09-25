@@ -30,7 +30,7 @@ namespace SentinelX
             Services.Permissions.IPermissionService? permissions = null, Services.Apps.IAppLauncherService? launcher = null,
             ProcessToolService? processes = null, Services.Network.INetworkService? network = null,
             PcDiagnosticService? diagnostics = null, ActionTaskRegistry? tasks = null, ConversationMemoryService? memory = null,
-            Services.History.HistoryExportService? historyExport = null)
+            Services.History.HistoryExportService? historyExport = null, Services.Memory.MemoryActionService? memoryActionService = null)
         {
             actionHistory = history ?? new ActionHistoryService();
             permissionCenter = permissions ?? new PermissionCenterService();
@@ -39,7 +39,7 @@ namespace SentinelX
             networkTools = network ?? new NetworkDiagnosticService();
             this.diagnostics = diagnostics ?? new PcDiagnosticService();
             this.tasks = tasks ?? new ActionTaskRegistry();
-            memoryActions = new(memory ?? new ConversationMemoryService(), permissionCenter, actionHistory);
+            memoryActions = memoryActionService ?? new(memory ?? new ConversationMemoryService(), permissionCenter, actionHistory);
             this.historyExport = historyExport ?? new(actionHistory);
         }
 
@@ -198,6 +198,14 @@ namespace SentinelX
                         .GetNetworkSummary());
             }
 
+
+            // Searching the conversation is a local memory feature — never route it to a web search.
+            string normalizedForSearch = ConversationMemoryService.Normalize(command);
+            if (normalizedForSearch.StartsWith("szukaj w rozmowie", StringComparison.Ordinal) ||
+                normalizedForSearch.StartsWith("szukaj wszystkiego", StringComparison.Ordinal) ||
+                normalizedForSearch.StartsWith("znajdz w rozmowie", StringComparison.Ordinal) ||
+                normalizedForSearch.StartsWith("przeszukaj rozmowe", StringComparison.Ordinal))
+                return ToolboxCommandResult.NotHandled();
 
             // =====================================================
             // WEB SEARCH

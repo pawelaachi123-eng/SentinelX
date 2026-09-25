@@ -1,4 +1,3 @@
-using System.Text.RegularExpressions;
 using System.Windows.Threading;
 using SentinelX.Core;
 using SentinelX.Models;
@@ -66,13 +65,14 @@ public sealed class VoiceService : IVoiceService, IDisposable
         {
             if (disposed || version != generation || State == VoiceState.Off || engine.IsStopped) return;
             bool wakeAllowed = VoiceTranscriptFilter.ContainsWakeWord(text, settings.Current.Voice.WakeWordMode);
-            var match = Regex.Match(text.Trim(), @"^(?:hej\s+)?(?:sentinel|sentynel|sentinelu|sentynelu|centinel|centynel|centenel|santinel|sentnel|centinelu|sentinelka|senty nel)(?:\s+x)?(?=[\s,.!?]|$)[\s,.!?]*(.*)$", RegexOptions.IgnoreCase);
-            if (State == VoiceState.Standby && (!match.Success || !wakeAllowed)) return;
-            if (State == VoiceState.Active && DateTime.Now > activeUntil && (!match.Success || !wakeAllowed)) return;
-            string command = match.Success ? match.Groups[1].Value.Trim() : text.Trim();
+            // 0.91.2 · żelazna zasada użytkownika: polecenie głosowe zostaje wykonane TYLKO wtedy, gdy
+            // zdanie zawiera „sentinel” — w dowolnym miejscu. Bez słowa-klucza Sentinel niczego nie
+            // wykonuje i po prostu nasłuchuje dalej (żadnego okna rozmowy bez wybudzenia).
+            if (!wakeAllowed) return;
+            string command = CommandText.StripWakeWord(text);
             State = VoiceState.Active; capture.SetWakeOnlyMode(false);
             activeUntil = DateTime.Now.AddMinutes(settings.Current.Voice.ConversationTimeoutMinutes);
-            SetStatus("ACTIVE · słucham");
+            SetStatus("AKTYWNY · każde polecenie powiedz z „Sentinel”");
             if (command.Length > 0) CommandRecognized?.Invoke(command);
         });
     }

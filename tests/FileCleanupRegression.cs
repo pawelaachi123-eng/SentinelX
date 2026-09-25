@@ -1,0 +1,168 @@
+using System.Diagnostics;
+using System.IO;
+using SentinelX.Services.Files;
+
+namespace SentinelX.Tests;
+
+/// <summary>0.92 · safe file work: duplicate scan by SHA-256, read-only tidy report, and Recycle-Bin
+/// deletion behind a two-step confirmation. All assertions run on a temporary fixture directory with a
+/// fake recycler — CI never touches the real Recycle Bin and never deletes anything outside the fixture.</summary>
+internal static class FileCleanupRegression
+{
+    private static void Check(bool condition, string message) { if (!condition) throw new InvalidOperationException(message); }
+
+    private sealed class RecordingRecycler : IFileRecycler
+    {
+        public readonly List<string> Recycled = [];
+        public bool TryRecycle(string fullPath, out string message) { Recycled.Add(fullPath); File.Delete(fullPath); message = ""; return true; }
+    }
+
+    public static async Task RunAsync(string directory)
+    {
+        Directory.CreateDirectory(directory);
+        string root = Path.Combine(directory, "fixture");
+        Directory.CreateDirectory(Path.Combine(root, "sub"));
+        File.WriteAllText(Path.Combine(root, "a.txt"), "identyczna tresc pliku");
+        File.WriteAllText(Path.Combine(root, "sub", "a-kopia.txt"), "identyczna tresc pliku");
+        File.WriteAllText(Path.Combine(root, "b.txt"), "zupelnie inna tresc");
+        File.WriteAllText(Path.Combine(root, "empty1.txt"), "");
+        File.WriteAllText(Path.Combine(root, "empty2.txt"), "");
+
+        var recycler = new RecordingRecycler();
+        var service = new FileCleanupService(history: new ActionHistoryService(directory), recycler: recycler);
+        CancellationToken ct = CancellationToken.None;
+
+        // --- duplicate scan: exactly one group of two, empty files never counted ---
+        string dup = await service.ProcessAsync("duplikaty: " + root, ct) ?? throw new InvalidOperationException("duplikaty: was not handled");
+        Check(dup.Contains("DUPLIKATY"), "duplicate report header missing: " + dup);
+        Check(dup.Contains("Grup duplikatów: 1"), "exactly one duplicate group expected: " + dup);
+        Check(dup.Contains("a.txt") && dup.Contains("a-kopia.txt"), "both copies must be listed: " + dup);
+        Check(!dup.Contains("empty1.txt"), "empty files must not be reported as duplicates: " + dup);
+        Check(dup.Contains("niczego nie usuwam"), "the report must state it changes nothing: " + dup);
+
+        // --- unique-only folder reports no duplicates ---
+        string unique = Path.Combine(directory, "unique");
+        Directory.CreateDirectory(unique);
+        File.WriteAllText(Path.Combine(unique, "one.txt"), "raz");
+        File.WriteAllText(Path.Combine(unique, "two.txt"), "dwa");
+        string dupNone = await service.ProcessAsync("duplikaty: " + unique, ct) ?? "";
+        Check(dupNone.Contains("Brak duplikatów"), "unique files must yield no duplicates: " + dupNone);
+
+        // --- missing folder is refused politely ---
+        string missing = await service.ProcessAsync("duplikaty: " + Path.Combine(directory, "nie-ma-takiego"), ct) ?? "";
+        Check(missing.Contains("nie istnieje"), "a missing folder must be reported: " + missing);
+
+        // --- tidy report: counts, largest, empties, read-only ---
+        string tidy = await service.ProcessAsync("porzadki: " + root, ct) ?? throw new InvalidOperationException("porzadki: was not handled");
+        Check(tidy.Contains("RAPORT PORZĄDKOWY"), "tidy report header missing: " + tidy);
+        Check(tidy.Contains("Plików: 5"), "five files expected in fixture: " + tidy);
+        Check(tidy.Contains("Puste pliki (0 B): 2"), "two empty files expected: " + tidy);
+        Check(tidy.Contains("Duplikaty: 1 grup"), "tidy report must include the duplicate summary: " + tidy);
+        Check(tidy.Contains("tylko do odczytu"), "tidy report must state it is read-only: " + tidy);
+
+        // --- junctions are never followed (no scope escape) ---
+        string beyond = Path.Combine(directory, "beyond");
+        Directory.CreateDirectory(beyond);
+        File.WriteAllText(Path.Combine(beyond, "sekret.txt"), "identyczna tresc pliku");
+        var junction = Path.Combine(root, "skrot");
+        var mklink = Process.Start(new ProcessStartInfo("cmd.exe", $"/c mklink /J \"{junction}\" \"{beyond}\"") { CreateNoWindow = true, UseShellExecute = false });
+        mklink?.WaitForExit(10_000);
+        if (mklink?.ExitCode == 0 && Directory.Exists(junction))
+        {
+            string dupJunction = await service.ProcessAsync("duplikaty: " + root, ct) ?? "";
+            Check(!dupJunction.Contains("sekret.txt"), "files behind a junction must never be scanned: " + dupJunction);
+        }
+
+        // --- Recycle-Bin deletion is two-step and one-shot ---
+        string victim = Path.Combine(root, "do-kosza.txt");
+        File.WriteAllText(victim, "do usuniecia");
+        string proposal = await service.ProcessAsync("usuń do kosza: " + victim, ct) ?? "";
+        Check(proposal.Contains("KOSZ") && proposal.Contains("potwierdz"), "a deletion proposal must ask for confirmation: " + proposal);
+        Check(File.Exists(victim) && recycler.Recycled.Count == 0, "nothing may be deleted before confirmation");
+        string? unrelated = await service.ProcessAsync("ile mam ramu", ct);
+        Check(unrelated == null, "non-cleanup commands must fall through to the next router stage, got: " + unrelated);
+        string lateTak = await service.ProcessAsync("tak", ct) ?? "";
+        Check(File.Exists(victim) && recycler.Recycled.Count == 0, "a stale pending deletion must never fire on a later „tak”: " + lateTak);
+        string proposal2 = await service.ProcessAsync("usuń do kosza: " + victim, ct) ?? "";
+        Check(proposal2.Contains("KOSZ"), "re-proposing a deletion must work: " + proposal2);
+        string confirmed = await service.ProcessAsync("potwierdz", ct) ?? "";
+        Check(confirmed.Contains("VERIFIED") && confirmed.Contains("Kosza"), "confirmed deletion must report verified success: " + confirmed);
+        Check(!File.Exists(victim) && recycler.Recycled.Count == 1 && recycler.Recycled[0] == victim, "exactly the confirmed file must reach the recycler");
+
+        // --- cancellation path ---
+        string second = Path.Combine(root, "zostaje.txt");
+        File.WriteAllText(second, "zostaje");
+        await service.ProcessAsync("usuń do kosza: " + second, ct);
+        string cancelled = await service.ProcessAsync("anuluj", ct) ?? "";
+        Check(cancelled.Contains("Anulowane") && File.Exists(second) && recycler.Recycled.Count == 1, "cancellation must keep the file: " + cancelled);
+
+        // --- missing file and missing argument are refused politely ---
+        string ghost = await service.ProcessAsync("usuń do kosza: " + Path.Combine(root, "duch.txt"), ct) ?? "";
+        Check(ghost.Contains("nie istnieje"), "a missing file must be reported: " + ghost);
+        string bare = await service.ProcessAsync("duplikaty", ct) ?? "";
+        Check(bare.Contains("Podaj folder"), "a bare command must show usage: " + bare);
+        string bareClean = await service.ProcessAsync("usun duplikaty", ct) ?? "";
+        Check(bareClean.Contains("Podaj folder"), "a bare „usun duplikaty” must show usage: " + bareClean);
+
+        // --- duplicate cleanup: keep one copy per group, recycle the rest, only after consent ---
+        string aOriginal = Path.Combine(root, "a.txt");
+        string aCopy = Path.Combine(root, "sub", "a-kopia.txt");
+        Check(File.Exists(aOriginal) && File.Exists(aCopy), "fixture duplicates must exist before cleanup");
+        string cleanProposal = await service.ProcessAsync("usuń duplikaty: " + root, ct) ?? "";
+        Check(cleanProposal.Contains("KOSZ-DUPLIKATY"), "cleanup proposal header missing: " + cleanProposal);
+        Check(cleanProposal.Contains("a-kopia.txt"), "the redundant copy must be proposed: " + cleanProposal);
+        Check(File.Exists(aCopy) && recycler.Recycled.Count == 1, "nothing may be recycled before consent");
+        string cleanConfirmed = await service.ProcessAsync("potwierdz", ct) ?? "";
+        Check(cleanConfirmed.Contains("VERIFIED"), "confirmed duplicate cleanup must verify: " + cleanConfirmed);
+        Check(File.Exists(aOriginal) && !File.Exists(aCopy), "exactly one copy per group must survive");
+        Check(recycler.Recycled.Count == 2 && recycler.Recycled[1] == aCopy, "only the redundant copy may reach the recycler");
+        string cleanAgain = await service.ProcessAsync("usuń duplikaty: " + root, ct) ?? "";
+        Check(cleanAgain.Contains("nie ma czego sprzątać"), "a folder without duplicates must say so: " + cleanAgain);
+
+        // --- empty-file cleanup: consent required, only 0-byte files move ---
+        string emptyDir = Path.Combine(directory, "empties");
+        Directory.CreateDirectory(emptyDir);
+        string empty1 = Path.Combine(emptyDir, "pusty1.txt");
+        string empty2 = Path.Combine(emptyDir, "pusty2.log");
+        string full = Path.Combine(emptyDir, "pelny.txt");
+        File.WriteAllText(empty1, "");
+        File.WriteAllText(empty2, "");
+        File.WriteAllText(full, "cos");
+        int recycledBefore = recycler.Recycled.Count;
+        string emptyProposal = await service.ProcessAsync("usuń puste pliki: " + emptyDir, ct) ?? "";
+        Check(emptyProposal.Contains("KOSZ-PUSTE") && emptyProposal.Contains("pusty1.txt"), "empty-file proposal must list the victims: " + emptyProposal);
+        Check(File.Exists(empty1) && File.Exists(empty2) && recycler.Recycled.Count == recycledBefore, "nothing may move before consent");
+        string emptyConfirmed = await service.ProcessAsync("potwierdz", ct) ?? "";
+        Check(emptyConfirmed.Contains("VERIFIED"), "confirmed empty cleanup must verify: " + emptyConfirmed);
+        Check(!File.Exists(empty1) && !File.Exists(empty2) && File.Exists(full), "only 0-byte files may be recycled");
+        Check(recycler.Recycled.Count == recycledBefore + 2, "exactly the two empty files must reach the recycler");
+        string emptyAgain = await service.ProcessAsync("usuń puste pliki: " + emptyDir, ct) ?? "";
+        Check(emptyAgain.Contains("nie ma czego sprzątać"), "a folder without empty files must say so: " + emptyAgain);
+
+        // --- bulk rename with preview: consent required, collisions skipped, no overwrite ---
+        string renDir = Path.Combine(directory, "rename");
+        Directory.CreateDirectory(renDir);
+        string img1 = Path.Combine(renDir, "IMG_001.txt");
+        string img2 = Path.Combine(renDir, "IMG_002.txt");
+        string other = Path.Combine(renDir, "inne.txt");
+        string collision = Path.Combine(renDir, "nowe_001.txt");
+        File.WriteAllText(img1, "jeden");
+        File.WriteAllText(img2, "dwa");
+        File.WriteAllText(other, "trzy");
+        File.WriteAllText(collision, "kolizja");
+        string renameProposal = await service.ProcessAsync("zmien nazwy: " + renDir + " zamien IMG_ na nowe_", ct) ?? "";
+        Check(renameProposal.Contains("ZMIANA-NAZW") && renameProposal.Contains("IMG_002") && renameProposal.Contains("nowe_002.txt"),
+            "rename preview must list the planned change: " + renameProposal);
+        Check(renameProposal.Contains("już istnieje"), "the colliding rename must be announced and skipped: " + renameProposal);
+        Check(File.Exists(img1) && File.Exists(img2) && File.Exists(collision), "nothing may be renamed before consent");
+        string renameConfirmed = await service.ProcessAsync("potwierdz", ct) ?? "";
+        Check(renameConfirmed.Contains("VERIFIED"), "confirmed rename must verify: " + renameConfirmed);
+        Check(File.Exists(img1), "the colliding file must stay untouched");
+        Check(!File.Exists(img2) && File.Exists(Path.Combine(renDir, "nowe_002.txt")), "the planned rename must happen exactly once");
+        Check(File.Exists(other) && File.Exists(collision), "unrelated files must stay untouched");
+        string renameAgain = await service.ProcessAsync("zmien nazwy: " + renDir + " zamien IMG_ na nowe_", ct) ?? "";
+        Check(renameAgain.Contains("Brak plików do zmiany"), "a rename with only collisions left must say so: " + renameAgain);
+        string renameBare = await service.ProcessAsync("zmien nazwy", ct) ?? "";
+        Check(renameBare.Contains("Użyj"), "a bare rename command must show usage: " + renameBare);
+    }
+}

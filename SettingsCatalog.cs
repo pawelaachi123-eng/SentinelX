@@ -54,6 +54,13 @@ public static class SettingsCatalog
         Number("AI", "Próg obciążenia RAM (%)", "Powyżej progu wybierany jest model lekki.", () => S().Ai.RamPressurePercent, x => S().Ai.RamPressurePercent = (int)x, 50, 98, true);
         Number("AI", "Próg obciążenia CPU (%)", "Powyżej progu wybierany jest model lekki.", () => S().Ai.CpuPressurePercent, x => S().Ai.CpuPressurePercent = (int)x, 50, 99, true);
         Number("AI", "Próg obciążenia GPU (%)", "Niedostępny odczyt nie jest traktowany jako zerowe użycie.", () => S().Ai.GpuPressurePercent, x => S().Ai.GpuPressurePercent = (int)x, 30, 99, true);
+        Toggle("Pamięć", "Zapisuj rozmowy", "Gdy wyłączone, polecenia i odpowiedzi nie zostawiają trwałego śladu w rozmowach.", () => S().Memory.SaveConversations, x => S().Memory.SaveConversations = x);
+        Toggle("Pamięć", "AI używa historii rozmów", "Dopowiedzenia czytają ostatnie wypowiedzi. Niezależne od zapisu rozmów.", () => S().Memory.UseHistoryForAi, x => S().Memory.UseHistoryForAi = x);
+        Toggle("Pamięć", "Zapisuj wspomnienia", "Polecenie „zapamiętaj” i panel Pamięci dodają trwałe wpisy. Wyłączenie nie kasuje istniejących.", () => S().Memory.SaveMemories, x => S().Memory.SaveMemories = x);
+        Toggle("Pamięć", "AI używa wspomnień", "Profil i trwałe wspomnienia trafiają do kontekstu modelu. Niezależne od zapisu wspomnień.", () => S().Memory.UseMemoriesForAi, x => S().Memory.UseMemoriesForAi = x);
+        Number("Pamięć", "Retencja rozmów (dni)", "Po ilu dniach historia rozmów jest usuwana. 0 = bezterminowo. Wspomnienia nie są kasowane automatycznie.", () => S().Memory.RetentionDays, x => S().Memory.RetentionDays = (int)x, 0, 3650, true);
+        Toggle("Pamięć", "Podgląd kontekstu AI", "Rejestruje, które wspomnienia i fragmenty rozmowy trafiły do modelu (etykiety i powody, nie pełne prompty).", () => S().Memory.ContextPreviewEnabled, x => S().Memory.ContextPreviewEnabled = x);
+        Number("Pamięć", "Archiwum rozmów (miesiące)", "Po ilu miesiącach rozmowy trafiają do Memory/Archives (Markdown + JSON z hashem) i są usuwane z aktywnego magazynu. 0 = bez archiwizacji. Wspomnienia nie są archiwizowane.", () => S().Memory.ArchiveMonths, x => S().Memory.ArchiveMonths = (int)x, 0, 120, true);
         Toggle("Watch", "Monitoruj obciążenie", "Powiadomienie po przekroczeniu progu przez zadany czas.", () => S().Watch.Enabled, x => S().Watch.Enabled = x);
         Number("Watch", "Alarm CPU (%)", "Alert przy długotrwałym obciążeniu.", () => S().Watch.CpuAlertPercent, x => S().Watch.CpuAlertPercent = (int)x, 50, 100, true);
         Number("Watch", "Alarm RAM (%)", "Alert przy długotrwałym zapełnieniu pamięci.", () => S().Watch.RamAlertPercent, x => S().Watch.RamAlertPercent = (int)x, 50, 100, true);
@@ -65,7 +72,7 @@ public static class SettingsCatalog
         Toggle("Ogólne", "Zamknij do zasobnika", "Przycisk X chowa okno, Wyjdź w zasobniku kończy aplikację.", () => S().Ui.CloseToTray, x => S().Ui.CloseToTray = x);
         Toggle("Ogólne", "Start z Windows", "Autostart tylko dla bieżącego użytkownika.", () => S().Startup.StartWithWindows, x => S().Startup.StartWithWindows = x);
         Toggle("Ogólne", "Uruchom zminimalizowany", "Przy starcie schowaj okno do zasobnika.", () => S().Startup.StartMinimized, x => S().Startup.StartMinimized = x);
-        Toggle("Ogólne", "Głos przy uruchomieniu", "Wymaga już pobranych modeli i dostępnego mikrofonu.", () => S().Startup.StartVoiceOnLaunch, x => S().Startup.StartVoiceOnLaunch = x);
+        Toggle("Ogólne", "Głos przy uruchomieniu", "Domyślnie WŁĄCZONE (0.91): Sentinel nasłuchuje od startu — wskaźnik 🎤 w Centrum pokazuje stan, jeden klik wyłącza. Wymaga już pobranych modeli i dostępnego mikrofonu.", () => S().Startup.StartVoiceOnLaunch, x => S().Startup.StartVoiceOnLaunch = x);
         Toggle("Głos", "Odpowiedzi głosowe", "Synteza lokalna Windows dla poleceń głosowych.", () => S().Voice.SpeakResponses, x => S().Voice.SpeakResponses = x);
         Toggle("Developer", "Tryb deweloperski", "Diagnostyka; nie daje modelowi zgody na modyfikowanie kodu.", () => S().Developer.DeveloperMode, x => S().Developer.DeveloperMode = x);
         Toggle("Developer", "Zapis próbek audio", "Prywatne nagrania lokalne. Wyłącz domyślnie.", () => S().Voice.SaveVoiceSamples, x => { S().Developer.SaveVoiceSamples = x; S().Voice.SaveVoiceSamples = x; });

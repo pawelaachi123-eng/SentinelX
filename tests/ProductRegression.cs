@@ -62,8 +62,15 @@ internal static class ProductRegression
         };
         var work = engine.ExecuteAsync("cancel after partial work");
         await cancellationEntered.Task.WaitAsync(TimeSpan.FromSeconds(5));
-        await Task.Delay(300);
-        Check(engine.CurrentAction!.ElapsedMilliseconds > 0, "Elapsed telemetry must advance during work.");
+        // Telemetry ticks every 250 ms through the UI dispatcher; on loaded CI runners the first tick
+        // can be marshalled late, so poll instead of asserting at a single wall-clock instant.
+        bool elapsedAdvanced = false;
+        for (int wait = 0; wait < 20 && !elapsedAdvanced; wait++)
+        {
+            await Task.Delay(100);
+            elapsedAdvanced = engine.CurrentAction!.ElapsedMilliseconds > 0;
+        }
+        Check(elapsedAdvanced, "Elapsed telemetry must advance during work.");
         engine.EmergencyStop(); var cancelled = await work.WaitAsync(TimeSpan.FromSeconds(5));
         Check(cancelled.Action?.Status == ActionStatus.Cancelled && cancelled.Action.ToolResults.Single().ActionId == "BEFORE-CANCEL", "Cancellation must retain completed effects.");
         Check(engine.IsStopped && !engine.IsBusy, "Stop must remain latched after partial completion.");

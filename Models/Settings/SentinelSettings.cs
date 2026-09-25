@@ -11,6 +11,7 @@ public sealed class SentinelSettings
     public StartupSettings Startup { get; set; } = new();
     public DeveloperSettings Developer { get; set; } = new();
     public ResourceSettings Resources { get; set; } = new();
+    public MemorySettings Memory { get; set; } = new();
 
     // Backward-compatible properties for existing code and old settings.json files.
     [JsonIgnore] public bool CloseToTray { get => Ui.CloseToTray; set => Ui.CloseToTray = value; }
@@ -51,6 +52,9 @@ public sealed class SentinelSettings
         Startup ??= new();
         Developer ??= new();
         Resources ??= new();
+        Memory ??= new();
+        Memory.RetentionDays = Math.Clamp(Memory.RetentionDays, 0, 3650);
+        Memory.ArchiveMonths = Math.Clamp(Memory.ArchiveMonths, 0, 120);
         Ui.Theme = ValidateChoice(Ui.Theme, ["Dark", "Deep Dark", "System"], "Dark");
         Ui.DefaultBrowserPreference = ValidateChoice(Ui.DefaultBrowserPreference, ["Brave", "Chrome", "System"], "Brave");
         Ui.AccentColor = System.Text.RegularExpressions.Regex.IsMatch(Ui.AccentColor ?? "", "^#[0-9a-fA-F]{6}$") ? Ui.AccentColor!.Trim() : "#00D4FF";

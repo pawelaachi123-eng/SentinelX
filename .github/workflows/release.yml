@@ -1,0 +1,211 @@
+name: Release (portable ZIP, installer, checksums)
+
+# Publikacja EXE/ZIP na GitHubie — TYLKO na żądanie (decyzja użytkownika 2026-09-25:
+# automatyczne wydanie „rolling” przy każdym pushu zostało wyłączone).
+#   - push tagu v*.*.*   → wydanie milowe (np. v0.91.2) z pełną walidacją.
+#   - workflow_dispatch  → ręczne wydanie pod wskazanym tagiem (domyślnie „rolling”).
+# Zwykłe push na gałąź budują i testują kod w „Windows build and WPF smoke”, ale nic nie publikują.
+# Publikacja następuje wyłącznie po pełnej walidacji (architektura, build, smoke UI, regresja,
+# smoke wersji portable) — nic nie zostaje opublikowane bez zielonych testów.
+on:
+  push:
+    tags: ['v*.*.*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag wydania (domyślnie „rolling”)'
+        required: false
+        default: 'rolling'
+
+permissions:
+  contents: write
+
+# Publikacje na różne tagi nie mogą sobie wchodzić w drogę (usuwanie + tworzenie wydania).
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  release:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 9.0.x
+      - name: Portable architecture checks
+        run: python scripts/check-architecture.py
+      - name: Restore
+        run: dotnet restore SENTINEL-X.csproj
+      - name: Build
+        run: dotnet build SENTINEL-X.csproj -c Release --no-restore
+      - name: MVVM UI smoke (all pages and binding validation)
+        shell: pwsh
+        run: |
+          $exe = Resolve-Path 'bin/Release/net9.0-windows/SentinelX.exe'
+          $output = Join-Path $PWD 'test-results/ui'
+          $p = Start-Process $exe -ArgumentList '--ui-smoke', $output -PassThru
+          if (-not $p.WaitForExit(120000)) { $p.Kill(); throw 'UI smoke timeout' }
+          if ($p.ExitCode -ne 0 -or -not (Test-Path "$output/ui-smoke.txt")) {
+            Get-ChildItem $output -Recurse -Include FAILED.txt,errors.log,bindings.log | ForEach-Object {
+              $detail = (Get-Content $_.FullName -Raw).Replace("`r", '').Replace("`n", '%0A')
+              Write-Output "::error::$detail"
+            }
+            throw "UI smoke failed: exit $($p.ExitCode)"
+          }
+          Get-Content "$output/ui-smoke.txt"
+      - name: Existing regression suite
+        shell: pwsh
+        run: |
+          $exe = Resolve-Path 'bin/Release/net9.0-windows/SentinelX.exe'
+          $output = Join-Path $PWD 'test-results/regression'
+          $p = Start-Process $exe -ArgumentList '--self-test', $output -PassThru
+          if (-not $p.WaitForExit(300000)) { $p.Kill(); throw 'Regression timeout' }
+          if ($p.ExitCode -ne 0) {
+            Get-ChildItem $output -Recurse -Include FAILED.txt,errors.log | ForEach-Object {
+              $detail = (Get-Content $_.FullName -Raw).Replace("`r", '').Replace("`n", '%0A')
+              Write-Output "::error::$detail"
+            }
+            throw "Regression failed: exit $($p.ExitCode)"
+          }
+          Get-ChildItem $output
+      - name: Publish portable (self-contained win-x64)
+        run: dotnet publish SENTINEL-X.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=false -o bin/portable
+      - name: Verify the portable build actually runs
+        shell: pwsh
+        run: |
+          if (-not (Test-Path 'bin/portable/coreclr.dll')) { throw 'Missing self-contained .NET runtime' }
+          $exe = Resolve-Path 'bin/portable/SentinelX.exe'
+          $output = Join-Path $PWD 'test-results/portable'
+          $p = Start-Process $exe -ArgumentList '--ui-smoke', $output -PassThru
+          if (-not $p.WaitForExit(120000)) { $p.Kill(); throw 'Portable smoke timeout' }
+          if ($p.ExitCode -ne 0 -or -not (Test-Path "$output/ui-smoke.txt")) {
+            Get-ChildItem $output -Recurse -Include FAILED.txt,errors.log,bindings.log | ForEach-Object {
+              $detail = (Get-Content $_.FullName -Raw).Replace("`r", '').Replace("`n", '%0A')
+              Write-Output "::error::$detail"
+            }
+            throw "Portable smoke failed: $($p.ExitCode)"
+          }
+      - name: Build per-user EXE installer
+        shell: pwsh
+        run: |
+          $compiler = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $compiler)) { throw 'Inno Setup compiler missing from Windows runner image' }
+          [xml]$project = Get-Content SENTINEL-X.csproj
+          $version = $project.Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
+          & $compiler "/DAppVersion=$version" 'installer/SentinelX.iss'
+          if ($LASTEXITCODE -ne 0) { throw 'Installer compilation failed' }
+      - name: Assemble release assets
+        shell: pwsh
+        run: |
+          [xml]$project = Get-Content SENTINEL-X.csproj
+          $version = $project.Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
+          $commit = (git rev-parse --short HEAD)
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Compress-Archive -Path 'bin/portable/*' -DestinationPath "dist/SentinelX-$version-win-x64-portable.zip" -Force
+          $installer = Get-ChildItem 'bin/installer/*.exe' | Select-Object -First 1
+          Copy-Item $installer.FullName "dist/SentinelX-$version-win-x64-setup.exe"
+          @(
+            "SENTINEL X $version",
+            "commit: $commit",
+            "runtime: .NET 9 Desktop (wbudowany w paczce portable)",
+            "platforma: Windows 10/11 x64",
+            "podpis: BRAK — pliki nie są podpisane cyfrowo, SmartScreen pokaże ostrzeżenie",
+            "dane: wszystko zostaje lokalnie w %LocalAppData%\SentinelX (rozmowy, wspomnienia, raporty, archiwa)",
+            "AI: Ollama jest opcjonalne — bez niego działają polecenia, pomiary i narzędzia",
+            "portable: rozpakuj ZIP i uruchom SentinelX.exe (bez instalacji)",
+            "instalator: instalacja per-user, bez uprawnień administratora"
+          ) | Set-Content 'dist/BUILD.txt' -Encoding utf8
+          Get-ChildItem 'dist' -File | ForEach-Object {
+            "$((Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant())  $($_.Name)"
+          } | Set-Content 'dist/SHA256SUMS.txt'
+          Get-Content 'dist/SHA256SUMS.txt'
+          Get-Content 'dist/SHA256SUMS.txt' | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+      - name: Publish milestone release (version tag)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
+          body: |
+            ## Pliki do pobrania
+
+            | Plik | Co to jest |
+            | --- | --- |
+            | `SentinelX-*-win-x64-portable.zip` | Przenośna wersja: rozpakuj i uruchom `SentinelX.exe`. Zawiera własny runtime .NET 9. |
+            | `SentinelX-*-win-x64-setup.exe` | Instalator per-user (Inno Setup). Nie wymaga uprawnień administratora. |
+            | `SHA256SUMS.txt` | Sumy kontrolne wszystkich plików. |
+            | `BUILD.txt` | Wersja, commit, platforma, status podpisu. |
+
+            ## Uczciwie o ograniczeniach
+
+            - **Pliki nie są podpisane cyfrowo.** Windows SmartScreen pokaże ostrzeżenie „Nieznany wydawca”.
+              To status rzeczywisty, a nie błąd paczki.
+            - Wersja portable jest budowana na `windows-latest` (Windows Server 2022) i testowana tam przez
+              smoke test UI. Nie jest testowana na Windows 10.
+            - Ollama nie jest dołączone — modele pobierasz osobno i tylko za swoją zgodą.
+            - Wszystkie dane (rozmowy, wspomnienia, raporty, archiwa) zostają lokalnie w `%LocalAppData%\SentinelX`.
+      - name: Publish release on demand (workflow_dispatch)
+        if: github.event_name == 'workflow_dispatch'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          [xml]$project = Get-Content SENTINEL-X.csproj
+          $version = $project.Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
+          $commit = (git rev-parse --short HEAD)
+          $tag = '${{ inputs.tag }}'
+          if ([string]::IsNullOrWhiteSpace($tag)) { $tag = 'rolling' }
+          Write-Output "rolling release: tag=$tag version=$version commit=$commit"
+          $files = @(Get-ChildItem dist -File | ForEach-Object { $_.FullName })
+          Write-Output "assets: $($files -join ', ')"
+          if ($files.Count -lt 4) { throw 'Missing release assets in dist/' }
+          $notes = @(
+            'Najnowszy build SentinelX — każdy upgrade publikuje tu świeże pliki do pobrania.',
+            '',
+            "Wersja: **$version** · commit: ``$commit``",
+            '',
+            '| Plik | Co to jest |',
+            '| --- | --- |',
+            "| ``SentinelX-$version-win-x64-portable.zip`` | Portable: rozpakuj i uruchom ``SentinelX.exe`` (własny runtime .NET 9). |",
+            "| ``SentinelX-$version-win-x64-setup.exe`` | Instalator per-user (bez uprawnień administratora). |",
+            '| ``SHA256SUMS.txt`` / ``BUILD.txt`` | Sumy kontrolne i metryka buildu. |',
+            '',
+            'Bez podpisu cyfrowego — SmartScreen pokaże „Nieznany wydawca” (status rzeczywisty).',
+            'Dane zostają lokalnie w %LocalAppData%\SentinelX. Ollama opcjonalne, nigdy bez zgody.'
+          ) -join "`n"
+          # Przesuń stabilny tag na nowy build: usuń poprzednie wydanie rolling, jeśli istnieje.
+          $null = gh release view $tag --json tagName 2>&1
+          if ($LASTEXITCODE -eq 0) {
+            Write-Output "previous rolling release found — deleting"
+            $del = gh release delete $tag --cleanup-tag --yes 2>&1
+            Write-Output "delete exit=$LASTEXITCODE : $($del -join ' | ')"
+          } else {
+            Write-Output "no previous rolling release"
+          }
+          $create = gh release create $tag @files --title "SentinelX $version — najnowszy build ($commit)" --latest --notes $notes 2>&1
+          Write-Output "create exit=$LASTEXITCODE"
+          $create | ForEach-Object { Write-Output "gh: $_" }
+          if ($LASTEXITCODE -ne 0) {
+            $detail = ($create -join '%0A')
+            Write-Output "::error::Rolling release publish failed::$detail"
+            throw "Rolling release publish failed: $($create -join ' | ')"
+          }
+          $assets = gh release view $tag --json assets --jq '.assets[].name' 2>&1
+          Write-Output "published assets: $($assets -join ', ')"
+      - uses: actions/upload-artifact@v4
+        continue-on-error: true  # limit magazynu artefaktów nie może zamieniać wyników testów na czerwone
+        # Krótka retencja: trwałą dystrybucją są assety wydania, artefakty CI są tylko diagnostyczne.
+        # Bez tego limit magazynu artefaktów blokuje kolejne przebiegi (quota hit 2026-09-24).
+        with:
+          name: SentinelX-release-assets
+          path: dist/
+          retention-days: 2
+      - uses: actions/upload-artifact@v4
+        continue-on-error: true  # limit magazynu artefaktów nie może zamieniać wyników testów na czerwone
+        if: always()
+        with:
+          name: sentinel-release-validation
+          path: test-results/
+          retention-days: 2

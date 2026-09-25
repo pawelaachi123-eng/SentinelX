@@ -14,16 +14,19 @@ public sealed class ActionEngine(IIntentRouter router, SentinelToolboxService to
     private CancellationTokenSource? active;
     private bool stopped;
     private ActionRecord? currentAction;
+    private bool streaming;
     private readonly List<ActionRecord> tracked = [];
     public bool IsStopped { get { lock (gate) return stopped; } }
     public bool IsBusy { get { lock (gate) return active != null; } }
     public ActionRecord? CurrentAction { get { lock (gate) return currentAction; } }
+    public bool IsStreaming { get { lock (gate) return streaming; } }
+    public event Action<string>? StreamDelta;
     public bool HasPendingPermission => toolbox.HasPendingAction;
     public string PermissionSummary => toolbox.PendingSummary;
     public event Action? Changed;
     public event Action<ActionRecord>? ActionStarted;
 
-    public async Task<IntentResult> ExecuteAsync(string input, CancellationToken token = default, bool fromVoice = false)
+    public async Task<IntentResult> ExecuteAsync(string input, CancellationToken token = default, bool fromVoice = false, Action<string>? onDelta = null)
     {
         input = input.Trim();
         if (input.Length == 0) return new("Wpisz polecenie.");
@@ -45,6 +48,15 @@ public sealed class ActionEngine(IIntentRouter router, SentinelToolboxService to
             tracked.Add(record); if (tracked.Count > 100) tracked.RemoveAt(0);
         }
         var clock = Stopwatch.StartNew();
+        // Live chunks go to the UI as they arrive; a broken observer never aborts generation.
+        void Publish(string chunk)
+        {
+            bool first;
+            lock (gate) { first = !streaming; streaming = true; }
+            if (first) PublishChanged();
+            try { StreamDelta?.Invoke(chunk); onDelta?.Invoke(chunk); }
+            catch (Exception observerError) { AppLog.Write(observerError); }
+        }
         using var tickerStop = new CancellationTokenSource();
         var ticker = UpdateElapsedAsync(record, clock, tickerStop.Token);
         PublishChanged(); PublishStarted(record);
@@ -55,12 +67,12 @@ public sealed class ActionEngine(IIntentRouter router, SentinelToolboxService to
             record.Phase = "Wykonywanie polecenia · możesz je przerwać";
             response = await Task.Run(async () =>
             {
-                history.AddRunning(record.ActionId, "REQUEST", input);
+                history.AddRunning(record.ActionId, "REQUEST", AuditText(input));
                 memory.AddUserMessage(input, fromVoice ? "voice" : "keyboard");
                 using var approval = ApprovalContext.Begin(input, fromVoice);
                 using var scope = ActionEvidenceCapture.Begin(record.ActionId);
                 capture = scope;
-                var text = await router.ProcessAsync(input, source.Token);
+                var text = await router.ProcessAsync(input, source.Token, onDelta == null ? null : Publish);
                 source.Token.ThrowIfCancellationRequested();
                 memory.AddAssistantMessage(text);
                 return text;
@@ -77,7 +89,15 @@ public sealed class ActionEngine(IIntentRouter router, SentinelToolboxService to
             record.ToolResults = capture?.Snapshot() ?? [];
             record.Status = ActionStatus.Cancelled;
             record.Evidence = "Przerwano oczekiwanie i dalsze kroki. Ukończone operacje NIE zostały cofnięte." + FormatProof(record.ToolResults);
-            response = record.Evidence;
+            // A stopped generation keeps whatever the model already produced, clearly marked as cut short.
+            string partial = ai.PartialAnswer;
+            if (partial.Length > 0)
+            {
+                response = partial + "\n\n[Przerwano generowanie po " + partial.Length +
+                    " znakach. Powyższy tekst może urywać się w połowie zdania — to wszystko, co model zdążył wygenerować.]";
+                memory.AddAssistantMessage(response);
+            }
+            else response = record.Evidence;
             return new(response, record);
         }
         catch (Exception ex)
@@ -90,6 +110,9 @@ public sealed class ActionEngine(IIntentRouter router, SentinelToolboxService to
         }
         finally
         {
+            bool wasStreaming;
+            lock (gate) { wasStreaming = streaming; streaming = false; }
+            if (wasStreaming) PublishChanged();
             tickerStop.Cancel();
             await ticker;
             record.ElapsedMilliseconds = clock.ElapsedMilliseconds;
@@ -150,16 +173,19 @@ public sealed class ActionEngine(IIntentRouter router, SentinelToolboxService to
     private void Persist(ActionRecord record, string response)
     {
         if (record.Status == ActionStatus.WaitingPermission)
-        { history.AddPending(record.ActionId, "REQUEST", record.UserRequest, record.Evidence); return; }
+        { history.AddPending(record.ActionId, "REQUEST", AuditText(record.UserRequest), record.Evidence); return; }
+        bool ephemeral = memory.IsEphemeral;
         var result = record.Status switch
         {
-            ActionStatus.Verified => ActionExecutionResult.VerifiedSuccess(response, record.Evidence),
+            // A private session must not persist the command text or the reply text anywhere, including the audit file.
+            ActionStatus.Verified => ActionExecutionResult.VerifiedSuccess(ephemeral ? "[treść niezapisana]" : response, record.Evidence),
             ActionStatus.Cancelled => ActionExecutionResult.Cancelled(record.Evidence),
-            ActionStatus.Failed => ActionExecutionResult.Failure(record.Error, record.Evidence),
-            _ => ActionExecutionResult.UnverifiedSuccess(response, record.Evidence)
+            ActionStatus.Failed => ActionExecutionResult.Failure(ephemeral ? "[treść niezapisana]" : record.Error, record.Evidence),
+            _ => ActionExecutionResult.UnverifiedSuccess(ephemeral ? "[treść niezapisana]" : response, record.Evidence)
         };
-        history.AddResult(record.ActionId, "REQUEST", record.UserRequest, result, record.ElapsedMilliseconds);
+        history.AddResult(record.ActionId, "REQUEST", AuditText(record.UserRequest), result, record.ElapsedMilliseconds);
     }
+    private string AuditText(string text) => memory.IsEphemeral ? "[rozmowa prywatna lub zapis wyłączony — treść niezapisana]" : text;
     private void UpdateWaitingRequests(IReadOnlyList<ActionHistoryEntry> proof)
     {
         ActionRecord[] waiting;

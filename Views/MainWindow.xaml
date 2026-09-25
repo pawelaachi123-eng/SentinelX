@@ -22,6 +22,18 @@
         <DataTemplate DataType="{x:Type vm:HistoryViewModel}">
             <pages:HistoryPage/>
         </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:MemoryViewModel}">
+            <pages:MemoryPage/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:ProjectViewModel}">
+            <pages:ProjectsPage/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:TaskViewModel}">
+            <pages:TasksPage/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:DiagnosticViewModel}">
+            <pages:DiagnosticsPage/>
+        </DataTemplate>
         <DataTemplate DataType="{x:Type vm:SettingsViewModel}">
             <pages:SettingsPage/>
         </DataTemplate>
@@ -65,6 +77,25 @@
                 </ListBox>
             </DockPanel>
         </Border>
+        <!-- 0.91 · CENTRUM: aurora glow behind the pages — decorative only, never intercepts input -->
+        <Grid Grid.Column="1" IsHitTestVisible="False" ClipToBounds="True">
+            <Ellipse Width="760" Height="760" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-260,-200,0" Opacity="0.16">
+                <Ellipse.Fill>
+                    <RadialGradientBrush>
+                        <GradientStop Color="{DynamicResource SxAccentCyanColor}" Offset="0"/>
+                        <GradientStop Color="Transparent" Offset="1"/>
+                    </RadialGradientBrush>
+                </Ellipse.Fill>
+            </Ellipse>
+            <Ellipse Width="860" Height="860" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="-300,0,0,-360" Opacity="0.10">
+                <Ellipse.Fill>
+                    <RadialGradientBrush>
+                        <GradientStop Color="{DynamicResource SxAccentVioletColor}" Offset="0"/>
+                        <GradientStop Color="Transparent" Offset="1"/>
+                    </RadialGradientBrush>
+                </Ellipse.Fill>
+            </Ellipse>
+        </Grid>
         <ContentControl Grid.Column="1" Content="{Binding CurrentPage}"/>
         <Grid Grid.ColumnSpan="2" Panel.ZIndex="10" Background="{DynamicResource SxScrim}" Visibility="{Binding Palette.IsOpen, Converter={StaticResource BoolToVisibility}}">
             <controls:CommandPalette DataContext="{Binding Palette}" VerticalAlignment="Center" HorizontalAlignment="Center"/>
