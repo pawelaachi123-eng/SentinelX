@@ -50,7 +50,7 @@ public sealed class FileCleanupService
 
     // 0.93 · batch rename: „zmien nazwy: <folder> z <old> na <new>” and „...: <folder>: <old> -> <new>”
     private static readonly Regex BatchRenameZ = new(@"^(?:zmien nazwy|zmień nazwy|przemianuj|rename)(?: w)?:\s*(?<dir>.+?)\s+z\s+(?<from>.+?)\s+na\s+(?<to>.+)$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
-    private static readonly Regex BatchRenameArrow = new(@"^(?:zmien nazwy|zmień nazwy|przemianuj)(?: w)?:\s*(?<dir>.+?)\s*:\s*(?<from>.+?)\s*->\s*(?<to>.+)$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static readonly Regex BatchRenameArrow = new(@"^(?:zmien nazwy|zmień nazwy|przemianuj)(?: w)?:\s*(?<dir>.+)\s*:\s*(?<from>.+?)\s*->\s*(?<to>.+)$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
     // 0.93 · executable tidy: „uporzadkuj: <folder>” and „wykonaj porzadki: <folder>”
     private static readonly Regex TidyExec = new(@"^(?:uporzadkuj|uporządkuj|posprzataj|posprzątaj|wykonaj porzadki|wykonaj porządki|wykonaj plan porzadkow|wykonaj plan porządków)(?::\s*|\s+)(?<dir>.+)$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
