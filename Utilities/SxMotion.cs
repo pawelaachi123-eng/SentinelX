@@ -114,8 +114,16 @@ public static class SxMotion
         element.MouseLeave += LiftOut;
     }
 
-    private static void LiftIn(object sender, MouseEventArgs args) => Lift((FrameworkElement)sender, -Number(sender, "SxLiftDistance", 2));
-    private static void LiftOut(object sender, MouseEventArgs args) => Lift((FrameworkElement)sender, 0);
+    private static void LiftIn(object sender, MouseEventArgs args)
+    {
+        if (sender is not FrameworkElement view) return;
+        Lift(view, -Number(view, "SxLiftDistance", 2));
+    }
+
+    private static void LiftOut(object sender, MouseEventArgs args)
+    {
+        if (sender is FrameworkElement view) Lift(view, 0);
+    }
 
     private static void Lift(FrameworkElement view, double to)
     {
