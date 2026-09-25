@@ -332,16 +332,13 @@
         <Setter Property="Foreground" Value="{DynamicResource SxTextPrimary}"/>
         <Setter Property="VerticalContentAlignment" Value="Center"/>
         <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="u:SxMotion.HoverLift" Value="True"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="CheckBox">
                     <StackPanel Orientation="Horizontal">
                         <Border x:Name="track" Width="44" Height="24" CornerRadius="12" Background="{DynamicResource SxBorder}" BorderBrush="{DynamicResource SxBorderSubtle}" BorderThickness="1">
-                            <Ellipse x:Name="thumb" Width="16" Height="16" Fill="{DynamicResource SxWhite}" HorizontalAlignment="Left" Margin="4,0,0,0" RenderTransformOrigin="0.5,0.5">
-                                <Ellipse.RenderTransform>
-                                    <TranslateTransform/>
-                                </Ellipse.RenderTransform>
-                            </Ellipse>
+                            <Ellipse x:Name="thumb" Width="16" Height="16" Fill="{DynamicResource SxWhite}" HorizontalAlignment="Left" Margin="4,0,0,0"/>
                         </Border>
                         <ContentPresenter Margin="12,0,0,0" VerticalAlignment="Center"/>
                     </StackPanel>
@@ -350,7 +347,31 @@
                             <Setter TargetName="track" Property="Background" Value="{StaticResource SxSeaGradient}"/>
                             <Setter TargetName="track" Property="BorderBrush" Value="{DynamicResource SxHueTeal}"/>
                             <Setter TargetName="thumb" Property="Fill" Value="{DynamicResource SxBackground}"/>
+                            <Setter TargetName="thumb" Property="Margin" Value="22,0,0,0"/>
                             <Setter Property="Foreground" Value="{DynamicResource SxTextPrimary}"/>
+                            <Trigger.EnterActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <ThicknessAnimation Storyboard.TargetName="thumb" Storyboard.TargetProperty="Margin" To="22,0,0,0" Duration="0:0:0.2">
+                                            <ThicknessAnimation.EasingFunction>
+                                                <BackEase EasingMode="EaseOut" Amplitude="0.45"/>
+                                            </ThicknessAnimation.EasingFunction>
+                                        </ThicknessAnimation>
+                                        <DoubleAnimation Storyboard.TargetName="track" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.14"/>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.EnterActions>
+                            <Trigger.ExitActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <ThicknessAnimation Storyboard.TargetName="thumb" Storyboard.TargetProperty="Margin" To="4,0,0,0" Duration="0:0:0.16">
+                                            <ThicknessAnimation.EasingFunction>
+                                                <QuadraticEase EasingMode="EaseOut"/>
+                                            </ThicknessAnimation.EasingFunction>
+                                        </ThicknessAnimation>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.ExitActions>
                         </Trigger>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="track" Property="BorderBrush" Value="{DynamicResource SxBorderActive}"/>
@@ -362,29 +383,7 @@
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter Property="Opacity" Value="0.4"/>
                         </Trigger>
-                        <EventTrigger RoutedEvent="CheckBox.Checked">
-                            <BeginStoryboard>
-                                <Storyboard>
-                                    <DoubleAnimation Storyboard.TargetName="thumb" Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.X)" To="20" Duration="0:0:0.18">
-                                        <DoubleAnimation.EasingFunction>
-                                            <BackEase EasingMode="EaseOut" Amplitude="0.4"/>
-                                        </DoubleAnimation.EasingFunction>
-                                    </DoubleAnimation>
-                                </Storyboard>
-                            </BeginStoryboard>
-                        </EventTrigger>
-                        <EventTrigger RoutedEvent="CheckBox.Unchecked">
-                            <BeginStoryboard>
-                                <Storyboard>
-                                    <DoubleAnimation Storyboard.TargetName="thumb" Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.X)" To="0" Duration="0:0:0.16">
-                                        <DoubleAnimation.EasingFunction>
-                                            <QuadraticEase EasingMode="EaseOut"/>
-                                        </DoubleAnimation.EasingFunction>
-                                    </DoubleAnimation>
-                                </Storyboard>
-                            </BeginStoryboard>
-                        </EventTrigger>
-                    </ControlTemplate.Triggers>
+                                                                    </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
