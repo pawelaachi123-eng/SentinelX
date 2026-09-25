@@ -64,7 +64,7 @@ public static class SlashCatalog
         new("gry", "Gaming", "zakładka Gier", SlashKind.Tab, "gry"),
         new("ai", "AI", "zakładka AI", SlashKind.Tab, "ai"),
         new("akcje", "Akcje", "zakładka Akcji", SlashKind.Tab, "akcje"),
-        new("diagnostyka", "Diagnostyka", "zakładka Diagnostyki", SlashKind.Tab, "diagnostyka"),
+        new("diagnostyka-tab", "Diagnostyka", "zakładka Diagnostyki", SlashKind.Tab, "diagnostyka"),
         new("ustawienia", "Ustawienia", "strona Ustawień", SlashKind.Page, "settings"),
     ];
 
