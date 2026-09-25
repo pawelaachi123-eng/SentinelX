@@ -19,9 +19,9 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
-                    <Grid RenderTransformOrigin="0.5,0.5">
+                    <Grid x:Name="root" RenderTransformOrigin="0.5,0.5">
                         <Grid.RenderTransform>
-                            <TranslateTransform x:Name="shift"/>
+                            <TranslateTransform/>
                         </Grid.RenderTransform>
                         <Border x:Name="glow" CornerRadius="16" Background="{DynamicResource SxGlowCyan}" Opacity="0"/>
                         <Border x:Name="border" CornerRadius="12" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}">
@@ -40,7 +40,7 @@
                             <Trigger.EnterActions>
                                 <BeginStoryboard>
                                     <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="shift" Storyboard.TargetProperty="Y" To="-1" Duration="0:0:0.11">
+                                        <DoubleAnimation Storyboard.TargetName="root" Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)" To="-1" Duration="0:0:0.11">
                                             <DoubleAnimation.EasingFunction>
                                                 <QuadraticEase EasingMode="EaseOut"/>
                                             </DoubleAnimation.EasingFunction>
@@ -51,7 +51,7 @@
                             <Trigger.ExitActions>
                                 <BeginStoryboard>
                                     <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="shift" Storyboard.TargetProperty="Y" To="0" Duration="0:0:0.16">
+                                        <DoubleAnimation Storyboard.TargetName="root" Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)" To="0" Duration="0:0:0.16">
                                             <DoubleAnimation.EasingFunction>
                                                 <QuadraticEase EasingMode="EaseOut"/>
                                             </DoubleAnimation.EasingFunction>
@@ -63,7 +63,7 @@
                         <Trigger Property="IsPressed" Value="True">
                             <Setter TargetName="glow" Property="Opacity" Value="0.15"/>
                             <Setter TargetName="border" Property="Opacity" Value="0.82"/>
-                            <Setter TargetName="shift" Property="Y" Value="1"/>
+                            <Setter TargetName="sheen" Property="Opacity" Value="0.3"/>
                         </Trigger>
                         <Trigger Property="IsKeyboardFocused" Value="True">
                             <Setter TargetName="ring" Property="Opacity" Value="1"/>
@@ -87,16 +87,16 @@
                 <ControlTemplate TargetType="Button">
                     <Grid x:Name="root" RenderTransformOrigin="0.5,0.5">
                         <Grid.RenderTransform>
-                            <ScaleTransform x:Name="pop" ScaleX="1" ScaleY="1"/>
+                            <ScaleTransform ScaleX="1" ScaleY="1"/>
                         </Grid.RenderTransform>
                         <Border x:Name="glow" CornerRadius="16" Background="{DynamicResource SxGlowCyan}" Opacity="0.35"/>
                         <Border x:Name="border" CornerRadius="12" Background="{TemplateBinding Background}">
                             <Grid ClipToBounds="True">
                                 <Border x:Name="sheen" Background="{StaticResource SxCardSheen}" CornerRadius="11"/>
                                 <Canvas x:Name="band" ClipToBounds="True">
-                                    <Border Width="240" Height="60" Background="{StaticResource SxShimmerBand}" RenderTransformOrigin="0.5,0.5">
+                                    <Border x:Name="shimmerBand" Width="240" Height="60" Background="{StaticResource SxShimmerBand}" RenderTransformOrigin="0.5,0.5">
                                         <Border.RenderTransform>
-                                            <TranslateTransform x:Name="slide" X="-260"/>
+                                            <TranslateTransform X="-260"/>
                                         </Border.RenderTransform>
                                     </Border>
                                 </Canvas>
@@ -112,13 +112,13 @@
                             <Trigger.EnterActions>
                                 <BeginStoryboard Name="shimmer">
                                     <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="slide" Storyboard.TargetProperty="X" From="-260" To="360" Duration="0:0:1.5" RepeatBehavior="Forever"/>
+                                        <DoubleAnimation Storyboard.TargetName="shimmerBand" Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.X)" From="-260" To="360" Duration="0:0:1.5" RepeatBehavior="Forever"/>
                                     </Storyboard>
                                 </BeginStoryboard>
                                 <BeginStoryboard>
                                     <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="pop" Storyboard.TargetProperty="ScaleX" To="1.015" Duration="0:0:0.12"/>
-                                        <DoubleAnimation Storyboard.TargetName="pop" Storyboard.TargetProperty="ScaleY" To="1.015" Duration="0:0:0.12"/>
+                                        <DoubleAnimation Storyboard.TargetName="root" Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)" To="1.015" Duration="0:0:0.12"/>
+                                        <DoubleAnimation Storyboard.TargetName="root" Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)" To="1.015" Duration="0:0:0.12"/>
                                     </Storyboard>
                                 </BeginStoryboard>
                             </Trigger.EnterActions>
@@ -126,15 +126,18 @@
                                 <StopStoryboard BeginStoryboardName="shimmer"/>
                                 <BeginStoryboard>
                                     <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="pop" Storyboard.TargetProperty="ScaleX" To="1" Duration="0:0:0.16"/>
-                                        <DoubleAnimation Storyboard.TargetName="pop" Storyboard.TargetProperty="ScaleY" To="1" Duration="0:0:0.16"/>
+                                        <DoubleAnimation Storyboard.TargetName="root" Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)" To="1" Duration="0:0:0.16"/>
+                                        <DoubleAnimation Storyboard.TargetName="root" Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)" To="1" Duration="0:0:0.16"/>
                                     </Storyboard>
                                 </BeginStoryboard>
                             </Trigger.ExitActions>
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
-                            <Setter TargetName="pop" Property="ScaleX" Value="0.985"/>
-                            <Setter TargetName="pop" Property="ScaleY" Value="0.985"/>
+                            <Setter TargetName="root" Property="RenderTransform">
+                                <Setter.Value>
+                                    <ScaleTransform ScaleX="0.985" ScaleY="0.985"/>
+                                </Setter.Value>
+                            </Setter>
                         </Trigger>
                         <Trigger Property="IsKeyboardFocused" Value="True">
                             <Setter TargetName="ring" Property="Opacity" Value="1"/>
@@ -336,7 +339,7 @@
                         <Border x:Name="track" Width="44" Height="24" CornerRadius="12" Background="{DynamicResource SxBorder}" BorderBrush="{DynamicResource SxBorderSubtle}" BorderThickness="1">
                             <Ellipse x:Name="thumb" Width="16" Height="16" Fill="{DynamicResource SxWhite}" HorizontalAlignment="Left" Margin="4,0,0,0" RenderTransformOrigin="0.5,0.5">
                                 <Ellipse.RenderTransform>
-                                    <TranslateTransform x:Name="slide"/>
+                                    <TranslateTransform/>
                                 </Ellipse.RenderTransform>
                             </Ellipse>
                         </Border>
@@ -362,7 +365,7 @@
                         <EventTrigger RoutedEvent="CheckBox.Checked">
                             <BeginStoryboard>
                                 <Storyboard>
-                                    <DoubleAnimation Storyboard.TargetName="slide" Storyboard.TargetProperty="X" To="20" Duration="0:0:0.18">
+                                    <DoubleAnimation Storyboard.TargetName="thumb" Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.X)" To="20" Duration="0:0:0.18">
                                         <DoubleAnimation.EasingFunction>
                                             <BackEase EasingMode="EaseOut" Amplitude="0.4"/>
                                         </DoubleAnimation.EasingFunction>
@@ -373,7 +376,7 @@
                         <EventTrigger RoutedEvent="CheckBox.Unchecked">
                             <BeginStoryboard>
                                 <Storyboard>
-                                    <DoubleAnimation Storyboard.TargetName="slide" Storyboard.TargetProperty="X" To="0" Duration="0:0:0.16">
+                                    <DoubleAnimation Storyboard.TargetName="thumb" Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.X)" To="0" Duration="0:0:0.16">
                                         <DoubleAnimation.EasingFunction>
                                             <QuadraticEase EasingMode="EaseOut"/>
                                         </DoubleAnimation.EasingFunction>
@@ -551,14 +554,17 @@
                 <ControlTemplate TargetType="ToolTip">
                     <Border x:Name="body" Background="{DynamicResource SxSurfaceRaised}" BorderBrush="{DynamicResource SxBorder}" BorderThickness="1" CornerRadius="9" Padding="10,6" RenderTransformOrigin="0.5,1">
                         <Border.RenderTransform>
-                            <ScaleTransform x:Name="pop" ScaleX="0.98" ScaleY="0.98"/>
+                            <ScaleTransform ScaleX="0.98" ScaleY="0.98"/>
                         </Border.RenderTransform>
                         <ContentPresenter/>
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsOpen" Value="True">
-                            <Setter TargetName="pop" Property="ScaleX" Value="1"/>
-                            <Setter TargetName="pop" Property="ScaleY" Value="1"/>
+                            <Setter TargetName="body" Property="RenderTransform">
+                                <Setter.Value>
+                                    <ScaleTransform ScaleX="1" ScaleY="1"/>
+                                </Setter.Value>
+                            </Setter>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -746,7 +752,7 @@
                         </Border>
                         <Border x:Name="Bar" Height="2.5" Width="28" CornerRadius="2" Background="{StaticResource SxPrimaryGradient}" VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="0,0,0,0" RenderTransformOrigin="0.5,1" Visibility="Collapsed">
                             <Border.RenderTransform>
-                                <ScaleTransform x:Name="BarScale" ScaleX="0"/>
+                                <ScaleTransform ScaleX="0"/>
                             </Border.RenderTransform>
                         </Border>
                     </Grid>
@@ -770,7 +776,7 @@
                             <Trigger.EnterActions>
                                 <BeginStoryboard>
                                     <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="BarScale" Storyboard.TargetProperty="ScaleX" From="0.1" To="1" Duration="{StaticResource SxDurationBase}" EasingFunction="{StaticResource SxFnPop}"/>
+                                        <DoubleAnimation Storyboard.TargetName="Bar" Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)" From="0.1" To="1" Duration="{StaticResource SxDurationBase}" EasingFunction="{StaticResource SxFnPop}"/>
                                         <DoubleAnimation Storyboard.TargetName="Glow" Storyboard.TargetProperty="Opacity" To="0.85" Duration="{StaticResource SxDurationSlow}"/>
                                     </Storyboard>
                                 </BeginStoryboard>
@@ -778,7 +784,7 @@
                             <Trigger.ExitActions>
                                 <BeginStoryboard>
                                     <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="BarScale" Storyboard.TargetProperty="ScaleX" To="0" Duration="{StaticResource SxDurationFast}"/>
+                                        <DoubleAnimation Storyboard.TargetName="Bar" Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)" To="0" Duration="{StaticResource SxDurationFast}"/>
                                         <DoubleAnimation Storyboard.TargetName="Glow" Storyboard.TargetProperty="Opacity" To="0" Duration="{StaticResource SxDurationBase}"/>
                                     </Storyboard>
                                 </BeginStoryboard>
