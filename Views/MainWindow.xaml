@@ -102,12 +102,43 @@
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
                                 <Border x:Name="Chip" Grid.Column="0" Width="24" Height="24" CornerRadius="8" Background="{DynamicResource SxSurface}">
-                                    <TextBlock Text="{Binding Icon}" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="13"/>
+                                    <Grid>
+                                        <TextBlock x:Name="Glyph" Text="{Binding Icon}" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="13"/>
+                                        <Path x:Name="Ico" Width="13" Height="13" Stretch="Uniform" Visibility="Collapsed" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Grid>
                                 </Border>
                                 <TextBlock Grid.Column="1" Text="{Binding Label}" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Margin="10,0,0,0" VerticalAlignment="Center" FontSize="13"/>
                                 <Path x:Name="Mark" Grid.Column="2" Data="{StaticResource SxIconChevronRight}" Width="9" Height="9" Stretch="Uniform" Fill="{DynamicResource SxAccentCyan}" VerticalAlignment="Center" Margin="0,0,2,0" Opacity="0"/>
                             </Grid>
                             <DataTemplate.Triggers>
+                                <DataTrigger Binding="{Binding Key}" Value="command">
+                                    <Setter TargetName="Ico" Property="Data" Value="{StaticResource SxIconCommand}"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding Key}" Value="memory">
+                                    <Setter TargetName="Ico" Property="Data" Value="{StaticResource SxIconMemory}"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding Key}" Value="projects">
+                                    <Setter TargetName="Ico" Property="Data" Value="{StaticResource SxIconProjects}"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding Key}" Value="settings">
+                                    <Setter TargetName="Ico" Property="Data" Value="{StaticResource SxIconSettings}"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding Key}" Value="command">
+                                    <Setter TargetName="Ico" Property="Visibility" Value="Visible"/>
+                                    <Setter TargetName="Glyph" Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding Key}" Value="memory">
+                                    <Setter TargetName="Ico" Property="Visibility" Value="Visible"/>
+                                    <Setter TargetName="Glyph" Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding Key}" Value="projects">
+                                    <Setter TargetName="Ico" Property="Visibility" Value="Visible"/>
+                                    <Setter TargetName="Glyph" Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding Key}" Value="settings">
+                                    <Setter TargetName="Ico" Property="Visibility" Value="Visible"/>
+                                    <Setter TargetName="Glyph" Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
                                 <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True">
                                     <Setter TargetName="Chip" Property="Background" Value="{StaticResource SxPrimaryGradient}"/>
                                     <Setter TargetName="Mark" Property="Opacity" Value="1"/>
