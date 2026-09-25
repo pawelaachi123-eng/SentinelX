@@ -81,7 +81,7 @@ public sealed class FileCleanupService
         {
             pending = null;
             if (Array.Exists(Confirmations, c => c == normalized))
-                return waiting is PendingRename rename ? ExecuteRename(rename, command) : ExecuteRecycle((PendingRecycle)waiting, command);
+                return waiting is PendingRename confirmedRename ? ExecuteRename(confirmedRename, command) : ExecuteRecycle((PendingRecycle)waiting, command);
             if (Array.Exists(Cancellations, c => c == normalized)) return "Anulowane — nic nie zostało zmienione.";
         }
 
