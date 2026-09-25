@@ -72,6 +72,8 @@ public static class ServiceLocator
         services.AddSingleton<VoiceRecognitionService>(sp => new(() => sp.GetRequiredService<ISettingsService>().Current.Voice));
         services.AddSingleton<SpeechOutputService>();
         services.AddSingleton<IVoiceService, VoiceService>();
+        services.AddSingleton<IScreenCaptureService, ScreenCaptureService>();
+        services.AddSingleton<ICoPilotCursorService, CoPilotCursorService>();
         services.AddSingleton<IDesktopService, DesktopService>();
         services.AddSingleton<Services.Readiness.IReadinessService, Services.Readiness.ReadinessService>();
         services.AddSingleton<ReadinessViewModel>();
@@ -89,6 +91,7 @@ public static class ServiceLocator
         services.AddSingleton<ProjectViewModel>();
         services.AddSingleton<TaskViewModel>();
         services.AddSingleton<DiagnosticViewModel>();
+        services.AddSingleton<CollaborationViewModel>();
         services.AddSingleton<OverlayViewModel>();
         services.AddSingleton<MainViewModel>();
         services.AddSingleton<Views.MainWindow>();

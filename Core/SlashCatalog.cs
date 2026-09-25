@@ -53,6 +53,9 @@ public static class SlashCatalog
         new("zmien-nazwy", "Zmień nazwy plików", "zbiorcza zmiana nazw z podglądem, po „potwierdz”", SlashKind.Command, "zmien nazwy: "),
         new("uporzadkuj", "Uporządkuj folder", "usuwa puste pliki (0 B) do Kosza, po potwierdzeniu", SlashKind.Command, "uporzadkuj: "),
         new("usun-duplikaty", "Usuń duplikaty", "zachowuje pierwszy z grupy, resztę do Kosza po „potwierdz”", SlashKind.Command, "usun duplikaty: "),
+        // 0.94 · collaboration
+        new("ekran", "Ekran — współpraca", "LIVE podgląd pulpitu + drugi kursor", SlashKind.Tab, "ekran"),
+        new("wspolpraca", "Włącz współpracę", "tryb współpracy ekranowej — tylko przyciskiem w UI", SlashKind.Tab, "ekran"),
         // panels inside Centrum and pages
         new("rozmowa", "Rozmowa", "wróć do czatu", SlashKind.Tab, "rozmowa"),
         new("historia", "Historia", "zakładka Historii", SlashKind.Tab, "historia"),
@@ -61,6 +64,7 @@ public static class SlashCatalog
         new("gry", "Gaming", "zakładka Gier", SlashKind.Tab, "gry"),
         new("ai", "AI", "zakładka AI", SlashKind.Tab, "ai"),
         new("akcje", "Akcje", "zakładka Akcji", SlashKind.Tab, "akcje"),
+        new("diagnostyka", "Diagnostyka", "zakładka Diagnostyki", SlashKind.Tab, "diagnostyka"),
         new("ustawienia", "Ustawienia", "strona Ustawień", SlashKind.Page, "settings"),
     ];
 

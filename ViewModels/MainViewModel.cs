@@ -16,6 +16,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     public CommandPaletteViewModel Palette { get; }
     public ReadinessViewModel Readiness { get; }
     private readonly CommandCenterViewModel commandCenter;
+    private readonly CollaborationViewModel collaboration;
     [ObservableProperty] private NavItem? selectedItem;
     [ObservableProperty] private object? currentPage;
     [ObservableProperty] private bool isStopped;
@@ -26,16 +27,17 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private static readonly Dictionary<string, string> CenterTabByLegacyKey = new(StringComparer.Ordinal)
     {
         ["command"] = "rozmowa", ["tasks"] = "zadania", ["history"] = "historia", ["voice"] = "glos",
-        ["system"] = "system", ["gaming"] = "gry", ["ai"] = "ai", ["actions"] = "akcje", ["diagnostics"] = "diagnostyka"
+        ["system"] = "system", ["gaming"] = "gry", ["ai"] = "ai", ["actions"] = "akcje", ["diagnostics"] = "diagnostyka",
+        ["collaboration"] = "ekran", ["screen"] = "ekran", ["ekran"] = "ekran"
     };
 
     public MainViewModel(IActionEngine engine, IDesktopService desktop, IUiDispatcher dispatcher,
         CommandCenterViewModel command, SystemViewModel system, GamingViewModel gaming,
         VoiceViewModel voice, AiViewModel ai, ActionsViewModel actions, HistoryViewModel history, SettingsViewModel settings,
         CommandPaletteViewModel palette, ReadinessViewModel readiness, MemoryViewModel memory, ProjectViewModel projects, TaskViewModel tasks,
-        DiagnosticViewModel diagnostics)
+        DiagnosticViewModel diagnostics, CollaborationViewModel collaboration)
     {
-        this.engine = engine; this.desktop = desktop; this.dispatcher = dispatcher; Voice = voice; Palette = palette; Readiness = readiness; commandCenter = command;
+        this.engine = engine; this.desktop = desktop; this.dispatcher = dispatcher; Voice = voice; Palette = palette; Readiness = readiness; commandCenter = command; this.collaboration = collaboration;
         Palette.Chosen += PaletteChosen; Readiness.OpenSectionRequested += Navigate; commandCenter.NavigationRequested += Navigate;
         NavItems =
         [
@@ -46,7 +48,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         ];
         SelectedItem = NavItems[0]; Readiness.IsOpen = command.Messages.Count == 0; engine.Changed += Sync; desktop.StatusChanged += DesktopChanged;
         // Referenced so DI keeps constructing the cached page VMs (they live inside Centrum's tabs now).
-        _ = system; _ = gaming; _ = ai; _ = actions; _ = history; _ = tasks; _ = diagnostics;
+        _ = system; _ = gaming; _ = ai; _ = actions; _ = history; _ = tasks; _ = diagnostics; _ = collaboration;
     }
     partial void OnSelectedItemChanged(NavItem? value)
     {
@@ -72,9 +74,17 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [RelayCommand] private void OpenPalette() { Readiness.IsOpen = false; Palette.Open(); }
     [RelayCommand] private void OpenReadiness() { Palette.CloseCommand.Execute(null); Readiness.IsOpen = true; }
     [RelayCommand] private Task InitializeAsync() => Readiness.RefreshCommand.ExecuteAsync(null);
-    private void Sync() => dispatcher.Post(() => IsStopped = engine.IsStopped);
+    private void Sync() => dispatcher.Post(() =>
+    {
+        IsStopped = engine.IsStopped;
+        if (engine.IsStopped) collaboration.OnEmergencyStop();
+    });
     private void DesktopChanged() => dispatcher.Post(() => DesktopStatus = desktop.Status);
-    [RelayCommand] private void EmergencyStop() => engine.EmergencyStop();
+    [RelayCommand] private void EmergencyStop()
+    {
+        engine.EmergencyStop();
+        collaboration.OnEmergencyStop();
+    }
     [RelayCommand] private void Resume() => engine.Resume();
     [RelayCommand] private void Exit() => desktop.Exit();
     public void Dispose() { engine.Changed -= Sync; desktop.StatusChanged -= DesktopChanged; Palette.Chosen -= PaletteChosen; Readiness.OpenSectionRequested -= Navigate; commandCenter.NavigationRequested -= Navigate; Readiness.RefreshCommand.Cancel(); }

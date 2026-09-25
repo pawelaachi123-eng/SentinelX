@@ -90,7 +90,10 @@ public static class IntentCatalog
             "szukaj zadan", "zrob zadanie", "notatka",
             // 0.93 · executable file tidy
             "zmien nazwy", "przemianuj", "uporzadkuj", "posprzataj", "wykonaj porzadki",
-            "usun duplikaty", "wyczysc duplikaty", "usun do kosza"
+            "usun duplikaty", "wyczysc duplikaty", "usun do kosza",
+            // 0.94 · collaboration
+            "ekran", "pokaz ekran", "podglad ekranu", "wspolpraca", "tryb wspolpracy", "wlacz wspolprace", "wylacz wspolprace",
+            "pokaz pulpit", "udostepnij ekran", "model 3d", "zbuduj model 3d"
         ];
         foreach (string phrase in extra) phrases.Add(phrase);
         return phrases.OrderBy(x => x, StringComparer.Ordinal).ToArray();

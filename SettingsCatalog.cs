@@ -74,6 +74,11 @@ public static class SettingsCatalog
         Toggle("Ogólne", "Uruchom zminimalizowany", "Przy starcie schowaj okno do zasobnika.", () => S().Startup.StartMinimized, x => S().Startup.StartMinimized = x);
         Toggle("Ogólne", "Głos przy uruchomieniu", "Domyślnie WŁĄCZONE (0.91): Sentinel nasłuchuje od startu — wskaźnik 🎤 w Centrum pokazuje stan, jeden klik wyłącza. Wymaga już pobranych modeli i dostępnego mikrofonu.", () => S().Startup.StartVoiceOnLaunch, x => S().Startup.StartVoiceOnLaunch = x);
         Toggle("Głos", "Odpowiedzi głosowe", "Synteza lokalna Windows dla poleceń głosowych.", () => S().Voice.SpeakResponses, x => S().Voice.SpeakResponses = x);
+        Toggle("Współpraca", "Włącz współpracę ekranową", "Główny przełącznik — gdy wyłączony, podgląd ekranu i drugi kursor są całkowicie zablokowane. Włączenie trybu nadal wymaga przycisku w Centrum → Ekran.", () => S().Collaboration.Enabled, x => S().Collaboration.Enabled = x);
+        Toggle("Współpraca", "Czerwona ramka gdy aktywny", "Widoczny wskaźnik wokół całego pulpitu gdy tryb współpracy jest aktywny.", () => S().Collaboration.ShowBorderIndicator, x => S().Collaboration.ShowBorderIndicator = x);
+        Toggle("Współpraca", "Zapisuj zrzuty ekranu", "Gdy włączone, zrzuty trafiają lokalnie do %LOCALAPPDATA%\\SentinelX\\ScreenCaptures\\ (max 50). Nigdzie nie wysyłane.", () => S().Collaboration.SaveCaptures, x => S().Collaboration.SaveCaptures = x);
+        Number("Współpraca", "FPS podglądu LIVE", "1-10 klatek na sekundę — mniej = mniej CPU.", () => S().Collaboration.LiveFps, x => S().Collaboration.LiveFps = (int)x, 1, 10, true);
+        Number("Współpraca", "Jakość zrzutu (%)", "Jakość JPEG 30-100.", () => S().Collaboration.CaptureQuality, x => S().Collaboration.CaptureQuality = (int)x, 30, 100, true);
         Toggle("Developer", "Tryb deweloperski", "Diagnostyka; nie daje modelowi zgody na modyfikowanie kodu.", () => S().Developer.DeveloperMode, x => S().Developer.DeveloperMode = x);
         Toggle("Developer", "Zapis próbek audio", "Prywatne nagrania lokalne. Wyłącz domyślnie.", () => S().Voice.SaveVoiceSamples, x => { S().Developer.SaveVoiceSamples = x; S().Voice.SaveVoiceSamples = x; });
         return fields;

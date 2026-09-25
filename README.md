@@ -1,6 +1,16 @@
-# SENTINEL X 0.93 · PORZĄDKI WYKONAWCZE — Windows / MVVM
+# SENTINEL X 0.94 · WSPÓŁPRACA EKRANOWA — Windows / MVVM
 
 Lokalny asystent Windows 10/11, C# 13, .NET 9, WPF. Nowe GUI jest domyślnym interfejsem. Poprzedni interfejs i jego funkcje nadal są dostępne przez `--legacy`.
+
+## Nowe w 0.94 — WSPÓŁPRACA EKRANOWA: LIVE podgląd pulpitu + drugi kursor
+
+- **LIVE podgląd całego pulpitu**: wszystkie monitory, nie tylko SS — `Graphics.CopyFromScreen`, 2 FPS domyślnie (1-10 w ustawieniach), możesz przełączać na Blendera, przeglądarkę, Sentinel widzi dokładnie co robi, nie zgaduje.
+- **Drugi kursor w innym kolorze**: niebieski/cyjan #00D4FF (Twój zostaje), overlay WPF 36px + 8px + „S”, topmost, transparent, pokazuje gdzie AI chce kliknąć.
+- **Pełna kontrola myszki** po włączeniu: `SetCursorPos` + `mouse_event` — kliki, prawy klik, double-click, scroll — działa w Blenderze i wszędzie, wyłączasz jednym kliknięciem lub Ctrl+Shift+X.
+- **Tylko przycisk w UI** (Twoje życzenie bezpieczeństwa): Centrum → 🖥️ Ekran → WŁĄCZ TRYB WSPÓŁPRACY — głos NIE może włączyć, nawet „Sentinel włącz współpracę” zwraca instrukcję o przycisku. Świadoma zgoda.
+- **Czerwona ramka** wokół całego pulpitu + baner „TRYB WSPÓŁPRACY AKTYWNY” gdy włączone — wyraźny wskaźnik.
+- **Lokalnie tylko**: zrzuty opcjonalnie w `%LOCALAPPDATA%\SentinelX\ScreenCaptures\` (max 50), nic nie idzie do internetu, model wizyjny (llava) też lokalny przez Ollama.
+- **Modelowanie 3D**: wcześniej odmawiał, teraz z współpracą widzi Blendera LIVE i może modelować drugim kursorem. Szczegóły: [docs/RELEASE-0.94.md](docs/RELEASE-0.94.md).
 
 ## Nowe w 0.93 — PORZĄDKI WYKONAWCZE: zbiorcze zmiany nazw, wykonywalny plan porządków i hurtowe usuwanie duplikatów
 

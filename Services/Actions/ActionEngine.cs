@@ -37,6 +37,9 @@ public sealed class ActionEngine(IIntentRouter router, SentinelToolboxService to
         // Check after the SAME normalization used by routing: wake words must not bypass approval.
         if (fromVoice && CommandText.IsApproval(normalized))
             return new("Potwierdzenie jest możliwe wyłącznie przyciskiem lub klawiaturą.");
+        // 0.94 · collaboration mode is button-only by user request — voice must never enable it.
+        if (fromVoice && (normalized.Contains("wspolpraca") || normalized.Contains("ekran") || normalized.Contains("pulpit") || normalized.Contains("udostepnij ekran")))
+            return new("Tryb współpracy ekranowej włącza się TYLKO przyciskiem w UI (Centrum → 🖥️ Ekran → WŁĄCZ) — to Twoje życzenie bezpieczeństwa, głos nie może go włączyć.");
         CancellationTokenSource source;
         var record = new ActionRecord { UserRequest = input, Status = ActionStatus.Running, Phase = "Przygotowanie polecenia" };
         lock (gate)

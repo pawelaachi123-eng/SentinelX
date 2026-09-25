@@ -145,11 +145,24 @@ public sealed class CommandRouter
         if (text is "propozycje" or "co proponujesz" or "sugestie")
             return insights?.Suggestions() ?? "Propozycje nie są dostępne w tym trybie.";
 
-        // Honest capability boundaries: these are deliberate refusals, not gaps.
+        // 0.94 · collaboration mode changes the 3D story: with screen sharing + second cursor, Sentinel can SEE Blender and control mouse.
         if (text is "model 3d" or "zbuduj model 3d" or "modeluj 3d" or "generuj model 3d" or "zrob model 3d" or "druk 3d")
-            return "Uczciwie: nie buduję modeli 3D. Nie mam tu silnika graficznego ani narzędzi CAD i nie chcę udawać, że mam.\n" +
-                "Mogę za to: policzyć wymiary („policz”), przeliczyć jednostki („przelicz”), zapisać zadanie związane z projektem („zrob zadanie: …”) i przypomnieć o nim w terminie.\n" +
-                "Do samego modelowania polecam Blendera (darmowy) — mogę dodać zadanie „pobrać Blendera”, jeśli chcesz.";
+            return "Modelowanie 3D — teraz z trybem współpracy:\n" +
+                "· Włącz „Współpracę ekranową” przyciskiem w UI: Centrum → 🖥️ Ekran → WŁĄCZ TRYB WSPÓŁPRACY (tylko przycisk, bez głosu — świadoma zgoda).\n" +
+                "· Sentinel widzi wtedy Twój ekran LIVE (wszystkie monitory, możesz przełączać na Blendera, przeglądarkę) i ma drugi kursor w innym kolorze (niebieski), a Twój zostaje.\n" +
+                "· Gdy tryb aktywny, drugi kursor może sterować myszką (kliki, przeciąganie) — widzisz dokładnie co robi, bo podgląd jest LIVE, nie zgaduje.\n" +
+                "· Wyłączasz jednym kliknięciem lub Ctrl+Shift+X (EMERGENCY STOP). Podgląd jest lokalny, nic nie idzie do internetu.\n" +
+                "· Bez trybu współpracy nadal: policzę wymiary („policz”), przeliczę jednostki („przelicz”), zapiszę zadanie („zrob zadanie: …”).\n" +
+                "Otwórz Centrum → 🖥️ Ekran, aby włączyć.";
+
+        // Collaboration mode — only UI button enables it (user request: button_only to avoid accidental voice activation)
+        if (text is "ekran" or "pokaz ekran" or "podglad ekranu" or "wspolpraca" or "tryb wspolpracy" or "wlacz wspolprace" or "włącz współpracę" or "pokaz pulpit" or "udostepnij ekran" or "udostępnij ekran")
+            return "🖥️ WSPÓŁPRACA EKRANOWA — włączenie TYLKO przyciskiem w UI (świadoma zgoda, bez głosu):\n" +
+                "· Otwórz Centrum → zakładka 🖥️ Ekran (albo wpisz //ekran) → przycisk „WŁĄCZ TRYB WSPÓŁPRACY”.\n" +
+                "· Po włączeniu: LIVE podgląd całego pulpitu (wszystkie monitory, możesz przełączać), drugi kursor w innym kolorze (niebieski) obok Twojego, pełna kontrola myszki (kliki w Blenderze, przeglądarce).\n" +
+                "· Widoczny wskaźnik: czerwona ramka wokół ekranu + napis „TRYB WSPÓŁPRACY AKTYWNY”.\n" +
+                "· Wyłączasz przyciskiem lub Ctrl+Shift+X. Wszystko lokalne, logowane w Historii (COLLAB_ENABLE/DISABLE), zrzuty opcjonalnie w %LOCALAPPDATA%\\SentinelX\\ScreenCaptures\\\n" +
+                "· Głos NIE może włączyć tego trybu — to Twoje życzenie bezpieczeństwa.";
         if (text is "zmien swoj kod" or "napraw swoj kod" or "napraw sie" or "zmodyfikuj swoj kod" or "ulepsz sie" or "zaktualizuj sie" or "przepisz sie")
             return "Nie modyfikuję własnego kodu — i to jest świadoma decyzja, nie brak umiejętności.\n" +
                 "Samodzielna zmiana kodu bez kontroli mogłaby zepsuć aplikację, w której masz swoje dane. Zamiast tego mam bezpieczny odpowiednik:\n" +

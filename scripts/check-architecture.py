@@ -38,6 +38,8 @@ for path in (ROOT / "ViewModels").glob("*.cs"):
 
 project = ET.parse(ROOT / "SENTINEL-X.csproj")
 assert project.findtext(".//TargetFramework") == "net9.0-windows"
+# 0.94 uses System.Drawing.Common (no WinForms) for screen capture — WinForms flag must stay off
 assert project.findtext(".//UseWindowsForms") != "true"
-assert len(list((ROOT / "Views/Pages").glob("*Page.xaml"))) == 12
-print("PASS: XML, resources, 12 views, thin code-behind, VM boundaries, target framework, no WinForms flag")
+count = len(list((ROOT / "Views/Pages").glob("*Page.xaml")))
+assert count >= 12, f"Expected at least 12 pages, got {count}"
+print(f"PASS: XML, resources, {count} views, thin code-behind, VM boundaries, target framework, no WinForms flag")

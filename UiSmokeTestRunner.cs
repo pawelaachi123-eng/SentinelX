@@ -152,7 +152,8 @@ public static class UiSmokeTestRunner
                 ("pierwiastek 144", "= 12"), ("silnia 10", "3628800"), ("nwd 12 8", "= 4"),
                 ("palindrom: kajak", "palindromem"), ("morse: sos", "... --- ..."),
                 ("pesel: 90010112349", "PESEL poprawny"), ("wielkanoc 2027", "28.03.2027"),
-                ("lotto", "Lotto (6 z 49)"), ("wersja", "0.93"), ("co nowego", "PORZĄDKI WYKONAWCZE"),
+                ("lotto", "Lotto (6 z 49)"), ("wersja", "0.94"), ("co nowego", "WSPÓŁPRACA EKRANOWA"),
+                ("ekran", "WSPÓŁPRACA EKRANOWA"), ("model 3d", "Modelowanie 3D — teraz z trybem współpracy"),
                 ("nazwa komputera", "Komputer:"), ("samokontrola", "SAMOKONTROLA"),
             })
             {
@@ -243,6 +244,20 @@ public static class UiSmokeTestRunner
                 throw new InvalidOperationException("//uporzadkuj must map to tidy exec.");
             if (SentinelX.Core.SlashCatalog.TryResolve("usun-duplikaty")?.Target != "usun duplikaty: ")
                 throw new InvalidOperationException("//usun-duplikaty must map to duplicate cleanup.");
+            // 0.94 · collaboration mode — button only, voice must not enable it
+            string ekranInfo = (await memoryEngine.ExecuteAsync("ekran")).Text;
+            if (!ekranInfo.Contains("WSPÓŁPRACA EKRANOWA") || !ekranInfo.Contains("Tylko przyciskiem"))
+                throw new InvalidOperationException("Collaboration info must be shown and mention button-only: " + ekranInfo);
+            var voiceBlocked = await engine.ExecuteAsync("włącz współpracę", fromVoice: true);
+            if (!voiceBlocked.Text.Contains("Tylko przyciskiem") || voiceBlocked.Action != null)
+                throw new InvalidOperationException("Voice must not enable collaboration: " + voiceBlocked.Text);
+            if (SentinelX.Core.SlashCatalog.TryResolve("ekran")?.Target != "ekran")
+                throw new InvalidOperationException("//ekran must map to collaboration tab.");
+            var collabVm = services.GetRequiredService<CollaborationViewModel>();
+            if (collabVm.Monitors.Count == 0)
+                throw new InvalidOperationException("At least one monitor must be detected.");
+            if (collabVm.IsCollaborationActive)
+                throw new InvalidOperationException("Collaboration must be off by default.");
             // 0.91: „zrob zadanie: …” is an explicit command — it lands in the Tasks tab, not only in chat.
             var madeTask = await memoryEngine.ExecuteAsync("zrob zadanie: przetestowac centrum QX77");
             if (!madeTask.Text.Contains("Zadanie zapisane"))

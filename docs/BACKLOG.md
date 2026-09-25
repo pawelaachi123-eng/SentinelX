@@ -99,15 +99,25 @@ Stan na 2026-09-25 (0.92). Zasada: każda pojedyncza pozycja znika z listy dopie
 - Wszystkie operacje mutujące: dwustopniowe, jednorazowe (późniejsze „tak” nie odpala starego pending), tylko do Kosza (przywracalne) lub rename bez nadpisywania, junction/symlinki nieprzechodzone i nieusuwalne, limity twarde.
 - `tests/FileCleanupRegression.cs` rozszerzony o pełny cykl rename (podgląd → brak zmian → stale tak → ponowna propozycja → potwierdz → zweryfikowane przemianowanie), arrow syntax, kolizje, bare commands, tidy exec (puste pliki), duplicate batch cleanup (zachowanie jednego). Smoke UI: nowe polecenia przez prawdziwy silnik + skróty `//zmien-nazwy`, `//uporzadkuj`, `//usun-duplikaty` w palecie.
 
+## Gotowe w 0.94 (ten przyrost — patrz git)
+
+- **Współpraca ekranowa (życzenie użytkownika)**: `ScreenCaptureService` (EnumDisplayMonitors + CopyFromScreen, bez WinForms, System.Drawing.Common, live 1-10 FPS, event FrameCaptured, CaptureAll/Monitor/Save), `CoPilotCursorService` (SetCursorPos + mouse_event, overlay niebieski 36px + kropka + „S” + czerwona ramka wokół pulpitu z banerem „TRYB WSPÓŁPRACY AKTYWNY”, WS_EX_TRANSPARENT).
+- **Tylko przycisk w UI** (button_only): włączenie wyłącznie przyciskiem w Centrum → 🖥️ Ekran → WŁĄCZ TRYB WSPÓŁPRACY, głos blokowany w `ActionEngine` (zwraca instrukcję o przycisku), tekst „ekran/wspolpraca” zwraca instrukcję, nie włącza. STOP (Ctrl+Shift+X) wyłącza.
+- **Bezpieczeństwo**: lokalnie tylko (zrzuty w %LOCALAPPDATA%\SentinelX\ScreenCaptures\ max 50, opcjonalnie), audyt COLLAB_ENABLE/DISABLE, master switch `Collaboration.Enabled`, ustawienia FPS/jakość/ramka/zapis.
+- **UI**: nowa zakładka Centrum 🖥️ Ekran (10. zakładka), strona `CollaborationPage.xaml` (status, monitory X,Y,W,H, przyciski WŁĄCZ/WYŁĄCZ, środek, klik, prawy klik, zrzuty, live preview), DataTemplate w MainWindow, `CollaborationViewModel` w DI, `MainViewModel` emergency stop wyłącza współpracę.
+- **3D**: `model 3d` teraz tłumaczy tryb współpracy zamiast odmawiać — z włączonym trybem Sentinel widzi Blendera LIVE i może modelować drugim kursorem.
+- `SlashCatalog`: `//ekran`, `//wspolpraca` → tab ekran; `IntentCatalog`: nowe frazy; `SettingsCatalog`: sekcja Współpraca.
+- `UiSmokeTestRunner`: `ekran` → info o przycisku, głos zablokowany, `CollaborationViewModel` ma monitory i jest off domyślnie, render zakładki Ekran.
+
 ## Priorytet P0 — kolejny przyrost
 
-1. **Pliki — domknięte w 0.93**: P0.1 w całości zrobione (duplikaty SHA-256, raport porządkowy, kosz pojedynczy, zbiorcze zmiany nazw z podglądem, wykonywalny plan porządkowy dla pustych plików, usuwanie wielu duplikatów z listą i potwierdzeniem). Zostały rozszerzenia P1 (diff, filtry).
-2. **Sekwencje działań**: nazwane kroki, plan z podglądem, statusy kroków, zatrzymanie na błędzie, wznowienie tam, gdzie to sensowne.
-2. **Sekwencje działań**: nazwane kroki, plan z podglądem, statusy kroków, zatrzymanie na błędzie, wznowienie tam, gdzie to sensowne.
-3. **Panel archiwum w UI**: strona/panel z listą archiwów (miesiąc, rozmowy, wypowiedzi, rozmiar, hash), podglądem Markdowna i usuwaniem — dziś archiwum działa z czatu i z ustawień, ale nie ma własnego widoku.
-4. **Podpisywanie buildów**: certyfikat (płatny) albo jawnie opisana ścieżka bez podpisu z instrukcją odblokowania SmartScreen; dziś pliki są niepodpisane i tak jest opisane.
-5. **Integracje odłożone z 0.91** (decyzja użytkownika): GitHub i Gmail — dopiero jako osobny przyrost, wyłącznie za jawną zgodą i z lokalnym przechowywaniem poświadczeń stockowym crypto Windows.
-6. **Motywy**: pełny motyw „szkło/Jarvis” (dziś aurora to warstwa dekoracyjna; okno nieprzezroczyste z powodów wydajności/kompatybilności).
+1. **Pliki — domknięte w 0.93**: P0.1 w całości zrobione.
+2. **Współpraca — zrobione w 0.94**: LIVE podgląd, drugi kursor, pełna kontrola myszki, tylko przycisk, ramka, STOP.
+3. **Sekwencje działań**: nazwane kroki, plan z podglądem, statusy kroków, zatrzymanie na błędzie, wznowienie tam, gdzie to sensowne.
+4. **Panel archiwum w UI**: strona/panel z listą archiwów (miesiąc, rozmowy, wypowiedzi, rozmiar, hash), podglądem Markdowna i usuwaniem — dziś archiwum działa z czatu i z ustawień, ale nie ma własnego widoku.
+5. **Podpisywanie buildów**: certyfikat (płatny) albo jawnie opisana ścieżka bez podpisu z instrukcją odblokowania SmartScreen; dziś pliki są niepodpisane i tak jest opisane.
+6. **Integracje odłożone z 0.91** (decyzja użytkownika): GitHub i Gmail — dopiero jako osobny przyrost, wyłącznie za jawną zgodą i z lokalnym przechowywaniem poświadczeń stockowym crypto Windows.
+7. **Motywy**: pełny motyw „szkło/Jarvis” (dziś aurora to warstwa dekoracyjna; okno nieprzezroczyste z powodów wydajności/kompatybilności).
 
 ## Priorytet P1
 
