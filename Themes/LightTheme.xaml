@@ -1,15 +1,70 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!--  0.94 · Tryb jasny: pełne pokrycie palety. Odcienie sekcji są przyciemnione, bo na bieli
+          #66F2C2 czy #48D8FF dawałby kontrast ~1.6:1.  -->
     <Color x:Key="SxBackgroundColor">#F1F4F9</Color>
     <Color x:Key="SxSurfaceColor">#FFFFFF</Color>
-    <Color x:Key="SxSurfaceHoverColor">#E8EDF5</Color>
+    <Color x:Key="SxSurfaceHoverColor">#EAEFF7</Color>
     <Color x:Key="SxSurfaceActiveColor">#DFE7F2</Color>
+    <Color x:Key="SxSurfaceRaisedColor">#FFFFFF</Color>
     <Color x:Key="SxSidebarColor">#E9EEF6</Color>
     <Color x:Key="SxSidebarHoverColor">#DDE5F0</Color>
-    <Color x:Key="SxSidebarActiveColor">#D4E8F1</Color>
+    <Color x:Key="SxSidebarActiveColor">#CFE0EF</Color>
     <Color x:Key="SxBorderColor">#B7C3D5</Color>
-    <Color x:Key="SxBorderSubtleColor">#D4DCE8</Color>
+    <Color x:Key="SxBorderSubtleColor">#DCE4EF</Color>
+    <Color x:Key="SxBorderActiveColor">#5E8FB8</Color>
     <Color x:Key="SxTextPrimaryColor">#17243A</Color>
     <Color x:Key="SxTextSecondaryColor">#465774</Color>
-    <Color x:Key="SxTextMutedColor">#596B85</Color>
+    <Color x:Key="SxTextMutedColor">#5A6B85</Color>
+    <Color x:Key="SxTextDisabledColor">#9AA6B8</Color>
+    <Color x:Key="SxAccentCyanColor">#0284C7</Color>
+    <Color x:Key="SxAccentCyanDimColor">#0369A1</Color>
+    <Color x:Key="SxAccentVioletColor">#6D43D8</Color>
+    <Color x:Key="SxAccentBlueColor">#1D4ED8</Color>
+    <Color x:Key="SxAccentGradStartColor">#0284C7</Color>
+    <Color x:Key="SxAccentGradEndColor">#6D43D8</Color>
+    <Color x:Key="SxSuccessColor">#15803D</Color>
+    <Color x:Key="SxSuccessDimColor">#BBF7D0</Color>
+    <Color x:Key="SxWarningColor">#B45309</Color>
+    <Color x:Key="SxWarningDimColor">#FDE7C3</Color>
+    <Color x:Key="SxErrorColor">#B91C1C</Color>
+    <Color x:Key="SxErrorDimColor">#FBD5D5</Color>
+    <Color x:Key="SxVoiceActiveColor">#0284C7</Color>
+    <Color x:Key="SxVoiceStandbyColor">#B45309</Color>
+    <Color x:Key="SxVoiceOffColor">#9AA6B8</Color>
     <Color x:Key="SxUserBubbleColor">#D4E8F1</Color>
+    <Color x:Key="SxCodeBgColor">#EDF1F8</Color>
+    <Color x:Key="SxFocusRingColor">#1D4ED8</Color>
+    <Color x:Key="SxSelectionColor">#BFD9F2</Color>
+    <Color x:Key="SxShadowColor">#220A1B36</Color>
+    <Color x:Key="SxSheenColor">#14FFFFFF</Color>
+    <Color x:Key="SxGlassColor">#0D0F2A4A</Color>
+    <Color x:Key="SxGlassStrongColor">#1A0F2A4A</Color>
+    <Color x:Key="SxGlowCyanColor">#1F0284C7</Color>
+    <Color x:Key="SxGlowVioletColor">#1A6D43D8</Color>
+    <Color x:Key="SxMetricGoodColor">#15803D</Color>
+    <Color x:Key="SxMetricWarnColor">#B45309</Color>
+    <Color x:Key="SxMetricBadColor">#B91C1C</Color>
+    <Color x:Key="SxAurora1Color">#290284C7</Color>
+    <Color x:Key="SxAurora2Color">#216D43D8</Color>
+    <Color x:Key="SxAurora3Color">#1F0F766E</Color>
+    <Color x:Key="SxShimmerColor">#33FFFFFF</Color>
+    <Color x:Key="SxHueMintColor">#0F766E</Color>
+    <Color x:Key="SxHueAzureColor">#0284C7</Color>
+    <Color x:Key="SxHueVioletColor">#6D43D8</Color>
+    <Color x:Key="SxHueAmberColor">#B45309</Color>
+    <Color x:Key="SxHueRoseColor">#BE3455</Color>
+    <Color x:Key="SxHueLimeColor">#4D7C0F</Color>
+    <Color x:Key="SxHuePinkColor">#7E5FBF</Color>
+    <Color x:Key="SxHueTealColor">#0E7490</Color>
+    <Color x:Key="SxTabChatColor">#0284C7</Color>
+    <Color x:Key="SxTabTasksColor">#4D7C0F</Color>
+    <Color x:Key="SxTabHistoryColor">#6D43D8</Color>
+    <Color x:Key="SxTabVoiceColor">#0F766E</Color>
+    <Color x:Key="SxTabSystemColor">#1D4ED8</Color>
+    <Color x:Key="SxTabGamingColor">#B45309</Color>
+    <Color x:Key="SxTabAiColor">#7E5FBF</Color>
+    <Color x:Key="SxTabActionsColor">#BE3455</Color>
+    <Color x:Key="SxTabDiagColor">#0E7490</Color>
+    <SolidColorBrush x:Key="SxOverlayBg" Color="#E6FFFFFF"/>
+    <SolidColorBrush x:Key="SxScrim" Color="#73A8B6C8"/>
 </ResourceDictionary>

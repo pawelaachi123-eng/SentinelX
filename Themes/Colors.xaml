@@ -1,4 +1,9 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!--
+      0.94 · PALETA. Zasada: każdy token to para Color + Brush, a brush bierze kolor z DynamicResource,
+      żeby słowniki motywu (DarkTheme/DeepDarkTheme/LightTheme) nadpisywały tylko klucze *Color.
+      Widoki nie mogą zawierać literału koloru (pilnuje tego scripts/check-architecture.py).
+    -->
     <Color x:Key="SxBackgroundColor">#0D0F14</Color>
     <SolidColorBrush x:Key="SxBackground" Color="{DynamicResource SxBackgroundColor}"/>
     <Color x:Key="SxSurfaceColor">#141820</Color>
@@ -7,6 +12,8 @@
     <SolidColorBrush x:Key="SxSurfaceHover" Color="{DynamicResource SxSurfaceHoverColor}"/>
     <Color x:Key="SxSurfaceActiveColor">#1E2433</Color>
     <SolidColorBrush x:Key="SxSurfaceActive" Color="{DynamicResource SxSurfaceActiveColor}"/>
+    <Color x:Key="SxSurfaceRaisedColor">#19202E</Color>
+    <SolidColorBrush x:Key="SxSurfaceRaised" Color="{DynamicResource SxSurfaceRaisedColor}"/>
     <Color x:Key="SxSidebarColor">#0F1118</Color>
     <SolidColorBrush x:Key="SxSidebar" Color="{DynamicResource SxSidebarColor}"/>
     <Color x:Key="SxSidebarHoverColor">#171B25</Color>
@@ -17,6 +24,8 @@
     <SolidColorBrush x:Key="SxBorder" Color="{DynamicResource SxBorderColor}"/>
     <Color x:Key="SxBorderSubtleColor">#1E222D</Color>
     <SolidColorBrush x:Key="SxBorderSubtle" Color="{DynamicResource SxBorderSubtleColor}"/>
+    <Color x:Key="SxBorderActiveColor">#3E7F9E</Color>
+    <SolidColorBrush x:Key="SxBorderActive" Color="{DynamicResource SxBorderActiveColor}"/>
     <Color x:Key="SxTextPrimaryColor">#E8ECF4</Color>
     <SolidColorBrush x:Key="SxTextPrimary" Color="{DynamicResource SxTextPrimaryColor}"/>
     <Color x:Key="SxTextSecondaryColor">#8B92A5</Color>
@@ -63,4 +72,76 @@
     <SolidColorBrush x:Key="SxUserBubble" Color="{DynamicResource SxUserBubbleColor}"/>
     <SolidColorBrush x:Key="SxOverlayBg" Color="#CC0D0F14"/>
     <SolidColorBrush x:Key="SxScrim" Color="#B30D0F14"/>
+
+    <!-- 0.94 · HUE SET: tożsamość sekcji. Jeden odcień na sekcję, nigdzie więcej niż dwa naraz. -->
+    <Color x:Key="SxHueMintColor">#66F2C2</Color>
+    <SolidColorBrush x:Key="SxHueMint" Color="{DynamicResource SxHueMintColor}"/>
+    <Color x:Key="SxHueAzureColor">#48D8FF</Color>
+    <SolidColorBrush x:Key="SxHueAzure" Color="{DynamicResource SxHueAzureColor}"/>
+    <Color x:Key="SxHueVioletColor">#A98BFF</Color>
+    <SolidColorBrush x:Key="SxHueViolet" Color="{DynamicResource SxHueVioletColor}"/>
+    <Color x:Key="SxHueAmberColor">#FFC86B</Color>
+    <SolidColorBrush x:Key="SxHueAmber" Color="{DynamicResource SxHueAmberColor}"/>
+    <Color x:Key="SxHueRoseColor">#FF8DA6</Color>
+    <SolidColorBrush x:Key="SxHueRose" Color="{DynamicResource SxHueRoseColor}"/>
+    <Color x:Key="SxHueLimeColor">#B8F26B</Color>
+    <SolidColorBrush x:Key="SxHueLime" Color="{DynamicResource SxHueLimeColor}"/>
+    <Color x:Key="SxHuePinkColor">#C19CFF</Color>
+    <SolidColorBrush x:Key="SxHuePink" Color="{DynamicResource SxHuePinkColor}"/>
+    <Color x:Key="SxHueTealColor">#5EF0C2</Color>
+    <SolidColorBrush x:Key="SxHueTeal" Color="{DynamicResource SxHueTealColor}"/>
+
+    <!-- 0.94 · AKCENT ZAKŁADKI: klucz zakładki Centrum i nawigacji wiąże się z tymi barwami w widoku. -->
+    <Color x:Key="SxTabChatColor">#48D8FF</Color>
+    <SolidColorBrush x:Key="SxTabChat" Color="{DynamicResource SxTabChatColor}"/>
+    <Color x:Key="SxTabTasksColor">#B8F26B</Color>
+    <SolidColorBrush x:Key="SxTabTasks" Color="{DynamicResource SxTabTasksColor}"/>
+    <Color x:Key="SxTabHistoryColor">#A98BFF</Color>
+    <SolidColorBrush x:Key="SxTabHistory" Color="{DynamicResource SxTabHistoryColor}"/>
+    <Color x:Key="SxTabVoiceColor">#66F2C2</Color>
+    <SolidColorBrush x:Key="SxTabVoice" Color="{DynamicResource SxTabVoiceColor}"/>
+    <Color x:Key="SxTabSystemColor">#3B82F6</Color>
+    <SolidColorBrush x:Key="SxTabSystem" Color="{DynamicResource SxTabSystemColor}"/>
+    <Color x:Key="SxTabGamingColor">#FFC86B</Color>
+    <SolidColorBrush x:Key="SxTabGaming" Color="{DynamicResource SxTabGamingColor}"/>
+    <Color x:Key="SxTabAiColor">#C19CFF</Color>
+    <SolidColorBrush x:Key="SxTabAi" Color="{DynamicResource SxTabAiColor}"/>
+    <Color x:Key="SxTabActionsColor">#FF8DA6</Color>
+    <SolidColorBrush x:Key="SxTabActions" Color="{DynamicResource SxTabActionsColor}"/>
+    <Color x:Key="SxTabDiagColor">#5EF0C2</Color>
+    <SolidColorBrush x:Key="SxTabDiag" Color="{DynamicResource SxTabDiagColor}"/>
+
+    <!-- 0.94 · POWIERZCHNIE I STANY -->
+    <Color x:Key="SxGlassColor">#0FFFFFFF</Color>
+    <SolidColorBrush x:Key="SxGlass" Color="{DynamicResource SxGlassColor}"/>
+    <Color x:Key="SxGlassStrongColor">#1AFFFFFF</Color>
+    <SolidColorBrush x:Key="SxGlassStrong" Color="{DynamicResource SxGlassStrongColor}"/>
+    <Color x:Key="SxCodeBgColor">#0A0D14</Color>
+    <SolidColorBrush x:Key="SxCodeBg" Color="{DynamicResource SxCodeBgColor}"/>
+    <Color x:Key="SxFocusRingColor">#7DE6FF</Color>
+    <SolidColorBrush x:Key="SxFocusRing" Color="{DynamicResource SxFocusRingColor}"/>
+    <Color x:Key="SxSelectionColor">#2E5B8C</Color>
+    <SolidColorBrush x:Key="SxSelection" Color="{DynamicResource SxSelectionColor}"/>
+    <Color x:Key="SxShadowColor">#6603060C</Color>
+    <SolidColorBrush x:Key="SxShadow" Color="{DynamicResource SxShadowColor}"/>
+    <Color x:Key="SxSheenColor">#14FFFFFF</Color>
+    <SolidColorBrush x:Key="SxSheen" Color="{DynamicResource SxSheenColor}"/>
+    <Color x:Key="SxGlowCyanColor">#3D00D4FF</Color>
+    <SolidColorBrush x:Key="SxGlowCyan" Color="{DynamicResource SxGlowCyanColor}"/>
+    <Color x:Key="SxGlowVioletColor">#338B5CF6</Color>
+    <SolidColorBrush x:Key="SxGlowViolet" Color="{DynamicResource SxGlowVioletColor}"/>
+    <Color x:Key="SxMetricGoodColor">#22C55E</Color>
+    <SolidColorBrush x:Key="SxMetricGood" Color="{DynamicResource SxMetricGoodColor}"/>
+    <Color x:Key="SxMetricWarnColor">#F59E0B</Color>
+    <SolidColorBrush x:Key="SxMetricWarn" Color="{DynamicResource SxMetricWarnColor}"/>
+    <Color x:Key="SxMetricBadColor">#EF4444</Color>
+    <SolidColorBrush x:Key="SxMetricBad" Color="{DynamicResource SxMetricBadColor}"/>
+    <Color x:Key="SxAurora1Color">#4D00D4FF</Color>
+    <SolidColorBrush x:Key="SxAurora1" Color="{DynamicResource SxAurora1Color}"/>
+    <Color x:Key="SxAurora2Color">#408B5CF6</Color>
+    <SolidColorBrush x:Key="SxAurora2" Color="{DynamicResource SxAurora2Color}"/>
+    <Color x:Key="SxAurora3Color">#2E66F2C2</Color>
+    <SolidColorBrush x:Key="SxAurora3" Color="{DynamicResource SxAurora3Color}"/>
+    <Color x:Key="SxShimmerColor">#26FFFFFF</Color>
+    <SolidColorBrush x:Key="SxShimmer" Color="{DynamicResource SxShimmerColor}"/>
 </ResourceDictionary>

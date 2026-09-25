@@ -1,4 +1,9 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:u="clr-namespace:SentinelX.Utilities">
+    <!--
+      0.94 · KONTROLKI. Wszystkie kolory przez tokeny, każdy ruch przez KeySpline z Animations.xaml.
+      Szablony nie mogą zawierać literałów koloru (brama architektury sprawdza tylko Views/,
+      ale trzymamy się tej samej zasady tutaj — jedynym miejscem palety jest Themes/Colors.xaml).
+    -->
     <Style x:Key="SxSecondaryButton" TargetType="Button">
         <Setter Property="Background" Value="{DynamicResource SxSurface}"/>
         <Setter Property="Foreground" Value="{DynamicResource SxTextPrimary}"/>
@@ -9,42 +14,147 @@
         <Setter Property="Padding" Value="16,10"/>
         <Setter Property="MinHeight" Value="40"/>
         <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+        <Setter Property="SnapsToDevicePixels" Value="True"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
-                    <Border x:Name="border" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="12" Padding="{TemplateBinding Padding}">
-                        <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="Center" RecognizesAccessKey="True"/>
-                    </Border>
+                    <Grid x:Name="root" RenderTransformOrigin="0.5,0.5">
+                        <Grid.RenderTransform>
+                            <TranslateTransform/>
+                        </Grid.RenderTransform>
+                        <Border x:Name="glow" CornerRadius="16" Background="{DynamicResource SxGlowCyan}" Opacity="0"/>
+                        <Border x:Name="border" CornerRadius="12" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}">
+                            <Grid ClipToBounds="True">
+                                <Border x:Name="sheen" Background="{StaticResource SxCardSheen}" CornerRadius="11"/>
+                                <ContentPresenter Margin="{TemplateBinding Padding}" HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="Center" RecognizesAccessKey="True"/>
+                            </Grid>
+                        </Border>
+                        <Border x:Name="ring" CornerRadius="13" BorderBrush="{DynamicResource SxFocusRing}" BorderThickness="2" Opacity="0"/>
+                    </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="border" Property="Opacity" Value="0.85"/>
-                            <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource SxAccentCyanDim}"/>
-                        </Trigger>
-                        <Trigger Property="IsKeyboardFocused" Value="True">
-                            <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource SxAccentCyan}"/>
+                            <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource SxBorderActive}"/>
+                            <Setter TargetName="glow" Property="Opacity" Value="0.55"/>
+                            <Setter TargetName="sheen" Property="Opacity" Value="1"/>
+                            <Trigger.EnterActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="root" Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)" To="-1" Duration="0:0:0.11">
+                                            <DoubleAnimation.EasingFunction>
+                                                <QuadraticEase EasingMode="EaseOut"/>
+                                            </DoubleAnimation.EasingFunction>
+                                        </DoubleAnimation>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.EnterActions>
+                            <Trigger.ExitActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="root" Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)" To="0" Duration="0:0:0.16">
+                                            <DoubleAnimation.EasingFunction>
+                                                <QuadraticEase EasingMode="EaseOut"/>
+                                            </DoubleAnimation.EasingFunction>
+                                        </DoubleAnimation>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.ExitActions>
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
-                            <Setter TargetName="border" Property="Opacity" Value="0.7"/>
+                            <Setter TargetName="glow" Property="Opacity" Value="0.15"/>
+                            <Setter TargetName="border" Property="Opacity" Value="0.82"/>
+                            <Setter TargetName="sheen" Property="Opacity" Value="0.3"/>
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="ring" Property="Opacity" Value="1"/>
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
-                            <Setter TargetName="border" Property="Opacity" Value="0.4"/>
+                            <Setter Property="Opacity" Value="0.38"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
-        <Setter Property="HorizontalContentAlignment" Value="Center"/>
     </Style>
     <Style TargetType="Button" BasedOn="{StaticResource SxSecondaryButton}"/>
     <Style x:Key="SxPrimaryButton" TargetType="Button" BasedOn="{StaticResource SxSecondaryButton}">
-        <Setter Property="Background" Value="{StaticResource SxAccentGradient}"/>
-        <Setter Property="Foreground" Value="{DynamicResource SxWhite}"/>
+        <Setter Property="Background" Value="{StaticResource SxPrimaryGradient}"/>
+        <Setter Property="Foreground" Value="{DynamicResource SxBackground}"/>
         <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="FontWeight" Value="Bold"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Grid x:Name="root" RenderTransformOrigin="0.5,0.5">
+                        <Grid.RenderTransform>
+                            <ScaleTransform ScaleX="1" ScaleY="1"/>
+                        </Grid.RenderTransform>
+                        <Border x:Name="glow" CornerRadius="16" Background="{DynamicResource SxGlowCyan}" Opacity="0.35"/>
+                        <Border x:Name="border" CornerRadius="12" Background="{TemplateBinding Background}">
+                            <Grid ClipToBounds="True">
+                                <Border x:Name="sheen" Background="{StaticResource SxCardSheen}" CornerRadius="11"/>
+                                <Canvas x:Name="band" ClipToBounds="True">
+                                    <Border x:Name="shimmerBand" Width="240" Height="60" Background="{StaticResource SxShimmerBand}" RenderTransformOrigin="0.5,0.5">
+                                        <Border.RenderTransform>
+                                            <TranslateTransform X="-260"/>
+                                        </Border.RenderTransform>
+                                    </Border>
+                                </Canvas>
+                                <ContentPresenter Margin="{TemplateBinding Padding}" HorizontalAlignment="Center" VerticalAlignment="Center" RecognizesAccessKey="True"/>
+                            </Grid>
+                        </Border>
+                        <Border x:Name="ring" CornerRadius="13" BorderBrush="{DynamicResource SxFocusRing}" BorderThickness="2" Opacity="0"/>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="glow" Property="Opacity" Value="0.8"/>
+                            <Setter TargetName="border" Property="CornerRadius" Value="13"/>
+                            <Trigger.EnterActions>
+                                <BeginStoryboard Name="shimmer">
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="shimmerBand" Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.X)" From="-260" To="360" Duration="0:0:1.5" RepeatBehavior="Forever"/>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="root" Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)" To="1.015" Duration="0:0:0.12"/>
+                                        <DoubleAnimation Storyboard.TargetName="root" Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)" To="1.015" Duration="0:0:0.12"/>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.EnterActions>
+                            <Trigger.ExitActions>
+                                <StopStoryboard BeginStoryboardName="shimmer"/>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="root" Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)" To="1" Duration="0:0:0.16"/>
+                                        <DoubleAnimation Storyboard.TargetName="root" Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)" To="1" Duration="0:0:0.16"/>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.ExitActions>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="root" Property="RenderTransform">
+                                <Setter.Value>
+                                    <ScaleTransform ScaleX="0.985" ScaleY="0.985"/>
+                                </Setter.Value>
+                            </Setter>
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="ring" Property="Opacity" Value="1"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.38"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
     </Style>
     <Style x:Key="SxDangerButton" TargetType="Button" BasedOn="{StaticResource SxSecondaryButton}">
         <Setter Property="Background" Value="{DynamicResource SxErrorDim}"/>
         <Setter Property="Foreground" Value="{DynamicResource SxWhite}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource SxError}"/>
+        <Setter Property="FontWeight" Value="Bold"/>
     </Style>
     <Style x:Key="SxGhostButton" TargetType="Button" BasedOn="{StaticResource SxSecondaryButton}">
         <Setter Property="Background" Value="{DynamicResource SxTransparent}"/>
@@ -61,7 +171,10 @@
         <Setter Property="Padding" Value="20,8"/>
         <Setter Property="FontSize" Value="13"/>
     </Style>
+
+    <!--  Nawigacja: wskaźnik aktywnej pozycji to animowany słupek z gradientem, nie sam kolor tekstu. -->
     <Style x:Key="SxSidebarItem" TargetType="ListBoxItem">
+        <Setter Property="u:SxMotion.HoverLift" Value="True"/>
         <Setter Property="Foreground" Value="{DynamicResource SxTextSecondary}"/>
         <Setter Property="Height" Value="44"/>
         <Setter Property="Margin" Value="4,2"/>
@@ -69,39 +182,109 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ListBoxItem">
-                    <Border x:Name="row" Background="{DynamicResource SxTransparent}" BorderBrush="{DynamicResource SxTransparent}" BorderThickness="3,0,0,0" CornerRadius="10" Padding="12,0">
-                        <ContentPresenter VerticalAlignment="Center"/>
-                    </Border>
+                    <Grid>
+                        <Border x:Name="row" Background="{DynamicResource SxTransparent}" CornerRadius="12" Padding="12,0">
+                            <Grid>
+                                <Border x:Name="bar" Width="3" CornerRadius="2" HorizontalAlignment="Left" Background="{StaticResource SxPrimaryGradient}" Opacity="0" Margin="-9,8,0,8"/>
+                                <ContentPresenter x:Name="label" VerticalAlignment="Center"/>
+                            </Grid>
+                        </Border>
+                        <Border x:Name="ring" CornerRadius="13" BorderBrush="{DynamicResource SxFocusRing}" BorderThickness="2" Opacity="0"/>
+                    </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="row" Property="Background" Value="{DynamicResource SxSidebarHover}"/>
+                            <Setter Property="Foreground" Value="{DynamicResource SxTextPrimary}"/>
                         </Trigger>
                         <Trigger Property="IsSelected" Value="True">
                             <Setter TargetName="row" Property="Background" Value="{DynamicResource SxSidebarActive}"/>
-                            <Setter TargetName="row" Property="BorderBrush" Value="{DynamicResource SxAccentCyan}"/>
+                            <Setter TargetName="bar" Property="Opacity" Value="1"/>
                             <Setter Property="Foreground" Value="{DynamicResource SxAccentCyan}"/>
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="ring" Property="Opacity" Value="1"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
+        <Style.Triggers>
+            <Trigger Property="IsSelected" Value="True">
+                <Setter Property="FontWeight" Value="SemiBold"/>
+            </Trigger>
+        </Style.Triggers>
     </Style>
+
+    <!--  Karty: gradientowe tło i hairline u góry zastępują cień (DropShadow w listach kosztuje).  -->
     <Style x:Key="SxCard" TargetType="Border">
         <Setter Property="Background" Value="{DynamicResource SxSurface}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource SxBorderSubtle}"/>
         <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="CornerRadius" Value="16"/>
-        <Setter Property="Padding" Value="20"/>
+        <Setter Property="CornerRadius" Value="{StaticResource SxRadius}"/>
+        <Setter Property="Padding" Value="{StaticResource SxCardPadding}"/>
+        <Setter Property="SnapsToDevicePixels" Value="True"/>
+        <Setter Property="TextOptions.TextFormattingMode" Value="Ideal"/>
     </Style>
     <Style x:Key="SxCardElevated" TargetType="Border" BasedOn="{StaticResource SxCard}">
+        <Setter Property="Background" Value="{DynamicResource SxSurfaceRaised}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource SxBorder}"/>
     </Style>
-    <Style x:Key="SxMetricCard" TargetType="Border" BasedOn="{StaticResource SxCard}"/>
+    <Style x:Key="SxGlassPanel" TargetType="Border" BasedOn="{StaticResource SxCard}">
+        <Setter Property="Background" Value="{DynamicResource SxGlass}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource SxSheen}"/>
+    </Style>
+    <Style x:Key="SxMetricCard" TargetType="Border" BasedOn="{StaticResource SxCard}">
+        <Setter Property="Background" Value="{DynamicResource SxSurfaceRaised}"/>
+        <Setter Property="Padding" Value="18,14"/>
+        <Setter Property="u:SxMotion.HoverLift" Value="True"/>
+    </Style>
     <Style x:Key="SxBadge" TargetType="Border">
         <Setter Property="Background" Value="{DynamicResource SxSurfaceActive}"/>
-        <Setter Property="CornerRadius" Value="20"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource SxBorder}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="{StaticResource SxRadiusPill}"/>
         <Setter Property="Padding" Value="10,4"/>
     </Style>
+    <Style x:Key="SxChip" TargetType="Border">
+        <Setter Property="Background" Value="{DynamicResource SxGlass}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource SxBorder}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="{StaticResource SxRadiusPill}"/>
+        <Setter Property="Padding" Value="9,3"/>
+    </Style>
+    <Style x:Key="SxKbd" TargetType="Border" BasedOn="{StaticResource SxChip}">
+        <Setter Property="Background" Value="{DynamicResource SxSurfaceRaised}"/>
+        <Setter Property="Padding" Value="6,2"/>
+    </Style>
+    <Style x:Key="SxDivider" TargetType="Border">
+        <Setter Property="Height" Value="1"/>
+        <Setter Property="Background" Value="{StaticResource SxHairline}"/>
+        <Setter Property="Margin" Value="0,12"/>
+    </Style>
+    <Style x:Key="SxAccentBar" TargetType="Border">
+        <Setter Property="Width" Value="3"/>
+        <Setter Property="CornerRadius" Value="2"/>
+        <Setter Property="Background" Value="{StaticResource SxPrimaryGradient}"/>
+        <Setter Property="HorizontalAlignment" Value="Left"/>
+    </Style>
+    <!--  Dekoracja za treścią: trzy halo + vignette, nigdy nie przechwytuje myszy.  -->
+    <Style x:Key="SxAuroraLayer" TargetType="Grid">
+        <Setter Property="IsHitTestVisible" Value="False"/>
+        <Setter Property="ClipToBounds" Value="True"/>
+    </Style>
+    <Style x:Key="SxIcon" TargetType="Path">
+        <Setter Property="Stroke" Value="{DynamicResource SxTextSecondary}"/>
+        <Setter Property="StrokeThickness" Value="1.6"/>
+        <Setter Property="StrokeLineJoin" Value="Round"/>
+        <Setter Property="StrokeStartLineCap" Value="Round"/>
+        <Setter Property="StrokeEndLineCap" Value="Round"/>
+        <Setter Property="Fill" Value="{x:Null}"/>
+        <Setter Property="Width" Value="20"/>
+        <Setter Property="Height" Value="20"/>
+        <Setter Property="Stretch" Value="Uniform"/>
+        <Setter Property="SnapsToDevicePixels" Value="True"/>
+    </Style>
+
     <Style x:Key="SxTextBox" TargetType="TextBox">
         <Setter Property="Background" Value="{DynamicResource SxSurface}"/>
         <Setter Property="Foreground" Value="{DynamicResource SxTextPrimary}"/>
@@ -111,21 +294,29 @@
         <Setter Property="Padding" Value="12,10"/>
         <Setter Property="MinHeight" Value="40"/>
         <Setter Property="FontSize" Value="14"/>
+        <Setter Property="SelectionBrush" Value="{DynamicResource SxSelection}"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="TextBox">
-                    <Border x:Name="border" CornerRadius="10" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" Padding="{TemplateBinding Padding}">
-                        <Grid>
-                            <ScrollViewer x:Name="PART_ContentHost"/>
-                            <TextBlock x:Name="hint" Text="{Binding Path=(u:InputHint.Text), RelativeSource={RelativeSource TemplatedParent}}" Foreground="{DynamicResource SxTextMuted}" IsHitTestVisible="False" Visibility="Collapsed" VerticalAlignment="Center"/>
-                        </Grid>
-                    </Border>
+                    <Grid>
+                        <Border x:Name="glow" CornerRadius="14" Background="{DynamicResource SxGlowCyan}" Opacity="0"/>
+                        <Border x:Name="border" CornerRadius="{StaticResource SxRadiusSmall}" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" Padding="{TemplateBinding Padding}">
+                            <Grid>
+                                <ScrollViewer x:Name="PART_ContentHost"/>
+                                <TextBlock x:Name="hint" Text="{Binding Path=(u:InputHint.Text), RelativeSource={RelativeSource TemplatedParent}}" Foreground="{DynamicResource SxTextMuted}" IsHitTestVisible="False" Visibility="Collapsed" VerticalAlignment="Center"/>
+                            </Grid>
+                        </Border>
+                    </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="Text" Value="">
                             <Setter TargetName="hint" Property="Visibility" Value="Visible"/>
                         </Trigger>
                         <Trigger Property="IsKeyboardFocusWithin" Value="True">
                             <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource SxAccentCyan}"/>
+                            <Setter TargetName="glow" Property="Opacity" Value="0.45"/>
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource SxBorderActive}"/>
                         </Trigger>
                         <Trigger Property="Validation.HasError" Value="True">
                             <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource SxError}"/>
@@ -136,59 +327,99 @@
         </Setter>
     </Style>
     <Style TargetType="TextBox" BasedOn="{StaticResource SxTextBox}"/>
+
     <Style x:Key="SxToggle" TargetType="CheckBox">
         <Setter Property="Foreground" Value="{DynamicResource SxTextPrimary}"/>
         <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="u:SxMotion.HoverLift" Value="True"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="CheckBox">
                     <StackPanel Orientation="Horizontal">
-                        <Border x:Name="track" Width="44" Height="24" CornerRadius="12" Background="{DynamicResource SxBorder}">
-                            <Ellipse x:Name="thumb" Width="18" Height="18" Fill="{DynamicResource SxWhite}" HorizontalAlignment="Left" Margin="3"/>
+                        <Border x:Name="track" Width="44" Height="24" CornerRadius="12" Background="{DynamicResource SxBorder}" BorderBrush="{DynamicResource SxBorderSubtle}" BorderThickness="1">
+                            <Ellipse x:Name="thumb" Width="16" Height="16" Fill="{DynamicResource SxWhite}" HorizontalAlignment="Left" Margin="4,0,0,0"/>
                         </Border>
                         <ContentPresenter Margin="12,0,0,0" VerticalAlignment="Center"/>
                     </StackPanel>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsChecked" Value="True">
-                            <Setter TargetName="track" Property="Background" Value="{DynamicResource SxAccentCyan}"/>
-                            <Setter TargetName="thumb" Property="HorizontalAlignment" Value="Right"/>
+                            <Setter TargetName="track" Property="Background" Value="{StaticResource SxSeaGradient}"/>
+                            <Setter TargetName="track" Property="BorderBrush" Value="{DynamicResource SxHueTeal}"/>
+                            <Setter TargetName="thumb" Property="Fill" Value="{DynamicResource SxBackground}"/>
+                            <Setter TargetName="thumb" Property="Margin" Value="22,0,0,0"/>
+                            <Setter Property="Foreground" Value="{DynamicResource SxTextPrimary}"/>
+                            <Trigger.EnterActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <ThicknessAnimation Storyboard.TargetName="thumb" Storyboard.TargetProperty="Margin" To="22,0,0,0" Duration="0:0:0.2">
+                                            <ThicknessAnimation.EasingFunction>
+                                                <BackEase EasingMode="EaseOut" Amplitude="0.45"/>
+                                            </ThicknessAnimation.EasingFunction>
+                                        </ThicknessAnimation>
+                                        <DoubleAnimation Storyboard.TargetName="track" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.14"/>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.EnterActions>
+                            <Trigger.ExitActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <ThicknessAnimation Storyboard.TargetName="thumb" Storyboard.TargetProperty="Margin" To="4,0,0,0" Duration="0:0:0.16">
+                                            <ThicknessAnimation.EasingFunction>
+                                                <QuadraticEase EasingMode="EaseOut"/>
+                                            </ThicknessAnimation.EasingFunction>
+                                        </ThicknessAnimation>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.ExitActions>
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="track" Property="BorderBrush" Value="{DynamicResource SxBorderActive}"/>
                         </Trigger>
                         <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="track" Property="BorderBrush" Value="{DynamicResource SxFocusRing}"/>
                             <Setter TargetName="track" Property="BorderThickness" Value="2"/>
-                            <Setter TargetName="track" Property="BorderBrush" Value="{DynamicResource SxTextPrimary}"/>
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter Property="Opacity" Value="0.4"/>
+                        </Trigger>
+                                                                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+    <Style TargetType="CheckBox" BasedOn="{StaticResource SxToggle}"/>
+
+    <Style x:Key="SxProgressBar" TargetType="ProgressBar">
+        <Setter Property="Height" Value="7"/>
+        <Setter Property="Background" Value="{DynamicResource SxBorderSubtle}"/>
+        <Setter Property="Foreground" Value="{StaticResource SxPrimaryGradient}"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ProgressBar">
+                    <Grid>
+                        <Border x:Name="PART_Track" CornerRadius="4" Background="{TemplateBinding Background}"/>
+                        <Border x:Name="PART_Indicator" HorizontalAlignment="Left" CornerRadius="4" Background="{TemplateBinding Foreground}"/>
+                        <Border x:Name="halo" CornerRadius="4" Background="{DynamicResource SxGlowCyan}" Opacity="0.35"/>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsIndeterminate" Value="True">
+                            <Setter TargetName="halo" Property="Opacity" Value="0.7"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
     </Style>
-    <Style TargetType="CheckBox" BasedOn="{StaticResource SxToggle}"/>
-    <Style x:Key="SxProgressBar" TargetType="ProgressBar">
-        <Setter Property="Height" Value="6"/>
-        <Setter Property="Background" Value="{DynamicResource SxBorder}"/>
-        <Setter Property="Foreground" Value="{StaticResource SxAccentGradient}"/>
-        <Setter Property="Template">
-            <Setter.Value>
-                <ControlTemplate TargetType="ProgressBar">
-                    <Grid>
-                        <Border x:Name="PART_Track" CornerRadius="3" Background="{TemplateBinding Background}"/>
-                        <Border x:Name="PART_Indicator" HorizontalAlignment="Left" CornerRadius="3" Background="{TemplateBinding Foreground}"/>
-                    </Grid>
-                </ControlTemplate>
-            </Setter.Value>
-        </Setter>
-    </Style>
     <Style TargetType="ProgressBar" BasedOn="{StaticResource SxProgressBar}"/>
+
     <Style TargetType="ComboBoxItem">
         <Setter Property="Foreground" Value="{DynamicResource SxTextPrimary}"/>
         <Setter Property="Padding" Value="12,8"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ComboBoxItem">
-                    <Border x:Name="row" Padding="{TemplateBinding Padding}" Background="{DynamicResource SxTransparent}" CornerRadius="8">
+                    <Border x:Name="row" Padding="{TemplateBinding Padding}" Background="{DynamicResource SxTransparent}" CornerRadius="8" Margin="2,0">
                         <ContentPresenter/>
                     </Border>
                     <ControlTemplate.Triggers>
@@ -215,15 +446,45 @@
                         <ToggleButton Focusable="False" IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}">
                             <ToggleButton.Template>
                                 <ControlTemplate TargetType="ToggleButton">
-                                    <Border CornerRadius="10" BorderThickness="1" BorderBrush="{DynamicResource SxBorder}" Background="{DynamicResource SxSurface}" Padding="12,8">
-                                        <TextBlock Text="⌄" HorizontalAlignment="Right"/>
+                                    <Border x:Name="box" CornerRadius="{StaticResource SxRadiusSmall}" BorderThickness="1" BorderBrush="{DynamicResource SxBorder}" Background="{DynamicResource SxSurface}" Padding="12,8">
+                                        <TextBlock x:Name="chev" Text="⌄" HorizontalAlignment="Right" Foreground="{DynamicResource SxTextSecondary}" RenderTransformOrigin="0.5,0.5">
+                                            <TextBlock.RenderTransform>
+                                                <RotateTransform x:Name="rot" Angle="0"/>
+                                            </TextBlock.RenderTransform>
+                                        </TextBlock>
                                     </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="box" Property="BorderBrush" Value="{DynamicResource SxBorderActive}"/>
+                                        </Trigger>
+                                        <Trigger Property="IsChecked" Value="True">
+                                            <Setter TargetName="box" Property="BorderBrush" Value="{DynamicResource SxAccentCyan}"/>
+                                            <Trigger.EnterActions>
+                                                <BeginStoryboard>
+                                                    <Storyboard>
+                                                        <DoubleAnimation Storyboard.TargetName="rot" Storyboard.TargetProperty="Angle" To="180" Duration="0:0:0.16">
+                                                            <DoubleAnimation.EasingFunction>
+                                                                <QuadraticEase EasingMode="EaseOut"/>
+                                                            </DoubleAnimation.EasingFunction>
+                                                        </DoubleAnimation>
+                                                    </Storyboard>
+                                                </BeginStoryboard>
+                                            </Trigger.EnterActions>
+                                            <Trigger.ExitActions>
+                                                <BeginStoryboard>
+                                                    <Storyboard>
+                                                        <DoubleAnimation Storyboard.TargetName="rot" Storyboard.TargetProperty="Angle" To="0" Duration="0:0:0.14"/>
+                                                    </Storyboard>
+                                                </BeginStoryboard>
+                                            </Trigger.ExitActions>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
                                 </ControlTemplate>
                             </ToggleButton.Template>
                         </ToggleButton>
                         <ContentPresenter Margin="12,8,32,8" VerticalAlignment="Center" IsHitTestVisible="False" Content="{TemplateBinding SelectionBoxItem}" ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"/>
-                        <Popup x:Name="PART_Popup" IsOpen="{TemplateBinding IsDropDownOpen}" Placement="Bottom" AllowsTransparency="True" Focusable="False">
-                            <Border Background="{DynamicResource SxSurface}" BorderBrush="{DynamicResource SxBorder}" BorderThickness="1" CornerRadius="12" Padding="4" MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}">
+                        <Popup x:Name="PART_Popup" IsOpen="{TemplateBinding IsDropDownOpen}" Placement="Bottom" AllowsTransparency="True" Focusable="False" PopupAnimation="Fade">
+                            <Border Background="{DynamicResource SxSurfaceRaised}" BorderBrush="{DynamicResource SxBorder}" BorderThickness="1" CornerRadius="12" Padding="4" MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}">
                                 <ScrollViewer MaxHeight="320">
                                     <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Contained"/>
                                 </ScrollViewer>
@@ -235,6 +496,7 @@
         </Setter>
     </Style>
     <Style TargetType="ComboBox" BasedOn="{StaticResource SxComboBox}"/>
+
     <Style x:Key="SxScrollBarThumb" TargetType="Thumb">
         <Setter Property="Template">
             <Setter.Value>
@@ -242,7 +504,10 @@
                     <Border x:Name="b" Background="{DynamicResource SxTextMuted}" CornerRadius="3" Margin="1"/>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="b" Property="Background" Value="{DynamicResource SxTextSecondary}"/>
+                            <Setter TargetName="b" Property="Background" Value="{DynamicResource SxAccentCyan}"/>
+                        </Trigger>
+                        <Trigger Property="IsDragging" Value="True">
+                            <Setter TargetName="b" Property="Background" Value="{DynamicResource SxAccentCyan}"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -250,44 +515,68 @@
         </Setter>
     </Style>
     <Style x:Key="SxScrollBar" TargetType="ScrollBar">
-        <Setter Property="Width" Value="8"/>
+        <Setter Property="Width" Value="9"/>
+        <Setter Property="Opacity" Value="0.45"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ScrollBar">
-                    <Track x:Name="PART_Track" IsDirectionReversed="True" Orientation="{TemplateBinding Orientation}">
-                        <Track.Thumb>
-                            <Thumb Style="{StaticResource SxScrollBarThumb}"/>
-                        </Track.Thumb>
-                    </Track>
+                    <Border x:Name="pad" Background="{DynamicResource SxTransparent}" CornerRadius="5">
+                        <Track x:Name="PART_Track" IsDirectionReversed="True" Orientation="{TemplateBinding Orientation}">
+                            <Track.Thumb>
+                                <Thumb Style="{StaticResource SxScrollBarThumb}"/>
+                            </Track.Thumb>
+                        </Track>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="Opacity" Value="1"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
         <Style.Triggers>
             <Trigger Property="Orientation" Value="Horizontal">
                 <Setter Property="Width" Value="Auto"/>
-                <Setter Property="Height" Value="8"/>
+                <Setter Property="Height" Value="9"/>
             </Trigger>
         </Style.Triggers>
     </Style>
     <Style TargetType="ScrollBar" BasedOn="{StaticResource SxScrollBar}"/>
+
     <Style x:Key="SxTooltip" TargetType="ToolTip">
         <Setter Property="Foreground" Value="{DynamicResource SxTextPrimary}"/>
+        <Setter Property="OverridesDefaultStyle" Value="True"/>
+        <Setter Property="HasDropShadow" Value="False"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ToolTip">
-                    <Border Background="{DynamicResource SxSurface}" BorderBrush="{DynamicResource SxBorder}" BorderThickness="1" CornerRadius="8" Padding="10,6">
+                    <Border x:Name="body" Background="{DynamicResource SxSurfaceRaised}" BorderBrush="{DynamicResource SxBorder}" BorderThickness="1" CornerRadius="9" Padding="10,6" RenderTransformOrigin="0.5,1">
+                        <Border.RenderTransform>
+                            <ScaleTransform ScaleX="0.98" ScaleY="0.98"/>
+                        </Border.RenderTransform>
                         <ContentPresenter/>
                     </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsOpen" Value="True">
+                            <Setter TargetName="body" Property="RenderTransform">
+                                <Setter.Value>
+                                    <ScaleTransform ScaleX="1" ScaleY="1"/>
+                                </Setter.Value>
+                            </Setter>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
     </Style>
     <Style TargetType="ToolTip" BasedOn="{StaticResource SxTooltip}"/>
+
     <Style TargetType="DataGrid">
         <Setter Property="Background" Value="{DynamicResource SxSurface}"/>
         <Setter Property="Foreground" Value="{DynamicResource SxTextPrimary}"/>
-        <Setter Property="RowBackground" Value="{DynamicResource SxSurface}"/>
-        <Setter Property="AlternatingRowBackground" Value="{DynamicResource SxSurface}"/>
+        <Setter Property="RowBackground" Value="{DynamicResource SxTransparent}"/>
+        <Setter Property="AlternatingRowBackground" Value="{DynamicResource SxGlass}"/>
         <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="GridLinesVisibility" Value="None"/>
         <Setter Property="HeadersVisibility" Value="Column"/>
@@ -295,17 +584,57 @@
         <Setter Property="IsReadOnly" Value="True"/>
         <Setter Property="CanUserAddRows" Value="False"/>
         <Setter Property="RowHeight" Value="40"/>
+        <Setter Property="RowHeaderWidth" Value="0"/>
         <Setter Property="EnableRowVirtualization" Value="True"/>
+        <Setter Property="HorizontalScrollBarVisibility" Value="Disabled"/>
     </Style>
     <Style TargetType="DataGridColumnHeader">
-        <Setter Property="Background" Value="{DynamicResource SxSurfaceActive}"/>
-        <Setter Property="Foreground" Value="{DynamicResource SxTextSecondary}"/>
+        <Setter Property="Background" Value="{DynamicResource SxSurfaceRaised}"/>
+        <Setter Property="Foreground" Value="{DynamicResource SxTextMuted}"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="FontSize" Value="11"/>
         <Setter Property="Padding" Value="12,10"/>
-        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="BorderThickness" Value="0,0,0,1"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource SxBorderSubtle}"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="DataGridColumnHeader">
+                    <Border x:Name="h" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" Padding="{TemplateBinding Padding}">
+                        <StackPanel Orientation="Horizontal">
+                            <ContentPresenter VerticalAlignment="Center"/>
+                            <TextBlock x:Name="sort" Text="" Margin="6,0,0,0" Foreground="{DynamicResource SxAccentCyan}"/>
+                        </StackPanel>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="SortDirection" Value="Ascending">
+                            <Setter TargetName="sort" Property="Text" Value="↑"/>
+                        </Trigger>
+                        <Trigger Property="SortDirection" Value="Descending">
+                            <Setter TargetName="sort" Property="Text" Value="↓"/>
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="h" Property="Background" Value="{DynamicResource SxSurfaceHover}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+    <Style TargetType="DataGridRow">
+        <Setter Property="Background" Value="{DynamicResource SxTransparent}"/>
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="{DynamicResource SxSurfaceHover}"/>
+            </Trigger>
+            <Trigger Property="IsSelected" Value="True">
+                <Setter Property="Background" Value="{DynamicResource SxSurfaceActive}"/>
+            </Trigger>
+        </Style.Triggers>
     </Style>
     <Style TargetType="DataGridCell">
         <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="Padding" Value="12,8"/>
+        <Setter Property="Background" Value="{DynamicResource SxTransparent}"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="DataGridCell">
@@ -317,7 +646,6 @@
         </Setter>
         <Style.Triggers>
             <Trigger Property="IsSelected" Value="True">
-                <Setter Property="Background" Value="{DynamicResource SxSidebarActive}"/>
                 <Setter Property="Foreground" Value="{DynamicResource SxAccentCyan}"/>
             </Trigger>
         </Style.Triggers>
@@ -326,20 +654,23 @@
         <Setter Property="Background" Value="{DynamicResource SxTransparent}"/>
         <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="Foreground" Value="{DynamicResource SxTextPrimary}"/>
+        <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled"/>
     </Style>
+
     <Style x:Key="SxSlider" TargetType="Slider">
         <Setter Property="MinHeight" Value="28"/>
+        <Setter Property="Cursor" Value="Hand"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Slider">
                     <Grid Margin="8,0">
-                        <Border Background="{DynamicResource SxBorder}" Height="4" CornerRadius="2" VerticalAlignment="Center"/>
+                        <Border Background="{DynamicResource SxBorderSubtle}" Height="4" CornerRadius="2" VerticalAlignment="Center"/>
                         <Track x:Name="PART_Track" Minimum="{TemplateBinding Minimum}" Maximum="{TemplateBinding Maximum}" Value="{TemplateBinding Value}">
                             <Track.DecreaseRepeatButton>
                                 <RepeatButton Command="Slider.DecreaseLarge" Focusable="False">
                                     <RepeatButton.Template>
                                         <ControlTemplate TargetType="RepeatButton">
-                                            <Border Height="4" Background="{DynamicResource SxAccentCyan}" CornerRadius="2"/>
+                                            <Border Height="4" Background="{StaticResource SxPrimaryGradient}" CornerRadius="2"/>
                                         </ControlTemplate>
                                     </RepeatButton.Template>
                                 </RepeatButton>
@@ -348,7 +679,16 @@
                                 <Thumb Width="18" Height="18">
                                     <Thumb.Template>
                                         <ControlTemplate TargetType="Thumb">
-                                            <Ellipse Fill="{DynamicResource SxWhite}"/>
+                                            <Grid>
+                                                <Ellipse x:Name="halo" Fill="{DynamicResource SxGlowCyan}" Margin="-6"/>
+                                                <Ellipse x:Name="dot" Fill="{DynamicResource SxWhite}" Stroke="{DynamicResource SxBackground}" StrokeThickness="2"/>
+                                            </Grid>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="halo" Property="Fill" Value="{DynamicResource SxGlowViolet}"/>
+                                                    <Setter TargetName="dot" Property="Fill" Value="{DynamicResource SxAccentCyan}"/>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
                                         </ControlTemplate>
                                     </Thumb.Template>
                                 </Thumb>
@@ -369,4 +709,129 @@
         </Setter>
     </Style>
     <Style TargetType="Slider" BasedOn="{StaticResource SxSlider}"/>
+    <!--  0.94 · SxIconSolid: ikony wypełnione (brand, zamknij, strzałki). Kolor bierze Fill właściciela.  -->
+    <Style x:Key="SxIconSolid" TargetType="Path">
+        <Setter Property="Stroke" Value="{x:Null}"/>
+        <Setter Property="Fill" Value="{DynamicResource SxTextSecondary}"/>
+        <Setter Property="Width" Value="16"/>
+        <Setter Property="Height" Value="16"/>
+        <Setter Property="Stretch" Value="Uniform"/>
+        <Setter Property="SnapsToDevicePixels" Value="True"/>
+    </Style>
+
+    <!--  0.94 · SxIconTile: kafelek 32x32 pod ikonę nagłówka. Właściciel może nadpisać Background pastą hue.  -->
+    <Style x:Key="SxIconTile" TargetType="Border">
+        <Setter Property="Width" Value="32"/>
+        <Setter Property="Height" Value="32"/>
+        <Setter Property="CornerRadius" Value="10"/>
+        <Setter Property="Background" Value="{StaticResource SxPrimaryGradient}"/>
+        <Setter Property="SnapsToDevicePixels" Value="True"/>
+    </Style>
+
+    <!--  0.94 · SxCenterTab: pikselki zakladek Centrum: pastylka z polyskiem, halo przy zaznaczeniu, animowany wskaznik.  -->
+    <Style x:Key="SxCenterTab" TargetType="ListBoxItem">
+        <Setter Property="Background" Value="{DynamicResource SxSurface}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource SxBorderSubtle}"/>
+        <Setter Property="Foreground" Value="{DynamicResource SxTextSecondary}"/>
+        <Setter Property="Padding" Value="12,8,12,9"/>
+        <Setter Property="Margin" Value="0,0,7,0"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Focusable" Value="False"/>
+        <Setter Property="u:SxMotion.HoverLift" Value="True"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ListBoxItem">
+                    <Grid>
+                        <Border x:Name="Glow" Margin="-4" CornerRadius="14" Background="{StaticResource SxHaloCyan}" Opacity="0"/>
+                        <Border x:Name="Chrome" CornerRadius="12" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1">
+                            <Grid>
+                                <Rectangle RadiusX="11" RadiusY="11" Fill="{StaticResource SxCardSheen}" IsHitTestVisible="False"/>
+                                <ContentPresenter Margin="{TemplateBinding Padding}" VerticalAlignment="Center"/>
+                            </Grid>
+                        </Border>
+                        <Border x:Name="Bar" Height="2.5" Width="28" CornerRadius="2" Background="{StaticResource SxPrimaryGradient}" VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="0,0,0,0" RenderTransformOrigin="0.5,1" Visibility="Collapsed">
+                            <Border.RenderTransform>
+                                <ScaleTransform ScaleX="0"/>
+                            </Border.RenderTransform>
+                        </Border>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource SxSurfaceHover}"/>
+                            <Setter TargetName="Chrome" Property="BorderBrush" Value="{DynamicResource SxBorderActive}"/>
+                            <Setter Property="Foreground" Value="{DynamicResource SxTextPrimary}"/>
+                        </Trigger>
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsSelected" Value="True"/>
+                                <Condition Property="IsMouseOver" Value="False"/>
+                            </MultiTrigger.Conditions>
+                            <Setter TargetName="Chrome" Property="BorderBrush" Value="{DynamicResource SxBorderActive}"/>
+                        </MultiTrigger>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource SxSurfaceActive}"/>
+                            <Setter TargetName="Bar" Property="Visibility" Value="Visible"/>
+                            <Setter Property="Foreground" Value="{DynamicResource SxTextPrimary}"/>
+                            <Trigger.EnterActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="Bar" Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)" From="0.1" To="1" Duration="{StaticResource SxDurationBase}" EasingFunction="{StaticResource SxFnPop}"/>
+                                        <DoubleAnimation Storyboard.TargetName="Glow" Storyboard.TargetProperty="Opacity" To="0.85" Duration="{StaticResource SxDurationSlow}"/>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.EnterActions>
+                            <Trigger.ExitActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="Bar" Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)" To="0" Duration="{StaticResource SxDurationFast}"/>
+                                        <DoubleAnimation Storyboard.TargetName="Glow" Storyboard.TargetProperty="Opacity" To="0" Duration="{StaticResource SxDurationBase}"/>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.ExitActions>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!--  0.94 · SxSearchTrigger: wyzwalacz palety w panelu bocznym — pigułka z podpowiedzią klawisza.  -->
+    <Style x:Key="SxSearchTrigger" TargetType="Button">
+        <Setter Property="Background" Value="{DynamicResource SxSurface}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource SxBorderSubtle}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Foreground" Value="{DynamicResource SxTextSecondary}"/>
+        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+        <Setter Property="Padding" Value="12,9,10,9"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="u:SxMotion.HoverLift" Value="True"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Grid x:Name="Root" RenderTransformOrigin="0.5,0.5">
+                        <Border x:Name="Ring" CornerRadius="{StaticResource SxRadiusSmall}" BorderThickness="2" BorderBrush="{DynamicResource SxFocusRing}" Opacity="0"/>
+                        <Border x:Name="Chrome" CornerRadius="{StaticResource SxRadiusSmall}" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}">
+                            <ContentPresenter Margin="{TemplateBinding Padding}" HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                        </Border>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource SxSurfaceHover}"/>
+                            <Setter TargetName="Chrome" Property="BorderBrush" Value="{DynamicResource SxBorderActive}"/>
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Ring" Property="Opacity" Value="1"/>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Root" Property="RenderTransform">
+                                <Setter.Value>
+                                    <ScaleTransform ScaleX="0.985" ScaleY="0.985"/>
+                                </Setter.Value>
+                            </Setter>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
 </ResourceDictionary>

@@ -1,6 +1,81 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- 0.94 · GRADIENTY. Wszystkie kolory przez tokeny *Color, żeby motyw je nadpisywał. -->
     <LinearGradientBrush x:Key="SxAccentGradient" StartPoint="0,0" EndPoint="1,1">
         <GradientStop Color="{DynamicResource SxAccentCyanColor}" Offset="0"/>
         <GradientStop Color="{DynamicResource SxAccentVioletColor}" Offset="1"/>
     </LinearGradientBrush>
+    <LinearGradientBrush x:Key="SxPrimaryGradient" StartPoint="0,0" EndPoint="1,0">
+        <GradientStop Color="{DynamicResource SxAccentGradStartColor}" Offset="0"/>
+        <GradientStop Color="{DynamicResource SxAccentBlueColor}" Offset="0.52"/>
+        <GradientStop Color="{DynamicResource SxAccentGradEndColor}" Offset="1"/>
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="SxSunsetGradient" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Color="{DynamicResource SxHueAmberColor}" Offset="0"/>
+        <GradientStop Color="{DynamicResource SxHueRoseColor}" Offset="1"/>
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="SxSeaGradient" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Color="{DynamicResource SxHueMintColor}" Offset="0"/>
+        <GradientStop Color="{DynamicResource SxHueAzureColor}" Offset="1"/>
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="SxCardSheen" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="{DynamicResource SxSheenColor}" Offset="0"/>
+        <GradientStop Color="{DynamicResource SxTransparentColor}" Offset="0.42"/>
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="SxHairline" StartPoint="0,0" EndPoint="1,0">
+        <GradientStop Color="{DynamicResource SxTransparentColor}" Offset="0"/>
+        <GradientStop Color="{DynamicResource SxGlassStrongColor}" Offset="0.5"/>
+        <GradientStop Color="{DynamicResource SxTransparentColor}" Offset="1"/>
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="SxAuroraWash" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Color="{DynamicResource SxBackgroundColor}" Offset="0"/>
+        <GradientStop Color="{DynamicResource SxSurfaceColor}" Offset="0.44"/>
+        <GradientStop Color="{DynamicResource SxSidebarColor}" Offset="1"/>
+    </LinearGradientBrush>
+    <RadialGradientBrush x:Key="SxHaloCyan" GradientOrigin="0.5,0.5" Center="0.5,0.5" RadiusX="0.5" RadiusY="0.5">
+        <GradientStop Color="{DynamicResource SxAurora1Color}" Offset="0"/>
+        <GradientStop Color="{DynamicResource SxTransparentColor}" Offset="1"/>
+    </RadialGradientBrush>
+    <RadialGradientBrush x:Key="SxHaloViolet" GradientOrigin="0.5,0.5" Center="0.5,0.5" RadiusX="0.5" RadiusY="0.5">
+        <GradientStop Color="{DynamicResource SxAurora2Color}" Offset="0"/>
+        <GradientStop Color="{DynamicResource SxTransparentColor}" Offset="1"/>
+    </RadialGradientBrush>
+    <RadialGradientBrush x:Key="SxHaloMint" GradientOrigin="0.5,0.5" Center="0.5,0.5" RadiusX="0.5" RadiusY="0.5">
+        <GradientStop Color="{DynamicResource SxAurora3Color}" Offset="0"/>
+        <GradientStop Color="{DynamicResource SxTransparentColor}" Offset="1"/>
+    </RadialGradientBrush>
+    <LinearGradientBrush x:Key="SxShimmerBand" StartPoint="0,0" EndPoint="1,0">
+        <GradientStop Color="{DynamicResource SxTransparentColor}" Offset="0"/>
+        <GradientStop Color="{DynamicResource SxShimmerColor}" Offset="0.48"/>
+        <GradientStop Color="{DynamicResource SxTransparentColor}" Offset="1"/>
+    </LinearGradientBrush>
+    <RadialGradientBrush x:Key="SxVignette" GradientOrigin="0.5,0.45" Center="0.5,0.5" RadiusX="0.75" RadiusY="0.75">
+        <GradientStop Color="{DynamicResource SxTransparentColor}" Offset="0.35"/>
+        <GradientStop Color="{DynamicResource SxShadowColor}" Offset="1"/>
+    </RadialGradientBrush>
+    <!--  Proceduralna faktura: taniasza niż bitmapa, widoczna tylko jako delikatne ziarno na dużej płaszczyźnie. -->
+    <DrawingBrush x:Key="SxGrain" TileMode="Tile" Viewport="0,0,90,90" ViewportUnits="Absolute" Opacity="0.55">
+        <DrawingBrush.Drawing>
+            <DrawingGroup>
+                <GeometryDrawing Brush="{StaticResource SxGlass}">
+                    <GeometryDrawing.Geometry>
+                        <GeometryGroup>
+                            <EllipseGeometry Center="12,18" RadiusX="1" RadiusY="1"/>
+                            <EllipseGeometry Center="58,7" RadiusX="1" RadiusY="1"/>
+                            <EllipseGeometry Center="74,46" RadiusX="1" RadiusY="1"/>
+                            <EllipseGeometry Center="30,62" RadiusX="1" RadiusY="1"/>
+                            <EllipseGeometry Center="46,34" RadiusX="1" RadiusY="1"/>
+                        </GeometryGroup>
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+                <GeometryDrawing Brush="{StaticResource SxSheen}">
+                    <GeometryDrawing.Geometry>
+                        <GeometryGroup>
+                            <EllipseGeometry Center="66,74" RadiusX="1" RadiusY="1"/>
+                            <EllipseGeometry Center="8,44" RadiusX="1" RadiusY="1"/>
+                        </GeometryGroup>
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+            </DrawingGroup>
+        </DrawingBrush.Drawing>
+    </DrawingBrush>
 </ResourceDictionary>

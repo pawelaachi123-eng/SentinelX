@@ -1,35 +1,49 @@
 <UserControl xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:u="clr-namespace:SentinelX.Utilities" x:Class="SentinelX.Views.Pages.GamingPage" u:PageTransitions.Enabled="True">
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-        <StackPanel Margin="28">
-            <TextBlock Text="Gaming" Style="{StaticResource SxHeading}"/>
-            <TextBlock Text="Mniej pracy w tle. Bez automatycznych zmian ustawień gry." Style="{StaticResource SxCaption}" Margin="0,0,0,24"/>
+        <StackPanel Margin="28" u:SxMotion.Stagger="True">
+            <StackPanel Margin="0,0,0,20">
+                <StackPanel Orientation="Horizontal">
+                    <Border Style="{StaticResource SxIconTile}" Background="{StaticResource SxSunsetGradient}">
+                        <Path Style="{StaticResource SxIconSolid}" Data="{StaticResource SxIconGaming}" Width="16" Height="16" Fill="{DynamicResource SxWhite}"/>
+                    </Border>
+                    <StackPanel Margin="12,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="Gaming" Style="{StaticResource SxHeading}"/>
+                        <TextBlock Text="Mniej pracy w tle. Bez automatycznych zmian ustawień gry." Style="{StaticResource SxCaption}" Margin="0,3,0,0"/>
+                    </StackPanel>
+                </StackPanel>
+                <Border Style="{StaticResource SxAccentBar}" Height="3" Width="54" Margin="0,14,0,0" HorizontalAlignment="Left" Background="{DynamicResource SxHueAmber}"/>
+            </StackPanel>
             <UniformGrid Columns="4" Margin="-4,0,-4,20">
                 <Border Style="{StaticResource SxMetricCard}" Margin="4">
                     <StackPanel>
-                        <TextBlock Text="CPU" Style="{StaticResource SxCaption}"/>
-                        <TextBlock Text="{Binding System.Snapshot.CpuText}" FontSize="28" FontWeight="SemiBold" Margin="0,10,0,8"/>
-                        <TextBlock Text="Całkowite użycie" Style="{StaticResource SxCaption}"/>
+                        <TextBlock Text="CPU" Style="{StaticResource SxStatLabel}"/>
+                        <TextBlock Text="{Binding System.Snapshot.CpuText}" Style="{StaticResource SxNumber}" FontSize="28" Margin="0,9,0,4"/>
+                        <TextBlock Text="Całkowite użycie" Style="{StaticResource SxHint}"/>
+                        <Border Style="{StaticResource SxAccentBar}" Height="3" Width="Auto" Margin="0,11,0,0" HorizontalAlignment="Stretch" Background="{DynamicResource SxHueAzure}"/>
                     </StackPanel>
                 </Border>
                 <Border Style="{StaticResource SxMetricCard}" Margin="4">
                     <StackPanel>
-                        <TextBlock Text="RAM" Style="{StaticResource SxCaption}"/>
-                        <TextBlock Text="{Binding System.Snapshot.RamText}" FontSize="21" FontWeight="SemiBold" Margin="0,10,0,8"/>
-                        <TextBlock Text="Pamięć fizyczna" Style="{StaticResource SxCaption}"/>
+                        <TextBlock Text="RAM" Style="{StaticResource SxStatLabel}"/>
+                        <TextBlock Text="{Binding System.Snapshot.RamText}" Style="{StaticResource SxNumber}" FontSize="21" Margin="0,9,0,4"/>
+                        <TextBlock Text="Pamięć fizyczna" Style="{StaticResource SxHint}"/>
+                        <Border Style="{StaticResource SxAccentBar}" Height="3" Width="Auto" Margin="0,11,0,0" HorizontalAlignment="Stretch" Background="{DynamicResource SxHueViolet}"/>
                     </StackPanel>
                 </Border>
                 <Border Style="{StaticResource SxMetricCard}" Margin="4">
                     <StackPanel>
-                        <TextBlock Text="GPU" Style="{StaticResource SxCaption}"/>
-                        <TextBlock Text="{Binding System.Snapshot.GpuText}" FontSize="28" FontWeight="SemiBold" Margin="0,10,0,8"/>
-                        <TextBlock Text="Silnik 3D / Compute" Style="{StaticResource SxCaption}"/>
+                        <TextBlock Text="GPU" Style="{StaticResource SxStatLabel}"/>
+                        <TextBlock Text="{Binding System.Snapshot.GpuText}" Style="{StaticResource SxNumber}" FontSize="28" Margin="0,9,0,4"/>
+                        <TextBlock Text="Silnik 3D / Compute" Style="{StaticResource SxHint}"/>
+                        <Border Style="{StaticResource SxAccentBar}" Height="3" Width="Auto" Margin="0,11,0,0" HorizontalAlignment="Stretch" Background="{DynamicResource SxHueMint}"/>
                     </StackPanel>
                 </Border>
                 <Border Style="{StaticResource SxMetricCard}" Margin="4">
                     <StackPanel>
-                        <TextBlock Text="VRAM" Style="{StaticResource SxCaption}"/>
-                        <TextBlock Text="{Binding System.Snapshot.VramText}" FontSize="17" FontWeight="SemiBold" Margin="0,10,0,8"/>
-                        <TextBlock Text="Brak wiarygodnego licznika" Style="{StaticResource SxCaption}"/>
+                        <TextBlock Text="VRAM" Style="{StaticResource SxStatLabel}"/>
+                        <TextBlock Text="{Binding System.Snapshot.VramText}" Style="{StaticResource SxNumber}" FontSize="17" Margin="0,9,0,4"/>
+                        <TextBlock Text="Brak wiarygodnego licznika" Style="{StaticResource SxHint}"/>
+                        <Border Style="{StaticResource SxAccentBar}" Height="3" Width="Auto" Margin="0,11,0,0" HorizontalAlignment="Stretch" Background="{DynamicResource SxHueAmber}"/>
                     </StackPanel>
                 </Border>
             </UniformGrid>
