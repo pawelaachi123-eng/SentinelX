@@ -160,26 +160,43 @@ jobs:
           $commit = (git rev-parse --short HEAD)
           $tag = '${{ inputs.tag }}'
           if ([string]::IsNullOrWhiteSpace($tag)) { $tag = 'rolling' }
+          Write-Output "rolling release: tag=$tag version=$version commit=$commit"
+          $files = @(Get-ChildItem dist -File | ForEach-Object { $_.FullName })
+          Write-Output "assets: $($files -join ', ')"
+          if ($files.Count -lt 4) { throw 'Missing release assets in dist/' }
           $notes = @(
-            "Najnowszy build SentinelX — każdy upgrade publikuje tu świeże pliki do pobrania.",
-            "",
-            "Wersja: **$version** · commit: ``$commit`` · gałąź: ``${{ github.ref_name }}``",
-            "",
-            "| Plik | Co to jest |",
-            "| --- | --- |",
+            'Najnowszy build SentinelX — każdy upgrade publikuje tu świeże pliki do pobrania.',
+            '',
+            "Wersja: **$version** · commit: ``$commit``",
+            '',
+            '| Plik | Co to jest |',
+            '| --- | --- |',
             "| ``SentinelX-$version-win-x64-portable.zip`` | Portable: rozpakuj i uruchom ``SentinelX.exe`` (własny runtime .NET 9). |",
             "| ``SentinelX-$version-win-x64-setup.exe`` | Instalator per-user (bez uprawnień administratora). |",
-            "| ``SHA256SUMS.txt`` / ``BUILD.txt`` | Sumy kontrolne i metryka buildu. |",
-            "",
-            "Bez podpisu cyfrowego — SmartScreen pokaże „Nieznany wydawca” (status rzeczywisty).",
-            "Dane zostają lokalnie w ``%LocalAppData%\SentinelX``. Ollama opcjonalne, nigdy bez zgody."
+            '| ``SHA256SUMS.txt`` / ``BUILD.txt`` | Sumy kontrolne i metryka buildu. |',
+            '',
+            'Bez podpisu cyfrowego — SmartScreen pokaże „Nieznany wydawca” (status rzeczywisty).',
+            'Dane zostają lokalnie w %LocalAppData%\SentinelX. Ollama opcjonalne, nigdy bez zgody.'
           ) -join "`n"
           # Przesuń stabilny tag na nowy build: usuń poprzednie wydanie rolling, jeśli istnieje.
-          gh release view $tag --json tagName 2>$null | Out-Null
-          if ($LASTEXITCODE -eq 0) { gh release delete $tag --cleanup-tag --yes }
-          gh release create $tag dist/* --title "SentinelX $version — najnowszy build ($commit)" --latest --notes $notes
-          if ($LASTEXITCODE -ne 0) { throw 'Rolling release publish failed' }
-          Write-Output "Rolling release opublikowany pod tagiem: $tag"
+          $null = gh release view $tag --json tagName 2>&1
+          if ($LASTEXITCODE -eq 0) {
+            Write-Output "previous rolling release found — deleting"
+            $del = gh release delete $tag --cleanup-tag --yes 2>&1
+            Write-Output "delete exit=$LASTEXITCODE : $($del -join ' | ')"
+          } else {
+            Write-Output "no previous rolling release"
+          }
+          $create = gh release create $tag @files --title "SentinelX $version — najnowszy build ($commit)" --latest --notes $notes 2>&1
+          Write-Output "create exit=$LASTEXITCODE"
+          $create | ForEach-Object { Write-Output "gh: $_" }
+          if ($LASTEXITCODE -ne 0) {
+            $detail = ($create -join '%0A')
+            Write-Output "::error::Rolling release publish failed::$detail"
+            throw "Rolling release publish failed: $($create -join ' | ')"
+          }
+          $assets = gh release view $tag --json assets --jq '.assets[].name' 2>&1
+          Write-Output "published assets: $($assets -join ', ')"
       - uses: actions/upload-artifact@v4
         continue-on-error: true  # limit magazynu artefaktów nie może zamieniać wyników testów na czerwone
         # Krótka retencja: trwałą dystrybucją są assety wydania, artefakty CI są tylko diagnostyczne.
