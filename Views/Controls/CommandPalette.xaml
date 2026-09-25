@@ -55,17 +55,17 @@
                                 </Border>
                                 <TextBlock Text="{Binding Hint}" Style="{StaticResource SxHint}" Margin="0,7,2,0" HorizontalAlignment="Right"/>
                             </StackPanel>
-                            <DataTemplate.Triggers>
-                                <DataTrigger Binding="{Binding Kind}" Value="STRONA">
-                                    <Setter TargetName="MarkIcon" Property="Data" Value="{StaticResource SxIconGrid}"/>
-                                </DataTrigger>
-                                <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True">
-                                    <Setter TargetName="Mark" Property="Background" Value="{StaticResource SxPrimaryGradient}"/>
-                                    <Setter TargetName="Mark" Property="BorderBrush" Value="{DynamicResource SxBorderActive}"/>
-                                    <Setter TargetName="MarkIcon" Property="Fill" Value="{DynamicResource SxWhite}"/>
-                                </DataTrigger>
-                            </DataTemplate.Triggers>
                         </Grid>
+                        <DataTemplate.Triggers>
+                            <DataTrigger Binding="{Binding Kind}" Value="STRONA">
+                                <Setter TargetName="MarkIcon" Property="Data" Value="{StaticResource SxIconGrid}"/>
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True">
+                                <Setter TargetName="Mark" Property="Background" Value="{StaticResource SxPrimaryGradient}"/>
+                                <Setter TargetName="Mark" Property="BorderBrush" Value="{DynamicResource SxBorderActive}"/>
+                                <Setter TargetName="MarkIcon" Property="Fill" Value="{DynamicResource SxWhite}"/>
+                            </DataTrigger>
+                        </DataTemplate.Triggers>
                     </DataTemplate>
                 </ListBox.ItemTemplate>
             </ListBox>
