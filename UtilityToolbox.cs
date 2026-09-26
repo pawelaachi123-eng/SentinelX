@@ -386,7 +386,7 @@ public static class UtilityToolbox
         span = default;
         description = "";
         var match = Regex.Match((text ?? "").Trim().ToLowerInvariant(),
-            @"^(\d{1,4})\s*(sekundy|sekund|sekunde|sek|s|minuty|minut|min|m|godziny|godzin|godzine|godz|h)$");
+            @"^(\d{1,4})\s*(sekundy|sekund|sekunde|sekunda|sek|s|minuty|minut|minuta|min|m|godziny|godzin|godzine|godzina|godz|h)$");
         if (!match.Success) return false;
         if (!int.TryParse(match.Groups[1].Value, out int value) || value <= 0 || value > 10000) return false;
         string unit = match.Groups[2].Value;
