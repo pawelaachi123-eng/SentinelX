@@ -149,6 +149,9 @@ internal static class UnderstandingRegression
         Check(Core.CommandLexicon.WordsMatch("ktory", "ktora"), "a declined pronoun matches");
         Check(!Core.CommandLexicon.WordsMatch("ram", "ramu"), "very short words must be exact");
         Check(Core.CommandLexicon.IsOutsideWord("sprawdz") && Core.CommandLexicon.IsOutsideWord("prosze") && !Core.CommandLexicon.IsOutsideWord("dziś"), "inquiry/filler words are ignorable, scope words are not");
+        Check(CommandUnderstanding.ContainsScopeWord("ile mam ramu dziś") && !CommandUnderstanding.ContainsScopeWord("przypomnij jutro o 18 o badaniach"),
+            "słowo zakresu w pytaniu liczy się, a w przypomnieniu nie przeszkadza");
+        Check(!CommandUnderstanding.Understand("ile wolnego ramu zostało wczoraj").Success, "żadna z dwóch ścieżek nie wolno obsłużyć zdania z zakresem");
 
         // --- the dry-run explains and executes nothing ---
         string explain = CommandUnderstanding.Explain("sprawdź proszę ile mam ramuu");

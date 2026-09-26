@@ -22,6 +22,20 @@ public sealed record UnderstandingResult(bool Success, string Text, string Canon
 /// the safe catalogue, always with a visible „Zrozumiałem jako…” note.</summary>
 public static class CommandUnderstanding
 {
+    /// <summary>Określenia zakresu. Świadomie NIE są dekoracją ani argumentem: zdanie z nimi znaczy
+    /// co innego niż najbliższa fraza katalogu („ile mam ramu dziś” to pytanie o dziś, a nie
+    /// „ile mam ramu łącznie”), więc ani naprawa, ani wyciąganie polecenia nie może go obsłużyć.
+    /// Takie zdania idą do szarej strefy pytań („Czy chodziło Ci o…”) i czekają na „tak”.
+    /// Lista jest krótka celowo: „jutro”/„za godzinę” zostają, bo są treścią poleceń przypomnień.</summary>
+    public static readonly IReadOnlySet<string> ScopeWords = new HashSet<string>(StringComparer.Ordinal)
+    {
+        "dzis", "dzisiaj", "teraz", "wczoraj", "przedwczoraj", "obecnie", "aktualnie",
+    };
+
+    /// <summary>Czy w zdaniu jest słowo zakresu. Normalizujemy sami, żeby wywoływane można było
+    /// równie dobrze z tekstu surowego („dziś”), jak i z już znormalizowanego („dzis”).</summary>
+    public static bool ContainsScopeWord(string input) =>
+        Words(ConversationMemoryService.Normalize(input ?? "")).Any(word => ScopeWords.Contains(word));
     /// <summary>Minimum similarity for a whole-phrase repair.</summary>
     public const double MinConfidence = 0.80;
     /// <summary>Minimum similarity for repairing a single word.</summary>
@@ -93,6 +107,8 @@ public static class CommandUnderstanding
     {
         string normalized = ConversationMemoryService.Normalize(input ?? "").TrimEnd('?', '!', '.', ' ');
         if (normalized.Length == 0 || normalized.Contains('\n')) return CommandRepair.None;
+        // Zakres to treść: zdanie z „dziś”/„teraz” nigdy nie naprawiamy do innej frazy katalogu.
+        if (ContainsScopeWord(normalized)) return CommandRepair.None;
 
         // Documented abbreviations win: deterministic, listed by „skróty”. They are short by design.
         if (IntentCatalog.Abbreviations.TryGetValue(normalized, out string? expanded))
@@ -275,6 +291,8 @@ public static class CommandUnderstanding
         // A negated or destructive request is never auto-executed by extraction.
         if (PolishTextNormalizer.ContainsNegation(normalized)) return UnderstandingResult.None;
         if (DestructiveStems.Any(stem => normalized.Contains(stem, StringComparison.Ordinal))) return UnderstandingResult.None;
+        // …ani wyciągamy: „ile mam ramu dziś” nie może wykonać się jako samo „ile mam ramu”.
+        if (ContainsScopeWord(normalized)) return UnderstandingResult.None;
 
         string[] words = Words(normalized);
         if (words.Length == 0) return UnderstandingResult.None;
