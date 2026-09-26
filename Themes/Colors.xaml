@@ -91,6 +91,13 @@
     <SolidColorBrush x:Key="SxAccentLime" Color="{DynamicResource SxAccentLimeColor}"/>
     <Color x:Key="SxAccentLimeDimColor">#4D7C0F</Color>
     <SolidColorBrush x:Key="SxAccentLimeDim" Color="{DynamicResource SxAccentLimeDimColor}"/>
+    <!-- Królewskie złoto (herb, korona, wordmark): osobna rodzina niż semantyczny warning. -->
+    <Color x:Key="SxRoyalGoldColor">#E7C25C</Color>
+    <SolidColorBrush x:Key="SxRoyalGold" Color="{DynamicResource SxRoyalGoldColor}"/>
+    <Color x:Key="SxRoyalGoldDimColor">#8F6B1F</Color>
+    <SolidColorBrush x:Key="SxRoyalGoldDim" Color="{DynamicResource SxRoyalGoldDimColor}"/>
+    <Color x:Key="SxRoyalGoldSoftColor">#3A2E12</Color>
+    <SolidColorBrush x:Key="SxRoyalGoldSoft" Color="{DynamicResource SxRoyalGoldSoftColor}"/>
     <Color x:Key="SxAccentGradStartColor">#155E75</Color>
     <Color x:Key="SxAccentGradEndColor">#6D28D9</Color>
 

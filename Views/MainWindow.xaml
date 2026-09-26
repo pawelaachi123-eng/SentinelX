@@ -54,13 +54,9 @@
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
-                        <Grid Width="44" Height="44" Margin="0,0,12,0">
-                            <Ellipse Fill="{StaticResource SxAccentGradient}" Opacity="0.28" u:Motion.Pulse="True"/>
-                            <Ellipse Fill="{StaticResource SxAccentGradient}" Margin="7" Effect="{StaticResource SxGlowAccent}"/>
-                            <Ellipse Stroke="{DynamicResource SxWhite}" StrokeThickness="1.4" Margin="14" Opacity="0.75"/>
-                        </Grid>
+                        <ContentControl Style="{StaticResource SxCrest}" Width="46" Height="46" Margin="0,0,12,0" AutomationProperties.Name="Herb Sentinel X"/>
                         <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                            <TextBlock Text="SENTINEL X" FontFamily="{StaticResource SxFontDisplay}" FontSize="{StaticResource SxFontHeading3}" FontWeight="Bold" Foreground="{StaticResource SxAccentGradientSoft}"/>
+                            <TextBlock Text="SENTINEL X" FontFamily="{StaticResource SxFontDisplay}" FontSize="{StaticResource SxFontHeading3}" FontWeight="Bold" Foreground="{StaticResource SxRoyalGradient}"/>
                             <TextBlock Text="{Binding Version}" Style="{StaticResource SxMuted}" Margin="0,3,0,0"/>
                         </StackPanel>
                     </Grid>

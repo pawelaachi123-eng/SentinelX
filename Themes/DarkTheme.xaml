@@ -36,6 +36,9 @@
     <Color x:Key="SxAccentPinkSoftColor">#5B1D3C</Color>
     <Color x:Key="SxAccentLimeColor">#A3E635</Color>
     <Color x:Key="SxAccentLimeDimColor">#4D7C0F</Color>
+    <Color x:Key="SxRoyalGoldColor">#E7C25C</Color>
+    <Color x:Key="SxRoyalGoldDimColor">#8F6B1F</Color>
+    <Color x:Key="SxRoyalGoldSoftColor">#3A2E12</Color>
     <Color x:Key="SxAccentGradStartColor">#155E75</Color>
     <Color x:Key="SxAccentGradEndColor">#6D28D9</Color>
     <Color x:Key="SxSuccessColor">#34D399</Color>

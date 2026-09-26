@@ -127,5 +127,11 @@
     <DropShadowEffect x:Key="SxShadowSoft" BlurRadius="18" ShadowDepth="4" Direction="270" Opacity="0.32" Color="{DynamicResource SxShadowColor}"/>
     <DropShadowEffect x:Key="SxShadowRaised" BlurRadius="34" ShadowDepth="10" Direction="270" Opacity="0.45" Color="{DynamicResource SxShadowColor}"/>
     <DropShadowEffect x:Key="SxShadowModal" BlurRadius="60" ShadowDepth="18" Direction="270" Opacity="0.60" Color="{DynamicResource SxShadowColor}"/>
+    <!-- Królewskie złoto: gradient herbu/korony i ciepła poświata. -->
+    <LinearGradientBrush x:Key="SxRoyalGradient" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Color="{DynamicResource SxRoyalGoldColor}" Offset="0"/>
+        <GradientStop Color="{DynamicResource SxRoyalGoldDimColor}" Offset="1"/>
+    </LinearGradientBrush>
+    <DropShadowEffect x:Key="SxRoyalGlow" BlurRadius="20" ShadowDepth="0" Direction="0" Opacity="0.55" Color="{DynamicResource SxRoyalGoldColor}"/>
     <DropShadowEffect x:Key="SxGlowAccent" BlurRadius="22" ShadowDepth="0" Direction="0" Opacity="0.50" Color="{DynamicResource SxAccentCyanColor}"/>
 </ResourceDictionary>

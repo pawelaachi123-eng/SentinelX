@@ -52,14 +52,14 @@ dopiero tagiem milowym (np. `v0.93.0`), kiedy użytkownik o to poprosi.
 Zakres: wyłącznie aktywny shell MVVM (`Views/**`, `Themes/**`, `Utilities/**`). Legacy UI za `--legacy`
 nie zmieniło ani jednego znaku; wersja aplikacji zostaje `0.93`.
 
-- **Tokeny designu `Sx*`** zamiast pojedynczych kolorów: 68 tokenów koloru (tła, powierzchnie, trzy
+- **Tokeny designu `Sx*`** zamiast pojedynczych kolorów: 71 tokenów koloru (tła, powierzchnie, trzy
   poziomy tekstu, pięć akcentów z wariantami `Dim`/`Soft`, semantyka z końcami gradientów, obramowania,
   fokus, cienie, shimmer, reveal, dymki czatu, aurora, overlay, scrim) oraz tokeny promieni i odstępów
   (`CornerRadius`/`Thickness`). W `Views/**` nie ma dosłownych hexów, rodzin czcionek ani rozmiarów
   czcionek — sprawdza to `scripts/check-architecture.py`.
 - **Trzy motywy z generatora**: `python3 scripts/generate-themes.py` tworzy `DarkTheme.xaml`,
   `DeepDarkTheme.xaml` i `LightTheme.xaml` (nadpisują wyłącznie tokeny `*Color`) i liczy kontrast WCAG
-  dla par krytycznych; `--check` kończy się `PASS: 68 tokenów × 3 motywy, kontrast OK`. Kolor akcentu
+  dla par krytycznych; `--check` kończy się `PASS: 71 tokenów × 3 motywy, kontrast OK`. Kolor akcentu
   z ustawień nadpisuje `SxAccentCyanColor` w trakcie działania, więc każdy motyw działa z każdym
   akcentem.
 - **Animacje**: 4 krzywe łatwości i 35 storyboardów (wejście strony, wejścia modalne, scrim, hover,
@@ -70,7 +70,17 @@ nie zmieniło ani jednego znaku; wersja aplikacji zostaje `0.93`.
   `Hover`, `Pulse`, `Shimmer`, `Stripes`, `Aurora`, `ModalIn`), `Reveal` (poświata pod kursorem),
   `PageTransitions` (wejście strony). Code-behind każdego widoku ma mniej niż 20 linii i nie zawiera
   obsługi `Click=`.
-- **Shell**: sidebar 268 px z gradientem i paskiem akcentu przy zaznaczeniu, „orb” marki, pill `Ctrl+K`,
+- **Królewski herb zamiast „orba”** (prośba użytkownika po pierwszym wydaniu): styl `SxCrest`
+  w `Themes/Controls.xaml` rysuje tarczę ze złotym obramowaniem, koroną i cyjanowym klejnotem
+  (Viewbox, więc skaluje się do każdego rozmiaru), a wordmark „SENTINEL X” dostał złoty gradient.
+  Do tego trzy nowe tokeny `SxRoyalGold*` (osobna rodzina niż semantyczny bursztyn `SxWarning`,
+  wartości we wszystkich trzech motywach + pary kontrastu w generatorze) oraz `SxRoyalGradient`
+  i `SxRoyalGlow` w `Themes/Brushes.xaml`.
+- **Nowa ikona aplikacji** `Assets/sentinel.ico` (była 476 B): ten sam herb narysowany programowo
+  i zapisany jako ICO z wpisami PNG 16/24/32/48/64/256 — tytuł okna, pasek zadań, EXE i instalator
+  pokazują teraz tarczę z koroną zamiast dawnego kółka. Nazwa pliku bez zmian, więc `csproj`,
+  `Icon=` okna i `SetupIconFile` instalatora nie wymagały dotyku.
+- **Shell**: sidebar 268 px z gradientem i paskiem akcentu przy zaznaczeniu, herb `SxCrest`, pill `Ctrl+K`,
   badge głosu z pulsującą kropką i kolorem z konwertera stanu, aurora w tle treści, modalne paleta
   (`//`, `Esc`, `Enter`, strzałki) i panel gotowości ze scrimem. Zakładki Centrum mają widoczne podpisy.
 - **12 stron i overlay** zbudowane od nowa na tokenach: spójny nagłówek (pasek akcentu + eyebrow +
