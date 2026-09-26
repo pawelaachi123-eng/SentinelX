@@ -1,6 +1,13 @@
 # Trwały backlog rozwoju SentinelX
 
-Stan na 2026-09-26 (0.95). Zasada: każda pojedyncza pozycja znika z listy dopiero, gdy jest **zbudowana i przetestowana na Windows (CI)**, nie „gdy wygląda na zrobioną".
+Stan na 2026-09-26 (0.96). Zasada: każda pojedyncza pozycja znika z listy dopiero, gdy jest **zbudowana i przetestowana na Windows (CI)**, nie „gdy wygląda na zrobioną".
+
+## Gotowe w 0.96 (ten przyrost — patrz git)
+
+- Warstwa JARVIS: agent z tool-callingiem (20 narzędzi tylko-do-odczytu, limit kroków, transkrypcja z dowodami), wizja „co jest na ekranie” bez zapisu obrazu, pamięć semantyczna jako DODATEK do szukania tekstowego, pogoda z Open-Meteo (jedyne wyjście do sieci, cache, uczciwa odmowa offline), multimedia przez klawisze systemowe, Home Assistant z białą listą serwisów i sekwencje z podglądem.
+- Panel 🤖 JARVIS w Centrum (jedna zakładka, siedem sekcji, zero własnej ścieżki wykonania), sekcja Ustawienia → Jarvis, tło okna Mica/Akryl i ciemny pasek tytułu przez DWM (bez nowych pakietów).
+- P0 „sekwencje działań” domknięty; P2 „wyszukiwanie semantyczne” domknięty jako dodatek (wersja wyłączona domyślnie).
+- Nowa regresja `tests/JarvisRegression.cs` wpięta w `--ui-smoke`; karty gotowości 4 → 6.
 
 ## Gotowe i zweryfikowane (0.85 i wcześniejsze)
 

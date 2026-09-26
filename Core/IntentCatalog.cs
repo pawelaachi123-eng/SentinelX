@@ -106,7 +106,14 @@ public static class IntentCatalog
             // 0.95 · Jarvis: timer/stoper/budzik, głośność, schowek, zrzuty, self-repair/self-improve
             "timer", "budzik", "stoper", "stoper start", "stoper stop",
             "glosnosc", "wycisz", "przywroc dzwiek", "co w schowku", "kopiuj",
-            "zrzut ekranu", "screenshot", "napraw sie", "ulepsz sie"
+            "zrzut ekranu", "screenshot", "napraw sie", "ulepsz sie",
+            // 0.96 · warstwa JARVIS: całe polecenia (bez odmiennych form — je łapie naprawa słów).
+            "pogoda", "pogoda dzis", "czy bedzie padac", "temperatura na zewnatrz", "temperatura na dworze", "ile stopni",
+            "co gra", "pauza", "wznow odtwarzanie", "nastepny utwor", "poprzedni utwor", "stop odtwarzanie", "wycisz odtwarzacz",
+            "glosniej", "ciszej", "dom", "dom status", "dom lista", "encje",
+            "agent status", "tryb agenta", "narzedzia agenta", "co jest na ekranie", "przeczytaj ekran", "opisz ekran",
+            "indeks semantyczny", "zbuduj indeks", "usun indeks", "szukaj semantycznie", "sekwencje", "utworz sekwencje",
+            "uruchom sekwencje", "usun sekwencje", "podglad sekwencji", "scena", "jarvis"
         ];
         foreach (string phrase in extra) phrases.Add(phrase);
         return phrases.OrderBy(x => x, StringComparer.Ordinal).ToArray();

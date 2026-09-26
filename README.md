@@ -1,6 +1,19 @@
-# SENTINEL X 0.95 · JARVIS — Windows / MVVM
+# SENTINEL X 0.96 · JARVIS — Windows / MVVM
 
 Lokalny asystent Windows 10/11, C# 13, .NET 9, WPF. Nowe GUI jest domyślnym interfejsem. Poprzedni interfejs i jego funkcje nadal są dostępne przez `--legacy`.
+
+## Nowe w 0.96 — JARVIS: agent z narzędziami, wizja ekranu, pamięć semantyczna, pogoda, multimedia, dom i sekwencje
+
+- **Tryb agenta (lokalny model wywołuje funkcje)**: `agent: sprawdź dysk i temperaturę, potem podsumuj`. Model dostaje katalog **20 narzędzi wyłącznie do odczytu**, limit kroków (1–8) i transkrypcję każdego kroku z dowodem. Każdy krok idzie przez pełny potok (STOP awaryjny, centrum zgód, audyt z requestId), więc agent nie ma żadnej cichej ścieżki. Nie ma i nie będzie miał dostępu do zgody „potwierdź” — włącza się świadomie w Ustawienia → Jarvis. `agent status`, `narzedzia agenta`.
+- **Wizja lokalna**: `co jest na ekranie`, `przeczytaj ekran`, `opisz … na ekranie`. Zrzut jest skalowany i podawany modelowi **w pamięci — bez zapisu na dysk**, tylko lokalny model (`llava`, `qwen2.5vl`, `gemma3`…). Bez modelu: odmowa z gotowym `ollama pull`, bez udawania patrzenia.
+- **Pamięć semantyczna**: `indeks semantyczny: zbuduj` i `szukaj semantycznie: o przeprowadzce`. Wektory liczy lokalna Ollama; zapis indeksu ma odczyt zwrotny, a uszkodzony plik jest odkładany (`.corrupt-…`), nigdy nadpisywany. Wyszukiwanie tekstowe zostało bez zmian — to dodatek, nie następca, i wynik zawsze nosi zastrzeżenie, że podobieństwo wektorowe nie jest prawdą o treści.
+- **Pogoda (jedyne polecenie, które dzwoni do internetu)**: `pogoda`, `pogoda Kraków`, `czy będzie padać`, `temperatura na zewnątrz`. Open-Meteo bez konta i klucza, cache z TTL, 3 formy nazwy miasta (miejscownik też), a bez sieci — ostatni zapis z jawnym „to ZAPISANY odczyt, nie aktualny”. Wyłączone = zero połączeń.
+- **Multimedia**: `co gra`, `pauza`, `wznow odtwarzanie`, `nastepny utwór`, `poprzedni utwór`, `stop odtwarzanie`, `wycisz odtwarzacz`, `głośniej`, `ciszej 10`. Klawisze systemowe (`SendInput`) — działają ze Spotify, VLC i przeglądarką; głośność z odczytem zwrotnym. Sam `stop` celowo NIE steruje odtwarzaczem, bo to STOP awaryjny.
+- **Inteligentny dom**: `dom status`, `dom lista`, `dom: włącz światło salon`, `scena: noc` — wyłącznie lokalny Home Assistant, biała lista serwisów (tylko `turn_on`/`turn_off`/`scene.turn_on`), potwierdzenie ponownym odczytem stanu, odmowa przy dwóch pasujących encjach. Token tylko ze zmiennej `SENTINEL_HA_TOKEN` (nigdy w pliku ustawień). Wyłączone, dopóki nie włączysz — bo dotyczy fizycznych urządzeń.
+- **Sekwencje (backlog P0 od dawna)**: `utwórz sekwencję: poranek = który jest dzień; plan dnia`, `sekwencje`, `podgląd sekwencji: poranek`, `uruchom sekwencję: poranek`, `usuń sekwencję: poranek`. Podgląd nic nie wykonuje, bieg staje na błędzie i na kroku czekającym na zgodę, a kroków niszczących nie da się zapisać ani przemycić edycją pliku.
+- **GUI bez nowych pakietów (Fluent we WPF)**: nowa zakładka **🤖 JARVIS** w Centrum z siedmioma sekcjami (każdy przycisk = polecenie wysłane przez tę samą kolejkę co czat), sekcja **Jarvis** w Ustawieniach z walidacją pól, a w Wyglądzie **Tło okna (Mica / Akryl / Brak)**, **ciemny pasek tytułu** — atrybuty DWM (ciemny pasek, zaokrąglenia, tło), na Windows 10 grzecznie ignorowane.
+- **14 skrótów `//`** dla nowej warstwy (`//pogoda`, `//gra`, `//ekran`, `//agent`, `//dom`, `//sekwencje`, `//indeks`, `//jarvis`…) i nowe frazy w katalogu rozumienia, więc literówki dostają „Czy chodziło Ci o…”.
+- Szczegóły, granice i lista regresji: [docs/RELEASE-0.96.md](docs/RELEASE-0.96.md).
 
 ## Nowe w 0.95 — JARVIS: timer/głośność/zrzuty/schowek + self-repair i self-improve
 

@@ -6,7 +6,8 @@ using SentinelX.Services.Voice;
 namespace SentinelX.Services.Readiness;
 
 /// <summary>Read-only probes. Never captures audio, downloads models, launches Ollama or changes settings.</summary>
-public sealed class ReadinessService(ISettingsService settings, IHistoryService history, IVoiceService voice, IAiService ai) : IReadinessService
+public sealed class ReadinessService(ISettingsService settings, IHistoryService history, IVoiceService voice, IAiService ai,
+    SentinelX.Services.Actions.StepRunner? steps = null) : IReadinessService
 {
     public async Task<IReadOnlyList<ReadinessCheck>> CheckAsync(CancellationToken token)
     {
@@ -33,6 +34,25 @@ public sealed class ReadinessService(ISettingsService settings, IHistoryService 
                     ready ? "Lokalne pliki ASR i VAD są dostępne. Ich uruchomienie zostanie sprawdzone po włączeniu głosu." : "Brak kompletnego zestawu lokalnych modeli. Nic nie jest pobierane bez Twojej decyzji.", "voice", ready ? "Przetestuj głos" : "Skonfiguruj modele"));
             }
             catch (Exception ex) { checks.Add(new("asr", "Rozpoznawanie mowy", ReadinessState.Unavailable, ex.Message, "voice", "Sprawdź modele")); }
+            // 0.96 · warstwa JARVIS: sprawdzamy SAMĄ konfigurację — bez łączenia się z Open-Meteo,
+            // bez czytania stanu domu i bez generowania czegokolwiek przez model.
+            var jarvis = settings.Current.Jarvis;
+            checks.Add(new("jarvis-network", "Pogoda · Open-Meteo", jarvis.WeatherEnabled ? ReadinessState.Ready : ReadinessState.NeedsSetup,
+                jarvis.WeatherEnabled
+                    ? $"Włączone · miasto domyślne: {jarvis.DefaultCity} · zapis ważny {jarvis.WeatherCacheMinutes} min. To jedyne polecenie, które wychodzi do internetu (bez konta i bez klucza API)."
+                    : "Wyłączone — Sentinel nie łączy się z internetem w ogóle. „pogoda” odpowie wtedy, że jest wyłączone, zamiast zgadywać temperaturę.",
+                "settings", jarvis.WeatherEnabled ? "Sprawdź pogodę" : "Włącz w ustawieniach"));
+            token.ThrowIfCancellationRequested();
+            bool agentReady = jarvis.AgentEnabled && steps is { IsReady: true };
+            checks.Add(new("jarvis-agent", "Agent, dom i sekwencje",
+                !jarvis.AgentEnabled && !jarvis.HomeEnabled ? ReadinessState.NeedsSetup : agentReady || !jarvis.AgentEnabled ? ReadinessState.Ready : ReadinessState.NeedsSetup,
+                (jarvis.AgentEnabled
+                    ? agentReady ? $"Tryb agenta włączony · limit {Math.Clamp(jarvis.AgentMaxSteps, 1, 8)} kroków · narzędzia wyłącznie do odczytu."
+                        : "Tryb agenta włączony, ale kolejka wykonań nie jest podłączona — działa w oknie Sentinela."
+                    : "Tryb agenta wyłączony (model nie wywołuje żadnych narzędzi). ") +
+                (jarvis.HomeEnabled ? $"Home Assistant: {jarvis.HomeBaseUrl} · token ze zmiennej SENTINEL_HA_TOKEN."
+                    : "Sterowanie domem wyłączone — trzeba je włączyć świadomie, bo dotyczy fizycznych urządzeń."),
+                "settings", "Otwórz ustawienia"));
             return checks;
         }, token);
         var ollama = CheckAiAsync(token);

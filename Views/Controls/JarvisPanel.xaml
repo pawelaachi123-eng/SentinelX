@@ -1,0 +1,97 @@
+<UserControl xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" x:Class="SentinelX.Views.Controls.JarvisPanel"
+             FontFamily="{StaticResource SxFontFamily}" FontSize="{StaticResource SxFontBody}" Foreground="{DynamicResource SxTextPrimary}">
+    <!-- 0.96 · WARSTWA JARVIS: panel nie ma własnej ścieżki wykonania. Każdy przycisk to tekstowe
+         polecenie wysłane przez IActionEngine — ta sama kolejka co czat, ten sam STOP, te same zgody
+         i ten sam audyt z requestId. Raport poniżej pokazuje dokładnie to, co system odpowiedział. -->
+    <DockPanel>
+        <StackPanel DockPanel.Dock="Top" Margin="2,0,2,14">
+            <TextBlock Text="WARSTWA JARVIS · 0.96" Style="{StaticResource SxEyebrow}" Foreground="{DynamicResource SxAccentCyan}"/>
+            <DockPanel>
+                <Border DockPanel.Dock="Left" Style="{StaticResource SxIconChip}" VerticalAlignment="Top" Margin="0,2,12,0">
+                    <TextBlock Text="{Binding SelectedSection.Icon}" FontSize="{StaticResource SxFontSubheading}" Foreground="{DynamicResource SxTextPrimary}"/>
+                </Border>
+                <StackPanel>
+                    <TextBlock Text="{Binding SelectedSection.Label}" Style="{StaticResource SxHeading}"/>
+                    <TextBlock Text="{Binding SelectedSection.Caption}" Style="{StaticResource SxCaption}" TextWrapping="Wrap" MaxWidth="880" HorizontalAlignment="Left"/>
+                </StackPanel>
+            </DockPanel>
+        </StackPanel>
+
+        <ListBox DockPanel.Dock="Top" ItemsSource="{Binding Sections}" SelectedItem="{Binding SelectedSection, Mode=TwoWay}"
+                 ItemContainerStyle="{StaticResource SxTabItem}" Focusable="False" BorderThickness="0" Margin="0,0,0,14"
+                 Background="{DynamicResource SxTransparent}" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                 AutomationProperties.Name="Sekcje warstwy Jarvis">
+            <ListBox.ItemsPanel>
+                <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+            </ListBox.ItemsPanel>
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <StackPanel Orientation="Horizontal"><TextBlock Text="{Binding Icon}" Margin="0,0,8,0"/><TextBlock Text="{Binding Label}"/></StackPanel>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+
+        <Grid DockPanel.Dock="Top" Margin="0,0,0,12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <DockPanel>
+                <TextBlock DockPanel.Dock="Left" Text="{Binding SelectedSection.InputLabel}" Style="{StaticResource SxLabel}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                <TextBox Text="{Binding Input, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource SxTextBox}" ToolTip="{Binding SelectedSection.InputHint}"/>
+            </DockPanel>
+            <TextBlock Grid.Column="1" Text="{Binding Status, Mode=OneWay}" Style="{StaticResource SxCaption}" MaxWidth="360" TextWrapping="Wrap"
+                       VerticalAlignment="Center" Margin="12,0,0,0"/>
+        </Grid>
+
+        <ItemsControl DockPanel.Dock="Top" ItemsSource="{Binding SelectedSection.Actions}" Margin="0,0,0,14">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <Button Content="{Binding Label}" Margin="0,0,8,8" ToolTip="{Binding Command}"
+                            Command="{Binding DataContext.RunCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource SxChipButton}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Primary}" Value="True">
+                                        <Setter Property="FontWeight" Value="SemiBold"/>
+                                        <Setter Property="Background" Value="{StaticResource SxAccentGradient}"/>
+                                        <Setter Property="Foreground" Value="{DynamicResource SxTextOnAccent}"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <Border DockPanel.Dock="Bottom" Style="{StaticResource SxPanelSunken}" Padding="16,12" Margin="0,10,0,0" MaxHeight="130">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <ItemsControl ItemsSource="{Binding Notes}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding}" FontFamily="{StaticResource SxFontMono}" FontSize="{StaticResource SxFontMicro}" TextWrapping="Wrap" Margin="0,0,0,4"/>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </Border>
+
+        <Border Style="{StaticResource SxCard}" Padding="0">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <Border Grid.Row="0" Style="{StaticResource SxHeaderAccentBar}" Height="3"/>
+                <TextBox Grid.Row="1" Text="{Binding Report, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" BorderThickness="0"
+                         Background="{DynamicResource SxTransparent}" Foreground="{DynamicResource SxTextPrimary}" CaretBrush="{DynamicResource SxAccentCyan}"
+                         Padding="18,14" VerticalScrollBarVisibility="Auto" IsReadOnlyCaretVisible="False"
+                         FontFamily="{StaticResource SxFontBody}" AutomationProperties.Name="Raport warstwy Jarvis"/>
+            </Grid>
+        </Border>
+    </DockPanel>
+</UserControl>

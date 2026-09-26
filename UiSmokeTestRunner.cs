@@ -42,6 +42,7 @@ public static class UiSmokeTestRunner
             await Tests.UtilityRegression.RunAsync(Path.Combine(output, "utility"));
             await Tests.FileCleanupRegression.RunAsync(Path.Combine(output, "file-cleanup"));
             await Tests.MemoryArchiveRegression.RunAsync(Path.Combine(output, "archives"));
+            await Tests.JarvisRegression.RunAsync(Path.Combine(output, "jarvis"));
             var vm = services.GetRequiredService<MainViewModel>();
             vm.Readiness.IsOpen = false;
             if (vm.InitializeCommand.IsRunning) await vm.InitializeCommand.ExecutionTask!;
@@ -155,7 +156,7 @@ public static class UiSmokeTestRunner
                 ("pierwiastek 144", "= 12"), ("silnia 10", "3628800"), ("nwd 12 8", "= 4"),
                 ("palindrom: kajak", "palindromem"), ("morse: sos", "... --- ..."),
                 ("pesel: 90010112349", "PESEL poprawny"), ("wielkanoc 2027", "28.03.2027"),
-                ("lotto", "Lotto (6 z 49)"), ("wersja", "0.93"), ("co nowego", "PORZĄDKI"),
+                ("lotto", "Lotto (6 z 49)"), ("wersja", "0.96"), ("co nowego", "PORZĄDKI"),
                 ("nazwa komputera", "Komputer:"), ("samokontrola", "SAMOKONTROLA"),
             })
             {
@@ -167,6 +168,38 @@ public static class UiSmokeTestRunner
             string unified = (await memoryEngine.ExecuteAsync("szukaj wszystkiego: cyjan")).Text;
             if (!unified.Contains("Znalezione w danych lokalnych"))
                 throw new InvalidOperationException("Unified search is not wired: " + unified);
+            // 0.96 · JARVIS: warstwa musi odpowiadać przez ten sam silnik i NIE wolno jej przejmować
+            // istniejących poleceń. Bez sieci i bez Ollamy każda nowa funkcja odpowiada tekstem, a nie ciszą.
+            if (!chat.Sections.Any(x => x.Key == "jarvis"))
+                throw new InvalidOperationException("Panel JARVIS nie trafił do zakładek Centrum.");
+            var jarvisPanel = services.GetRequiredService<JarvisPanelViewModel>();
+            if (jarvisPanel.Sections.Count < 7) throw new InvalidOperationException("Panel JARVIS ma za mało sekcji: " + jarvisPanel.Sections.Count);
+            jarvisPanel.SelectedSection = jarvisPanel.Sections[0];
+            await shell.Dispatcher.InvokeAsync(shell.UpdateLayout, DispatcherPriority.ContextIdle);
+            foreach (string command in new[] { "sekwencje", "narzedzia agenta", "agent status", "dom status", "indeks semantyczny" })
+            {
+                string answer = (await memoryEngine.ExecuteAsync(command)).Text;
+                if (answer.Contains("Nie jestem pewien") || answer.Length < 20)
+                    throw new InvalidOperationException("Polecenie warstwy JARVIS „" + command + "” nie odpowiedziało po swojemu: " + answer);
+            }
+            string tools = (await memoryEngine.ExecuteAsync("narzedzia agenta")).Text;
+            if (!tools.Contains("NIE ma", StringComparison.Ordinal))
+                throw new InvalidOperationException("Lista narzędzi agenta musi wprost mówić, czego agent nie może: " + tools);
+            string home = (await memoryEngine.ExecuteAsync("dom status")).Text;
+            if (!home.Contains("WYŁĄCZONA", StringComparison.Ordinal))
+                throw new InvalidOperationException("Sterowanie domem musi odmówić, dopóki użytkownik go nie włączy: " + home);
+            string hijack = (await memoryEngine.ExecuteAsync("włącz spotify")).Text;
+            if (hijack.Contains("SENTINEL_HA_TOKEN") || hijack.Contains("Integracja z domem", StringComparison.Ordinal))
+                throw new InvalidOperationException("Warstwa JARVIS podkradła uruchamianie aplikacji: " + hijack);
+            var routineAnswer = await memoryEngine.ExecuteAsync("utwórz sekwencję: smoke = który jest dzień; plan dnia");
+            if (!routineAnswer.Text.Contains("Zapisano sekwencję", StringComparison.Ordinal))
+                throw new InvalidOperationException("Sekwencja nie została zapisana: " + routineAnswer.Text);
+            string preview = (await memoryEngine.ExecuteAsync("podgląd sekwencji: smoke")).Text;
+            if (!preview.Contains("Żadnego kroku nie wykonałem"))
+                throw new InvalidOperationException("Podgląd sekwencji musi deklaratywnie nic nie wykonywać: " + preview);
+            var forbidden = await memoryEngine.ExecuteAsync("utwórz sekwencję: zle = usuń pliki z pulpitu");
+            if (!forbidden.Text.Contains("niszcz", StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("Sekwencja przyjęła krok niszczący: " + forbidden.Text);
             // 0.91 · CENTRUM: the grey zone must ask instead of guessing, and an explicit „tak” runs the known command.
             var ambiguous = await memoryEngine.ExecuteAsync("ile mam ramu dzis");
             if (!ambiguous.Text.Contains("Czy chodziło Ci o") || !ambiguous.Text.Contains("ile mam ramu"))
@@ -334,7 +367,7 @@ public static class UiSmokeTestRunner
             vm.OpenReadinessCommand.Execute(null);
             await vm.Readiness.RefreshCommand.ExecuteAsync(null);
             await shell.Dispatcher.InvokeAsync(shell.UpdateLayout, DispatcherPriority.ContextIdle);
-            if (vm.Readiness.Checks.Count != 4) throw new InvalidOperationException("Readiness cards not populated.");
+            if (vm.Readiness.Checks.Count != 6) throw new InvalidOperationException("Readiness cards not populated.");
             Capture(shell, Path.Combine(output, "readiness.png"));
             vm.Readiness.CloseCommand.Execute(null);
             foreach (string theme in new[] { "Deep Dark", "System", "Dark" })

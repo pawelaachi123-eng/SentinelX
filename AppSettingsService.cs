@@ -90,6 +90,7 @@ public sealed class AppSettingsService
             case "Pamięć": Settings.Memory = new(); break;
             case "Watch": Settings.Watch = new(); break;
             case "Zasoby": Settings.Resources = new(); break;
+            case "Jarvis": Settings.Jarvis = new(); break;
             case "Ogólne": Settings.Startup = new(); Settings.Ui.CloseToTray = true; break;
             case "Developer": Settings.Developer = new(); Settings.Voice.SaveVoiceSamples = false; break;
         }

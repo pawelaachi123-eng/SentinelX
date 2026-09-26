@@ -51,6 +51,20 @@ public static class SlashCatalog
         new("porzadki", "Raport porządkowy", "co zajmuje miejsce w folderze, tylko odczyt", SlashKind.Command, "porzadki: "),
         new("sprzatanie", "Usuń duplikaty", "zostawia 1 plik w grupie, reszta do Kosza po zgodzie", SlashKind.Command, "usuń duplikaty: "),
         new("nazwy", "Zmień nazwy plików", "podgląd zmian, wykonanie dopiero po zgodzie", SlashKind.Command, "zmien nazwy: "),
+        // 0.96 · warstwa JARVIS (to samo, co można wpisać słowami — skrót nic nie uprawnia)
+        new("pogoda", "Pogoda", "Open-Meteo, bez klucza; wymaga internetu", SlashKind.Command, "pogoda"),
+        new("pada", "Czy będzie padać", "prognoza opadów na dziś", SlashKind.Command, "czy bedzie padac"),
+        new("gra", "Co gra", "stan odtwarzacza systemowego", SlashKind.Command, "co gra"),
+        new("pauza", "Pauza / wznow", "klawisz odtwarzania", SlashKind.Command, "pauza"),
+        new("ekran", "Co jest na ekranie", "lokalny model wizyjny, obraz bez dysku", SlashKind.Command, "co jest na ekranie"),
+        new("agent", "Status agenta", "tryb, model i limit kroków", SlashKind.Command, "agent status"),
+        new("narzedzia", "Narzędzia agenta", "20 odczytów, bez zmian i bez zgody", SlashKind.Command, "narzedzia agenta"),
+        new("dom", "Dom", "stan integracji z Home Assistant", SlashKind.Command, "dom status"),
+        new("encje", "Encje domu", "lista świateł i przełączników", SlashKind.Command, "dom lista"),
+        new("sekwencje", "Sekwencje", "nazwane listy kroków z podglądem", SlashKind.Command, "sekwencje"),
+        new("indeks", "Indeks semantyczny", "status pamięci wektorowej", SlashKind.Command, "indeks semantyczny"),
+        new("zbuduj", "Zbuduj indeks", "liczy osadzenia lokalnie", SlashKind.Command, "indeks semantyczny: zbuduj"),
+        new("jarvislist", "Warstwa JARVIS", "co doszło obok klasycznych poleceń", SlashKind.Command, "jarvis"),
         // panels inside Centrum and pages
         new("rozmowa", "Rozmowa", "wróć do czatu", SlashKind.Tab, "rozmowa"),
         new("historia", "Historia", "zakładka Historii", SlashKind.Tab, "historia"),
@@ -58,6 +72,7 @@ public static class SlashCatalog
         new("system", "System", "zakładka Systemu", SlashKind.Tab, "system"),
         new("gry", "Gaming", "zakładka Gier", SlashKind.Tab, "gry"),
         new("ai", "AI", "zakładka AI", SlashKind.Tab, "ai"),
+        new("jarvis", "Panel JARVIS", "pogoda, multimedia, dom, sekwencje, agent, ekran", SlashKind.Tab, "jarvis"),
         new("akcje", "Akcje", "zakładka Akcji", SlashKind.Tab, "akcje"),
         new("ustawienia", "Ustawienia", "strona Ustawień", SlashKind.Page, "settings"),
     ];

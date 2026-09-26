@@ -60,6 +60,29 @@ public static class ServiceLocator
         services.AddSingleton<LocalAiService>(sp => new(sp.GetRequiredService<GamingModeService>(),
             systemMonitor: sp.GetRequiredService<SystemMonitor>(), aiSettingsProvider: () => sp.GetRequiredService<ISettingsService>().Current.Ai));
         services.AddSingleton<IAiService, AiService>();
+
+        // ---- 0.96 · warstwa JARVIS (pogoda · multimedia · dom · agent · wizja · indeks · sekwencje) ----
+        // Wszystkie konfigurację czytają przez Func<> (ten sam wzór co AI), bo ISettingsService jest
+        // rejstrowany wyżej, a JarvisRouter jest nieobowiązkowym dodatkiem do CommandRouter — bez niego
+        // klasyczne polecenia działają identycznie (dlatego parametr w konstruktorze jest opcjonalny).
+        services.AddSingleton<SentinelX.Services.Jarvis.WeatherService>(sp => new(() => sp.GetRequiredService<ISettingsService>().Current.Jarvis));
+        services.AddSingleton<SentinelX.Services.Jarvis.MediaService>();
+        services.AddSingleton<SentinelX.Services.Jarvis.HomeAutomationService>(sp => new(() => sp.GetRequiredService<ISettingsService>().Current.Jarvis));
+        // Wykonawca kroków: agent i sekwencje idą przez JEDNĄ kolejkę z okna (STOP, zgody, audyt).
+        services.AddSingleton<SentinelX.Services.Actions.StepRunner>();
+        services.AddSingleton<SentinelX.Services.Jarvis.AgentService>(sp => new(sp.GetRequiredService<SentinelX.Services.Actions.StepRunner>(),
+            sp.GetRequiredService<LocalAiService>(), () => sp.GetRequiredService<ISettingsService>().Current.Jarvis,
+            () => sp.GetRequiredService<ISettingsService>().Current.Ai));
+        services.AddSingleton<SentinelX.Services.Jarvis.VisionService>(sp => new(sp.GetRequiredService<LocalAiService>(), () => sp.GetRequiredService<ISettingsService>().Current.Jarvis));
+        services.AddSingleton<SentinelX.Services.Jarvis.SemanticMemoryIndex>(sp => new(sp.GetRequiredService<LocalAiService>(),
+            sp.GetRequiredService<ConversationMemoryService>(), () => sp.GetRequiredService<ISettingsService>().Current.Jarvis));
+        services.AddSingleton<SentinelX.Services.Jarvis.RoutineService>();
+        services.AddSingleton<SentinelX.Services.Jarvis.JarvisRouter>(sp => new(sp.GetRequiredService<SentinelX.Services.Jarvis.WeatherService>(),
+            sp.GetRequiredService<SentinelX.Services.Jarvis.MediaService>(), sp.GetRequiredService<SentinelX.Services.Jarvis.HomeAutomationService>(),
+            sp.GetRequiredService<SentinelX.Services.Jarvis.AgentService>(), sp.GetRequiredService<SentinelX.Services.Jarvis.VisionService>(),
+            sp.GetRequiredService<SentinelX.Services.Jarvis.SemanticMemoryIndex>(), sp.GetRequiredService<SentinelX.Services.Jarvis.RoutineService>(),
+            sp.GetRequiredService<SentinelX.Services.Actions.StepRunner>(), () => sp.GetRequiredService<ISettingsService>().Current.Jarvis));
+        services.AddSingleton<JarvisPanelViewModel>();
         services.AddSingleton<CommandRouter>();
         services.AddSingleton<SentinelToolboxService>(sp => new(() => sp.GetRequiredService<ISettingsService>().Current.Ui.DefaultBrowserPreference, sp.GetRequiredService<ActionHistoryService>(),
             sp.GetRequiredService<Services.Permissions.IPermissionService>(), sp.GetRequiredService<Services.Apps.IAppLauncherService>(),

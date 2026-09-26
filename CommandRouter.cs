@@ -22,6 +22,11 @@ public sealed class CommandRouter
     private readonly UnderstandingJournal? journal;
     private readonly SessionFactBook? facts;
     private readonly Core.LearnedPatterns? learned;
+    /// <summary>0.96 · warstwa JARVIS (pogoda, multimedia, dom, agent, wizja, indeks, sekwencje).
+    /// Opcjonalna celowo: bez niej klasyczne polecenia działają identycznie, a testy i ścieżka
+    /// --self-test nie potrzebują nowych serwisów. Nie jest wstrzykiwana do ActionEngine, więc
+    /// nie tworzy cyklu router → silnik → router.</summary>
+    private readonly Services.Jarvis.JarvisRouter? jarvis;
     private string lastTopic = "";
     private DateTime lastTopicTime;
     private (string Text, DateTime When, string Description, DateTime Expires)? pendingReminder;
@@ -42,11 +47,11 @@ public sealed class CommandRouter
     public CommandRouter(SystemMonitor systemMonitor, SystemInfoService systemInfo, LocalAiService localAi, ConversationMemoryService memory,
         ProjectService? projects = null, TaskService? tasks = null, DiagnosticSnapshotService? snapshots = null,
         MemoryArchiveService? archives = null, WorkspaceInsightsService? insights = null, UnderstandingJournal? journal = null,
-        SessionFactBook? facts = null, Core.LearnedPatterns? learned = null)
+        SessionFactBook? facts = null, Core.LearnedPatterns? learned = null, Services.Jarvis.JarvisRouter? jarvis = null)
     {
         this.systemMonitor = systemMonitor; this.systemInfo = systemInfo; this.localAi = localAi; this.memory = memory;
         this.projects = projects; this.tasks = tasks; this.snapshots = snapshots; this.archives = archives; this.insights = insights;
-        this.journal = journal; this.facts = facts; this.learned = learned;
+        this.journal = journal; this.facts = facts; this.learned = learned; this.jarvis = jarvis;
     }
 
     public async Task<string> ProcessAsync(string command, CancellationToken cancellationToken = default, Action<string>? onDelta = null)
@@ -113,6 +118,16 @@ public sealed class CommandRouter
         bool includeRecentHistory = IsFollowUpQuestion(text, followUp, topicForContext);
         bool includeSystemFacts = string.IsNullOrEmpty(topicForContext) ? MentionsComputerStateNoTopic(text, followUp) : topicForContext is "RAM" or "CPU" or "SYSTEM" or "DISK";
         if (!Regex.IsMatch(followUp, @"^(?:czy to|czy jest|a |dlaczego|czemu|co z tym)")) lastTopic = "";
+
+        // 0.96 · warstwa JARVIS: ostatnia warstwa deterministyczna, zaraz przed pytaniem o domysł.
+        // Świadomie TAK PÓŹNO: żadne istniejące polecenie (launchery aplikacji, pliki, zadania) nie może
+        // zostać przejęte przez „włącz światło”, a i tak wcześniej niż model — odpowiedź modelu nigdy
+        // nie wykonuje polecenia, więc nowe funkcje nie mogą mu wchodzić w drogę.
+        if (jarvis != null)
+        {
+            string? jarvisResponse = await jarvis.ProcessAsync(command.Trim(), text, cancellationToken, onDelta);
+            if (jarvisResponse != null) return jarvisResponse;
+        }
 
         // 0.91: this is the single honest "I would otherwise guess" point — every deterministic handler
         // above already declined, so a close-but-not-quite known command becomes a question, not a guess.
@@ -782,6 +797,8 @@ public sealed class CommandRouter
         Zadania: dodaj zadanie: treść · dodaj zadanie: pilne treść (priorytet z tekstu) · zrob zadanie: treść · zadania · zadanie N zrobione · zadanie N priorytet wysoki|niski|normalny · szukaj w zadaniach: fraza · przypomnienia · przypomnij mi jutro o 18 o …
         Sentinel: samokontrola · napraw sie (naprawa danych) · ulepsz sie (co się nauczyłem) · propozycje · lekcje · wersja · co nowego · zrozum: zdanie (pokazuję rozumienie, nic nie wykonuję) · fakty · co wiesz o mnie · podsumuj rozmowę
         Jarvis: timer 5 minut · budzik 7:00 · stoper start/stop · głośność / głośność 40 · wycisz · przywróć dźwięk · zrzut ekranu · kopiuj: tekst · co w schowku
+        JARVIS 0.96: pogoda · pogoda Kraków · czy będzie padać · co gra · pauza · następny utwór · głośniej · ciszej · dom status · dom: włącz światło salon · scena: noc · agent: <cel> · agent status · narzedzia agenta · co jest na ekranie · przeczytaj ekran · indeks semantyczny: zbuduj · szukaj semantycznie: fraza · sekwencje · utwórz sekwencję: nazwa = krok1; krok2 · podgląd sekwencji: nazwa · uruchom sekwencję: nazwa · jarvis (opis tej warstwy)
+          → pogoda wymaga internetu (Open-Meteo, bez klucza); dom i agent są wyłączone, dopóki ich nie włączysz w Ustawienia → Jarvis; sekwencje nie przyjmują kroków niszczących, a zgoda nigdy nie jest automatyczna
         Matematyka: policz 12,5*4 · pierwiastek 144 · silnia 10 · nwd 12 8 · nww 4 6 · czy pierwsza 97 · dzielniki 12 · fibonacci 10 · srednia: 2, 4, 6 · mediana: … · suma: … · min: … · max: … · srednia wazona: 4 2, 5 1 · zaokraglij 3,14159 do 2 · zmiana z 50 do 80 · procent 15 z 240 · ile to procent 30 z 240 · logarytm 1000 10 · potega 2 10 · modulo 10 3 · abs -5 · sin 30 · cos 60 · tan 45 · rownanie 1 -3 2
         Finanse i zakupy: vat 23 100 · vat 8 100 brutto · vat 5 250 · znizka 200 30 · napiwek 150 10 · raty 100000 7 25 (kwota, %, lata) · odsetki 1000 5 3 · procent skladany 1000 5 10
         Konwersje: przelicz 5 km na mile · rgb 31 162 195 · kolor 1fa2c3 · rzymskie 2026 · z rzymskich XIV · base64: tekst · dekoduj base64: … · morse: sos · dekoduj morse: … · binarnie: A · dekoduj binarnie: … · hex: Ala · dekoduj hex: …

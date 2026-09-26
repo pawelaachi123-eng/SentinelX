@@ -33,7 +33,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         CommandCenterViewModel command, SystemViewModel system, GamingViewModel gaming,
         VoiceViewModel voice, AiViewModel ai, ActionsViewModel actions, HistoryViewModel history, SettingsViewModel settings,
         CommandPaletteViewModel palette, ReadinessViewModel readiness, MemoryViewModel memory, ProjectViewModel projects, TaskViewModel tasks,
-        DiagnosticViewModel diagnostics)
+        DiagnosticViewModel diagnostics, Services.Actions.StepRunner? steps = null)
     {
         this.engine = engine; this.desktop = desktop; this.dispatcher = dispatcher; Voice = voice; Palette = palette; Readiness = readiness; commandCenter = command;
         Palette.Chosen += PaletteChosen; Readiness.OpenSectionRequested += Navigate; commandCenter.NavigationRequested += Navigate;
@@ -44,6 +44,26 @@ public partial class MainViewModel : ObservableObject, IDisposable
             new NavItem("projects", "▣", "Projekty", projects),
             new NavItem("settings", "⚙", "Ustawienia", settings)
         ];
+        // 0.96 · kroki agenta i sekwencji trafiają do TEJ SAMEJ kolejki co wpisywane polecenia:
+        // STOP awaryjny, centrum zgód, audyt z requestId i dowody. Wykonawca jest podłączany tutaj,
+        // a nie w konstruktorze CommandRouter, bo silnik zależy od routera (cykl DI byłby pewny).
+        if (steps != null) steps.Attach(async (command, token) =>
+        {
+            Models.IntentResult result = await engine.ExecuteAsync(command, token);
+            SentinelX.Models.ActionStatus status = result.Action?.Status ?? SentinelX.Models.ActionStatus.Unverified;
+            string statusText = status switch
+            {
+                SentinelX.Models.ActionStatus.WaitingPermission => "WAITING_PERMISSION",
+                SentinelX.Models.ActionStatus.Verified => "VERIFIED",
+                SentinelX.Models.ActionStatus.Unverified => "UNVERIFIED",
+                SentinelX.Models.ActionStatus.Cancelled => "CANCELLED",
+                SentinelX.Models.ActionStatus.Failed => "FAILED",
+                SentinelX.Models.ActionStatus.RolledBack => "ROLLED_BACK",
+                _ => "QUEUED",
+            };
+            bool ok = status is SentinelX.Models.ActionStatus.Verified or SentinelX.Models.ActionStatus.Unverified;
+            return new Services.Actions.StepOutcome(ok, status == SentinelX.Models.ActionStatus.Verified, result.Text, result.Action?.ActionId ?? "", statusText);
+        });
         SelectedItem = NavItems[0]; Readiness.IsOpen = command.Messages.Count == 0; engine.Changed += Sync; desktop.StatusChanged += DesktopChanged;
         // Referenced so DI keeps constructing the cached page VMs (they live inside Centrum's tabs now).
         _ = system; _ = gaming; _ = ai; _ = actions; _ = history; _ = tasks; _ = diagnostics;

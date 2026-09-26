@@ -43,6 +43,10 @@ public partial class App : Application
             provider = ServiceLocator.Build(Dispatcher); Services = provider;
             var shell = provider.GetRequiredService<Views.MainWindow>();
             MainWindow = shell; shell.Show();
+            // 0.96 · wykończenie okna (ciemny pasek tytułu, zaokrąglone rogi, tło Mica/Akryl).
+            // Robione tutaj, a nie w code-behind widoku — Views pozostaje bez logiki.
+            var ui = provider.GetRequiredService<SentinelX.Services.Settings.ISettingsService>().Current.Ui;
+            Utilities.WindowEffects.Apply(shell, ui.WindowBackdrop, ui.DarkTitleBar);
             instance?.Listen(provider.GetRequiredService<IDesktopService>().ShowWindow);
             if (uiTest)
             {

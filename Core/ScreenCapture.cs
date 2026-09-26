@@ -1,22 +1,75 @@
 using System.IO;
 using System.Windows;
 using System.Windows.Interop;
+using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
 namespace SentinelX.Core;
 
 /// <summary>0.95 · zrzut ekranu: GDI BitBlt do bitmapy, kodowanie PNG przez WPF (bez WinForms,
-/// bez pakietów NuGet). Plik trafia do „Screenshots” w folderze danych — nazwa z datą i godziną,
+/// bez pakietów NuGet). Plik trafia do „Screenshots" w folderze danych — nazwa z datą i godziną,
 /// nigdy niczego nie nadpisuje. Przy braku pulpitu (sesja bez GUI) zwraca null — komenda
-/// odpowiada uczciwie, że zrzut się nie udał.</summary>
+/// odpowiada uczciwie, że zrzut się nie udał.
+/// 0.96 · drugi kanał: <see cref="CaptureForVision"/> podaje sam bufor PNG modelowi wizyjnemu,
+/// bez zapisywania zawartości ekranu na dysku (ekran bywa pełen haseł i dokumentów).</summary>
 public static class ScreenCapture
 {
     /// <summary>Zapisuje zrzut całego wirtualnego pulpitu. Zwraca (ścieżka, szerokość, wysokość)
     /// albo null, gdy przechwycenie się nie udało.</summary>
     public static (string Path, int Width, int Height)? CaptureVirtualScreen()
     {
-        int width = GetSystemMetrics(SM_CXVIRTUALSCREEN);
-        int height = GetSystemMetrics(SM_CYVIRTUALSCREEN);
+        BitmapSource? source = Grab(out int width, out int height);
+        if (source == null) return null;
+        try
+        {
+            string directory = Path.Combine(AppPaths.Root, "Screenshots");
+            Directory.CreateDirectory(directory);
+            string path = Path.Combine(directory, "zrzut-" + DateTime.Now.ToString("yyyyMMdd-HHmmss") + ".png");
+            // Unikalna nazwa nawet przy dwóch zrzutach w tej samej sekundzie.
+            int suffix = 1;
+            while (File.Exists(path)) path = Path.Combine(directory, "zrzut-" + DateTime.Now.ToString("yyyyMMdd-HHmmss") + "-" + suffix++ + ".png");
+
+            var encoder = new PngBitmapEncoder();
+            encoder.Frames.Add(BitmapFrame.Create(source));
+            using (var stream = File.Create(path)) encoder.Save(stream);
+            return (path, width, height);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException)
+        { return null; }
+    }
+
+    /// <summary>Tworzy kadr do analizy przez model: PNG w pamięci, przeskalowany do
+    /// <paramref name="maxDimension"/> px najdłuższego boku (modele wizyjne i tak tną obraz na
+    /// kafelki). Zwraca null, gdy nie ma pulpitu albo kodowanie się nie uda.</summary>
+    public static (byte[] Png, int Width, int Height)? CaptureForVision(int maxDimension = 1568)
+    {
+        BitmapSource? source = Grab(out int width, out int height);
+        if (source == null) return null;
+        int longest = Math.Max(width, height);
+        if (maxDimension is > 0 && longest > maxDimension)
+        {
+            double scale = (double)maxDimension / longest;
+            try { source = new TransformedBitmap(source, new ScaleTransform(scale, scale)); }
+            catch (Exception ex) when (ex is InvalidOperationException or ArgumentException) { AppLog.Write(ex); }
+        }
+        try
+        {
+            var encoder = new PngBitmapEncoder();
+            encoder.Frames.Add(BitmapFrame.Create(source));
+            using var stream = new MemoryStream();
+            encoder.Save(stream);
+            byte[] png = stream.ToArray();
+            return png.Length == 0 ? null : (png, width, height);
+        }
+        catch (Exception ex) when (ex is IOException or InvalidOperationException or ArgumentException)
+        { return null; }
+    }
+
+    /// <summary>Wspólne przechwycenie wirtualnego pulpitu (GDI BitBlt → BitmapSource).</summary>
+    private static BitmapSource? Grab(out int width, out int height)
+    {
+        width = GetSystemMetrics(SM_CXVIRTUALSCREEN);
+        height = GetSystemMetrics(SM_CYVIRTUALSCREEN);
         int left = GetSystemMetrics(SM_XVIRTUALSCREEN);
         int top = GetSystemMetrics(SM_YVIRTUALSCREEN);
         if (width <= 0 || height <= 0)
@@ -45,18 +98,7 @@ public static class ScreenCapture
             var source = Imaging.CreateBitmapSourceFromHBitmap(bitmap, IntPtr.Zero,
                 new Int32Rect(0, 0, width, height), BitmapSizeOptions.FromEmptyOptions());
             source.Freeze();
-
-            string directory = Path.Combine(AppPaths.Root, "Screenshots");
-            Directory.CreateDirectory(directory);
-            string path = Path.Combine(directory, "zrzut-" + DateTime.Now.ToString("yyyyMMdd-HHmmss") + ".png");
-            // Unikalna nazwa nawet przy dwóch zrzutach w tej samej sekundzie.
-            int suffix = 1;
-            while (File.Exists(path)) path = Path.Combine(directory, "zrzut-" + DateTime.Now.ToString("yyyyMMdd-HHmmss") + "-" + suffix++ + ".png");
-
-            var encoder = new PngBitmapEncoder();
-            encoder.Frames.Add(BitmapFrame.Create(source));
-            using (var stream = File.Create(path)) encoder.Save(stream);
-            return (path, width, height);
+            return source;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException)
         { return null; }

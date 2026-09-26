@@ -13,6 +13,9 @@ public sealed class SentinelSettings
     public ResourceSettings Resources { get; set; } = new();
     public MemorySettings Memory { get; set; } = new();
 
+    /// <summary>0.96 · warstwa JARVIS: pogoda, multimedia, dom, agent, wizja, indeks, sekwencje.</summary>
+    public JarvisSettings Jarvis { get; set; } = new();
+
     // Backward-compatible properties for existing code and old settings.json files.
     [JsonIgnore] public bool CloseToTray { get => Ui.CloseToTray; set => Ui.CloseToTray = value; }
     [JsonIgnore] public bool MinimizeToTray { get => Ui.MinimizeToTray; set => Ui.MinimizeToTray = value; }
@@ -53,6 +56,9 @@ public sealed class SentinelSettings
         Developer ??= new();
         Resources ??= new();
         Memory ??= new();
+        Jarvis ??= new();
+        JarvisSettingsGuard.Validate(Jarvis);
+        Ui.WindowBackdrop = ValidateChoice(Ui.WindowBackdrop, ["Mica", "Akryl", "Brak"], "Mica");
         Memory.RetentionDays = Math.Clamp(Memory.RetentionDays, 0, 3650);
         Memory.ArchiveMonths = Math.Clamp(Memory.ArchiveMonths, 0, 120);
         Ui.Theme = ValidateChoice(Ui.Theme, ["Dark", "Deep Dark", "System"], "Dark");

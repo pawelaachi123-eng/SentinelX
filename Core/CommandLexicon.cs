@@ -97,7 +97,7 @@ public static class CommandLexicon
     {
         foreach (string word in words)
         {
-            string raw = (word ?? \"\").Trim().TrimEnd('.', ',', '!', '?', ':').ToLowerInvariant();
+            string raw = (word ?? "").Trim().TrimEnd('.', ',', '!', '?', ':').ToLowerInvariant();
             string form = CompareForm(word);
             foreach (string verb in ConversationVerbs)
                 if (form == verb || form.StartsWith(verb, StringComparison.Ordinal) ||

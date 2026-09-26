@@ -71,11 +71,11 @@ public partial class CommandCenterViewModel : ObservableObject, IDisposable
         SystemViewModel system, VoiceViewModel voiceViewModel, IHistoryService history, ConversationMemoryService memory, TaskService tasks,
         TaskViewModel taskPage, HistoryViewModel historyPage, GamingViewModel gamingPage, AiViewModel aiPage,
         ActionsViewModel actionsPage, DiagnosticViewModel diagnosticsPage,
-        MemoryArchiveService? archives = null)
+        JarvisPanelViewModel? jarvis = null, MemoryArchiveService? archives = null)
     {
         this.engine = engine; this.voice = voice; this.dispatcher = dispatcher; this.history = history; this.memory = memory; this.tasks = tasks; System = system; Voice = voiceViewModel;
-        Sections =
-        [
+        var tabs = new List<CenterTab>
+        {
             new CenterTab("rozmowa", "💬", "Rozmowa", this),
             new CenterTab("zadania", "📓", "Zadania", taskPage),
             new CenterTab("historia", "🕘", "Historia", historyPage),
@@ -85,7 +85,11 @@ public partial class CommandCenterViewModel : ObservableObject, IDisposable
             new CenterTab("ai", "✨", "AI", aiPage),
             new CenterTab("akcje", "⚡", "Akcje", actionsPage),
             new CenterTab("diagnostyka", "🩺", "Diagnostyka", diagnosticsPage)
-        ];
+        };
+        // 0.96 · JARVIS: panel pojawia się tylko gdy kompozycja go zbudowała (CI bez nowych serwisów
+        // nadal renderuje osiem pozostałych zakładek).
+        if (jarvis != null) tabs.Add(new CenterTab("jarvis", "🤖", "JARVIS", jarvis));
+        Sections = tabs;
         SelectedTab = Sections[0];
         VoiceActive = Voice.State != VoiceState.Off;
         Voice.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(Voice.State)) VoiceActive = Voice.State != VoiceState.Off; };
