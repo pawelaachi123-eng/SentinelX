@@ -39,15 +39,47 @@ public static class UtilityToolbox
             if (!TryNumber(percentOf.Groups[1].Value, out double part) || !TryNumber(percentOf.Groups[2].Value, out double whole)) return NumberError;
             return part.ToString("0.##", Pl) + "% z " + whole.ToString("0.##", Pl) + " = " + (part / 100d * whole).ToString("0.####", Pl);
         }
-        var vat = Regex.Match(text, @"^vat[:\s]+(\d+[.,]?\d*)(?:\s*(netto|brutto))?$");
+        // 0.94: VAT z własną stawką (23/8/5/0) — stawkę podajesz pierwszą: „vat 8 100”.
+        var vat = Regex.Match(text, @"^vat[:\s]+(?:(\d{1,2})(?:\s*(?:%|procent))?\s+)?(\d+[.,]?\d*)(?:\s*(netto|brutto))?$");
         if (vat.Success)
         {
-            if (!TryNumber(vat.Groups[1].Value, out double amount)) return NumberError;
-            bool gross = vat.Groups[2].Value == "brutto";
-            double net = gross ? amount / 1.23d : amount;
-            double total = gross ? amount : amount * 1.23d;
-            return "VAT 23% · netto " + net.ToString("0.00", Pl) + " zł · VAT " + (total - net).ToString("0.00", Pl) + " zł · brutto " + total.ToString("0.00", Pl) + " zł\n" +
-                "Stawka 23% jest wpisana na stałe. Innych stawek (8%, 5%, 0%) jeszcze nie liczę — to znane ograniczenie.";
+            if (!TryNumber(vat.Groups[2].Value, out double amount)) return NumberError;
+            double rate = 23;
+            if (vat.Groups[1].Success && (!TryNumber(vat.Groups[1].Value, out rate) || rate is < 0 or > 100))
+                return "Stawka VAT musi być z zakresu 0–100, np. „vat 8 100”.";
+            bool gross = vat.Groups[3].Value == "brutto";
+            return Vat(amount, rate, gross);
+        }
+        // 0.94 · finanse i zakupy (offline, bez kursów walut i bez sieci)
+        var discount = Regex.Match(text, @"^znizka[:\s]+(\d+[.,]?\d*)\s+(\d+[.,]?\d*)$");
+        if (discount.Success)
+        {
+            if (!TryNumber(discount.Groups[1].Value, out double price) || !TryNumber(discount.Groups[2].Value, out double pct)) return NumberError;
+            return Discount(price, pct);
+        }
+        var tip = Regex.Match(text, @"^napiwek[:\s]+(\d+[.,]?\d*)\s+(\d+[.,]?\d*)$");
+        if (tip.Success)
+        {
+            if (!TryNumber(tip.Groups[1].Value, out double bill) || !TryNumber(tip.Groups[2].Value, out double pct)) return NumberError;
+            return Tip(bill, pct);
+        }
+        var loan = Regex.Match(text, @"^(?:raty|rata kredytu)[:\s]+(\d+[.,]?\d*)\s+(\d+[.,]?\d*)\s+(\d+[.,]?\d*)$");
+        if (loan.Success)
+        {
+            if (!TryNumber(loan.Groups[1].Value, out double principal) || !TryNumber(loan.Groups[2].Value, out double rate) || !TryNumber(loan.Groups[3].Value, out double years)) return NumberError;
+            return Loan(principal, rate, years);
+        }
+        var interest = Regex.Match(text, @"^odsetki(?: proste)?[:\s]+(\d+[.,]?\d*)\s+(\d+[.,]?\d*)\s+(\d+[.,]?\d*)$");
+        if (interest.Success)
+        {
+            if (!TryNumber(interest.Groups[1].Value, out double capital) || !TryNumber(interest.Groups[2].Value, out double rate) || !TryNumber(interest.Groups[3].Value, out double years)) return NumberError;
+            return SimpleInterest(capital, rate, years);
+        }
+        var compound = Regex.Match(text, @"^procent skladany[:\s]+(\d+[.,]?\d*)\s+(\d+[.,]?\d*)\s+(\d+[.,]?\d*)$");
+        if (compound.Success)
+        {
+            if (!TryNumber(compound.Groups[1].Value, out double capital) || !TryNumber(compound.Groups[2].Value, out double rate) || !TryNumber(compound.Groups[3].Value, out double years)) return NumberError;
+            return CompoundInterest(capital, rate, years);
         }
 
         // --- unit conversion ---
@@ -136,6 +168,9 @@ public static class UtilityToolbox
         if (divisors.Success) return Divisors(int.Parse(divisors.Groups[1].Value));
         var fib = Regex.Match(text, @"^fibonacci[:\s]+(\d{1,3})$");
         if (fib.Success) return Fibonacci(int.Parse(fib.Groups[1].Value));
+        // 0.94: „srednia wazona” musi wyprzedzić ogólny wzorzec „srednia: …”.
+        var weighted = Regex.Match(text, @"^srednia wazona[:\s]+(.+)$");
+        if (weighted.Success) return WeightedAverage(Argument(raw, "srednia wazona"));
         var stats = Regex.Match(text, @"^(srednia|mediana|suma|min|max)[:\s]+(.+)$");
         if (stats.Success) return Stats(stats.Groups[1].Value, Argument(raw, stats.Groups[1].Value));
         var round = Regex.Match(text, @"^zaokraglij[:\s]+(-?\d+[.,]?\d*)\s+do\s+(\d)(?:\s+miejsc(?:a|ow)?(?:\s+po\s+przecinku)?)?$");
@@ -190,8 +225,150 @@ public static class UtilityToolbox
         if (workdays.Success) return Workdays(workdays.Groups[1].Value, workdays.Groups[2].Value);
         var easter = Regex.Match(text, @"^wielkanoc[:\s]+(\d{4})$");
         if (easter.Success) return Easter(int.Parse(easter.Groups[1].Value));
+        // 0.94: „czas w strefie UTC+2” musi wyprzedzić zegary świata („czas w …”).
+        var zoneClock = Regex.Match(text, @"^czas w strefie\s+([+-]?\d{1,2}(?::?\d{2})?|utc[+-]?\d{1,2}(?::?\d{2})?)$");
+        if (zoneClock.Success) return OffsetClock(zoneClock.Groups[1].Value);
         var clock = Regex.Match(text, @"^czas w[:\s]+(.+)$");
         if (clock.Success) return WorldClock(text[^clock.Groups[1].Length..].Trim());
+
+        // --- 0.94 · math beyond the calculator ---
+        var logarithm = Regex.Match(text, @"^log(?:arytm)?[:\s]+(\d+[.,]?\d*)(?:\s+(?:do|o|podstawie)?\s*(\d+[.,]?\d*))?$");
+        if (logarithm.Success) return Logarithm(logarithm.Groups[1].Value, logarithm.Groups[2].Success ? logarithm.Groups[2].Value : "10");
+        var power = Regex.Match(text, @"^potega[:\s]+(-?\d+[.,]?\d*)\s+(?:do\s+)?(-?\d+[.,]?\d*)$");
+        if (power.Success) return Power(power.Groups[1].Value, power.Groups[2].Value);
+        var modulo = Regex.Match(text, @"^(?:modulo|reszta z dzielenia)[:\s]+(-?\d+[.,]?\d*)\s+(?:przez\s+|na\s+)?(-?\d+[.,]?\d*)$");
+        if (modulo.Success) return Modulo(modulo.Groups[1].Value, modulo.Groups[2].Value);
+        var absolute = Regex.Match(text, @"^(?:abs|wartosc bezwzgledna)[:\s]+(-?\d+[.,]?\d*)$");
+        if (absolute.Success) return Absolute(absolute.Groups[1].Value);
+        var trig = Regex.Match(text, @"^(?:sin|cos|tan|sinus|cosinus|tangens)[:\s]+(-?\d+[.,]?\d*)$");
+        if (trig.Success) return Trig(trig.Groups[1].Value, text.Split(' ', ':')[0]);
+        var quadratic = Regex.Match(text, @"^rownanie(?: kwadratowe)?[:\s]+(-?\d+[.,]?\d*)\s+(-?\d+[.,]?\d*)\s+(-?\d+[.,]?\d*)$");
+        if (quadratic.Success) return Quadratic(quadratic.Groups[1].Value, quadratic.Groups[2].Value, quadratic.Groups[3].Value);
+
+        // --- 0.94 · dates and calendar ---
+        var calendar = Regex.Match(text, @"^kalendarz(?:[:\s]+(\d{1,2})\s+(\d{4}))?$");
+        if (calendar.Success) return MonthCalendar(calendar.Groups[1].Success ? int.Parse(calendar.Groups[1].Value) : DateTime.Today.Month, calendar.Groups[2].Success ? int.Parse(calendar.Groups[2].Value) : DateTime.Today.Year);
+        var dateMath = Regex.Match(text, @"^(?:dodaj|odejmij)\s+(\d{1,4})\s+(dni|tygodni|miesiecy|miesiace|lat|godzin|minut)(?:\s+(?:do|od))\s+(\d{1,2}[.\-/]\d{1,2}(?:[.\-/]\d{2,4})?)$");
+        if (dateMath.Success) return DateMath(text.StartsWith("dodaj", StringComparison.Ordinal), dateMath.Groups[1].Value, dateMath.Groups[2].Value, dateMath.Groups[3].Value);
+        var between = Regex.Match(text, @"^ile dni miedzy\s+(\d{1,2}[.\-/]\d{1,2}(?:[.\-/]\d{2,4})?)\s+(?:a|i)\s+(\d{1,2}[.\-/]\d{1,2}(?:[.\-/]\d{2,4})?)$");
+        if (between.Success) return DaysBetweenDates(between.Groups[1].Value, between.Groups[2].Value);
+        var leap = Regex.Match(text, @"^(?:czy )?(?:rok )?przestepny[:\s]+(\d{4})$");
+        if (leap.Success) return LeapYear(int.Parse(leap.Groups[1].Value));
+        if (text is "ile dni do konca kwartalu" or "ile dni zostalo do konca kwartalu" or "ile dni do konca tego kwartalu")
+        {
+            int q = (DateTime.Today.Month - 1) / 3;
+            int lastMonth = q * 3 + 3;
+            var qEnd = new DateTime(DateTime.Today.Year, lastMonth, DateTime.DaysInMonth(DateTime.Today.Year, lastMonth));
+            int left = Math.Max(0, (qEnd.Date - DateTime.Today.Date).Days);
+            return "Do końca kwartalu: " + left.ToString(Pl) + " dni\n" + QuarterOf(DateTime.Today.ToString("dd.MM.yyyy", Pl));
+        }
+        var quarter = Regex.Match(text, @"^kwartal[:\s]+(\d{1,2}[.\-/]\d{1,2}(?:[.\-/]\d{2,4})?)$");
+        if (quarter.Success) return QuarterOf(quarter.Groups[1].Value);
+
+        // --- 0.94 · validators and codes (local checks only) ---
+        var ean = Regex.Match(text, @"^ean[:\s]+(\d{8,13})$");
+        if (ean.Success) return Ean(ean.Groups[1].Value);
+        if (text.StartsWith("ean", StringComparison.Ordinal)) return "EAN musi mieć 8, 12 lub 13 cyfr, np. „ean: 5901234123457”. Sprawdzam lokalnie — nic nie wysyłam.";
+        var isbn = Regex.Match(text, @"^isbn[:\s]+([0-9xX \-]{10,20})$");
+        if (isbn.Success) return Isbn(isbn.Groups[1].Value);
+        if (text.StartsWith("isbn", StringComparison.Ordinal)) return "ISBN-10 albo ISBN-13, np. „isbn: 9788371978586”. Sprawdzam lokalnie.";
+        var luhn = Regex.Match(text, @"^(?:luhn|karta platnicza)[:\s]+(\d{12,19})$");
+        if (luhn.Success) return Luhn(luhn.Groups[1].Value);
+        var regon = Regex.Match(text, @"^regon[:\s]+(\d{9}|\d{14})$");
+        if (regon.Success) return Regon(regon.Groups[1].Value);
+        if (text.StartsWith("regon", StringComparison.Ordinal)) return "REGON ma 9 albo 14 cyfr, np. „regon: 123456785”. Sprawdzam lokalnie.";
+
+        // --- 0.94 · text extras ---
+        var spell = Regex.Match(text, @"^literuj[:\s]+(.+)$");
+        if (spell.Success) return SpellOut(Argument(raw, "literuj"));
+        var frequency = Regex.Match(text, @"^(?:powtorzenia slow|czestotliwosc slow|powtorzenia|czestotliwosc)[:\s]+(.+)$");
+        if (frequency.Success) return WordFrequency(Argument(raw, "powtorzenia slow", "czestotliwosc slow", "powtorzenia", "czestotliwosc"));
+        var scrabble = Regex.Match(text, @"^(?:skrable|scrabble|punkty scrabble)[:\s]+(.+)$");
+        if (scrabble.Success) return Scrabble(Argument(raw, "skrable", "punkty scrabble"));
+        var sortWords = Regex.Match(text, @"^posortuj slowa[:\s]+(.+)$");
+        if (sortWords.Success) return SortWords(Argument(raw, "posortuj slowa"));
+        var distinct = Regex.Match(text, @"^bez powtorzen[:\s]+(.+)$");
+        if (distinct.Success) return DistinctWords(Argument(raw, "bez powtorzen"));
+        var reverseWords = Regex.Match(text, @"^odwroc slowa[:\s]+(.+)$");
+        if (reverseWords.Success) return ReverseWords(Argument(raw, "odwroc slowa"));
+        var onlyDigits = Regex.Match(text, @"^tylko cyfry[:\s]+(.+)$");
+        if (onlyDigits.Success) return OnlyDigits(Argument(raw, "tylko cyfry"));
+        var onlyLetters = Regex.Match(text, @"^tylko litery[:\s]+(.+)$");
+        if (onlyLetters.Success) return OnlyLetters(Argument(raw, "tylko litery"));
+        if (text is "cytat" or "losowy cytat") return Quote();
+
+        // --- 0.94 · system extras ---
+        if (text is "nazwa uzytkownika" or "kto jest uzytkownikiem") return "Użytkownik: " + Environment.UserName;
+        if (text is "rozdzielczosc ekranu" or "jak duzy jest ekran") return ScreenResolution();
+        if (text is "bateria" or "stan baterii" or "jak bateria") return BatteryStatus();
+        if (text is "strefa czasu" or "jaka strefa czasu") return TimeZoneInfo.Local.DisplayName + " · UTC" + TimeZoneInfo.Local.GetUtcOffset(DateTime.Now).ToString(@"\-hh\:mm");
+        if (text is "czas utc" or "czas w utc") return "UTC: " + DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss", Pl);
+        if (text is "nazwa uzytkownika" or "nazwa użytkownika" or "jakie konto" or "kto zalogowany") return "Użytkownik systemu: " + Environment.UserName;
+
+        // --- 0.95 · Jarvis: głośność, schowek, zrzut ekranu (wszystko z uczciwym fallbackiem) ---
+        var volumeSet = Regex.Match(text, @"^(?:ustaw\s+)?glosnosc(?:\s+na)?[:\s]+(\d{1,3})$");
+        if (volumeSet.Success)
+        {
+            if (!int.TryParse(volumeSet.Groups[1].Value, out int percent) || percent is < 0 or > 100)
+                return "Głośność podaj w procentach 0–100, np. „głośność 40”.";
+            bool? ok = Core.AudioVolume.SetVolumePercent(percent);
+            return ok == null ? "Sterowanie głośnością jest niedostępne na tym systemie (brak domyślnego urządzenia audio)."
+                : ok == false ? "Głośność musi być w zakresie 0–100."
+                : "Głośność ustawiona na " + percent + "%.";
+        }
+        if (text is "wycisz" or "wycisz dzwiek" or "wycisz dzwięk" or "bez dzwieku" or "bez dzwięku")
+        {
+            bool? ok = Core.AudioVolume.SetMuted(true);
+            return ok == true ? "Dźwięk wyciszony." : ok == false ? "Nie udało się wyciszyć dźwięku." : "Sterowanie dźwiękiem jest niedostępne na tym systemie.";
+        }
+        if (text is "przywroc dzwiek" or "przywróć dźwięk" or "wlacz dzwiek" or "włącz dźwięk" or "odwolaj wyciszenie" or "unmute")
+        {
+            bool? ok = Core.AudioVolume.SetMuted(false);
+            return ok == true ? "Dźwięk przywrócony." : ok == false ? "Nie udało się przywrócić dźwięku." : "Sterowanie dźwiękiem jest niedostępne na tym systemie.";
+        }
+        if (text is "glosnosc" or "glosność" or "jaka glosnosc" or "jaka głośność" or "poziom glosnosci" or "poziom dzwieku" or "jak glosno")
+        {
+            int? volume = Core.AudioVolume.GetVolumePercent();
+            bool? muted = Core.AudioVolume.IsMuted();
+            return volume == null
+                ? "Nie udało się odczytać głośności na tym systemie (brak domyślnego urządzenia audio)."
+                : "Głośność: " + volume + "%" + (muted == true ? " · WYCISZONE" : muted == false ? " · dźwięk gra" : "") + ".";
+        }
+        var clipboardSet = Regex.Match(text, @"^(?:kopiuj|skopiuj)(?:\s+do\s+schowka)?[:\s]+(.+)$");
+        if (clipboardSet.Success)
+        {
+            string payload = Argument(raw, "kopiuj do schowka", "skopiuj do schowka", "kopiuj", "skopiuj");
+            if (payload.Length == 0) return "Podaj tekst do skopiowania, np. „kopiuj: spotkanie o 15:00”.";
+            try { System.Windows.Clipboard.SetText(payload); return "Skopiowane do schowka (" + payload.Length + " znaków)."; }
+            catch (Exception ex) when (ex is System.Runtime.InteropServices.ExternalException or InvalidOperationException)
+            { return "Schowek jest niedostępny w tej sesji — spróbuj ponownie."; }
+        }
+        if (text is "co w schowku" or "schowek" or "pokaz schowek" or "zawartosc schowka" or "zawartość schowka")
+        {
+            try
+            {
+                if (!System.Windows.Clipboard.ContainsText()) return "Schowek jest pusty.";
+                string clip = System.Windows.Clipboard.GetText();
+                string preview = clip.Length > 200 ? clip[..199] + "…" : clip;
+                return "Schowek (" + clip.Length + " znaków):\n" + preview;
+            }
+            catch (Exception ex) when (ex is System.Runtime.InteropServices.ExternalException or InvalidOperationException)
+            { return "Schowek jest niedostępny w tej sesji."; }
+        }
+        if (text is "zrzut ekranu" or "screenshot" or "zrob zrzut ekranu" or "zrób zrzut ekranu" or "zrzut ekranu zapisz" or "zrzut pelnego ekranu" or "zrzut pełnego ekranu")
+        {
+            var capture = Core.ScreenCapture.CaptureVirtualScreen();
+            if (capture == null) return "Nie udało się wykonać zrzutu ekranu w tej sesji (brak dostępu do pulpitu).";
+            long bytes = 0;
+            try { bytes = new FileInfo(capture.Value.Path).Length; } catch (IOException) { }
+            return "Zrzut ekranu zapisany: " + capture.Value.Path + " (" + capture.Value.Width + "×" + capture.Value.Height +
+                ", " + (bytes / 1024.0).ToString("0.0", Pl) + " kB).";
+        }
+
+        // --- 0.94 · randomness: NdM dice, playing card ---
+        var polyhedral = Regex.Match(text, @"^(?:kostka\s+|rzuc kostk(?:a|ami|e)\s+|rzuc\s+|losuj\s+)?(\d{1,2})[dk](\d{1,2})$");
+        if (polyhedral.Success) return RollPoly(int.Parse(polyhedral.Groups[1].Value), int.Parse(polyhedral.Groups[2].Value));
+        if (text is "wylosuj karte" or "losowa karta" or "wylosuj karte do gry") return PlayingCard();
 
         // --- arithmetic (last: it is the most generic pattern) ---
         var calc = Regex.Match(text, @"^(?:policz|kalkulator|ile to|oblicz)[:\s]+(.+)$");
@@ -200,6 +377,24 @@ public static class UtilityToolbox
     }
 
     private const string NumberError = "Nie rozpoznałem liczb. Użyj cyfr, np. „policz 12,5 * 4” albo „przelicz 5 km na mile”.";
+
+    /// <summary>0.95 · czas trwania po polsku dla timerów: „5 minut”, „30 sekund”, „1 godzina”, „2 h”.
+    /// Zwraca także ludzki opis („5 minut”) do potwierdzenia.</summary>
+    public static bool TryParseDuration(string text, out TimeSpan span, out string description)
+    {
+        span = default;
+        description = "";
+        var match = Regex.Match((text ?? "").Trim().ToLowerInvariant(),
+            @"^(\d{1,4})\s*(sekundy|sekund|sekunde|sek|s|minuty|minut|min|m|godziny|godzin|godzine|godz|h)$");
+        if (!match.Success) return false;
+        if (!int.TryParse(match.Groups[1].Value, out int value) || value <= 0 || value > 10000) return false;
+        string unit = match.Groups[2].Value;
+        span = unit.StartsWith("s", StringComparison.Ordinal) ? TimeSpan.FromSeconds(value)
+            : unit.StartsWith("m", StringComparison.Ordinal) ? TimeSpan.FromMinutes(value)
+            : TimeSpan.FromHours(value);
+        description = value + " " + unit;
+        return true;
+    }
 
     /// <summary>Cuts the argument out of the user's original text, so casing and Polish characters survive.
     /// Falls back to the normalized match when the prefix cannot be located.</summary>
@@ -641,23 +836,48 @@ public static class UtilityToolbox
         return "Dni robocze: " + work + " (dni razem: " + total + ", weekendy: " + (total - work) + ").\nŚwięta nie są odejmowane — liczę tylko poniedziałki–piątki.";
     }
 
-    /// <summary>Local time in a fixed set of world cities. Offline: uses the operating system's timezone data.</summary>
+    /// <summary>Local time in a fixed set of world cities. Offline: uses the operating system's timezone data.
+    /// 0.94: more cities plus Polish locative forms („czas w londynie”).</summary>
     public static string WorldClock(string city)
     {
         Dictionary<string, (string Zone, string Name)> zones = new(StringComparer.OrdinalIgnoreCase)
         {
-            ["tokio"] = ("Tokyo Standard Time", "Tokio"),
-            ["londyn"] = ("GMT Standard Time", "Londyn"),
-            ["berlin"] = ("W. Europe Standard Time", "Berlin"),
-            ["paryz"] = ("Romance Standard Time", "Paryż"),
-            ["nowy jork"] = ("Eastern Standard Time", "Nowy Jork"),
+            ["tokio"] = ("Tokyo Standard Time", "Tokio"), ["toki"] = ("Tokyo Standard Time", "Tokio"),
+            ["londyn"] = ("GMT Standard Time", "Londyn"), ["londynie"] = ("GMT Standard Time", "Londyn"),
+            ["berlin"] = ("W. Europe Standard Time", "Berlin"), ["berlinie"] = ("W. Europe Standard Time", "Berlin"),
+            ["paryz"] = ("Romance Standard Time", "Paryż"), ["paryzu"] = ("Romance Standard Time", "Paryż"),
+            ["nowy jork"] = ("Eastern Standard Time", "Nowy Jork"), ["nowym jorku"] = ("Eastern Standard Time", "Nowy Jork"),
             ["chicago"] = ("Central Standard Time", "Chicago"),
             ["los angeles"] = ("Pacific Standard Time", "Los Angeles"),
-            ["seoul"] = ("Korea Standard Time", "Seul"),
+            ["seoul"] = ("Korea Standard Time", "Seul"), ["seulu"] = ("Korea Standard Time", "Seul"),
+            ["madryt"] = ("Romance Standard Time", "Madryt"), ["madrycie"] = ("Romance Standard Time", "Madryt"),
+            ["rzym"] = ("W. Europe Standard Time", "Rzym"), ["rzymie"] = ("W. Europe Standard Time", "Rzym"),
+            ["moskwa"] = ("Russian Standard Time", "Moskwa"), ["moskwie"] = ("Russian Standard Time", "Moskwa"),
+            ["sydney"] = ("AUS Eastern Standard Time", "Sydney"),
+            ["dubaj"] = ("Arabian Standard Time", "Dubaj"), ["dubaju"] = ("Arabian Standard Time", "Dubaj"),
+            ["delhi"] = ("India Standard Time", "Delhi"),
+            ["mumbaj"] = ("India Standard Time", "Mumbaj"), ["mumbaju"] = ("India Standard Time", "Mumbaj"),
+            ["toronto"] = ("Eastern Standard Time", "Toronto"),
+            ["meksyk"] = ("Central Standard Time (Mexico)", "Meksyk"), ["meksyku"] = ("Central Standard Time (Mexico)", "Meksyk"),
+            ["warszawa"] = ("Central European Standard Time", "Warszawa"), ["warszawie"] = ("Central European Standard Time", "Warszawa"),
+            ["krakow"] = ("Central European Standard Time", "Kraków"), ["krakowie"] = ("Central European Standard Time", "Kraków"),
+            ["gdansk"] = ("Central European Standard Time", "Gdańsk"), ["gdansku"] = ("Central European Standard Time", "Gdańsk"),
+            ["wroclaw"] = ("Central European Standard Time", "Wrocław"), ["wroclawiu"] = ("Central European Standard Time", "Wrocław"),
+            ["poznan"] = ("Central European Standard Time", "Poznań"), ["poznaniu"] = ("Central European Standard Time", "Poznań"),
+            ["lodz"] = ("Central European Standard Time", "Łódź"), ["lodzi"] = ("Central European Standard Time", "Łódź"),
+            ["zakopane"] = ("Central European Standard Time", "Zakopane"),
+            ["wieden"] = ("W. Europe Standard Time", "Wiedeń"), ["wiedniu"] = ("W. Europe Standard Time", "Wiedeń"),
+            ["budapeszt"] = ("Central European Standard Time", "Budapeszt"), ["budapeszcie"] = ("Central European Standard Time", "Budapeszt"),
+            ["ateny"] = ("GTB Standard Time", "Ateny"), ["atenach"] = ("GTB Standard Time", "Ateny"),
+            ["amsterdam"] = ("W. Europe Standard Time", "Amsterdam"), ["amsterdamie"] = ("W. Europe Standard Time", "Amsterdam"),
+            ["sztokholm"] = ("W. Europe Standard Time", "Sztokholm"), ["sztokholmie"] = ("W. Europe Standard Time", "Sztokholm"),
+            ["oslo"] = ("W. Europe Standard Time", "Oslo"),
+            ["kopenhaga"] = ("Romance Standard Time", "Kopenhaga"), ["kopenhadze"] = ("Romance Standard Time", "Kopenhaga"),
+            ["helsinki"] = ("FLE Standard Time", "Helsinki"), ["helsinkach"] = ("FLE Standard Time", "Helsinki"),
         };
         string key = (city ?? "").Trim();
         if (!zones.TryGetValue(key, out var zone))
-            return "Nie znam tego miasta. Znam: " + string.Join(", ", zones.Values.Select(x => x.Name.ToLower(Pl))) + ".\nCzas lokalny: " + DateTime.Now.ToString("HH:mm", Pl) + ".";
+            return "Nie znam tego miasta. Znam: " + string.Join(", ", zones.Values.Select(x => x.Name.ToLower(Pl)).Distinct().OrderBy(x => x, StringComparer.Ordinal)) + ".\nCzas lokalny: " + DateTime.Now.ToString("HH:mm", Pl) + ".";
         try
         {
             var tz = TimeZoneInfo.FindSystemTimeZoneById(zone.Zone);
@@ -1004,5 +1224,488 @@ public static class UtilityToolbox
         var builder = new StringBuilder();
         for (int i = 0; i < digits; i++) builder.Append(RandomNumberGenerator.GetInt32(0, 10));
         return "PIN (" + digits + " cyfr): " + builder + " · wygenerowany lokalnie, nigdzie nie zapisany.";
+    }
+
+    // ============================== 0.94 · finanse i zakupy ==============================
+    public static string Vat(double amount, double ratePercent, bool gross)
+    {
+        double factor = 1 + ratePercent / 100d;
+        double net = gross ? amount / factor : amount;
+        double total = gross ? amount : amount * factor;
+        return "VAT " + ratePercent.ToString("0.##", Pl) + "% · netto " + net.ToString("0.00", Pl) + " zł · VAT " +
+            (total - net).ToString("0.00", Pl) + " zł · brutto " + total.ToString("0.00", Pl) + " zł\n" +
+            "Liczę lokalnie z podanej stawki — kursy walut i przepisy sprawdzaj w aktualnych źródłach.";
+    }
+
+    public static string Discount(double price, double percent)
+    {
+        if (percent is < 0 or > 100) return "Zniżka musi być z zakresu 0–100%.";
+        double off = price * percent / 100d;
+        return percent.ToString("0.##", Pl) + "% z " + price.ToString("0.00", Pl) + " zł = " + off.ToString("0.00", Pl) +
+            " zł · cena po zniżce: " + (price - off).ToString("0.00", Pl) + " zł.";
+    }
+
+    public static string Tip(double bill, double percent)
+    {
+        if (percent is < 0 or > 1000) return "Napiwek podaj w procentach (0–1000).";
+        double tipAmount = bill * percent / 100d;
+        return "Napiwek " + percent.ToString("0.##", Pl) + "% od " + bill.ToString("0.00", Pl) + " zł = " +
+            tipAmount.ToString("0.00", Pl) + " zł · razem: " + (bill + tipAmount).ToString("0.00", Pl) + " zł.";
+    }
+
+    public static string Loan(double principal, double annualRatePercent, double years)
+    {
+        if (principal <= 0 || years <= 0) return "Kwota i liczba lat muszą być dodatnie.";
+        if (annualRatePercent < 0) return "Oprocentowanie nie może być ujemne.";
+        int months = (int)Math.Round(years * 12);
+        if (months is < 1 or > 720) return "Okres kredytu liczę od 1 miesiąca do 60 lat.";
+        double monthly = annualRatePercent / 100d / 12d;
+        double installment = monthly == 0
+            ? principal / months
+            : principal * monthly / (1 - Math.Pow(1 + monthly, -months));
+        double total = installment * months;
+        return "Rata równa: " + installment.ToString("0.00", Pl) + " zł/mies. (" + months + " rat) · razem: " +
+            total.ToString("0.00", Pl) + " zł · odsetki: " + (total - principal).ToString("0.00", Pl) + " zł.\n" +
+            "To symulacja matematyczna raty równej — nie oferta banku (bez prowizji, ubezpieczeń i zmiennej stopy).";
+    }
+
+    public static string SimpleInterest(double capital, double annualRatePercent, double years)
+    {
+        if (capital <= 0 || years < 0) return "Kapitał musi być dodatni, a lata nieujemne.";
+        double interest = capital * annualRatePercent / 100d * years;
+        return "Odsetki proste: " + interest.ToString("0.00", Pl) + " zł · razem: " + (capital + interest).ToString("0.00", Pl) +
+            " zł (" + capital.ToString("0.##", Pl) + " zł × " + annualRatePercent.ToString("0.##", Pl) + "% × " + years.ToString("0.##", Pl) + " lat).";
+    }
+
+    public static string CompoundInterest(double capital, double annualRatePercent, double years)
+    {
+        if (capital <= 0 || years < 0) return "Kapitał musi być dodatni, a lata nieujemne.";
+        double total = capital * Math.Pow(1 + annualRatePercent / 100d, years);
+        return "Procent składany (kapitalizacja roczna): " + total.ToString("0.00", Pl) + " zł po " +
+            years.ToString("0.##", Pl) + " latach · zysk: " + (total - capital).ToString("0.00", Pl) + " zł.";
+    }
+
+    // ============================== 0.94 · matematyka ==============================
+    public static string Logarithm(string valueText, string baseText)
+    {
+        if (!TryNumber(valueText, out double value) || !TryNumber(baseText, out double basis)) return NumberError;
+        if (value <= 0) return "Logarytm liczę z liczby dodatniej.";
+        if (basis <= 0 || basis == 1) return "Podstawa logarytmu musi być dodatnia i różna od 1.";
+        return "log" + Format(basis) + "(" + Format(value) + ") = " + Format(Math.Log(value, basis));
+    }
+
+    public static string Power(string baseText, string exponentText)
+    {
+        if (!TryNumber(baseText, out double basis) || !TryNumber(exponentText, out double exponent)) return NumberError;
+        double result = Math.Pow(basis, exponent);
+        if (!double.IsFinite(result)) return "Wynik nie jest skończoną liczbą.";
+        return Format(basis) + "^" + Format(exponent) + " = " + Format(result);
+    }
+
+    public static string Modulo(string aText, string bText)
+    {
+        if (!TryNumber(aText, out double a) || !TryNumber(bText, out double b)) return NumberError;
+        if (b == 0) return "Nie dzielę przez zero.";
+        return Format(a) + " mod " + Format(b) + " = " + Format(a % b);
+    }
+
+    public static string Absolute(string text)
+    {
+        if (!TryNumber(text, out double value)) return NumberError;
+        return "| " + Format(value) + " | = " + Format(Math.Abs(value));
+    }
+
+    public static string Trig(string degreesText, string function)
+    {
+        if (!TryNumber(degreesText, out double degrees)) return NumberError;
+        double radians = degrees * Math.PI / 180d;
+        double value = function switch
+        {
+            "sin" or "sinus" => Math.Sin(radians),
+            "cos" or "cosinus" => Math.Cos(radians),
+            _ => Math.Tan(radians)
+        };
+        if (!double.IsFinite(value)) return "Tangens dla tego kąta nie istnieje (90° + k·180°).";
+        string name = function switch { "sin" or "sinus" => "sin", "cos" or "cosinus" => "cos", _ => "tan" };
+        return name + "(" + Format(degrees) + "°) = " + Format(value);
+    }
+
+    public static string WeightedAverage(string list)
+    {
+        string[] pieces = list.Split(new[] { ',', ';', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+        double sumWeighted = 0, sumWeights = 0;
+        int pairs = 0;
+        foreach (string piece in pieces)
+        {
+            string[] numbers = piece.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            if (numbers.Length != 2 || !TryNumber(numbers[0], out double value) || !TryNumber(numbers[1], out double weight))
+                return "Podaj pary „wartość waga”, np. „srednia wazona: 4 2, 5 1” — 4 z wagą 2 i 5 z wagą 1.";
+            if (weight < 0) return "Wagi nie mogą być ujemne.";
+            sumWeighted += value * weight;
+            sumWeights += weight;
+            pairs++;
+        }
+        if (pairs == 0 || sumWeights == 0) return "Suma wag musi być większa od zera.";
+        return "Średnia ważona (" + pairs + " pary) = " + Format(sumWeighted / sumWeights);
+    }
+
+    public static string Quadratic(string aText, string bText, string cText)
+    {
+        if (!TryNumber(aText, out double a) || !TryNumber(bText, out double b) || !TryNumber(cText, out double c)) return NumberError;
+        if (a == 0) return "Współczynnik przy x² musi być różny od zera — to nie jest równanie kwadratowe.";
+        double delta = b * b - 4 * a * c;
+        if (delta < 0) return "Równanie " + Format(a) + "x² + " + Format(b) + "x + " + Format(c) + " = 0 · delta = " + Format(delta) + " — brak rozwiązań w liczbach rzeczywistych.";
+        if (delta == 0)
+        {
+            double x = -b / (2 * a);
+            return "Równanie " + Format(a) + "x² + " + Format(b) + "x + " + Format(c) + " = 0 · delta = 0 · jedno rozwiązanie: x = " + Format(x);
+        }
+        double root = Math.Sqrt(delta);
+        double x1 = (-b - root) / (2 * a), x2 = (-b + root) / (2 * a);
+        return "Równanie " + Format(a) + "x² + " + Format(b) + "x + " + Format(c) + " = 0 · delta = " + Format(delta) +
+            " · x₁ = " + Format(x1) + ", x₂ = " + Format(x2);
+    }
+
+    // ============================== 0.94 · kalendarz ==============================
+    public static string MonthCalendar(int month, int year)
+    {
+        if (month is < 1 or > 12 || year is < 1600 or > 3000) return "Podaj miesiąc 1–12 i rok 1600–3000, np. „kalendarz 9 2026”.";
+        var first = new DateTime(year, month, 1);
+        int days = DateTime.DaysInMonth(year, month);
+        var header = "KALENDARZ · " + first.ToString("MMMM yyyy", Pl);
+        var grid = new System.Text.StringBuilder();
+        grid.AppendLine("Pn   Wt   Śr   Cz   Pt   So   Nd");
+        int column = ((int)first.DayOfWeek + 6) % 7; // poniedziałek = 0
+        grid.Append(new string(' ', column * 5));
+        for (int day = 1; day <= days; day++)
+        {
+            grid.Append(day.ToString(Pl).PadLeft(2) + "   ");
+            column++;
+            if (column == 7) { grid.AppendLine(); column = 0; }
+        }
+        return header + "\n" + grid.ToString().TrimEnd() + "\nDni w miesiącu: " + days + " · dziś: " + DateTime.Today.ToString("d.MM.yyyy", Pl);
+    }
+
+    public static string DateMath(bool add, string amountText, string unit, string dateText)
+    {
+        if (!int.TryParse(amountText, out int amount) || amount < 0) return NumberError;
+        if (!TryDate(dateText, out DateTime date)) return "Nie rozpoznałem daty „" + dateText + "”. Użyj np. 24.12.2026.";
+        string unitName;
+        DateTime result = unit switch
+        {
+            "dni" => add ? date.AddDays(amount) : date.AddDays(-amount),
+            "tygodni" => add ? date.AddDays(7d * amount) : date.AddDays(-7d * amount),
+            "miesiecy" or "miesiace" => add ? date.AddMonths(amount) : date.AddMonths(-amount),
+            "lat" => add ? date.AddYears(amount) : date.AddYears(-amount),
+            "godzin" => add ? date.AddHours(amount) : date.AddHours(-amount),
+            _ => add ? date.AddMinutes(amount) : date.AddMinutes(-amount)
+        };
+        unitName = unit switch { "dni" => "dni", "tygodni" => "tygodni", "miesiecy" or "miesiace" => "miesięcy", "lat" => "lat", "godzin" => "godzin", _ => "minut" };
+        return (add ? "Data + " : "Data − ") + amount + " " + unitName + ": " + date.ToString("d.MM.yyyy", Pl) + " → " + result.ToString("d.MM.yyyy (dddd)", Pl);
+    }
+
+    public static string DaysBetweenDates(string fromText, string toText)
+    {
+        if (!TryDate(fromText, out DateTime a) || !TryDate(toText, out DateTime b)) return "Nie rozpoznałem jednej z dat. Użyj np. 1.1.2024 i 1.1.2025.";
+        int days = Math.Abs((b.Date - a.Date).Days);
+        return "Między " + a.ToString("d.MM.yyyy", Pl) + " a " + b.ToString("d.MM.yyyy", Pl) + " jest " + days + " dni (" +
+            (days / 7) + " tyg. i " + (days % 7) + " dni).";
+    }
+
+    public static string LeapYear(int year)
+    {
+        bool leap = DateTime.IsLeapYear(year);
+        return "Rok " + year + (leap ? " JEST przestępny (366 dni)." : " NIE jest przestępny (365 dni).");
+    }
+
+    public static string QuarterOf(string dateText)
+    {
+        if (!TryDate(dateText, out DateTime date)) return "Nie rozpoznałem daty „" + dateText + "”.";
+        int quarter = (date.Month - 1) / 3 + 1;
+        int startMonth = (quarter - 1) * 3 + 1;
+        var start = new DateTime(date.Year, startMonth, 1);
+        var end = new DateTime(date.Year, startMonth + 2, 1).AddMonths(1).AddDays(-1);
+        return date.ToString("d.MM.yyyy", Pl) + " → " + quarter + " kwartał " + date.Year + " (" + start.ToString("d.MM", Pl) + "–" + end.ToString("d.MM", Pl) + ").";
+    }
+
+    // ============================== 0.94 · walidatory (lokalnie) ==============================
+    public static string Ean(string digits)
+    {
+        if (digits.Length != 8 && digits.Length != 12 && digits.Length != 13)
+            return "EAN-8, EAN-12 (UPC) albo EAN-13 — podaj odpowiednio 8, 12 albo 13 cyfr.";
+        // From the right: data digits alternate weights 3,1,3,1…; the last digit is the check digit.
+        int sum = 0;
+        for (int i = 0; i < digits.Length - 1; i++)
+        {
+            int digit = digits[digits.Length - 2 - i] - '0';
+            sum += digit * (i % 2 == 0 ? 3 : 1);
+        }
+        int expected = (10 - sum % 10) % 10;
+        int actual = digits[^1] - '0';
+        return actual == expected
+            ? "EAN " + digits + " jest POPRAWNY (cyfra kontrolna " + expected + " zgadza się). Sprawdzone lokalnie."
+            : "EAN " + digits + " jest NIEPOPRAWNY — cyfra kontrolna powinna wynosić " + expected + ", a jest " + actual + ".";
+    }
+
+    public static string Isbn(string text)
+    {
+        string digits = text.Replace("-", "").Replace(" ", "").Trim().ToLowerInvariant();
+        if (digits.Length == 10 && digits.All(c => char.IsDigit(c) || c == 'x'))
+        {
+            int sum = 0;
+            for (int i = 0; i < 10; i++)
+            {
+                int value = digits[i] == 'x' ? 10 : digits[i] - '0';
+                sum += value * (10 - i);
+            }
+            return sum % 11 == 0
+                ? "ISBN-10 " + digits + " jest POPRAWNY (suma ważona ≡ 0 mod 11)."
+                : "ISBN-10 " + digits + " jest NIEPOPRAWNY (suma ważona " + sum + " nie jest podzielna przez 11).";
+        }
+        if (digits.Length == 13 && digits.All(char.IsDigit))
+        {
+            int sum = 0;
+            for (int i = 0; i < 13; i++) sum += (digits[i] - '0') * (i % 2 == 0 ? 1 : 3);
+            return sum % 10 == 0
+                ? "ISBN-13 " + digits + " jest POPRAWNY (suma ≡ 0 mod 10)."
+                : "ISBN-13 " + digits + " jest NIEPOPRAWNY (suma " + sum + " nie jest podzielna przez 10).";
+        }
+        return "ISBN-10 ma 10 znaków (cyfry lub X), ISBN-13 ma 13 cyfr — po myślnikach i spacjach.";
+    }
+
+    public static string Luhn(string digits)
+    {
+        if (digits.Length is < 12 or > 19 || !digits.All(char.IsDigit)) return "Numer karty (Luhn) ma 12–19 cyfr.";
+        int sum = 0;
+        for (int i = 0; i < digits.Length; i++)
+        {
+            int digit = digits[digits.Length - 1 - i] - '0';
+            if (i % 2 == 1)
+            {
+                digit *= 2;
+                if (digit > 9) digit -= 9;
+            }
+            sum += digit;
+        }
+        return sum % 10 == 0
+            ? "Numer przechodzi test Luhna (cyfra kontrolna się zgadza). To nie znaczy, że karta istnieje — sprawdzam wyłącznie matematykę."
+            : "Numer NIE przechodzi testu Luhna — cyfra kontrolna się nie zgadza.";
+    }
+
+    public static string Regon(string digits)
+    {
+        if (digits.Length == 9)
+        {
+            int[] weights = [8, 9, 2, 3, 4, 5, 6, 7];
+            int sum = 0;
+            for (int i = 0; i < 8; i++) sum += (digits[i] - '0') * weights[i];
+            int check = sum % 11 % 10;
+            return check == digits[8] - '0'
+                ? "REGON 9-cyfrowy " + digits + " jest POPRAWNY (cyfra kontrolna " + check + ")."
+                : "REGON 9-cyfrowy " + digits + " jest NIEPOPRAWNY — powinna być cyfra " + check + ".";
+        }
+        int[] weights14 = [2, 4, 8, 5, 0, 9, 7, 3, 6, 1, 2, 4, 8];
+        int total = 0;
+        for (int i = 0; i < 13; i++) total += (digits[i] - '0') * weights14[i];
+        int check14 = total % 11 % 10;
+        return check14 == digits[13] - '0'
+            ? "REGON 14-cyfrowy " + digits + " jest POPRAWNY (cyfra kontrolna " + check14 + ")."
+            : "REGON 14-cyfrowy " + digits + " jest NIEPOPRAWNY — powinna być cyfra " + check14 + ".";
+    }
+
+    // ============================== 0.94 · tekst ==============================
+    private static readonly string[] PolishPhonetic =
+    [
+        "Ala", "Barbara", "Cezary", "Dorota", "Ewa", "Franciszek", "Georg", "Henryk", "Irena", "Jan",
+        "Karolina", "Ludwik", "Marek", "Nina", "Ola", "Piotr", "Ryszard", "Stefan", "Tadeusz", "Urszula",
+        "Wanda", "Xawery", "Ypsilon", "Zbigniew"
+    ];
+
+    public static string SpellOut(string text)
+    {
+        if (text.Length == 0) return "Podaj tekst do literowania, np. „literuj: Ala”.";
+        var parts = new List<string>();
+        foreach (char c in text)
+        {
+            if (char.IsLetter(c))
+            {
+                char upper = char.ToUpperInvariant(c);
+                string plainText = PolishTextNormalizer.StripDiacritics(upper.ToString()).Replace('Ł', 'L');
+                char plain = plainText.Length > 0 ? plainText[0] : upper;
+                int index = plain - 'A';
+                if (index >= 0 && index < PolishPhonetic.Length) parts.Add(upper + " jak " + PolishPhonetic[index]);
+                else parts.Add(upper.ToString());
+            }
+            else if (char.IsDigit(c)) parts.Add(c + " jak " + c);
+        }
+        return "Literowanie: " + string.Join(", ", parts);
+    }
+
+    public static string WordFrequency(string text)
+    {
+        var words = Regex.Split(text.ToLowerInvariant(), @"\s+")
+            .Select(w => w.Trim('„', '”', '"', '.', ',', '!', '?', ':', ';'))
+            .Where(w => w.Length > 0).ToArray();
+        if (words.Length == 0) return "Podaj tekst, np. „powtorzenia slow: ala ma kota ala”.";
+        var top = words.GroupBy(w => w).OrderByDescending(g => g.Count()).ThenBy(g => g.Key, StringComparer.Ordinal).Take(8);
+        return "Częstość słów (" + words.Length + " słów, " + words.Distinct().Count() + " różnych):\n" +
+            string.Join("\n", top.Select(g => "· " + g.Key + " — " + g.Count() + "×"));
+    }
+
+    /// <summary>Local points table in the popular Polish Scrabble rules — labelled honestly as a game variant.</summary>
+    private static readonly Dictionary<char, int> ScrabblePoints = new()
+    {
+        ['a'] = 1, ['e'] = 1, ['i'] = 1, ['n'] = 1, ['o'] = 1, ['r'] = 1, ['s'] = 1, ['w'] = 1, ['z'] = 1,
+        ['c'] = 2, ['d'] = 2, ['k'] = 2, ['l'] = 2, ['m'] = 2, ['p'] = 2, ['t'] = 2, ['u'] = 2, ['y'] = 2,
+        ['b'] = 3, ['g'] = 3, ['h'] = 3, ['j'] = 3, ['ł'] = 3,
+        ['ą'] = 5, ['ę'] = 5, ['ś'] = 5, ['ż'] = 5, ['ź'] = 5,
+        ['ć'] = 6, ['ó'] = 6, ['f'] = 6,
+    };
+
+    public static string Scrabble(string text)
+    {
+        string word = text.Trim().ToLowerInvariant();
+        if (word.Length == 0) return "Podaj słowo, np. „skrable: kot”.";
+        int total = 0;
+        var details = new List<string>();
+        foreach (char c in word)
+        {
+            if (!char.IsLetter(c)) continue;
+            int points;
+            if (!ScrabblePoints.TryGetValue(c, out points))
+            {
+                string plainText = PolishTextNormalizer.StripDiacritics(c.ToString()).ToLowerInvariant();
+                char plain = plainText.Length > 0 ? plainText[0] : c;
+                if (!ScrabblePoints.TryGetValue(plain, out points)) points = 1;
+            }
+            total += points;
+            details.Add(c + "=" + points);
+        }
+        return "Scrabble: „" + text.Trim() + "” = " + total + " pkt (" + string.Join(" ", details) + ").\n" +
+            "Tabela punktów jest lokalną wersją popularnej gry — wydania planszowe różnią się detalami.";
+    }
+
+    public static string SortWords(string text)
+    {
+        var words = text.Split(' ', StringSplitOptions.RemoveEmptyEntries).OrderBy(w => w, StringComparer.CurrentCultureIgnoreCase).ToArray();
+        if (words.Length == 0) return "Podaj słowa do posortowania, np. „posortuj slowa: c a b”.";
+        return "Posortowane: " + string.Join(" ", words);
+    }
+
+    public static string DistinctWords(string text)
+    {
+        var words = text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var kept = words.Where(w => seen.Add(w)).ToArray();
+        return "Bez powtórzeń (" + (words.Length - kept.Length) + " usuniętych): " + string.Join(" ", kept);
+    }
+
+    public static string ReverseWords(string text)
+    {
+        var words = text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return "Odwrócone słowa: " + string.Join(" ", words.Reverse());
+    }
+
+    public static string OnlyDigits(string text)
+    {
+        string digits = new(text.Where(char.IsDigit).ToArray());
+        return digits.Length == 0 ? "W tym tekście nie ma cyfr." : "Cyfry: " + digits;
+    }
+
+    public static string OnlyLetters(string text)
+    {
+        string letters = new(text.Where(char.IsLetter).ToArray());
+        return letters.Length == 0 ? "W tym tekście nie ma liter." : "Litery: " + letters;
+    }
+
+    private static readonly string[] QuoteBook =
+    [
+        "„Cudze chwalicie, swego nie znacie…” — Jan Kochanowski",
+        "„Nic dwa razy się nie zdarza…” — Wisława Szymborska",
+        "„Niech prawo zawsze prawo znaczy…” — Jan Kasprowicz",
+        "„Kto ty jesteś? Polak mały…” — Władysław Bełza",
+        "„Miej serce i patrzaj w serce!” — Adam Mickiewicz",
+        "„Wszystko się kończy, wszystko przeminie…” — Cyprian Kamil Norwid",
+        "„Lepszy wróbel w garści niż gołąb na dachu” — przysłowie polskie",
+        "„Co cię nie zabije, to cię wzmocni” — przysłowie",
+        "„Mądry Polak po szkodzie” — Jan Kochanowski",
+        "„Nadzieja matką głupich” — przysłowie",
+    ];
+
+    public static string Quote() => "Cytat na dziś:\n" + QuoteBook[RandomNumberGenerator.GetInt32(QuoteBook.Length)] +
+        "\n(Wbudowana lista lokalna — nie pobieram cytatów z internetu.)";
+
+    // ============================== 0.94 · system ==============================
+    [StructLayout(LayoutKind.Sequential)]
+    private struct SystemPowerStatus
+    {
+        public byte ACLineStatus;
+        public byte BatteryFlag;
+        public byte BatteryLifePercent;
+        public byte SystemStatusFlag;
+        public int BatteryLifeTime;
+        public int BatteryFullLifeTime;
+    }
+
+    [DllImport("user32.dll")] private static extern int GetSystemMetrics(int nIndex);
+    [DllImport("kernel32.dll")] private static extern bool GetSystemPowerStatus(out SystemPowerStatus status);
+
+    public static string ScreenResolution()
+    {
+        try
+        {
+            int width = GetSystemMetrics(0), height = GetSystemMetrics(1);
+            return width <= 0 || height <= 0
+                ? "Rozdzielczość pulpitu jest niedostępna."
+                : "Rozdzielczość pulpitu: " + width + " × " + height + " px.";
+        }
+        catch (DllNotFoundException) { return "Odczyt rozdzielczości jest niedostępny na tym systemie."; }
+    }
+
+    public static string BatteryStatus()
+    {
+        try
+        {
+            if (!GetSystemPowerStatus(out var status)) return "Stan baterii jest niedostępny.";
+            if (status.BatteryFlag == 128) return "Ten komputer nie ma baterii (zasilanie sieciowe).";
+            string power = status.ACLineStatus == 1 ? "zasilanie sieciowe" : status.ACLineStatus == 0 ? "zasilanie z baterii" : "nieznane zasilanie";
+            string percent = status.BatteryLifePercent <= 100 ? status.BatteryLifePercent + "%" : "nieznany poziom";
+            return "Bateria: " + percent + " · " + power + ".";
+        }
+        catch (DllNotFoundException) { return "Odczyt baterii jest niedostępny na tym systemie."; }
+    }
+
+    public static string OffsetClock(string offsetText)
+    {
+        string cleaned = offsetText.Trim().ToLowerInvariant().Replace("utc", "").Trim();
+        if (cleaned.Length == 0) cleaned = "+0";
+        bool negative = cleaned.StartsWith('-');
+        cleaned = cleaned.TrimStart('+', '-');
+        string[] pieces = cleaned.Split(':');
+        if (!int.TryParse(pieces[0], out int hours) || Math.Abs(hours) > 14) return "Przesunięcie podaj jak „UTC+2” albo „UTC-5:30”.";
+        int minutes = 0;
+        if (pieces.Length > 1 && (!int.TryParse(pieces[1], out minutes) || Math.Abs(minutes) > 59)) return "Minuty przesunięcia muszą być 0–59.";
+        var offset = new TimeSpan(negative ? -hours : hours, negative ? -minutes : minutes, 0);
+        var there = DateTime.UtcNow + offset;
+        return "Strefa UTC" + (negative ? "-" : "+") + Math.Abs(hours) + (minutes != 0 ? ":" + Math.Abs(minutes).ToString("00", Pl) : "") +
+            ": " + there.ToString("yyyy-MM-dd HH:mm", Pl) + " (dokładna data i godzina wg przesunięcia, bez danych o czasie letnim).";
+    }
+
+    // ============================== 0.94 · losowość ==============================
+    public static string RollPoly(int count, int sides)
+    {
+        if (count is < 1 or > 20) return "Jednorazowo rzucam 1–20 kostkami.";
+        if (sides is < 2 or > 100) return "Kostka musi mieć 2–100 ścian.";
+        var rolls = new List<int>();
+        for (int i = 0; i < count; i++) rolls.Add(RandomNumberGenerator.GetInt32(1, sides + 1));
+        return count + "d" + sides + ": " + string.Join(", ", rolls) + " · suma: " + rolls.Sum();
+    }
+
+    public static string PlayingCard()
+    {
+        string[] suits = ["kier", "karo", "pik", "trefl"];
+        string[] ranks = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "walet", "dama", "król", "as"];
+        return "Karta: " + ranks[RandomNumberGenerator.GetInt32(ranks.Length)] + " " +
+            suits[RandomNumberGenerator.GetInt32(suits.Length)] + " · losowanie lokalne.";
     }
 }

@@ -1,6 +1,24 @@
-# SENTINEL X 0.91 · CENTRUM — Windows / MVVM
+# SENTINEL X 0.95 · JARVIS — Windows / MVVM
 
 Lokalny asystent Windows 10/11, C# 13, .NET 9, WPF. Nowe GUI jest domyślnym interfejsem. Poprzedni interfejs i jego funkcje nadal są dostępne przez `--legacy`.
+
+## Nowe w 0.95 — JARVIS: timer/głośność/zrzuty/schowek + self-repair i self-improve
+
+- **To, co ma każdy asystent**: `timer 5 minut herbata` i `budzik 7:00` (powiadomienie ⏰ tym samym kanałem co przypomnienia), `stoper start` / `stoper` / `stoper stop`, `głośność` / `głośność 40` / `wycisz` / `przywróć dźwięk`, `zrzut ekranu` (PNG w folderze danych), `kopiuj: tekst` i `co w schowku`. Wszystko offline, z uczciwym „niedostępne na tym systemie”, gdy sprzętu brak.
+- **Self-repair** (`napraw sie`): naprawia DANE, nigdy kod — przywraca uszkodzone magazyny z kopii, odkłada nieczytelne pliki na bok (z dopiskiem `.corrupt-…`, nigdy nie kasuje), czyści dzienniki JSONL z nieczytelnych linii. Każdy krok w raporcie.
+- **Self-improve** (`ulepsz sie`): bezpieczna pętla uczenia się — literówki i zaakceptowane propozycje „Czy chodziło Ci o…” zapamiętuję jako trwałe wzorce w `Memory/LearnedPatterns.json`; drugie takie samo wejście rozumiem od razu. Wpisy destrukcyjne są odrzucane także przy odczucie pliku (można go edytować ręcznie). **Kod aplikacji pozostaje nietknięty** — samomodyfikacja źródeł jest odrzucona na stałe; zmiany kodu to wersje w CI.
+- **Rozszerzony self-check** (`samokontrola`): wszystkie magazyny + nauczone wzorce + lekcje + archiwa, nadal tylko do odczytu.
+- Szczegóły: [docs/RELEASE-0.95.md](docs/RELEASE-0.95.md).
+
+## Nowe w 0.94 — ZROZUMIENIE: zdania, pamięć kontekstu i ~30 nowych narzędzi
+
+- **Rozumiem zdania, nie tylko komendy**: „sprawdź proszę ile mam ramu”, „mógłbyś powiedzieć która godzina”, „odpal discorda” albo „która godzina?” działają wprost. Sentinel pokazuje „Zrozumiałem jako: …” — zawsze widzisz, co zostanie wykonane.
+- **Polecenie ukryte w dłuższym zdaniu** jest znajdowane bez zgadywania (tylko bezpieczne frazy z katalogu; argumenty zostają). Zdania z „dziś”/„teraz”, prośby o tekst („napisz wiersz o tym ile mam ramu”) i cokolwiek z destrukcją nigdy nie wykonują się po cichu — trafiają do pytań „Czy chodziło Ci o…”.
+- **`zrozum: <zdanie>`** — test na sucho: pokazuję kroki rozumienia (normalizacja, skrót, literówka, ekstrakcja) i **niczego nie wykonuję**.
+- **Pamięć i kontekst**: data (ISO + dzień tygodnia), aktywny projekt i wątek rozmowy w kontekście AI; skoroszyt faktów sesji pamięta ostatnie odczyty („a ile wolnego?”), komendy `fakty`, `co wiesz o mnie`, `podsumuj rozmowę`. Wyszukiwanie wspomnień i rozmów toleruje odmianę i jedną literówkę („pamieci” → „pamiec”, „mlekk” → „mleko”) — nadal tekstowo, bez semantyki.
+- **Zadania z priorytetem z tekstu** („dodaj zadanie: pilne kupić mleko”) i komenda `zadanie N priorytet wysoki|niski|normalny`.
+- **~30 nowych narzędzi offline**: VAT z własną stawką (23/8/5/0%), `znizka`, `napiwek`, `raty`, `odsetki proste`, `procent skladany`, `logarytm`, `potega`, `modulo`, `wartosc bezwzgledna`, `sin/cos/tan`, `srednia wazona`, `rownanie kwadratowe`, `kalendarz R M`, `dodaj/odejmij dni`, `ile dni miedzy`, `rok przestepny`, `kwartal`, walidatory `ean`/`isbn`/`luhn`/`regon` (lokalnie), `literuj`, `czestotliwosc slow`, `skrable`, `posortuj slowa`, `bez powtorzen`, `odwroc slowa`, `tylko cyfry/litery`, `cytat`, `wylosuj karte`, `kostka NdM`, `nazwa uzytkownika`, `rozdzielczosc ekranu`, `stan baterii`, `strefa czasu`, `czas w strefie UTC±N` i ~10 nowych miast zegara świata (także w dopełniaczu: „czas w londynie”).
+- **Zakres spoza 0.94** (uczciwie): rozumienie nadal jest deterministyczne (katalog fraz + skróty + ogierki), nie modelem językowym; GUI bez zmian w tej wersji — porządki wizualne są planowane „później”. Szczegóły: [docs/RELEASE-0.94.md](docs/RELEASE-0.94.md).
 
 ## Nowe w 0.91 — CENTRUM: jeden hub, paleta `//`, głos od startu i ~50 nowych narzędzi
 

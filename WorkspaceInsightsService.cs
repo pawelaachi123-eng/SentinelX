@@ -133,6 +133,26 @@ public sealed class WorkspaceInsightsService
 
     private static readonly CultureInfo PlCulture = CultureInfo.GetCultureInfo("pl-PL");
 
+    /// <summary>„napraw sie”: bezpieczna naprawa DANYCH SentinelX — przywracanie magazynów
+    /// z kopii, odkładanie uszkodzonych plików na bok (nigdy kasowanie), czyszczenie dzienników
+    /// JSONL. Kod aplikacji pozostaje nietknięty. Każdy krok jest w raporcie.</summary>
+    public string SelfRepair()
+    {
+        var builder = new StringBuilder();
+        int fixedCount = 0;
+        foreach (string file in StoreFiles())
+        {
+            fixedCount += Core.SelfRepair.RepairJsonStore(file, out string line);
+            builder.AppendLine(line);
+        }
+        fixedCount += Core.SelfRepair.RepairJsonl(Path.Combine(AppPaths.MemoryDirectory, UnderstandingJournal.FileName), out string lessonsLine);
+        builder.AppendLine(lessonsLine);
+        builder.AppendLine(fixedCount == 0
+            ? "Nic nie wymagało naprawy — magazyny są czytelne."
+            : "Naprawione pozycje: " + fixedCount + ". Oryginały uszkodzonych plików leżą obok (dopisek .corrupt-…) — niczego nie skasowałem.");
+        return builder.ToString().TrimEnd();
+    }
+
     /// <summary>„propozycje”: maintenance ideas computed from real state. Every line tells the user what to
     /// type — Sentinel never runs any of these on its own (explicit-approval autonomy).</summary>
     public string Suggestions()
@@ -291,7 +311,8 @@ public sealed class WorkspaceInsightsService
     private IEnumerable<string> StoreFiles() => new[]
     {
         memory.StoragePath, tasks.StoragePath, projects.StoragePath, snapshots.StoragePath,
-        Path.Combine(AppPaths.SettingsDirectory, "settings.json")
+        Path.Combine(AppPaths.SettingsDirectory, "settings.json"),
+        Path.Combine(AppPaths.MemoryDirectory, "LearnedPatterns.json")
     }.Distinct(StringComparer.OrdinalIgnoreCase);
 
     private static long DirectoryBytes(string root)

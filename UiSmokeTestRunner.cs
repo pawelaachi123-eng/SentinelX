@@ -33,6 +33,8 @@ public static class UiSmokeTestRunner
             await Tests.ReleaseRegression.RunAsync(Path.Combine(output, "release"));
             await Tests.MemoryRegression.RunAsync(Path.Combine(output, "memory"));
             await Tests.ProjectRegression.RunAsync(Path.Combine(output, "projects"));
+            await Tests.ContextRegression.RunAsync(Path.Combine(output, "context"));
+            await Tests.SelfMaintenanceRegression.RunAsync(Path.Combine(output, "self-maintenance"));
             await Tests.TaskRegression.RunAsync(Path.Combine(output, "tasks"));
             await Tests.DiagnosticSnapshotRegression.RunAsync(Path.Combine(output, "snapshots"));
             await Tests.AiStreamRegression.RunAsync(Path.Combine(output, "ai-stream"));
@@ -220,6 +222,20 @@ public static class UiSmokeTestRunner
             string selfModRefusal = (await memoryEngine.ExecuteAsync("ulepsz sie")).Text;
             if (!selfModRefusal.Contains("Nie modyfikuję własnego kodu"))
                 throw new InvalidOperationException("Self-code modification must be refused honestly: " + selfModRefusal);
+            if (!selfModRefusal.Contains("uczę") && !selfModRefusal.Contains("Nauczone"))
+                throw new InvalidOperationException("Self-improvement must describe the learning loop: " + selfModRefusal);
+            // 0.95: self-repair fixes data only and reports every step.
+            string selfRepair = (await memoryEngine.ExecuteAsync("napraw sie")).Text;
+            if (!selfRepair.Contains("SELF-REPAIR") || !selfRepair.Contains("nigdy kod"))
+                throw new InvalidOperationException("Self-repair must be wired and honest about scope: " + selfRepair);
+            // 0.95: timers arm immediately (the command IS the request), the stopwatch answers directly.
+            string timerReply = (await memoryEngine.ExecuteAsync("timer 5 minut test")).Text;
+            if (!timerReply.Contains("Timer ustawiony"))
+                throw new InvalidOperationException("A timer must arm immediately: " + timerReply);
+            string stopwatchReply = (await memoryEngine.ExecuteAsync("stoper start")).Text +
+                (await memoryEngine.ExecuteAsync("stoper")).Text + (await memoryEngine.ExecuteAsync("stoper stop")).Text;
+            if (!stopwatchReply.Contains("Stoper wystartował") || !stopwatchReply.Contains("Stoper zatrzymany"))
+                throw new InvalidOperationException("The stopwatch must start, report and stop: " + stopwatchReply);
             // 0.91: „//” shortcuts resolve through the catalogue without touching the AI.
             string slashHelp = (await memoryEngine.ExecuteAsync("//pomoc")).Text;
             if (!slashHelp.Contains("CO UMIEM"))

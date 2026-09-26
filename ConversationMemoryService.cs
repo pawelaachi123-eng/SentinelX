@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using SentinelX.Core;
 
 namespace SentinelX;
 
@@ -319,9 +320,20 @@ public sealed class ConversationMemoryService : Services.Memory.IConversationMem
         string[] tokens = key.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         lock (syncRoot)
             return state.Notes
-                .Where(x => tokens.All(t => Normalize(x.Text).Contains(t, StringComparison.Ordinal)))
+                .Where(x => tokens.All(t => NoteMatches(x.Text, t)))
                 .OrderByDescending(x => x.Pinned).ThenByDescending(x => x.UpdatedAt ?? x.Timestamp)
                 .Take(50).Select(Clone).ToArray();
+    }
+
+    /// <summary>0.94 · tolerancja literówek w wyszukiwaniu treści: dokładne podciągi działają jak dawniej,
+    /// a pojedyncza literówka lub odmiana („pamieci” ↔ „pamiec”) też trafia. Nadal bez semantyki.</summary>
+    private static bool NoteMatches(string noteText, string token)
+    {
+        string normalized = Normalize(noteText);
+        if (normalized.Contains(token, StringComparison.Ordinal)) return true;
+        foreach (string word in normalized.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+            if (CommandLexicon.SearchTokenMatches(token, word)) return true;
+        return false;
     }
 
     /// <summary>Notes that likely describe the same fact, to warn before a duplicate is stored.</summary>
@@ -483,13 +495,15 @@ public sealed class ConversationMemoryService : Services.Memory.IConversationMem
         return removed;
     }
 
-    /// <summary>Searches only the ACTIVE conversation; normalized text match, newest first, honest about what was not found.</summary>
+    /// <summary>Searches only the ACTIVE conversation; normalized text match with 0.94 typo tolerance,
+    /// newest first, honest about what was not found.</summary>
     public IReadOnlyList<ConversationMemoryEntry> SearchConversation(string query, int maxResults = 15)
     {
         string needle = Normalize(query ?? "");
         if (needle.Length == 0) return [];
+        string[] tokens = needle.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         lock (syncRoot) return state.Entries
-            .Where(x => x.SessionId == state.ActiveSessionId && Normalize(x.Text).Contains(needle, StringComparison.Ordinal))
+            .Where(x => x.SessionId == state.ActiveSessionId && tokens.All(t => NoteMatches(x.Text, t)))
             .OrderByDescending(x => x.Timestamp)
             .Take(Math.Clamp(maxResults, 1, 50))
             .Select(Clone).ToArray();
@@ -585,7 +599,17 @@ public sealed class ConversationMemoryService : Services.Memory.IConversationMem
         {
             ConversationMemoryEntry[] entries;
             lock (syncRoot) entries = state.Entries.Where(x => x.SessionId == state.ActiveSessionId).TakeLast(Math.Clamp(maxEntries, 0, 120)).Select(Clone).ToArray();
-            if (entries.Length > 0) builder.AppendLine("Ostatnie wiadomości bieżącej rozmowy:");
+            if (entries.Length > 0)
+            {
+                // 0.94 · wątek rozmowy: tytuł i pierwsza wiadomość pomagają małemu modelowi wiedzieć,
+                // o czym w ogóle rozmawiamy — z zapisanych danych, nigdy z domysłów.
+                string title = ActiveConversationTitle;
+                string firstUser = entries.FirstOrDefault(x => x.Role == "user")?.Text ?? "";
+                if (title.Length > 0)
+                    builder.AppendLine("Wątek rozmowy: " + title +
+                        (firstUser.Length > 0 ? " · pierwsza wiadomość: " + Short(firstUser) : ""));
+                builder.AppendLine("Ostatnie wiadomości bieżącej rozmowy:");
+            }
             // Keep the newest turns inside the context budget, not the oldest turns of a long conversation.
             var lines = new List<string>();
             int budget = ContextBudget - builder.Length;

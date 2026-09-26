@@ -20,9 +20,20 @@ public sealed class CommandRouter
     private readonly MemoryArchiveService? archives;
     private readonly WorkspaceInsightsService? insights;
     private readonly UnderstandingJournal? journal;
+    private readonly SessionFactBook? facts;
+    private readonly Core.LearnedPatterns? learned;
     private string lastTopic = "";
     private DateTime lastTopicTime;
     private (string Text, DateTime When, string Description, DateTime Expires)? pendingReminder;
+
+    /// <summary>Common words ignored by the extractive conversation summary („podsumuj rozmowę”).</summary>
+    private static readonly HashSet<string> SummaryStopWords = new(StringComparer.Ordinal)
+    {
+        "ktory", "ktora", "ktore", "jakie", "jakis", "jakas", "przez", "wtedy", "pomoc", "pomocy",
+        "prosze", "dziekuje", "moglbys", "mozesz", "chcialbym", "znowu", "zawsze", "nigdy", "moze",
+        "tylko", "wlasnie", "dlaczego", "wiec", "potem", "teraz", "dobrze", "super", "ok", "tak",
+        "siebie", "zrobic", "zrobilem", "powiedzial", "powiedzialas", "powiedz", "wiesz", "nasz",
+    };
 
     /// <summary>Raised with the best candidate when an input is about to fall through to the AI model
     /// but is close to a known command — the host turns it into a question instead of a silent guess.</summary>
@@ -30,11 +41,12 @@ public sealed class CommandRouter
 
     public CommandRouter(SystemMonitor systemMonitor, SystemInfoService systemInfo, LocalAiService localAi, ConversationMemoryService memory,
         ProjectService? projects = null, TaskService? tasks = null, DiagnosticSnapshotService? snapshots = null,
-        MemoryArchiveService? archives = null, WorkspaceInsightsService? insights = null, UnderstandingJournal? journal = null)
+        MemoryArchiveService? archives = null, WorkspaceInsightsService? insights = null, UnderstandingJournal? journal = null,
+        SessionFactBook? facts = null, Core.LearnedPatterns? learned = null)
     {
         this.systemMonitor = systemMonitor; this.systemInfo = systemInfo; this.localAi = localAi; this.memory = memory;
         this.projects = projects; this.tasks = tasks; this.snapshots = snapshots; this.archives = archives; this.insights = insights;
-        this.journal = journal;
+        this.journal = journal; this.facts = facts; this.learned = learned;
     }
 
     public async Task<string> ProcessAsync(string command, CancellationToken cancellationToken = default, Action<string>? onDelta = null)
@@ -121,8 +133,76 @@ public sealed class CommandRouter
     {
         if (text is "wersja" or "jaka wersja" or "wersja sentinel" or "wersja aplikacji")
             return "Sentinel X " + AppConstants.Version + " · " + systemInfo.GetWindowsVersion() + " · .NET " + Environment.Version;
+        if (text is "zrozum" or "jak mnie rozumiesz")
+            return "Pokażę, jak rozumiem zdanie — bez wykonania.\nWpisz: zrozum: <Twoje zdanie>, np. „zrozum: sprawdź proszę ile mam ramu”.";
+        if (text is "co wiesz o mnie" or "co o mnie wiesz" or "kim jestem dla ciebie")
+        {
+            string name = memory.UserName;
+            var lines = new List<string>
+            {
+                "CO WIEM O TOBIE — wyłącznie z lokalnej pamięci, nic nie wysyłam.",
+                name.Length > 0 ? "· imię: " + name : "· imię: nie zapisane (powiedz „mam na imię …”)",
+                "· trwałe wspomnienia: " + memory.NoteCount + " (komenda „co pamiętasz” pokazuje wszystkie)",
+                "· zapisane rozmowy: " + memory.GetConversations().Count + " (komenda „pokaż rozmowy”)",
+            };
+            string projectLine = projects?.ActiveProject is { } active ? "· aktywny projekt: " + active.Name : "· aktywny projekt: brak (pamięć globalna)";
+            lines.Add(projectLine);
+            if (memory.NoteCount > 0)
+            {
+                var recent = memory.GetNotes().Take(3).ToArray();
+                lines.Add("· ostatnie wspomnienia:");
+                foreach (var note in recent) lines.Add("  – " + Truncate(note.Text, 100));
+            }
+            lines.Add("Wspomnienia możesz zmienić w panelu Pamięć — edycja i usuwanie są tam jawne.");
+            return StorageResult(string.Join("\n", lines));
+        }
+        if (text is "podsumuj rozmowe" or "podsumowanie rozmowy" or "o czym rozmawialismy")
+        {
+            var turns = memory.GetAllEntries().Where(x => x.SessionId == memory.ActiveSessionId).OrderBy(x => x.Timestamp).ToArray();
+            if (turns.Length == 0) return "Ta rozmowa nie ma jeszcze zapisanych wypowiedzi — nie ma czego podsumować.";
+            var userTurns = turns.Where(x => x.Role == "user").ToArray();
+            var topWords = turns
+                .SelectMany(x => ConversationMemoryService.Normalize(x.Text).Split(' ', StringSplitOptions.RemoveEmptyEntries))
+                .Where(w => w.Length > 3 && !SummaryStopWords.Contains(w))
+                .GroupBy(w => w)
+                .OrderByDescending(g => g.Count()).ThenBy(g => g.Key, StringComparer.Ordinal)
+                .Take(6).Select(g => g.Key).ToArray();
+            var lines = new List<string>
+            {
+                "PODSUMOWANIE ROZMOWY — wyciąg z zapisanych wypowiedzi, bez zmyślania.",
+                "· rozmowa: " + memory.ActiveConversationTitle,
+                "· wypowiedzi: " + turns.Length + " (w tym Twoich: " + userTurns.Length + "), od " + turns[0].Timestamp.ToString("dd.MM HH:mm") + " do " + turns[^1].Timestamp.ToString("dd.MM HH:mm"),
+                "· zaczęło się od: „" + Truncate(userTurns.Length > 0 ? userTurns[0].Text : turns[0].Text, 120) + "”",
+            };
+            if (topWords.Length > 0) lines.Add("· najczęściej powtarzane słowa: " + string.Join(", ", topWords));
+            lines.Add("· ostatnia Twoja wypowiedź: „" + Truncate(userTurns.Length > 0 ? userTurns[^1].Text : turns[^1].Text, 120) + "”");
+            lines.Add("Pełna rozmowa: „eksportuj rozmowę markdown” albo zakładka rozmowy.");
+            return string.Join("\n", lines);
+        }
+        if (text is "fakty" or "ostatnie fakty")
+        {
+            var snapshot = facts?.Snapshot() ?? [];
+            return snapshot.Count == 0
+                ? "Brak zapisanych odczytów z tej sesji. Fakty sesji powstają po odczytach typu „ile mam ramu” i żyją tylko do zamknięcia aplikacji."
+                : "Fakty sesji (tylko w pamięci aplikacji, nie na dysku):\n" +
+                  string.Join("\n", snapshot.Select(x => "· [" + x.Time + "] " + x.Label + ": " + x.Value));
+        }
         if (text is "co nowego" or "lista zmian" or "changelog" or "co sie zmienilo")
-            return "CO NOWEGO W 0.93 · PORZĄDKI\n" +
+            return "CO NOWEGO W 0.95 · JARVIS\n" +
+                "· Timer, budzik i stoper: „timer 5 minut herbata”, „budzik 7:00”, „stoper start/stop” — powiadomienie ⏰ tym samym kanałem co przypomnienia.\n" +
+                "· Głośność i dźwięk: „głośność”, „głośność 40”, „wycisz”, „przywróć dźwięk”. Zrzut ekranu: „zrzut ekranu” zapisuje PNG w folderze danych.\n" +
+                "· Schowek: „kopiuj: tekst” i „co w schowku”.\n" +
+                "· Self-repair: „napraw sie” naprawia uszkodzone pliki (przywracanie z kopii, odkładanie na bok) — dane, nigdy kod.\n" +
+                "· Self-improve: uczę się z Twoich poprawek i akceptowanych propozycji — drugi raz to samo wejście rozumiem od razu. „ulepsz sie” pokazuje, czego się nauczyłem.\n" +
+                "\nCO NOWEGO W 0.94 · ZROZUMIENIE, PAMIĘĆ I NARZĘDZIA\n" +
+                "· Rozumiem zdania, nie tylko komendy: „sprawdź proszę ile mam ramu”, „mógłbyś powiedzieć która godzina” albo „odpal discorda” działają wprost — zawsze pokazuję „Zrozumiałem jako: …”. \n" +
+                "· Polecenie ukryte w dłuższym zdaniu jest znajdowane bez zgadywania; zdania z „dziś”/„teraz” i niejasne trafiają do pytań „Czy chodziło Ci o…”, nigdy nie wykonują się po cichu.\n" +
+                "· „zrozum: <zdanie>” — pokazuję kroki rozumienia i NIC nie wykonuję (test na sucho).\n" +
+                "· Pamięć i kontekst: data, aktywny projekt i wątek rozmowy w kontekście AI, ostatnie odczyty sesji do dopytań („a ile wolnego?”), komendy „fakty”, „co wiesz o mnie”, „podsumuj rozmowę”.\n" +
+                "· Wyszukiwanie wspomnień i rozmów toleruje literówki i odmianę („pamieci” → „pamiec”); nadal bez semantyki — tekstowo i uczciwie.\n" +
+                "· Zadania: priorytet z tekstu („dodaj zadanie: pilne kupić mleko”) i komenda „zadanie N priorytet wysoki|niski|normalny”.\n" +
+                "· ~30 nowych narzędzi offline: VAT 23/8/5/0%, znizka, napiwek, raty kredytu, odsetki, procent składany, logarytm, potęga, modulo, sin/cos/tan, średnia ważona, równanie kwadratowe, kalendarz miesiąca, dodaj/odejmij dni, dni między datami, rok przestępny, kwartał, EAN/ISBN/LUHN/REGON, literowanie, częstość słów, Scrabble, sortowanie, cytat, karta do losowania, nazwa użytkownika, rozdzielczość, bateria, strefa czasu i więcej miast świata.\n" +
+                "\nCO NOWEGO W 0.93 · PORZĄDKI\n" +
                 "· „usuń duplikaty: folder” — z każdej grupy identycznych plików zostawia 1, resztę po Twoim „potwierdz” przenosi do Kosza.\n" +
                 "· „usuń puste pliki: folder” — pliki 0 B po Twoim „potwierdz” do Kosza.\n" +
                 "· „zmien nazwy: folder zamien X na Y” — podgląd zmian nazw, wykonuje dopiero po „potwierdz”, nigdy nie nadpisuje.\n" +
@@ -146,17 +226,48 @@ public sealed class CommandRouter
         if (text is "propozycje" or "co proponujesz" or "sugestie")
             return insights?.Suggestions() ?? "Propozycje nie są dostępne w tym trybie.";
 
+        // 0.95 · self-repair, self-improve, stoper — warstwa Jarvisa. Bez samomodyfikacji kodu.
+        if (text is "napraw sie" or "napraw się" or "self repair" or "napraw dane" or "napraw pamiec" or "napraw pamięć" or "napraw pliki" or "naprawa")
+        {
+            var repairLines = new List<string>
+            {
+                "SELF-REPAIR SENTINEL X — naprawiam DANE, nigdy kod. Niczego nie kasuję: uszkodzone pliki odkładam na bok z kopią.",
+            };
+            repairLines.Add(insights?.SelfRepair() ?? "Inspekcja plików nie jest dostępna w tym trybie.");
+            if (learned != null) { learned.RepairFile(out string learnedReport); repairLines.Add(learnedReport); }
+            repairLines.Add("Kod aplikacji pozostaje nietknięty — zmiany kodu to nowe wersje w CI. „samokontrola” pokazuje stan bez zmian.");
+            return string.Join("\n", repairLines);
+        }
+        if (text is "ulepsz sie" or "ulepsz się" or "self improve" or "samoulepszanie" or "naucz sie" or "naucz się" or "jak sie uczysz")
+        {
+            return "Nie modyfikuję własnego kodu — i to jest świadoma decyzja: kod zmienia się wersjami w CI, z testami.\n" +
+                "Ulepszam się za to bezpiecznie, z danych i Twoich poprawek:\n" +
+                "· uczę się wzorców — literówki i zaakceptowane propozycje „Czy chodziło Ci o…” zapamiętuję jako trwałe skojarzenia,\n" +
+                "· „napraw sie” naprawia moje pliki (przywracanie z kopii, odkładanie uszkodzonych),\n" +
+                "· „samokontrola” sprawdza spójność, „lekcje” pokazuje, czego się nauczyłem, „propozycje” sugeruje porządki.\n\n" +
+                (learned?.Describe() ?? "Nie mam jeszcze nauczonych wzorców.") + "\n\n" +
+                "Nauczę się też wprost: popraw mnie przy odpowiedzi albo zaakceptuj propozycję — następnym razem zadziała od razu.";
+        }
+        if (text is "stoper" or "stoper start" or "stoper stop" or "stoper ile" or "ile leci stoper" or "jak dlugo leci stoper" or "jak długo leci stoper")
+        {
+            if (text is "stoper stop") return Core.StopwatchRegistry.Stop();
+            if (text is "stoper start") return Core.StopwatchRegistry.Start();
+            return Core.StopwatchRegistry.Status();
+        }
+
         // Honest capability boundaries: these are deliberate refusals, not gaps.
         if (text is "model 3d" or "zbuduj model 3d" or "modeluj 3d" or "generuj model 3d" or "zrob model 3d" or "druk 3d")
             return "Uczciwie: nie buduję modeli 3D. Nie mam tu silnika graficznego ani narzędzi CAD i nie chcę udawać, że mam.\n" +
                 "Mogę za to: policzyć wymiary („policz”), przeliczyć jednostki („przelicz”), zapisać zadanie związane z projektem („zrob zadanie: …”) i przypomnieć o nim w terminie.\n" +
                 "Do samego modelowania polecam Blendera (darmowy) — mogę dodać zadanie „pobrać Blendera”, jeśli chcesz.";
-        if (text is "zmien swoj kod" or "napraw swoj kod" or "napraw sie" or "zmodyfikuj swoj kod" or "ulepsz sie" or "zaktualizuj sie" or "przepisz sie")
+        if (text is "zmien swoj kod" or "napraw swoj kod" or "zmodyfikuj swoj kod" or "zaktualizuj sie" or "przepisz sie" or "zmien zrodla")
             return "Nie modyfikuję własnego kodu — i to jest świadoma decyzja, nie brak umiejętności.\n" +
-                "Samodzielna zmiana kodu bez kontroli mogłaby zepsuć aplikację, w której masz swoje dane. Zamiast tego mam bezpieczny odpowiednik:\n" +
+                "Samodzielna zmiana kodu bez kontroli mogłaby zepsuć aplikację, w której masz swoje dane. Mam za to bezpieczne odpowiedniki:\n" +
+                "· „napraw sie” — sam naprawiam swoje uszkodzone pliki (dane, nie kod),\n" +
+                "· „ulepsz sie” — pokazuję, czego się nauczyłem i jak się uczę z Twoich poprawek,\n" +
                 "· „samokontrola” — sprawdzam spójność swoich plików i raportuję,\n" +
                 "· „propozycje” — proponuję porządki, ale nic nie wykonuję bez Twojego polecenia,\n" +
-                "· aktualizacje przychodzą jako nowe wersje publikowane w Releases repozytorium.";
+                "· aktualizacje kodu przychodzą jako nowe wersje publikowane w Releases repozytorium.";
         if (Regex.IsMatch(text, @"^(?:skanuj|przeskanuj) (?:caly )?dysk"))
             return "Nie skanuję całych dysków automatycznie — to kosztowne i narusza prywatność. Zamiast tego: „pokaz dyski” (pojemność), „top procesy” (co zużywa zasoby), „zabezpieczenia” (stan ochrony Windows).";
 
@@ -249,18 +360,70 @@ public sealed class CommandRouter
             pendingReminder = (reminderText, when, description, DateTime.Now.AddMinutes(5));
             return $"Rozumiem: przypomnienie „{reminderText}” na {description} (czas lokalny). Zapiszę to dopiero po Twojej zgodzie — odpowiedz „tak” albo „nie”.";
         }
+
+        // 0.95 · timer i budzik: odliczanie armowane od razu — samo polecenie jest żądaniem,
+        // więc nie wymaga „tak” (inaczej niż przypomnienia z opisem). Powiadomienie przychodzi
+        // tym samym kanałem ⏰, tylko gdy aplikacja jest uruchomiona.
+        var timer = Regex.Match(command, @"^timer[:\s]+(.+)$", RegexOptions.IgnoreCase);
+        if (timer.Success)
+        {
+            string rest = timer.Groups[1].Value.Trim();
+            // Czas to zwykle dwa słowa („5 minut”) — spróbuj ich, potem jednego, reszta to opis.
+            string[] words = rest.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            bool parsed = false; TimeSpan span = default; string durationDescription = "";
+            int usedWords = 0;
+            if (words.Length >= 2 && UtilityToolbox.TryParseDuration(words[0] + " " + words[1], out span, out durationDescription)) { parsed = true; usedWords = 2; }
+            else if (words.Length >= 1 && UtilityToolbox.TryParseDuration(words[0], out span, out durationDescription)) { parsed = true; usedWords = 1; }
+            if (!parsed)
+                return "Czas timera podaj liczbą i jednostką: „timer 5 minut”, „timer 30 sekund”, „timer 1 godzina”. Opis po czasie jest opcjonalny („timer 10 minut herbata”).";
+            string label = usedWords > 0 && words.Length > usedWords ? string.Join(' ', words.Skip(usedWords)) : "";
+            var createdTimer = tasks.AddReminder("Timer" + (label.Length > 0 ? ": " + label : ""), DateTime.Now + span, "");
+            return createdTimer != null
+                ? "⏱ Timer ustawiony na " + durationDescription + " — przypomnę o " + createdTimer.RemindAt.ToString("HH:mm") + ". Zadziała tylko, gdy aplikacja jest uruchomiona."
+                : tasks.LastStorageError ?? "Nie udało się ustawić timera.";
+        }
+        var alarm = Regex.Match(command, @"^budzik[:\s]+(\d{1,2})[:.](\d{2})$", RegexOptions.IgnoreCase);
+        var alarmHour = Regex.Match(command, @"^budzik[:\s]+(\d{1,2})$", RegexOptions.IgnoreCase);
+        if (alarm.Success || alarmHour.Success)
+        {
+            int hour = int.Parse((alarm.Success ? alarm : alarmHour).Groups[1].Value);
+            int minute = alarm.Success ? int.Parse(alarm.Groups[2].Value) : 0;
+            if (hour > 23 || minute > 59) return "Godzina budzika to 0:00–23:59, np. „budzik 7:00” albo „budzik 6:30”.";
+            var when = DateTime.Today.AddHours(hour).AddMinutes(minute);
+            if (when <= DateTime.Now) when = when.AddDays(1);
+            var createdAlarm = tasks.AddReminder("Budzik — „" + when.ToString("HH:mm") + "”", when, "");
+            return createdAlarm != null
+                ? "⏰ Budzik ustawiony na " + when.ToString("HH:mm") + " (" + (when.Date == DateTime.Today ? "dziś" : "jutro") + "). Zadziała tylko, gdy aplikacja jest uruchomiona."
+                : tasks.LastStorageError ?? "Nie udało się ustawić budzika.";
+        }
         // „dodaj zadanie”, „zrob zadanie” and „nowe zadanie” are one explicit command — the task lands
-        // directly in the Tasks tab (Centrum → 📓), not just in the chat reply.
+        // directly in the Tasks tab (Centrum → 📓), not just in the chat reply. 0.94: priorytet z tekstu.
         var addTask = Regex.Match(command, @"^(?:dodaj|zrob|nowe) zadanie[:\s]\s*(.+)$", RegexOptions.IgnoreCase);
         if (addTask.Success)
         {
             string title = addTask.Groups[1].Value.Trim();
+            const string highMarkers = @"\b(?:piln(?:y|a|e)?|w(?:a|ą)zn(?:y|a|e)|na juz|asap|priorytet wysoki|natychmiast|gor(?:a|ą)c(?:y|a|e))\b";
+            const string lowMarkers = @"\b(?:nie pilne|niski priorytet|priorytet niski|kiedy(?:s|ś)|bez spiechu|lu(?:z|ź)no)\b";
+            string priority = TaskRecord.PriorityNormal;
+            if (Regex.IsMatch(title, highMarkers, RegexOptions.IgnoreCase) && !Regex.IsMatch(title, lowMarkers, RegexOptions.IgnoreCase))
+                priority = TaskRecord.PriorityHigh;
+            else if (Regex.IsMatch(title, lowMarkers, RegexOptions.IgnoreCase))
+                priority = TaskRecord.PriorityLow;
+            if (priority != TaskRecord.PriorityNormal)
+            {
+                title = Regex.Replace(title, highMarkers, "", RegexOptions.IgnoreCase);
+                title = Regex.Replace(title, lowMarkers, "", RegexOptions.IgnoreCase);
+                title = Regex.Replace(title, @"\s+", " ").Trim(' ', ':', '-', '–', ',', '.');
+            }
+            if (title.Length == 0) return "Zadanie musi mieć treść poza słowem priorytetu, np. „dodaj zadanie: pilne kupić mleko”.";
             DateTime? due = null; string dueNote = "";
             if (TrySplitReminderTime(title, out string cleanTitle, out DateTime parsedDue, out string dueDescription) && cleanTitle.Length > 0)
             { title = cleanTitle; due = parsedDue; dueNote = $" z terminem {dueDescription} (czas lokalny)"; }
             string projectId = projects?.ActiveProjectId ?? "";
-            return tasks.AddTask(title, TaskRecord.PriorityNormal, due, projectId) != null
-                ? StorageResult("Zadanie zapisane" + dueNote + ". Znajdziesz je w Centrum → zakładka 📓 Zadania.")
+            string priorityNote = priority == TaskRecord.PriorityHigh ? " (priorytet WYSOKI)"
+                : priority == TaskRecord.PriorityLow ? " (priorytet niski)" : "";
+            return tasks.AddTask(title, priority, due, projectId) != null
+                ? StorageResult("Zadanie zapisane" + priorityNote + dueNote + ". Znajdziesz je w Centrum → zakładka 📓 Zadania.")
                 : tasks.LastStorageError ?? "Nie zapisano zadania.";
         }
         if (text is "zadania" or "moje zadania" or "lista zadan")
@@ -279,6 +442,23 @@ public sealed class CommandRouter
             if (taskIndex < 1 || taskIndex > open.Length) return "Podaj numer zadania z listy (1…" + Math.Max(1, open.Length) + ").";
             var target = open[taskIndex - 1];
             return tasks.SetTaskStatus(target.Id, TaskRecord.StatusDone) ? StorageResult($"Zrobione: „{target.Title}”. Zostaje w panelu Zadania → filtr Zrobione.") : "Nie udało się zmienić statusu.";
+        }
+        // 0.94: priorytet zadania z czatu — jawna zmiana, z numerem z listy „zadania”.
+        var setPriority = Regex.Match(text, @"^zadanie (\d{1,3}) priorytet (wysoki|niski|normalny)$");
+        if (setPriority.Success && int.TryParse(setPriority.Groups[1].Value, out int priorityIndex))
+        {
+            var open = tasks.GetTasks().Take(10).ToArray();
+            if (priorityIndex < 1 || priorityIndex > open.Length) return "Podaj numer zadania z listy (1…" + Math.Max(1, open.Length) + ").";
+            string newPriority = setPriority.Groups[2].Value switch
+            {
+                "wysoki" => TaskRecord.PriorityHigh,
+                "niski" => TaskRecord.PriorityLow,
+                _ => TaskRecord.PriorityNormal
+            };
+            var target = open[priorityIndex - 1];
+            return tasks.SetTaskPriority(target.Id, newPriority)
+                ? StorageResult($"Priorytet zadania „{target.Title}”: {newPriority}.")
+                : "Nie udało się zmienić priorytetu.";
         }
         if (text is "przypomnienia" or "moje przypomnienia" or "lista przypomnien")
         {
@@ -437,6 +617,18 @@ public sealed class CommandRouter
     private string BuildSystemContext(string topic, bool includeSystemFacts, bool includeRecentHistory)
     {
         var parts = new List<string>();
+        // 0.94: data i godzina zawsze — dopytania „co dzisiaj”, „ile dni do…” i daty względne
+        // przestają zgadywać. Aktywny projekt i tytuł rozmowy trzymają kontekst w jednym miejscu.
+        parts.Add("Dzisiaj jest " + DateTime.Now.ToString("yyyy-MM-dd") + " (" +
+            DateTime.Now.ToString("dddd, d MMMM yyyy", CultureInfo.GetCultureInfo("pl-PL")) + "), godzina " + DateTime.Now.ToString("HH:mm") + ".");
+        try
+        {
+            string projectLine = projects?.ActiveProject is { } activeProject && activeProject.Name.Length > 0
+                ? "Aktywny projekt: " + activeProject.Name + "."
+                : "Żaden projekt nie jest aktywny — pamięć jest globalna.";
+            parts.Add(projectLine + " Rozmowa: " + memory.ActiveConversationTitle + ".");
+        }
+        catch { /* kontekst pomocniczy nigdy nie może wywrócić zapytania */ }
         if (includeSystemFacts)
         {
             try
@@ -449,13 +641,18 @@ public sealed class CommandRouter
         if (!string.IsNullOrWhiteSpace(topic))
             parts.Add("Ostatni temat skrótu: " + topic + ".");
 
+        // 0.94: ostatnie odczyty narzędzi z tej sesji — żeby „a ile wolnego?” miało sens.
+        string sessionFacts = facts?.Describe() ?? "";
+        if (sessionFacts.Length > 0) parts.Add(sessionFacts);
+
         parts.Add(includeRecentHistory ? memory.GetRecentContext(12) : memory.GetStableContext());
         return string.Join("\n", parts.Where(x => !string.IsNullOrWhiteSpace(x)));
     }
 
     private static bool IsFollowUpQuestion(string text, string followUp, string topic) =>
         !string.IsNullOrWhiteSpace(topic) && Regex.IsMatch(followUp, @"^(?:czy to|czy jest|a |a teraz|dlaczego|czemu|co z tym|ile|jaki procent|procent)") ||
-        Regex.IsMatch(text, @"\b(?:wczesniej|przed chwila|tamto|to samo|ten temat|ostatni temat|historia rozmowy)\b");
+        Regex.IsMatch(text, @"\b(?:wczesniej|przed chwila|tamto|to samo|ten temat|ostatni temat|historia rozmowy|w takim razie|co z tamtym|co z tym|ile dokladnie|co dokladnie|rozwin|opowiedz wiecej|wyjasnij to|skad to|po co to|ile w tym|a co z)\b") ||
+        Regex.IsMatch(text, @"^(?:a |no a |wiec |ok,? |w takim razie )");
 
     private static bool MentionsComputerStateNoTopic(string text, string followUp) =>
         MentionedComputerState(text + " " + followUp);
@@ -579,21 +776,24 @@ public sealed class CommandRouter
         Aplikacje: włącz <nazwa> (cs2, discord, steam, chrome, brave, spotify, notatnik, kalkulator, VS Code, Firefox, VLC, OBS…) · otwórz pobrane / dokumenty / pulpit · skróty
         Diagnostyka: diagnostyka komputera (albo //diag) · eksportuj raport · status zabezpieczeń · zdarzenia windows · programy autostartu · lista usług
         Odczyty stanu: snapshot · snapshoty · porównaj snapshoty · eksportuj porównanie · usuń snapshot N
-        Pamięć: zapamiętaj: … · notatka: … · co pamiętasz · pokaż rozmowy · nowa rozmowa · szukaj w rozmowie: fraza · eksportuj rozmowę markdown
+        Pamięć: zapamiętaj: … · notatka: … · co pamiętasz · co wiesz o mnie · pokaż rozmowy · nowa rozmowa · podsumuj rozmowę · fakty · szukaj w rozmowie: fraza · eksportuj rozmowę markdown (szukanie toleruje literówki)
         Archiwum: archiwizuj rozmowy · archiwa · usuń archiwum RRRR-MM
         Projekty: nowy projekt: nazwa · projekty · użyj projektu N · aktywny projekt
-        Zadania: dodaj zadanie: treść · zrob zadanie: treść · zadania · zadanie N zrobione · szukaj w zadaniach: fraza · przypomnienia · przypomnij mi jutro o 18 o …
-        Sentinel: samokontrola · propozycje · lekcje · wersja · co nowego
-        Matematyka: policz 12,5*4 · pierwiastek 144 · silnia 10 · nwd 12 8 · nww 4 6 · czy pierwsza 97 · dzielniki 12 · fibonacci 10 · srednia: 2, 4, 6 · mediana: … · suma: … · min: … · max: … · zaokraglij 3,14159 do 2 · zmiana z 50 do 80 · procent 15 z 240 · ile to procent 30 z 240 · vat 100
+        Zadania: dodaj zadanie: treść · dodaj zadanie: pilne treść (priorytet z tekstu) · zrob zadanie: treść · zadania · zadanie N zrobione · zadanie N priorytet wysoki|niski|normalny · szukaj w zadaniach: fraza · przypomnienia · przypomnij mi jutro o 18 o …
+        Sentinel: samokontrola · napraw sie (naprawa danych) · ulepsz sie (co się nauczyłem) · propozycje · lekcje · wersja · co nowego · zrozum: zdanie (pokazuję rozumienie, nic nie wykonuję) · fakty · co wiesz o mnie · podsumuj rozmowę
+        Jarvis: timer 5 minut · budzik 7:00 · stoper start/stop · głośność / głośność 40 · wycisz · przywróć dźwięk · zrzut ekranu · kopiuj: tekst · co w schowku
+        Matematyka: policz 12,5*4 · pierwiastek 144 · silnia 10 · nwd 12 8 · nww 4 6 · czy pierwsza 97 · dzielniki 12 · fibonacci 10 · srednia: 2, 4, 6 · mediana: … · suma: … · min: … · max: … · srednia wazona: 4 2, 5 1 · zaokraglij 3,14159 do 2 · zmiana z 50 do 80 · procent 15 z 240 · ile to procent 30 z 240 · logarytm 1000 10 · potega 2 10 · modulo 10 3 · abs -5 · sin 30 · cos 60 · tan 45 · rownanie 1 -3 2
+        Finanse i zakupy: vat 23 100 · vat 8 100 brutto · vat 5 250 · znizka 200 30 · napiwek 150 10 · raty 100000 7 25 (kwota, %, lata) · odsetki 1000 5 3 · procent skladany 1000 5 10
         Konwersje: przelicz 5 km na mile · rgb 31 162 195 · kolor 1fa2c3 · rzymskie 2026 · z rzymskich XIV · base64: tekst · dekoduj base64: … · morse: sos · dekoduj morse: … · binarnie: A · dekoduj binarnie: … · hex: Ala · dekoduj hex: …
-        Tekst: ile slow: tekst · ile znakow: tekst · ile zdan: tekst · palindrom: kajak · anagram: kot, tok · rot13: ala · tytul: ala ma kota · wielkie litery: … · male litery: … · odwroc tekst: … · slug: tekst · transliteruj: tekst · json: {…} · hash tekstu: …
-        Kalendarz: ile dni do 24.12 · jaki dzien tygodnia 1.1.2030 · tydzien roku · dzien roku · ile dni do konca roku · wiek: 01.01.1990 · dni robocze 1.1.2024 do 31.1.2024 · wielkanoc 2027 · czas w toki / londyn / berlin / paryz / nowy jork / chicago / los angeles / seoul
-        Dokumenty PL: pesel: 11 cyfr · nip: 10 cyfr · iban: PL61… (walidacja lokalna, nic nie jest wysyłane)
-        Losowe: losuj 1-100 · rzuc kostka · rzut moneta · lotto · pin 6 · haslo 20 · uuid · wybierz losowo: a, b · bmi 80 180
+        Tekst: ile slow: tekst · ile znakow: tekst · ile zdan: tekst · palindrom: kajak · anagram: kot, tok · rot13: ala · tytul: ala ma kota · wielkie litery: … · male litery: … · odwroc tekst: … · odwroc slowa: ala ma kota · posortuj slowa: c a b · bez powtorzen: a a b · powtorzenia slow: tekst · czestotliwosc slow: tekst · literuj: Ala · skrable: kot · tylko cyfry: ab12 · tylko litery: ab12 · slug: tekst · transliteruj: tekst · json: {…} · hash tekstu: …
+        Kalendarz: ile dni do 24.12 · ile dni miedzy 1.1.2024 a 1.1.2025 · dodaj 10 dni do 1.1.2030 · odejmij 5 dni od 1.1.2030 · jaki dzien tygodnia 1.1.2030 · kalendarz 9 2026 · kwartal 15.3.2026 · rok przestepny 2024 · tydzien roku · dzien roku · ile dni do konca roku · wiek: 01.01.1990 · dni robocze 1.1.2024 do 31.1.2024 · wielkanoc 2027 · czas w toki / londyn / berlin / nowy jork / madryt / rzym / moskwa / dubaj / sydney / … · czas w strefie UTC+2
+        Dokumenty PL i kody: pesel: 11 cyfr · nip: 10 cyfr · iban: PL61… · ean: 13 cyfr · isbn: … · luhn: 4111… · regon: 9 cyfr (walidacja lokalna, nic nie jest wysyłane)
+        Komputer: nazwa uzytkownika · nazwa komputera · ile rdzeni · architektura · rozdzielczosc ekranu · bateria · strefa czasu · moje ip
+        Losowe: losuj 1-100 · rzuc kostka · kostka 2d6 · wylosuj karte · rzut moneta · lotto · pin 6 · haslo 20 · uuid · wybierz losowo: a, b · bmi 80 180 · cytat
         Podsumowania: plan dnia · szukaj wszystkiego: fraza · statystyki · backup
         Czat: ponów (przycisk „Ponów”) · zatrzymaj generowanie (przycisk widoczny zawsze)
 
-        Rozumienie: literówki i skróty są poprawiane i zawsze pokazuję, co zrozumiałem. Gdy nie jestem pewien — pytam zamiast zgadywać („Czy chodziło Ci o…”). Nie zgaduję poleceń niszczących — usuwanie wymaga świadomego kliknięcia lub osobnej zgody.
+        Rozumienie: rozumiem całe zdania („sprawdź proszę ile mam ramu”), synonimy („odpal” = „włącz”) i polecenia ukryte w zdaniu — zawsze pokazuję „Zrozumiałem jako: …”. Literówki i skróty są poprawiane jawnie. Gdy nie jestem pewien — pytam zamiast zgadywać („Czy chodziło Ci o…”). „zrozum: zdanie” pokazuje kroki rozumienia bez wykonania. Nie zgaduję poleceń niszczących — usuwanie wymaga świadomego kliknięcia lub osobnej zgody.
         """;
 
     private string SnapshotStorage(string success) => snapshots?.LastStorageError == null ? success : snapshots.LastStorageError;

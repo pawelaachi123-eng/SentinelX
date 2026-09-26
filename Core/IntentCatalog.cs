@@ -87,7 +87,26 @@ public static class IntentCatalog
             "tydzien roku", "dzien roku", "ile dni do konca roku", "wiek", "dni robocze", "wielkanoc",
             "moje ip", "nazwa komputera", "ile rdzeni", "architektura",
             "wersja", "co nowego", "lekcje", "samokontrola", "propozycje",
-            "szukaj zadan", "zrob zadanie", "notatka"
+            "szukaj zadan", "zrob zadanie", "notatka",
+            // 0.94 · zrozumienie, pamięć i nowe narzędzia offline
+            "zrozum", "co wiesz o mnie", "podsumuj rozmowe", "fakty", "ostatnie fakty",
+            "eksportuj historie json", "eksportuj historie csv", "eksportuj historie",
+            "wznow rozmowe", "przypomnij", "zapamietaj",
+            "znizka", "napiwek", "raty", "rata kredytu", "odsetki", "procent skladany",
+            "logarytm", "potega", "modulo", "reszta z dzielenia", "wartosc bezwzgledna",
+            "sin", "cos", "tan", "sinus", "cosinus", "tangens", "srednia wazona",
+            "rownanie kwadratowe", "kalendarz", "dodaj dni", "odejmij dni", "ile dni miedzy",
+            "rok przestepny", "kwartal",
+            "ean", "isbn", "luhn", "karta platnicza", "regon",
+            "literuj", "czestotliwosc slow", "powtorzenia slow", "skrable", "punkty scrabble",
+            "posortuj slowa", "bez powtorzen", "odwroc slowa", "tylko cyfry", "tylko litery",
+            "wylosuj karte", "kostka", "cytat",
+            "nazwa uzytkownika", "rozdzielczosc ekranu", "bateria", "stan baterii",
+            "strefa czasu", "czas w strefie", "czas utc",
+            // 0.95 · Jarvis: timer/stoper/budzik, głośność, schowek, zrzuty, self-repair/self-improve
+            "timer", "budzik", "stoper", "stoper start", "stoper stop",
+            "glosnosc", "wycisz", "przywroc dzwiek", "co w schowku", "kopiuj",
+            "zrzut ekranu", "screenshot", "napraw sie", "ulepsz sie"
         ];
         foreach (string phrase in extra) phrases.Add(phrase);
         return phrases.OrderBy(x => x, StringComparer.Ordinal).ToArray();

@@ -165,6 +165,103 @@ internal static class UtilityRegression
         Check(UtilityToolbox.Process("napisz wiersz", "napisz wiersz") == null, "free conversation must not be caught by a tool");
         Check(UtilityToolbox.Process("ile mam ramu", "ile mam ramu") == null, "measurements stay with the read-only catalogue");
         Check(UtilityToolbox.Process("zamknij notatnik", "zamknij notatnik") == null, "tools must never swallow an action command");
+        // ============================ 0.94 · narzędzia ============================
+        // --- VAT with an explicit rate; the frozen default stays „brutto 123,00” ---
+        Check(Require(UtilityToolbox.Process("vat 8 100", "vat 8 100"), "vat 8%").Contains("brutto 108,00"), "8% of 100 grosses to 108,00");
+        Check(Require(UtilityToolbox.Process("vat 5 100 netto", "vat 5 100 netto"), "vat netto").Contains("brutto 105,00"), "explicit netto input");
+        Check(Require(UtilityToolbox.Process("vat 23 200 brutto", "vat 23 200 brutto"), "vat brutto").Contains("netto 162,6"), "gross input extracts the net");
+        Check(UtilityToolbox.Process("vat 120 100", "vat 120 100")!.Contains("0–100"), "an impossible rate must be refused");
+
+        // --- finance ---
+        Check(Require(UtilityToolbox.Process("znizka 20 80", "znizka 20 80"), "discount").Contains("64,00"), "20% off 80 is 64,00");
+        Check(Require(UtilityToolbox.Process("napiwek 50 10", "napiwek 50 10"), "tip").Contains("55,00"), "50 + 10% tip is 55,00");
+        Check(Require(UtilityToolbox.Process("raty 10000 5 12", "raty 10000 5 12"), "loan").Contains("Rata równa"), "an installment estimate must be labeled");
+        Check(Require(UtilityToolbox.Process("odsetki proste 1000 5 2", "odsetki proste 1000 5 2"), "interest").Contains("100,00"), "simple interest 1000·5%·2y");
+        Check(Require(UtilityToolbox.Process("procent skladany 1000 5 10", "procent skladany 1000 5 10"), "compound").Contains("Procent składany"), "compound interest runs");
+        Check(Require(UtilityToolbox.Process("procent skladany 1000 5 10", "procent skladany 1000 5 10"), "compound").Contains("1628,89"), "compound interest is a published number");
+
+        // --- math beyond the calculator ---
+        Check(Require(UtilityToolbox.Process("log 1000", "log 1000"), "log").Contains("log10(1000) = 3"), "decimal log");
+        Check(Require(UtilityToolbox.Process("log 8 podstawie 2", "log 8 podstawie 2"), "log2").Contains("= 3"), "log base 2 of 8");
+        Check(Require(UtilityToolbox.Process("potega 2 10", "potega 2 10"), "power").Contains("= 1024"), "2^10");
+        Check(Require(UtilityToolbox.Process("modulo 17 5", "modulo 17 5"), "mod").Contains("= 2"), "17 mod 5");
+        Check(Require(UtilityToolbox.Process("wartosc bezwzgledna -5", "wartosc bezwzgledna -5"), "abs").Contains("= 5"), "|-5|");
+        Check(Require(UtilityToolbox.Process("sin 0", "sin 0"), "sin").Contains("="), "trigonometry runs");
+        Check(Require(UtilityToolbox.Process("srednia wazona: 4 3 5 2", "srednia wazona: 4 3 5 2"), "weighted").Contains("Średnia ważona"), "weighted average beats the generic stats regex");
+        Check(Require(UtilityToolbox.Process("srednia wazona: 4 3 5 2", "srednia wazona: 4 3 5 2"), "weighted").Contains("4,4"), "(4·3+5·2)/5 = 4,4");
+        string quadratic = Require(UtilityToolbox.Process("rownanie 1 -3 2", "rownanie 1 -3 2"), "quadratic");
+        Check(quadratic.Contains("x₁") && quadratic.Contains("x₂"), "quadratic finds both roots: " + quadratic);
+
+        // --- calendar ---
+        Check(Require(UtilityToolbox.Process("kalendarz 2 2024", "kalendarz 2 2024"), "calendar").Contains("29"), "February 2024 has 29 days");
+        Check(Require(UtilityToolbox.Process("ile dni miedzy 01.01.2024 a 31.01.2024", "ile dni miedzy 01.01.2024 a 31.01.2024"), "between").Contains("30 dni"), "30 days between 1 and 31 January");
+        Check(Require(UtilityToolbox.Process("rok przestepny 2024", "rok przestepny 2024"), "leap").Contains("JEST przestępny"), "2024 is a leap year");
+        Check(Require(UtilityToolbox.Process("przestepny 2023", "przestepny 2023"), "leap2").Contains("NIE jest"), "2023 is not");
+        Check(Require(UtilityToolbox.Process("ile dni do konca kwartalu", "ile dni do konca kwartalu"), "quarter").Contains("kwartał"), "quarter countdown");
+        Check(Require(UtilityToolbox.Process("kwartal 15.02.2024", "kwartal 15.02.2024"), "quarter of").Contains("1 kwartał 2024"), "which quarter a date is in");
+
+        // --- validators (local math only) ---
+        Check(Require(UtilityToolbox.Process("ean 5901234123457", "ean 5901234123457"), "ean ok").Contains("jest POPRAWNY"), "a correct EAN-13 passes");
+        Check(Require(UtilityToolbox.Process("ean 5901234123458", "ean 5901234123458"), "ean bad").Contains("NIEPOPRAWNY"), "a flipped check digit fails");
+        Check(Require(UtilityToolbox.Process("isbn 83-246-0917-8", "isbn 83-246-0917-8"), "isbn").Contains("ISBN"), "ISBN-10 resolves");
+        Check(Require(UtilityToolbox.Process("luhn 4111111111111111", "luhn 4111111111111111"), "luhn").Contains("Luhn"), "a Visa test number passes Luhn");
+        Check(Require(UtilityToolbox.Process("regon 123456785", "regon 123456785"), "regon").Contains("REGON"), "REGON-9 resolves");
+
+        // --- text ---
+        string spelled = Require(UtilityToolbox.Process("literuj kot", "literuj kot"), "spell");
+        Check(spelled.Contains("Literowanie") && spelled.Contains("kapelusz"), "spelling out letters: " + spelled);
+        Check(Require(UtilityToolbox.Process("czestotliwosc slow kot kot pies", "czestotliwosc slow kot kot pies"), "freq").Contains("4 słów, 2 różnych"), "word frequency counts");
+        Check(Require(UtilityToolbox.Process("skrable kot", "skrable kot"), "scrabble").Contains("5 pkt"), "kot is worth 5 scrabble points");
+        Check(Require(UtilityToolbox.Process("posortuj slowa: c a b", "posortuj slowa: c a b"), "sort").Contains("a b c"), "words get sorted");
+        Check(Require(UtilityToolbox.Process("bez powtorzen: ala ma kota ala", "bez powtorzen: ala ma kota ala"), "distinct").Contains("ala ma kota"), "duplicates are removed");
+        Check(Require(UtilityToolbox.Process("odwroc slowa: Ala ma kota", "odwroc slowa: Ala ma kota"), "reverse words").Contains("kota ma Ala"), "word order flips");
+        Check(Require(UtilityToolbox.Process("tylko cyfry: ab12cd34", "tylko cyfry: ab12cd34"), "digits").Contains("1234"), "digits are extracted");
+        Check(Require(UtilityToolbox.Process("tylko litery: ab12cd", "tylko litery: ab12cd"), "letters").Contains("abcd"), "letters are extracted");
+
+        // --- system (offline, kernel32 where available) ---
+        string resolution = Require(UtilityToolbox.Process("rozdzielczosc ekranu", "rozdzielczosc ekranu"), "resolution");
+        Check(resolution.Contains("Rozdzielczość") || resolution.Contains("niedostępny"), "screen resolution runs offline: " + resolution);
+        string battery = Require(UtilityToolbox.Process("stan baterii", "stan baterii"), "battery").ToLowerInvariant();
+        Check(battery.Contains("bateria") || battery.Contains("baterii") || battery.Contains("niedostępny"), "battery status runs offline: " + battery);
+        Check(Require(UtilityToolbox.Process("strefa czasu", "strefa czasu"), "tz").Contains("UTC"), "local timezone");
+        Check(Require(UtilityToolbox.Process("czas w strefie UTC+2", "czas w strefie UTC+2"), "offset").Contains("UTC+2"), "an offset clock beats the world clock regex");
+        Check(Require(UtilityToolbox.Process("czas w londynie", "czas w londynie"), "london").Contains("Londyn"), "the locative city alias works");
+        Check(Require(UtilityToolbox.Process("czas w atenach", "czas w atenach"), "athens").Contains("Ateny"), "another locative alias");
+
+        // --- randomness ---
+        string dice = Require(UtilityToolbox.Process("rzuc 3k6", "rzuc 3k6"), "dice");
+        Check(dice.Contains("3k6") || dice.Contains("suma"), "polyhedral dice: " + dice);
+        string card = Require(UtilityToolbox.Process("wylosuj karte", "wylosuj karte"), "card");
+        Check(card.Contains("Karta"), "a playing card draws");
+
+        // --- the toolbox must never steal conversations or side effects ---
+        Check(UtilityToolbox.Process("napisz wiersz", "napisz wiersz") == null, "a poem request is not a tool call");
+        Check(UtilityToolbox.Process("ile mam ramu", "ile mam ramu") == null, "system status is not a tool call");
+        Check(UtilityToolbox.Process("zamknij notatnik", "zamknij notatnik") == null, "destruction is not a tool call");
+
+        // ============================ 0.95 · Jarvis tools ============================
+        // --- volume: honest answer whether or not the machine has audio ---
+        string volume = Require(UtilityToolbox.Process("glosnosc", "glosnosc"), "volume");
+        Check(volume.Contains("Głośność") || volume.Contains("Nie udało") || volume.Contains("niedostępne"),
+            "volume reads or fails honestly: " + volume);
+        string volumeSet = Require(UtilityToolbox.Process("glosnosc 40", "glosnosc 40"), "volume set");
+        Check(volumeSet.Contains("40") || volumeSet.Contains("niedostępne") || volumeSet.Contains("Nie udało"),
+            "volume set works or fails honestly: " + volumeSet);
+        Check(UtilityToolbox.Process("glosnosc 400", "glosnosc 400")!.Contains("0–100"), "an impossible volume is refused");
+        string mute = Require(UtilityToolbox.Process("wycisz", "wycisz"), "mute");
+        Check(mute.Contains("wycisz") || mute.Contains("niedostępne"), "mute works or fails honestly: " + mute);
+
+        // --- clipboard ---
+        string clip = Require(UtilityToolbox.Process("kopiuj: spotkanie o 15:00", "kopiuj: spotkanie o 15:00"), "clipboard copy");
+        Check(clip.Contains("Skopiowane") || clip.Contains("niedostępny"), "clipboard copy works or fails honestly: " + clip);
+        string clipRead = Require(UtilityToolbox.Process("co w schowku", "co w schowku"), "clipboard read");
+        Check(clipRead.Contains("Schowek") || clipRead.Contains("niedostępny"), "clipboard read works or fails honestly: " + clipRead);
+
+        // --- screenshot ---
+        string shot = Require(UtilityToolbox.Process("zrzut ekranu", "zrzut ekranu"), "screenshot");
+        Check(shot.Contains("Zrzut ekranu zapisany") || shot.Contains("Nie udało"),
+            "a screenshot saves or fails honestly: " + shot);
+
         return Task.CompletedTask;
     }
 }

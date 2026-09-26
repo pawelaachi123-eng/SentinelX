@@ -103,6 +103,65 @@ internal static class UnderstandingRegression
         Check(IntentCatalog.Phrases.All(x => x.Length > 1 && x == x.Trim() && !x.Contains("  ")), "phrases must be clean normalized text");
         Check(IntentCatalog.Vocabulary.Contains("kalkulator") && IntentCatalog.Vocabulary.Contains("ramu"), "vocabulary must contain the repair targets");
         Check(!IntentCatalog.Phrases.Contains("szukaj"), "a bare search stem must not be repairable into a web search");
+
+        // ============================ 0.94 · rozumienie zdań ============================
+        // --- polite sentences with a known command inside are decoded, with a visible note ---
+        var polite = CommandUnderstanding.Understand("sprawdź proszę ile mam ramu");
+        Check(polite.Success && polite.Text == "ile mam ramu", "a polite sentence with an embedded command must be decoded: " + polite.Text);
+        Check(polite.Summary.Contains("prosze") || polite.Summary.Contains("sprawdz"), "the note must say what was skipped: " + polite.Summary);
+        Check(CommandUnderstanding.Understand("powiedz mi która godzina").Text == "ktora godzina", "inquiry verbs around a command must be stripped");
+        Check(CommandUnderstanding.Understand("sprawdź proszę status pamięci").Text == "status pamieci", "polite multiword command inside a sentence");
+        Check(CommandUnderstanding.Understand("mógłbyś sprawdzić ile dni do 24.12 proszę").Text == "ile dni do 24.12", "arguments must survive extraction: " + CommandUnderstanding.Understand("mógłbyś sprawdzić ile dni do 24.12 proszę").Text);
+
+        // --- verb synonyms fold towards the safe catalogue ---
+        var launch = CommandUnderstanding.Understand("odpal discorda");
+        Check(launch.Success && launch.Text is "odpal discord" or "wlacz discord" or "uruchom discord", "a synonym verb + inflection must launch discord: " + launch.Text);
+        Check(launch.Text.Contains("discord") && !launch.Text.Contains("discorda"), "the inflection must be repaired to the base app name");
+        Check(CommandUnderstanding.Understand("zobacz która godzina").Text == "ktora godzina", "„zobacz” folds to the show verb");
+
+        // --- inflection and single typos inside sentences (stems + fuzzy) ---
+        Check(CommandUnderstanding.Understand("sprawdź który godzina").Text == "ktora godzina", "an inflected adjective must stem-match: " + CommandUnderstanding.Understand("sprawdź który godzina").Text);
+        Check(CommandUnderstanding.Understand("powiedz mi ile mam ramuu").Text == "ile mam ramu", "a typo inside a polite sentence must still be repaired");
+
+        // --- an exact command stays untouched: no noise notes ---
+        Check(!CommandUnderstanding.Understand("ile mam ramu").Success, "an exact command must not produce a rewrite note");
+        Check(CommandUnderstanding.Understand("zrob zadanie przetestowac centrum").Text == "zrob zadanie przetestowac centrum" || !CommandUnderstanding.Understand("zrob zadanie przetestowac centrum").Success,
+            "a clean argument command must pass through without mangling");
+
+        // --- refusals: scope words, conversation, negation and destruction never auto-execute ---
+        Check(!CommandUnderstanding.Understand("ile mam ramu dziś").Success, "a scope word keeps the sentence in the question lane (Czy chodziło Ci o…)");
+        Check(!CommandUnderstanding.Understand("ile mam ramu teraz").Success, "„teraz” is content too — the grey zone asks first");
+        Check(!CommandUnderstanding.Understand("napisz mi wiersz o tym ile mam ramu").Success, "a request for text must never be stolen by a command inside it");
+        Check(!CommandUnderstanding.Understand("ile mam ramu i usun wspomnienia").Success, "destruction anywhere disables auto-execution");
+        Check(!CommandUnderstanding.Understand("nie pokazuj ram").Success, "negation is never auto-executed");
+        Check(!CommandUnderstanding.Understand("zamknij notatnik").Success, "destructive verbs never fold into launching");
+        Check(!CommandUnderstanding.Understand("").Success && !CommandUnderstanding.Understand("   ").Success, "empty input is not understood as anything");
+
+        // --- extraction only ever lands on the safe catalogue ---
+        var extracted = CommandUnderstanding.Extract("powiedz mi co pamietasz");
+        Check(extracted.Success && extracted.Text == "co pamietasz", "extraction rebuilds the catalogue phrase");
+        Check(IntentCatalog.Phrases.Contains(extracted.Text), "the extraction target must be a known safe phrase");
+        Check(CommandUnderstanding.Extract("pokaz pamiec").Success == false, "„pokaż pamięć” is a memory command — it must NOT be turned into RAM metrics");
+
+        // --- stems and fuzzy words used by search and extraction ---
+        Check(Core.CommandLexicon.Stem("pamieci") == Core.CommandLexicon.Stem("pamiec"), "inflection stems must unify");
+        Check(Core.CommandLexicon.WordsMatch("discorda", "discord"), "an inflected app name matches its base form");
+        Check(Core.CommandLexicon.WordsMatch("ktory", "ktora"), "a declined pronoun matches");
+        Check(!Core.CommandLexicon.WordsMatch("ram", "ramu"), "very short words must be exact");
+        Check(Core.CommandLexicon.IsOutsideWord("sprawdz") && Core.CommandLexicon.IsOutsideWord("prosze") && !Core.CommandLexicon.IsOutsideWord("dziś"), "inquiry/filler words are ignorable, scope words are not");
+
+        // --- the dry-run explains and executes nothing ---
+        string explain = CommandUnderstanding.Explain("sprawdź proszę ile mam ramuu");
+        Check(explain.Contains("ROZUMIENIE") && explain.Contains("wykonane zostanie"), "the dry-run must show the verdict");
+        Check(explain.Contains("ile mam ramu"), "the dry-run must name the decoded command");
+        Check(CommandUnderstanding.Explain("").Contains("pusty wpis"), "the dry-run handles empty input");
+
+        // --- 0.94: new natural aliases resolve deterministically and stay safe ---
+        Check(ReadOnlyIntentCatalog.TryResolve("jak działa procesor", out var cpuIntent) && cpuIntent == ReadOnlyIntent.Cpu, "natural phrasing must resolve");
+        Check(ReadOnlyIntentCatalog.TryResolve("ile mam miejsca na dysku", out var diskIntent) && diskIntent == ReadOnlyIntent.Disks, "disk phrasing must resolve");
+        Check(!ReadOnlyIntentCatalog.TryResolve("pokaż pamięć", out _), "the memory command must not be stolen by RAM aliases");
+        Check(!ReadOnlyIntentCatalog.TryResolve("ile mam ramu i usuń wspomnienia", out _), "compound input must not resolve as a read");
+
         return Task.CompletedTask;
     }
 }

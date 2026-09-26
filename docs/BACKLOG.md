@@ -1,6 +1,6 @@
 # Trwały backlog rozwoju SentinelX
 
-Stan na 2026-09-25 (0.93). Zasada: każda pojedyncza pozycja znika z listy dopiero, gdy jest **zbudowana i przetestowana na Windows (CI)**, nie „gdy wygląda na zrobioną".
+Stan na 2026-09-26 (0.95). Zasada: każda pojedyncza pozycja znika z listy dopiero, gdy jest **zbudowana i przetestowana na Windows (CI)**, nie „gdy wygląda na zrobioną".
 
 ## Gotowe i zweryfikowane (0.85 i wcześniejsze)
 
@@ -117,6 +117,29 @@ Stan na 2026-09-25 (0.93). Zasada: każda pojedyncza pozycja znika z listy dopie
   - `Utilities/Reveal.cs` trzyma warstwę poświaty we właściwości dołączonej zamiast `FindName("PART_RevealLayer")` — element z kodu nie rejestruje się w namescope strony, więc karta zawijałaby się w kolejną siatkę przy każdym ruchu myszy. `Utilities/CrashLogger.cs` dostał inicjalizator modułu, który dla `--ui-smoke` rejestruje `AppDomain.UnhandledException` jeszcze przed `Main` i zostawia `FAILED.txt` w katalogu wyników: awaria ładowania zasobów przestaje być w CI niewidoczna (`.github/workflows/**` bez zmian).
   - Bez zmian: wersja 0.93, etykiety i listy wyborów w `SettingsCatalog`, `Ui.SelectedPage`, legacy UI (`MainWindow.xaml`, `Theme.xaml`) — ani jednego znaku.
 
+## Gotowe w 0.94 (ten przyrost — patrz git)
+
+- **Rozumienie zdań** (`CommandUnderstanding.Understand`): skróty, naprawa literówek, dekodowanie poleceń ukrytych w uprzejmych zdaniach („sprawdź proszę ile mam ramu”) z zachowaniem argumentów i notą „Zrozumiałem jako: …”. Katalog fraz rósł do ~310 bezpiecznych pozycji; ogierki odmiany (`CommandLexicon.Stem`) i fold synonimów („odpal” → „wlacz”).
+- **Bezpieczne granice rozumienia**: negacja, czasowniki rozmowy („napisz wiersz o tym ile mam ramu”), słowa zakresu („dziś”/„teraz”) i cokolwiek destrukcyjnego nigdy nie trafiają do automatycznego wykonania — lądują w „Czy chodziło Ci o…”. Ekstrakcja sięga wyłącznie katalogu bezpiecznych fraz.
+- **`zrozum: <zdanie>`** — suchy pokaz kroków rozumienia, zero wykonania. Wywoływany przed całą resztą routingu.
+- **Pamięć i kontekst**: `SessionFactBook` (ostatnie odczyty narzędzi do dopytań, ring 8, tylko RAM aplikacji) + komendy `fakty`, `co wiesz o mnie`, `podsumuj rozmowę`; data ISO + dzień tygodnia + aktywny projekt + „Wątek rozmowy” w kontekście modelu; `AiContextFilter` z punktacją (istotność + świeżość) zamiast „zostaw ogon”.
+- **Wyszukiwanie nieostre**: wspomnienia i rozmowa tolerują odmianę i jedną literówkę (≥5 znaków: wspólny ogier albo edycja ≤1); dokładne zliczenia bez zmian (regresja pilnuje „ustalenie” == 3).
+- **Zadania**: priorytet z tekstu („pilne/na juz/niski priorytet”) i `zadanie N priorytet wysoki|niski|normalny`.
+- **~30 nowych narzędzi offline** (VAT wielostawkowy, finanse, matematyka, kalendarz, walidatory EAN/ISBN/LUHN/REGON, tekst, system, losowość) + `UtilityRegression` o ~60 asercjach; `tests/ContextRegression.cs` (fakty, wyszukiwanie, kontekst) w `--ui-smoke`.
+
+## Gotowe w 0.95 (ten przyrost — patrz git)
+
+- **Warstwa Jarvisa**: `timer`/`budzik` (na kanale przypomnień ⏰), `stoper start|stop`, głośność
+  (Core Audio COM: odczyt/ustawienie/wyciszenie), `zrzut ekranu` (GDI BitBlt + PNG przez WPF),
+  schowek (`kopiuj:`, `co w schowku`) — wszystko offline, z uczciwymi fallbackami.
+- **Self-repair** (`napraw sie`): przywracanie magazynów z kopii, parkowanie uszkodzonych plików
+  (`.corrupt-…`, nigdy kasowanie), czyszczenie JSONL, walidacja nauczonych wzorców.
+- **Self-improve** (`ulepsz sie`): `Core/LearnedPatterns` — trwałe wzorce z literówek i
+  akceptowanych propozycji; walidacja destrukcyjna przy zapisie i odczucie; nota
+  „nauczone z Twojej poprawki”. Kod pozostaje nietknięty (decyzja użytkownika podtrzymana).
+- **Self-check** rozszerzony o magazyn nauczonych wzorców; `tests/SelfMaintenanceRegression.cs`
+  + asercje w `--ui-smoke` (SELF-REPAIR, timer, stoper).
+
 ## Priorytet P0 — kolejny przyrost
 
 1. **Pliki — DOMKNIĘTE w 0.92/0.93**: duplikaty po treści (SHA-256), raport porządkowy, usuwanie pojedynczych plików do Kosza z potwierdzeniem, usuwanie duplikatów (`usuń duplikaty:`) z pozostawieniem 1 kopii na grupę, sprzątanie pustych plików (`usuń puste pliki:`), zbiorcze zmiany nazw z podglądem (`zmien nazwy: … zamien … na …`). Ewentualne rozszerzenia (filtry rozmiaru, podfoldery w zmianach nazw) to P1.
@@ -132,12 +155,11 @@ Stan na 2026-09-25 (0.93). Zasada: każda pojedyncza pozycja znika z listy dopie
 - Tryb gry: zawieszanie indeksowania/ciężkich zadań, profil modeli z histerezą przełączania (progi + opóźnienie), zwalnianie modelu opcjonalne.
 - Sekwencje działań: nazwane kroki, plan z podglądem, statusy kroków, stop na błędzie, wznowienie tam gdzie sensowne.
 - Rozmowa: edycja wypowiedzi i ponowne wysłanie z oznaczeniem alternatywy; zakładanie odgałęzień rozmowy.
-- Wyszukiwanie (wspomnienia, rozmowa, `szukaj wszystkiego`) z tolerancją literówek — dziś naprawa dotyczy poleceń, nie treści wyszukiwania.
-- Narzędzia: przelicznik walut (wymaga kursu — offline nieuczciwe), własne stawki VAT (8/5/0%), przywracanie archiwum do nowej rozmowy, skróty konfigurowalne przez użytkownika.
-- Rozbicie `CommandRouter` (~640 linii po 0.91) na osobne moduły: pamięć, projekty/zadania, snapshoty, narzędzia, meta — dopiero przy zielonym CI.
-- Z 0.91 odłożone: dalsze ~40 pozycji z listy „100 funkcji” (m.in. edycja plików konfiguracyjnych z podglądem diff, rozszerzony zegar świata, profile skrótów użytkownika, `czas w` dla dowolnej strefy, święta w `dni robocze`) — bez udawania, że istnieją.
+- Narzędzia: przelicznik walut (wymaga kursu — offline nieuczciwe), przywracanie archiwum do nowej rozmowy, skróty konfigurowalne przez użytkownika.
+- Rozbicie `CommandRouter` (~700 linii po 0.94) na osobne moduły: pamięć, projekty/zadania, snapshoty, narzędzia, meta — dopiero przy zielonym CI.
+- Z 0.91 odłożone: dalsze pozycje z listy „100 funkcji” (m.in. edycja plików konfiguracyjnych z podglądem diff, profile skrótów użytkownika, święta w `dni robocze`, wykrywanie świąt w kalendarzu) — bez udawania, że istnieją.
 - Modele 3D i generowanie modeli — poza zakresem produktu (wbudowana uczciwa odmowa); gdyby wróciły, to jako integracja z zewnętrznym narzędziem za zgodą.
-- Samomodyfikacja kodu — odrzucona na stałe decyzją użytkownika; odpowiednikiem są `samokontrola` i `propozycje`.
+- Samomodyfikacja kodu — odrzucona na stałe decyzją użytkownika; odpowiednikami są `napraw sie` (naprawa danych), `ulepsz sie` (pętla uczenia z poprawek — dane, nie kod), `samokontrola` i `propozycje`.
 
 ## Priorytet P2
 
@@ -150,10 +172,10 @@ Stan na 2026-09-25 (0.93). Zasada: każda pojedyncza pozycja znika z listy dopie
 - Brak lokalnego kompilatora .NET w środowisku deweloperskim — weryfikacja wyłącznie przez CI na `windows-latest` (opis w README).
 - Build niepodpisany: SmartScreen może ostrzegać (zgodnie z README; nie wyłączamy zabezpieczeń).
 - Ollama, mikrofon i gry wymagają testów na komputerze docelowym; CI nie ma mikrofonu ani gier.
-- Wyszukiwanie **treści** (wspomnienia, rozmowa, `szukaj wszystkiego`) jest tekstowe (normalizacja, bez fuzzy) — literówki mogą nie trafić. Tolerancja literówek dotyczy **poleceń**, nie wyników wyszukiwania.
-- Naprawa poleceń działa na stałym katalogu ~240 fraz (0.91): nie rozumie odmiany ani kontekstu, a przy niejednoznaczności celowo nic nie poprawia.
-- `przelicz` nie przelicza walut, brak zrzutów ekranu i sterowania głośnością — świadomie odłożone, nie „zrobione częściowo”.
-- VAT liczy tylko stawkę 23%.
+- Wyszukiwanie **treści** (wspomnienia, rozmowa, `szukaj wszystkiego`) jest tekstowe z tolerancją odmiany i jednej literówki (≥5 znaków: wspólny ogier albo edycja ≤1) — bez semantyki; dalej może nie trafić na synonimy.
+- Naprawa poleceń działa na katalogu ~310 fraz (0.94) z ogierkami odmiany: nie rozumie pełnej polszczyzny ani kontekstu, a przy niejednoznaczności celowo nic nie poprawia.
+- `przelicz` nie przelicza walut (wymaga kursu — offline nieuczciwe). Zrzuty ekranu i sterowanie głośnością są od 0.95.
+- VAT liczy stawki 23/8/5/0% (wybór w poleceniu, domyślnie 23%); inne stawki są odrzucane z wyjaśnieniem.
 - Archiwum rozmów jest kopią do odczytu: nie ma przywracania do aktywnej rozmowy.
 - Limit magazynu artefaktów GitHub Actions został osiągnięty 2026-09-24: przebieg `36049020743` miał **13/13 kroków merytorycznych `success`**, a czerwony znacznik pochodzi wyłącznie z `upload-artifact` („Artifact storage quota has been hit”). Retencja artefaktów skrócona do 2 dni; trwałą dystrybucją są assety wydania. Gdyby limit dalej blokował, kolejne kroki: `retention-days: 1` albo rezygnacja z uploadu binariów w buildzie gałęzi.
 - Streaming AI nie jest weryfikowany z żywym modelem w CI (brak Ollama w środowisku testowym) — transport i logika fragmentów są testowane na wstrzykniętym HTTP.

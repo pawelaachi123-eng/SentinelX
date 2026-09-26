@@ -48,6 +48,10 @@ public static class ServiceLocator
             sp.GetRequiredService<MemoryArchiveService>()));
         // 0.91: the local lessons journal („lekcje”) records typo repairs — deterministic learning.
         services.AddSingleton<UnderstandingJournal>();
+        // 0.94: session fact book — recent tool readings for follow-up questions (memory-only).
+        services.AddSingleton<SessionFactBook>();
+        // 0.95: learned patterns — safe self-improvement (data, never code).
+        services.AddSingleton<SentinelX.Core.LearnedPatterns>();
         services.AddSingleton<Services.Memory.MemoryActionService>(sp => new(sp.GetRequiredService<ConversationMemoryService>(),
             sp.GetRequiredService<Services.Permissions.IPermissionService>(), sp.GetRequiredService<ActionHistoryService>()));
         services.AddSingleton<IHistoryService, HistoryService>();

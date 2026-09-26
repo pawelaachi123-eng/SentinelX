@@ -17,6 +17,7 @@ public partial class MainWindow : Window
     private readonly SystemInfoService systemInfo = new();
     private readonly GamingModeService gaming = new();
     private readonly ConversationMemoryService memory = new();
+    private readonly SessionFactBook factBook = new();
     private readonly LocalAiService ai;
     private readonly CommandRouter router;
     private readonly SentinelToolboxService toolbox;
@@ -53,7 +54,7 @@ public partial class MainWindow : Window
         InitializeComponent();
         ai = new LocalAiService(gaming, systemMonitor: monitor, aiSettingsProvider: () => settings.Settings.Ai);
         voice = new VoiceRecognitionService(() => settings.Settings.Voice);
-        router = new CommandRouter(monitor, systemInfo, ai, memory);
+        router = new CommandRouter(monitor, systemInfo, ai, memory, facts: factBook);
         ChatItems.ItemsSource = messages;
         LoadChat(); ApplySettings();
         settingsEditor = new SettingsEditorView(settings); SettingsEditorHost.Content = settingsEditor;
