@@ -135,6 +135,19 @@ ustawienie → pierwszy zainstalowany z listy znaczników (`llava`, `llama3.2-vi
   każdej zakładki), nowe komendy odpowiadają przez **pełny** silnik, licznik kart gotowości 4 → 6,
   asercja wersji 0.93 → 0.96.
 - Nie zweryfikowane lokalnie: nic. W tym sandboksie nie ma .NET SDK ani sieci — cały C# był
-  sprawdzany bramką `scripts/check-architecture.py` (PASS) i **kompilacją w CI na Windows**
-  (`windows-build.yml` na `arena/**`). Logika z Ollamą, DWM i `SendInput` wymaga sprawdzenia na
-  żywym Windows — CI ich nie ma.
+  sprawdzany bramką `scripts/check-architecture.py` (PASS) i **kompilacją oraz `--ui-smoke` w CI na
+  Windows** (`windows-build.yml` na `arena/**`). Logika z Ollamą, DWM i `SendInput` wymaga sprawdzenia
+  na żywym Windows — CI ich nie ma (testy dotykają tylko parsowania i_decision_, nie samych wywołań).
+- **Naprawy na linii 0.95**, które wyszły dopiero teraz: drzewo bazowe się nie kompilowało
+  (`Core/CommandLexicon.cs` miał uciekający cudzysłów w stringu), więc dalsze asercje nigdy się nie
+  wykonały i trzy z nich pokazały rzeczywiste błędy:
+  - `CommandUnderstanding` — słowo zakresu („dziś”, „teraz”) było cichutko zamieniane na inną frazę
+    katalogu („ile mam ramu dziś” → „ile mam ramu łącznie”) albo zjadane jako argument. Teraz zdanie
+    z zakresem zostaje w szarej strefie i pyta; „jutro” świadomie nie wchodzi do listy, bo jest treścią
+    przypomnień (`PolishTimeParser`).
+  - `UtilityToolbox` — `znizka 20 80` liczyło 80% z 20 zł (kolejność odwrotna niż w katalogu
+    `znizka: [procent] [cena]` i niż przy „vat”), `vat 120 100` przelatywało obok narzędzia zamiast
+    odrzucić niemożliwą stawkę, a `srednia wazona: 4 3 5 2` odmawiała bez przecinków.
+  - `tests/UtilityRegression.cs` — dwie asercje miały nieaktualne dane (liczba słów przy
+    `czestotliwosc slow`, litera K w alfabecie „K jak Karolina”); zostały poprawione na dane spójne,
+    a nie osłabione.

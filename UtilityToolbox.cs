@@ -54,10 +54,12 @@ public static class UtilityToolbox
             return Vat(amount, rate, gross);
         }
         // 0.94 · finanse i zakupy (offline, bez kursów walut i bez sieci)
+        // 0.94: kolejność jak przy „vat” — NAJPIERW procent, potem cena („znizka 20 80” = 20% z 80 zł).
+        // Catalog podaje składnię „znizka: [procent] [cena]”, więc to argumenty były odwrotnie, nie dokumentacja.
         var discount = Regex.Match(text, @"^znizka[:\s]+(\d+[.,]?\d*)\s+(\d+[.,]?\d*)$");
         if (discount.Success)
         {
-            if (!TryNumber(discount.Groups[1].Value, out double price) || !TryNumber(discount.Groups[2].Value, out double pct)) return NumberError;
+            if (!TryNumber(discount.Groups[1].Value, out double pct) || !TryNumber(discount.Groups[2].Value, out double price)) return NumberError;
             return Discount(price, pct);
         }
         var tip = Regex.Match(text, @"^napiwek[:\s]+(\d+[.,]?\d*)\s+(\d+[.,]?\d*)$");
@@ -1336,6 +1338,14 @@ public static class UtilityToolbox
     public static string WeightedAverage(string list)
     {
         string[] pieces = list.Split(new[] { ',', ';', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+        // Ludzie piszą też bez przecinków: „srednia wazona: 4 3 5 2”. Jeśli to jedna lista z parzystą
+        // liczbą samych liczb, dzielimy ją na pary (wartość, waga) po dwie — tak samo jak przy przecinkach.
+        if (pieces.Length == 1)
+        {
+            string[] flat = pieces[0].Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            if (flat.Length >= 4 && flat.Length % 2 == 0 && flat.All(number => TryNumber(number, out _)))
+                pieces = [.. Enumerable.Range(0, flat.Length / 2).Select(i => flat[2 * i] + " " + flat[2 * i + 1])];
+        }
         double sumWeighted = 0, sumWeights = 0;
         int pairs = 0;
         foreach (string piece in pieces)
