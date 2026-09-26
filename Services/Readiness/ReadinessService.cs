@@ -43,9 +43,13 @@ public sealed class ReadinessService(ISettingsService settings, IHistoryService 
                     : "Wyłączone — Sentinel nie łączy się z internetem w ogóle. „pogoda” odpowie wtedy, że jest wyłączone, zamiast zgadywać temperaturę.",
                 "settings", jarvis.WeatherEnabled ? "Sprawdź pogodę" : "Włącz w ustawieniach"));
             token.ThrowIfCancellationRequested();
-            bool agentReady = jarvis.AgentEnabled && steps is { IsReady: true };
+            // Agent: „gotowy” tylko gdy włączony I podłączony do kolejki. Dom: „gotowy” tylko gdy
+            // włączony i ma adres — bez adresu nie ma czego sprawdzać, więc to dalej „do konfiguracji”.
+            bool agentReady = !jarvis.AgentEnabled || steps is { IsReady: true };
+            bool homeReady = !jarvis.HomeEnabled || jarvis.HomeBaseUrl.Trim().Length > 0;
+            bool anythingOn = jarvis.AgentEnabled || jarvis.HomeEnabled;
             checks.Add(new("jarvis-agent", "Agent, dom i sekwencje",
-                !jarvis.AgentEnabled && !jarvis.HomeEnabled ? ReadinessState.NeedsSetup : agentReady || !jarvis.AgentEnabled ? ReadinessState.Ready : ReadinessState.NeedsSetup,
+                anythingOn && agentReady && homeReady ? ReadinessState.Ready : ReadinessState.NeedsSetup,
                 (jarvis.AgentEnabled
                     ? agentReady ? $"Tryb agenta włączony · limit {Math.Clamp(jarvis.AgentMaxSteps, 1, 8)} kroków · narzędzia wyłącznie do odczytu."
                         : "Tryb agenta włączony, ale kolejka wykonań nie jest podłączona — działa w oknie Sentinela."

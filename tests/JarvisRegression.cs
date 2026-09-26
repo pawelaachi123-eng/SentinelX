@@ -185,6 +185,15 @@ internal static class JarvisRegression
         Check(config.EmbeddingModel.Length == 0, "nazwa modelu, której Ollama nie przyjmie, nie jest zapisywana");
         Check(JarvisSettingsGuard.NormalizeUrl("http://192.168.1.9:8123") == "http://192.168.1.9:8123", "poprawny adres lokalny przechodzi");
 
+        // ---------------- domyślne ustawienia: co wolno, a czego nie ----------------
+        var defaults = new JarvisSettings();
+        JarvisSettingsGuard.Validate(defaults);
+        Check(defaults.WeatherCacheMinutes >= 5 && defaults.AgentMaxSteps is >= 1 and <= 8, "domyślne wartości mieszczą się w zakresach");
+        Check(!defaults.AgentEnabled && !defaults.HomeEnabled && !defaults.SemanticSearchEnabled,
+            "agent, dom i indeks muszą być wyłączone, dopóki użytkownik ich nie włączy");
+        Check(defaults.WeatherEnabled && defaults.DefaultCity.Length > 0,
+            "pogoda działa od razu, bo odpowiedź i tak mówi wprost, że wymaga internetu (i cache'uje)");
+
         // ---------------- router: nic nie podkrada istniejących poleceń ----------------
         var jarvisConfig = new JarvisSettings { WeatherEnabled = false, HomeEnabled = false, AgentEnabled = false, SemanticSearchEnabled = false };
         var ollama = new LocalAiService(new GamingModeService(), new Handler((request, token) => Task.FromResult(Json(new { models = new[] { new { name = "qwen3:4b" } } }))),

@@ -140,11 +140,24 @@ internal static class ProductRegression
         palette.Open(); palette.Query = "model";
         palette.PreviousCommand.Execute(null); Check(palette.SelectedEntry == palette.Results.Last(), "Arrow navigation must wrap.");
 
-        var settings = new SettingsService(new AppSettingsService(Path.Combine(directory, "settings")));
+        var store = new AppSettingsService(Path.Combine(directory, "settings"));
+        var settings = new SettingsService(store);
         var voice = new ProbeVoice();
         var readiness = new ReadinessService(settings, new HistoryService(history, memory), voice, new OfflineAi());
         var checks = await readiness.CheckAsync(CancellationToken.None);
-        Check(checks.Count == 4 && checks.Single(x => x.Key == "ollama").State == ReadinessState.NeedsSetup, "Offline Ollama must be actionable, not a false Ready.");
+        Check(checks.Count == 6 && checks.Single(x => x.Key == "ollama").State == ReadinessState.NeedsSetup, "Offline Ollama must be actionable, not a false Ready.");
+        // 0.96 · dwie karty warstwy JARVIS: sprawdzają SAMĄ konfigurację (bez Open-Meteo, bez HA,
+        // bez generowania odpowiedzi) i muszą być konkretne: „do konfiguracji”, a nie „gotowe”.
+        Check(checks.Single(x => x.Key == "jarvis-network").State == ReadinessState.Ready, "Włączona pogoda to karta GOTOWE bez żadnego połączenia");
+        Check(checks.Single(x => x.Key == "jarvis-agent").State == ReadinessState.NeedsSetup, "Wyłączony agent i dom nie mogą udawać gotowości");
+        store.Settings.Jarvis.WeatherEnabled = false;
+        store.Settings.Jarvis.HomeEnabled = true;
+        var afterToggle = await readiness.CheckAsync(CancellationToken.None);
+        Check(afterToggle.Single(x => x.Key == "jarvis-network").State == ReadinessState.NeedsSetup,
+            "Wyłączona pogoda musi mówić wprost, że Sentinel nie łączy się z internetem");
+        Check(afterToggle.Single(x => x.Key == "jarvis-agent").State == ReadinessState.NeedsSetup &&
+              afterToggle.Single(x => x.Key == "jarvis-agent").Detail.Contains("Home Assistant", StringComparison.Ordinal),
+            "Włączony dom bez adresu to „do konfiguracji”, a nie udawane GOTOWE");
         Check(voice.StartCalls == 0 && voice.SpeakCalls == 0, "Readiness must never capture or speak.");
         var readyVm = new ReadinessViewModel(readiness);
         await readyVm.RefreshCommand.ExecuteAsync(null);
