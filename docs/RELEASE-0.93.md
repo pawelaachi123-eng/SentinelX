@@ -114,7 +114,43 @@ nie zmieniło ani jednego znaku; wersja aplikacji zostaje `0.93`.
   `Brush`, cienie i poświata jako `Effect`; do tego dotychczasowa bramka „zero błędów wiązań” po
   wyrenderowaniu każdej strony i zakładki.
 - Bramki statyczne: `python3 scripts/check-architecture.py` → `PASS` oraz
-  `python3 scripts/generate-themes.py --check` → `PASS`.
+  `python3 scripts/generate-themes.py --check` → `PASS: 68 tokenów × 3 motywy, kontrast OK`.
+- **CI: przebieg `36236699412` (commit `47f92e9`) — zielony, wszystkie 17 kroków.** Cytaty z logu:
+
+      Portable architecture checks:
+      PASS: XML, resources, resource order, animation paths, 12 views, thin code-behind, VM boundaries, target framework, no WinForms flag, XAML pitfalls
+
+      Build:
+      Build succeeded.
+          14 Warning(s)
+          0 Error(s)
+
+      MVVM UI smoke (all pages and binding validation) — zawartość ui-smoke.txt:
+      PASS
+      Pages: command, memory, projects, settings, centrum:rozmowa, centrum:zadania, centrum:historia, centrum:glos, centrum:system, centrum:gry, centrum:ai, centrum:akcje, centrum:diagnostyka
+      Centrum tabs, // palette and voice default verified
+      Dark/DeepDark/System themes rendered
+      STOP/Resume/voice approval passed
+      Palette, readiness, draft preservation and execution-scoped evidence passed
+      Typo repair, grey-zone questions, lessons, self-check, offline tools, archives, insights and unified search passed
+
+      Existing regression suite (--self-test): exit 0, test-results/regression z results.json
+      i zrzutami legacy (Actions/AI/Chat/Gaming/Memory/Programs/Settings/System/Tools/Voice/minimum-size.png)
+
+      Build per-user EXE installer:
+      Successful compile (10.484 sec). Resulting Setup program filename is:
+      D:\a\SentinelX\SentinelX\bin\installer\SentinelX-Setup-0.93.0-win-x64.exe
+      ##[notice]B251998CE713172D6EDA7E2A18DB76C86D1A6C508D652223BD1A6E7796D15679  SentinelX-Setup-0.93.0-win-x64.exe
+
+      Install EXE and smoke-test installed application: exit 0, ui-smoke.txt obecny
+
+  14 ostrzeżeń buildu to wyłącznie pozycje zastane (`CS8604` w `WorkspaceInsightsService.cs:227`,
+  `MVVMTK0034` ×6 w `ViewModels/TaskViewModel.cs:107,171` — liczone podwójnie dla `_wpftmp.csproj`
+  i `SENTINEL-X.csproj`); ani jednej z plików tego przyrostu. Nie ruszam ich: to kod poza zakresem GUI.
+- **Nieskładkowe:** `actions/upload-artifact@v4` nie wgrał artefaktów —
+  `##[error]Failed to CreateArtifact: Artifact storage quota has been hit.` (limit magazynu konta,
+  przeliczany co 6–12 h). Walidacja i tak się wykonała i przeszła; pliki `test-results/` zostały tylko
+  na runnerze. `.github/workflows/**` nietknięte (R15), więc nic tu nie obejściem.
 - Asercje smoke sprawdzają typ zasobu przez `Application.Current.TryFindResource(…) is
   Color/CornerRadius/Thickness/Style/Storyboard/Brush/Effect/IValueConverter`; pierwsza wersja użyła
   `ResourceDictionary.ContainsResource`, którego w .NET 9 nie ma (`CS1061` w przebiegu `36234911112`).
