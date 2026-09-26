@@ -77,7 +77,7 @@ public sealed class WeatherService
         {
             WeatherReading? cached = TryReadCache(wanted);
             return cached == null
-                ? WeatherOutcome.Bad("Pogoda jest wyłączona w ustawieniach (Jarvis → „Pobieranie prognozy” (Jarvis → Pobieranie prognozy). Włącz, jeśli chcesz prognozy z Open-Meteo.")
+                ? WeatherOutcome.Bad("Pogoda jest wyłączona w ustawieniach: Ustawienia → Jarvis → „Pobieranie prognozy”. Włącz ją, jeśli chcesz prognozy z Open-Meteo — bez tego nie pytam sieci nawet raz.")
                 : WeatherOutcome.Ok(cached, Format(cached, cached.TakenAt, cached.TakenAt, offline: true, disabled: true), "cache lokalny · sieć wyłączona ustawieniem");
         }
 

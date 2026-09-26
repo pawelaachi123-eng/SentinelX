@@ -312,20 +312,21 @@ public sealed class JarvisRouter
         return name.Length is > 0 and <= 60;
     }
 
-    /// <summary>Argument wycinamy z ORIGINALU (żeby „Lwów” nie stał się „Lwowem” bez znaków), ale
-    /// dopasowanie liczymy na tekście znormalizowanym — inaczej „podgląd”, „wyłącz” czy „sprawdź
-    /// pogodę” rozbijałyby się o polskie znaki. Gdy pozycje się rozjadą (pojedyncze wielkie spacje
-    /// w source), bierzemy wersję znormalizowaną: wciąż poprawną, tylko bez wielkich liter.</summary>
+    /// <summary>Argument wycinamy z ORIGINALU (żeby „Lwów” nie stał się „lwowem”, a „Światła Kitchen”
+    /// nie zgubiło wielkiej litery), ale strukturę zdania liczymy na tekście znormalizowanym —
+    /// IgnoreCase nie znosi polskich znaków, więc wzorzec na surowym tekście rozbija się o „ą” czy „ł”.
+    /// Pozycji znaku ufać nie można (normalizacja zgniata wielkie spacje), więc wyrównujemy się po
+    /// liczbie SŁÓW: tyle wyrazów, ile zostało w znormalizowanym ogonie, bierzemy z końca oryginału.</summary>
     private static string ArgumentAt(string raw, string text, int index)
     {
         if (index < 0) return "";
         string normalizedTail = index < text.Length ? text[index..] : "";
-        string rawTail = index < raw.Length ? raw[index..] : "";
-        // „z” = „raw” po normalizacji oznacza tylko jedno: pozycje się zgadzają i można oddać
-        // oryginal z polskimi znakami i wielkimi literami. Inaczej zostaje wersja znormalizowana.
-        string chosen = rawTail.Length > 0 && ConversationMemoryService.Normalize(rawTail).Contains(normalizedTail, StringComparison.Ordinal)
-            ? rawTail : normalizedTail;
-        return Tail(chosen);
+        string[] argument = CommandUnderstanding.Words(normalizedTail);
+        if (argument.Length == 0) return "";
+        string[] rawWords = CommandUnderstanding.Words(raw ?? "");
+        return rawWords.Length >= argument.Length
+            ? Tail(string.Join(' ', rawWords, rawWords.Length - argument.Length, argument.Length))
+            : Tail(normalizedTail);
     }
 
     private static string TrimWord(string value) => (value ?? "").Trim().Trim('"', '”', '„', '\'', '.', ',').Trim();
