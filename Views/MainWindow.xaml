@@ -124,21 +124,35 @@
 
         <!-- Paleta poleceń Ctrl+K -->
         <Grid Grid.ColumnSpan="2" Panel.ZIndex="10" Background="{DynamicResource SxScrim}" Visibility="{Binding Palette.IsOpen, Converter={StaticResource BoolToVisibility}}">
-            <Grid.Triggers>
-                <EventTrigger RoutedEvent="Grid.Loaded">
-                    <BeginStoryboard Storyboard="{StaticResource SxScrimIn}"/>
-                </EventTrigger>
-            </Grid.Triggers>
+            <Grid.Style>
+                <Style TargetType="Grid">
+                    <Style.Triggers>
+                        <!-- Scrim wchodzi przy każdym otwarciu; storyboard animuje ten Grid, więc bez TargetName. -->
+                        <DataTrigger Binding="{Binding Palette.IsOpen}" Value="True">
+                            <DataTrigger.EnterActions>
+                                <BeginStoryboard Storyboard="{StaticResource SxScrimIn}"/>
+                            </DataTrigger.EnterActions>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Grid.Style>
             <controls:CommandPalette DataContext="{Binding Palette}" VerticalAlignment="Center" HorizontalAlignment="Center"/>
         </Grid>
 
         <!-- Panel gotowości -->
         <Grid Grid.ColumnSpan="2" Panel.ZIndex="11" Background="{DynamicResource SxScrim}" Visibility="{Binding Readiness.IsOpen, Converter={StaticResource BoolToVisibility}}">
-            <Grid.Triggers>
-                <EventTrigger RoutedEvent="Grid.Loaded">
-                    <BeginStoryboard Storyboard="{StaticResource SxScrimIn}"/>
-                </EventTrigger>
-            </Grid.Triggers>
+            <Grid.Style>
+                <Style TargetType="Grid">
+                    <Style.Triggers>
+                        <!-- Scrim wchodzi przy każdym otwarciu; storyboard animuje ten Grid, więc bez TargetName. -->
+                        <DataTrigger Binding="{Binding Readiness.IsOpen}" Value="True">
+                            <DataTrigger.EnterActions>
+                                <BeginStoryboard Storyboard="{StaticResource SxScrimIn}"/>
+                            </DataTrigger.EnterActions>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Grid.Style>
             <controls:ReadinessPanel DataContext="{Binding Readiness}" VerticalAlignment="Center" HorizontalAlignment="Center"/>
         </Grid>
     </Grid>

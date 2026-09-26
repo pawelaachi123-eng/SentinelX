@@ -95,6 +95,15 @@ nie zmieniło ani jednego znaku; wersja aplikacji zostaje `0.93`.
   wyrenderowaniu każdej strony i zakładki.
 - Bramki statyczne: `python3 scripts/check-architecture.py` → `PASS` oraz
   `python3 scripts/generate-themes.py --check` → `PASS`.
+- `scripts/check-architecture.py` dostał nową bramkę „XAML pitfalls" (6 reguł), dopisaną po pierwszym
+  przebiegu CI, który zatrzymał się na kompilacji: `BeginStoryboard` nie ma właściwości `TargetName`
+  (MC3072), `Setter TargetName` tylko w `ControlTemplate`, `Style` nie może być ustawiony dwa razy
+  (atrybut + element), `StringFormat` zaczynający się od `{` wymaga ucieczki `{}` (MC1000), duplikat
+  `x:Name` w głównym zakresie nazw, właściwość dołączona `u:*` musi istnieć w `Utilities/`. Każda reguła
+  została sprawdzona przez celowe wstrzyknięcie błędu (wszystkie 6 łapie, drzewo wraca do `PASS`).
+- `Themes/Colors.xaml`: tokeny `CornerRadius`/`Thickness` używają `assembly=PresentationFramework`
+  (`Thickness.cs` i `CornerRadius.cs` leżą w `PresentationFramework/System/Windows` — sprawdzone w
+  źródłach `dotnet/wpf`, nie w `PresentationCore`).
 
 ## Uczciwie o ograniczeniach
 

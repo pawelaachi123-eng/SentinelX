@@ -73,7 +73,7 @@
                                     <DataTemplate>
                                         <StackPanel Margin="0,0,0,16">
                                             <DockPanel Margin="0,0,0,7">
-                                                <TextBlock Text="{Binding Percent, StringFormat={0:F0}%, Mode=OneWay}" DockPanel.Dock="Right" Style="{StaticResource SxBadgeText}" Foreground="{DynamicResource SxAccentViolet}"/>
+                                                <TextBlock Text="{Binding Percent, StringFormat={}{0:F0}%, Mode=OneWay}" DockPanel.Dock="Right" Style="{StaticResource SxBadgeText}" Foreground="{DynamicResource SxAccentViolet}"/>
                                                 <TextBlock Text="{Binding Label}" Style="{StaticResource SxCaption}" Foreground="{DynamicResource SxTextPrimary}"/>
                                             </DockPanel>
                                             <ProgressBar Value="{Binding Percent, Mode=OneWay}" Maximum="100" Foreground="{StaticResource SxVioletPinkGradient}"/>

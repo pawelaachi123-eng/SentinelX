@@ -39,12 +39,44 @@
                 <ControlTemplate TargetType="Button">
                     <Grid>
                         <!-- Poświata akcentu pod przyciskiem: wchodzi tylko na hover. -->
-                        <Border x:Name="glow" CornerRadius="13" Margin="-1" Opacity="0" Background="{StaticResource SxAccentGradient}" IsHitTestVisible="False"/>
+                        <Border x:Name="glow" CornerRadius="13" Margin="-1" Opacity="0" Background="{StaticResource SxAccentGradient}" IsHitTestVisible="False">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Style.Triggers>
+                                        <!-- Poświata hover: storyboard animuje ten element, więc nie potrzebuje TargetName. -->
+                                        <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource TemplatedParent}}" Value="True">
+                                            <DataTrigger.EnterActions>
+                                                <BeginStoryboard Storyboard="{StaticResource SxGlowIn}"/>
+                                            </DataTrigger.EnterActions>
+                                            <DataTrigger.ExitActions>
+                                                <BeginStoryboard Storyboard="{StaticResource SxGlowOut}"/>
+                                            </DataTrigger.ExitActions>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                        </Border>
                         <Border x:Name="border" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="12" Padding="{TemplateBinding Padding}">
                             <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="Center" RecognizesAccessKey="True"/>
                         </Border>
                         <!-- Włosowaty błysk górnej krawędzi (efekt szkła). -->
-                        <Border x:Name="sheen" CornerRadius="12" BorderThickness="0,1,0,0" BorderBrush="{StaticResource SxHairlineGradient}" Opacity="0.45" IsHitTestVisible="False"/>
+                        <Border x:Name="sheen" CornerRadius="12" BorderThickness="0,1,0,0" BorderBrush="{StaticResource SxHairlineGradient}" Opacity="0.45" IsHitTestVisible="False">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Style.Triggers>
+                                        <!-- Błysk górnej krawędzi na hover. -->
+                                        <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource TemplatedParent}}" Value="True">
+                                            <DataTrigger.EnterActions>
+                                                <BeginStoryboard Storyboard="{StaticResource SxSheenIn}"/>
+                                            </DataTrigger.EnterActions>
+                                            <DataTrigger.ExitActions>
+                                                <BeginStoryboard Storyboard="{StaticResource SxSheenOut}"/>
+                                            </DataTrigger.ExitActions>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                        </Border>
                         <!-- Fokus klawiatury: widoczny pierścień, nie tylko kolor. -->
                         <Border x:Name="focus" CornerRadius="15" Margin="-3" BorderThickness="2" BorderBrush="{DynamicResource SxFocusRing}" Opacity="0" IsHitTestVisible="False"/>
                     </Grid>
@@ -52,14 +84,6 @@
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="border" Property="Background" Value="{DynamicResource SxSurfaceHover}"/>
                             <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource SxAccentCyanDim}"/>
-                            <Trigger.EnterActions>
-                                <BeginStoryboard Storyboard="{StaticResource SxGlowIn}" TargetName="glow"/>
-                                <BeginStoryboard Storyboard="{StaticResource SxSheenIn}" TargetName="sheen"/>
-                            </Trigger.EnterActions>
-                            <Trigger.ExitActions>
-                                <BeginStoryboard Storyboard="{StaticResource SxGlowOut}" TargetName="glow"/>
-                                <BeginStoryboard Storyboard="{StaticResource SxSheenOut}" TargetName="sheen"/>
-                            </Trigger.ExitActions>
                         </Trigger>
                         <Trigger Property="IsKeyboardFocused" Value="True">
                             <Setter TargetName="focus" Property="Opacity" Value="1"/>
@@ -149,7 +173,23 @@
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
                     <Grid>
-                        <Border x:Name="glow" CornerRadius="19" Margin="-1" Opacity="0" Background="{StaticResource SxAccentGradient}" IsHitTestVisible="False"/>
+                        <Border x:Name="glow" CornerRadius="19" Margin="-1" Opacity="0" Background="{StaticResource SxAccentGradient}" IsHitTestVisible="False">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Style.Triggers>
+                                        <!-- Poświata hover pigułki (Ctrl+K). -->
+                                        <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource TemplatedParent}}" Value="True">
+                                            <DataTrigger.EnterActions>
+                                                <BeginStoryboard Storyboard="{StaticResource SxGlowIn}"/>
+                                            </DataTrigger.EnterActions>
+                                            <DataTrigger.ExitActions>
+                                                <BeginStoryboard Storyboard="{StaticResource SxGlowOut}"/>
+                                            </DataTrigger.ExitActions>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                        </Border>
                         <Border x:Name="border" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="18" Padding="{TemplateBinding Padding}">
                             <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="Center"/>
                         </Border>
@@ -158,12 +198,6 @@
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="border" Property="Background" Value="{DynamicResource SxSurfaceHover}"/>
                             <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource SxAccentCyanDim}"/>
-                            <Trigger.EnterActions>
-                                <BeginStoryboard Storyboard="{StaticResource SxGlowIn}" TargetName="glow"/>
-                            </Trigger.EnterActions>
-                            <Trigger.ExitActions>
-                                <BeginStoryboard Storyboard="{StaticResource SxGlowOut}" TargetName="glow"/>
-                            </Trigger.ExitActions>
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
                             <Setter TargetName="border" Property="Background" Value="{DynamicResource SxSurfaceActive}"/>
@@ -208,7 +242,23 @@
                             <ContentPresenter VerticalAlignment="Center"/>
                         </Border>
                         <!-- Pasek zaznaczenia: rośnie sprężyście przy wyborze. -->
-                        <Border x:Name="accentBar" Width="3" Height="0" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="2,0,0,0" CornerRadius="2" Background="{StaticResource SxAccentGradient}" IsHitTestVisible="False"/>
+                        <Border x:Name="accentBar" Width="3" Height="0" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="2,0,0,0" CornerRadius="2" Background="{StaticResource SxAccentGradient}" IsHitTestVisible="False">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Style.Triggers>
+                                        <!-- Pasek zaznaczenia rośnie razem z wyborem pozycji. -->
+                                        <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource TemplatedParent}}" Value="True">
+                                            <DataTrigger.EnterActions>
+                                                <BeginStoryboard Storyboard="{StaticResource SxNavBarGrow}"/>
+                                            </DataTrigger.EnterActions>
+                                            <DataTrigger.ExitActions>
+                                                <BeginStoryboard Storyboard="{StaticResource SxNavBarShrink}"/>
+                                            </DataTrigger.ExitActions>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                        </Border>
                         <Border x:Name="focusRing" CornerRadius="13" Margin="-2" BorderThickness="2" BorderBrush="{DynamicResource SxFocusRing}" Opacity="0" IsHitTestVisible="False"/>
                     </Grid>
                     <ControlTemplate.Triggers>
@@ -222,12 +272,6 @@
                             <Setter TargetName="hoverGlow" Property="Opacity" Value="0.14"/>
                             <Setter Property="Foreground" Value="{DynamicResource SxAccentCyan}"/>
                             <Setter Property="FontWeight" Value="SemiBold"/>
-                            <Trigger.EnterActions>
-                                <BeginStoryboard Storyboard="{StaticResource SxNavBarGrow}" TargetName="accentBar"/>
-                            </Trigger.EnterActions>
-                            <Trigger.ExitActions>
-                                <BeginStoryboard Storyboard="{StaticResource SxNavBarShrink}" TargetName="accentBar"/>
-                            </Trigger.ExitActions>
                         </Trigger>
                         <Trigger Property="IsKeyboardFocused" Value="True">
                             <Setter TargetName="focusRing" Property="Opacity" Value="1"/>
@@ -326,6 +370,21 @@
                             <ContentPresenter VerticalAlignment="Center" HorizontalAlignment="Center"/>
                         </Border>
                         <Border x:Name="underline" Height="2" VerticalAlignment="Bottom" Margin="12,0,12,-4" CornerRadius="1" Background="{StaticResource SxAccentGradient}" Opacity="0" RenderTransformOrigin="0.5,0.5" IsHitTestVisible="False">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Style.Triggers>
+                                        <!-- Podkreślenie zakładki rośnie od środka na zaznaczeniu. -->
+                                        <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource TemplatedParent}}" Value="True">
+                                            <DataTrigger.EnterActions>
+                                                <BeginStoryboard Storyboard="{StaticResource SxLineGrow}"/>
+                                            </DataTrigger.EnterActions>
+                                            <DataTrigger.ExitActions>
+                                                <BeginStoryboard Storyboard="{StaticResource SxLineShrink}"/>
+                                            </DataTrigger.ExitActions>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
                             <Border.RenderTransform>
                                 <TransformGroup>
                                     <ScaleTransform ScaleX="0.2" ScaleY="1"/>
@@ -348,12 +407,6 @@
                             <Setter TargetName="pillGlow" Property="Opacity" Value="0.16"/>
                             <Setter TargetName="underline" Property="Opacity" Value="1"/>
                             <Setter Property="Foreground" Value="{DynamicResource SxAccentCyan}"/>
-                            <Trigger.EnterActions>
-                                <BeginStoryboard Storyboard="{StaticResource SxLineGrow}" TargetName="underline"/>
-                            </Trigger.EnterActions>
-                            <Trigger.ExitActions>
-                                <BeginStoryboard Storyboard="{StaticResource SxLineShrink}" TargetName="underline"/>
-                            </Trigger.ExitActions>
                         </Trigger>
                         <Trigger Property="IsKeyboardFocused" Value="True">
                             <Setter TargetName="focusRing" Property="Opacity" Value="1"/>
@@ -511,6 +564,21 @@
                         </Border>
                         <!-- Podkreślenie akcentu: rośnie od środka na fokusie. -->
                         <Border x:Name="accentLine" Height="2" VerticalAlignment="Bottom" Margin="10,0,10,0" CornerRadius="1" Background="{StaticResource SxAccentGradient}" Opacity="0" RenderTransformOrigin="0.5,0.5" IsHitTestVisible="False">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Style.Triggers>
+                                        <!-- Linia akcentu rośnie od środka na fokusie klawiatury. -->
+                                        <DataTrigger Binding="{Binding IsKeyboardFocusWithin, RelativeSource={RelativeSource TemplatedParent}}" Value="True">
+                                            <DataTrigger.EnterActions>
+                                                <BeginStoryboard Storyboard="{StaticResource SxLineGrow}"/>
+                                            </DataTrigger.EnterActions>
+                                            <DataTrigger.ExitActions>
+                                                <BeginStoryboard Storyboard="{StaticResource SxLineShrink}"/>
+                                            </DataTrigger.ExitActions>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
                             <Border.RenderTransform>
                                 <TransformGroup>
                                     <ScaleTransform ScaleX="0.1" ScaleY="1"/>
@@ -530,12 +598,6 @@
                             <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource SxAccentCyanDim}"/>
                             <Setter TargetName="border" Property="Background" Value="{DynamicResource SxSurface}"/>
                             <Setter TargetName="accentLine" Property="Opacity" Value="1"/>
-                            <Trigger.EnterActions>
-                                <BeginStoryboard Storyboard="{StaticResource SxLineGrow}" TargetName="accentLine"/>
-                            </Trigger.EnterActions>
-                            <Trigger.ExitActions>
-                                <BeginStoryboard Storyboard="{StaticResource SxLineShrink}" TargetName="accentLine"/>
-                            </Trigger.ExitActions>
                         </Trigger>
                         <Trigger Property="IsReadOnly" Value="True">
                             <Setter TargetName="border" Property="Opacity" Value="0.88"/>
@@ -567,6 +629,21 @@
                             <Border x:Name="track" CornerRadius="13" Background="{DynamicResource SxBorder}" BorderBrush="{DynamicResource SxBorderStrong}" BorderThickness="1"/>
                             <Border x:Name="trackOn" CornerRadius="13" Background="{StaticResource SxAccentGradient}" Opacity="0"/>
                             <Ellipse x:Name="thumb" Width="18" Height="18" Fill="{DynamicResource SxWhite}" HorizontalAlignment="Left" Margin="4,0" RenderTransformOrigin="0.5,0.5">
+                                <Ellipse.Style>
+                                    <Style TargetType="Ellipse">
+                                        <Style.Triggers>
+                                            <!-- Gałka przełącznika przesuwa się sprężyście. -->
+                                            <DataTrigger Binding="{Binding IsChecked, RelativeSource={RelativeSource TemplatedParent}}" Value="True">
+                                                <DataTrigger.EnterActions>
+                                                    <BeginStoryboard Storyboard="{StaticResource SxThumbRight}"/>
+                                                </DataTrigger.EnterActions>
+                                                <DataTrigger.ExitActions>
+                                                    <BeginStoryboard Storyboard="{StaticResource SxThumbLeft}"/>
+                                                </DataTrigger.ExitActions>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Ellipse.Style>
                                 <Ellipse.RenderTransform>
                                     <TransformGroup>
                                         <ScaleTransform ScaleX="1" ScaleY="1"/>
@@ -585,12 +662,6 @@
                         <Trigger Property="IsChecked" Value="True">
                             <Setter TargetName="trackOn" Property="Opacity" Value="1"/>
                             <Setter TargetName="track" Property="BorderBrush" Value="{DynamicResource SxAccentCyanDim}"/>
-                            <Trigger.EnterActions>
-                                <BeginStoryboard Storyboard="{StaticResource SxThumbRight}" TargetName="thumb"/>
-                            </Trigger.EnterActions>
-                            <Trigger.ExitActions>
-                                <BeginStoryboard Storyboard="{StaticResource SxThumbLeft}" TargetName="thumb"/>
-                            </Trigger.ExitActions>
                         </Trigger>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="track" Property="BorderBrush" Value="{DynamicResource SxAccentCyanDim}"/>
@@ -656,6 +727,21 @@
                                     <Grid Background="{DynamicResource SxTransparent}">
                                         <Border x:Name="box" CornerRadius="11" BorderThickness="1" BorderBrush="{DynamicResource SxBorder}" Background="{DynamicResource SxSurfaceSunken}"/>
                                         <Path x:Name="chevron" Data="M 0 0 L 5 5 L 10 0" Stroke="{DynamicResource SxTextSecondary}" StrokeThickness="1.8" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Width="12" Height="7" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,14,0" Stretch="Fill" RenderTransformOrigin="0.5,0.5">
+                                            <Path.Style>
+                                                <Style TargetType="Path">
+                                                    <Style.Triggers>
+                                                        <!-- Strzałka obraca się przy otwarciu listy. -->
+                                                        <DataTrigger Binding="{Binding IsChecked, RelativeSource={RelativeSource TemplatedParent}}" Value="True">
+                                                            <DataTrigger.EnterActions>
+                                                                <BeginStoryboard Storyboard="{StaticResource SxChevronUp}"/>
+                                                            </DataTrigger.EnterActions>
+                                                            <DataTrigger.ExitActions>
+                                                                <BeginStoryboard Storyboard="{StaticResource SxChevronDown}"/>
+                                                            </DataTrigger.ExitActions>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Path.Style>
                                             <Path.RenderTransform>
                                                 <TransformGroup>
                                                     <ScaleTransform ScaleX="1" ScaleY="1"/>
@@ -674,12 +760,6 @@
                                             <Setter TargetName="box" Property="BorderBrush" Value="{DynamicResource SxAccentCyanDim}"/>
                                             <Setter TargetName="box" Property="Background" Value="{DynamicResource SxSurface}"/>
                                             <Setter TargetName="chevron" Property="Stroke" Value="{DynamicResource SxAccentCyan}"/>
-                                            <Trigger.EnterActions>
-                                                <BeginStoryboard Storyboard="{StaticResource SxChevronUp}" TargetName="chevron"/>
-                                            </Trigger.EnterActions>
-                                            <Trigger.ExitActions>
-                                                <BeginStoryboard Storyboard="{StaticResource SxChevronDown}" TargetName="chevron"/>
-                                            </Trigger.ExitActions>
                                         </Trigger>
                                     </ControlTemplate.Triggers>
                                 </ControlTemplate>
