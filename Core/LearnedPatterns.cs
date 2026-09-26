@@ -80,15 +80,50 @@ public sealed class LearnedPatterns
             (snapshot.Count > max ? "\n… i " + (snapshot.Count - max) + " więcej." : "");
     }
 
-    /// <summary>Self-repair: usuwa niepoprawne wpisy z pliku i zapisuje czystą wersję.
-    /// Zwraca liczbę odrzuconych wpisów; raport mówi, co się stało.</summary>
+    /// <summary>Self-repair: liczy niepoprawne wpisy PROSTO Z PLIKU (użytkownik mógł go edytować),
+    /// zapisuje czystą wersję i raportuje. Zwraca liczbę odrzuconych wpisów.</summary>
     public int RepairFile(out string report)
     {
         lock (gate)
         {
             int dropped = 0;
-            var invalid = patterns.Where(x => !IsSafeTarget(x.Value.To) || x.Key.Length < 2).Select(x => x.Key).ToArray();
-            foreach (string key in invalid) { patterns.Remove(key); dropped++; }
+            try
+            {
+                if (!File.Exists(filePath))
+                {
+                    report = "· ✓ " + Path.GetFileName(filePath) + " — jeszcze nie istnieje (powstanie przy pierwszym uczeniu)";
+                    return 0;
+                }
+                string json = File.ReadAllText(filePath);
+                if (json.Trim().Length > 0)
+                {
+                    using var doc = JsonDocument.Parse(json);
+                    if (doc.RootElement.TryGetProperty("patterns", out var array))
+                    {
+                        foreach (var item in array.EnumerateArray())
+                        {
+                            string from = item.TryGetProperty("from", out var f) ? f.GetString() ?? "" : "";
+                            string to = item.TryGetProperty("to", out var t) ? t.GetString() ?? "" : "";
+                            if (from.Length < 2 || !IsSafeTarget(to)) dropped++;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex) when (ex is JsonException or KeyNotFoundException or InvalidOperationException or FormatException)
+            {
+                // Nieczytelny plik — oryginał na bok, czysty zapis. Niczego nie kasuję.
+                string parked = filePath + ".corrupt-" + DateTime.Now.ToString("yyyyMMdd-HHmmss");
+                try { File.Move(filePath, parked); } catch (Exception io) when (io is IOException or UnauthorizedAccessException) { }
+                SaveLocked();
+                report = "· ⚠ " + Path.GetFileName(filePath) + " — plik był nieczytelny; zapisałem czystą wersję (oryginał: " + Path.GetFileName(parked) + ")";
+                return 1;
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            { report = "· ⚠ " + Path.GetFileName(filePath) + " — nie udało się naprawić: " + ex.Message; return 0; }
+
+            // Dodatkowo oczyść mapę w pamięci, gdyby coś niebezpiecznego się wkradło.
+            foreach (string key in patterns.Where(x => !IsSafeTarget(x.Value.To) || x.Key.Length < 2).Select(x => x.Key).ToArray())
+            { patterns.Remove(key); dropped++; }
             SaveLocked();
             report = dropped == 0
                 ? "· ✓ " + Path.GetFileName(filePath) + " — " + patterns.Count + " nauczonych wzorców, wszystkie bezpieczne"
