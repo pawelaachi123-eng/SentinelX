@@ -77,8 +77,12 @@ nie zmieniło ani jednego znaku; wersja aplikacji zostaje `0.93`.
   tytuł + opis), kafelki metryk z gradientowym paskiem, karty z reveal i animowanym wejściem, paski
   stanu, chipy, stany zajętości z shimmerem, stany puste. Stan jest zawsze opisany słowem — kolor go
   tylko wzmacnia, a brak odczytu pozostaje „Niedostępne” (VRAM nie jest zmyślany).
-- **Nowy konwerter** `StringNotEmptyToVisibility` (`Converters/StatusConverters.cs`, klucz w `App.xaml`)
-  do pokazywania komunikatów tekstowych: błędów walidacji pól ustawień i potwierdzenia „Zapisano”.
+- **Trzy nowe konwertery** (`Converters/StatusConverters.cs`, klucze w `App.xaml`):
+  `StringNotEmptyToVisibility` (komunikat pola widoczny tylko, gdy ma treść — błąd walidacji albo
+  „Zapisano”), `SafePercent` i `FiniteToVisibility` (paski pomiarów CPU/GPU). Powód: `SystemSnapshot.Empty`
+  ma `double.NaN` w CPU/GPU/RAM, a `RangeBase` odrzuca wartości niekończone
+  (`ValidateValueCallback IsValidDoubleValue` w źródłach WPF) — pasek więc **znika**, gdy pomiaru nie ma,
+  zamiast udawać 0%; tekst obok nadal mówi „Niedostępne”.
 
 ## Weryfikacja
 
@@ -95,6 +99,9 @@ nie zmieniło ani jednego znaku; wersja aplikacji zostaje `0.93`.
   wyrenderowaniu każdej strony i zakładki.
 - Bramki statyczne: `python3 scripts/check-architecture.py` → `PASS` oraz
   `python3 scripts/generate-themes.py --check` → `PASS`.
+- Asercje smoke sprawdzają typ zasobu przez `Application.Current.TryFindResource(…) is
+  Color/CornerRadius/Thickness/Style/Storyboard/Brush/Effect/IValueConverter`; pierwsza wersja użyła
+  `ResourceDictionary.ContainsResource`, którego w .NET 9 nie ma (`CS1061` w przebiegu `36234911112`).
 - `scripts/check-architecture.py` dostał nową bramkę „XAML pitfalls" (6 reguł), dopisaną po pierwszym
   przebiegu CI, który zatrzymał się na kompilacji: `BeginStoryboard` nie ma właściwości `TargetName`
   (MC3072), `Setter TargetName` tylko w `ControlTemplate`, `Style` nie może być ustawiony dwa razy

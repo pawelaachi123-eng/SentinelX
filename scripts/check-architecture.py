@@ -24,7 +24,7 @@ for path in (ROOT / "Views").rglob("*.xaml"):
         if node.tag.endswith("}ProgressBar") and node.attrib.get("Value", "").startswith("{Binding"):
             assert "Mode=OneWay" in node.attrib["Value"], f"Read-only metrics need OneWay: {path}"
     source = path.read_text(encoding="utf-8")
-    for resource in re.findall(r"\{(?:Static|Dynamic)Resource (Sx\w+|BoolToVisibility|StatusBrush|VoiceBrush|RiskBrush|ReadinessBrush)\}", source):
+    for resource in re.findall(r"\{(?:Static|Dynamic)Resource (Sx\w+|BoolToVisibility|StatusBrush|VoiceBrush|RiskBrush|ReadinessBrush|StringNotEmptyToVisibility|SafePercent|FiniteToVisibility)\}", source):
         assert resource in keys, f"Unknown resource {resource}: {path}"
     assert not re.search(r'="#[0-9a-fA-F]{6,8}"', source), f"Hard-coded view color: {path}"
     behind = Path(str(path) + ".cs")

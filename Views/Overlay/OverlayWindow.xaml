@@ -18,11 +18,11 @@
 
             <TextBlock Text="CPU" Style="{StaticResource SxEyebrow}" Foreground="{DynamicResource SxAccentCyan}"/>
             <TextBlock Text="{Binding System.Snapshot.CpuText}" FontSize="{StaticResource SxFontSubheading}" FontWeight="SemiBold"/>
-            <ProgressBar Value="{Binding System.Snapshot.Cpu, Mode=OneWay}" Maximum="100" Height="3" Style="{StaticResource SxProgressBarSlim}" Margin="0,5,0,10"/>
+            <ProgressBar Value="{Binding System.Snapshot.Cpu, Mode=OneWay, Converter={StaticResource SafePercent}}" Visibility="{Binding System.Snapshot.Cpu, Converter={StaticResource FiniteToVisibility}}" Maximum="100" Height="3" Style="{StaticResource SxProgressBarSlim}" Margin="0,5,0,10"/>
 
             <TextBlock Text="GPU" Style="{StaticResource SxEyebrow}" Foreground="{DynamicResource SxAccentTeal}"/>
             <TextBlock Text="{Binding System.Snapshot.GpuText}" FontSize="{StaticResource SxFontSubheading}" FontWeight="SemiBold"/>
-            <ProgressBar Value="{Binding System.Snapshot.Gpu, Mode=OneWay}" Maximum="100" Height="3" Foreground="{StaticResource SxTealLimeGradient}" Style="{StaticResource SxProgressBarSlim}" Margin="0,5,0,10"/>
+            <ProgressBar Value="{Binding System.Snapshot.Gpu, Mode=OneWay, Converter={StaticResource SafePercent}}" Visibility="{Binding System.Snapshot.Gpu, Converter={StaticResource FiniteToVisibility}}" Maximum="100" Height="3" Foreground="{StaticResource SxTealLimeGradient}" Style="{StaticResource SxProgressBarSlim}" Margin="0,5,0,10"/>
 
             <Border Height="1" Background="{DynamicResource SxBorderSubtle}" Margin="-16,0,-16,9"/>
             <TextBlock Text="{Binding System.Snapshot.VramText, StringFormat=VRAM  {0}}" Style="{StaticResource SxBadgeText}" Foreground="{DynamicResource SxTextSecondary}"/>

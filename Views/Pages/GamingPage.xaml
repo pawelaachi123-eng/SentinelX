@@ -21,7 +21,7 @@
                             <Border Height="3" CornerRadius="2" Background="{StaticResource SxAccentGradient}" Margin="-18,-14,-18,12"/>
                             <TextBlock Text="CPU" Style="{StaticResource SxEyebrow}" Foreground="{DynamicResource SxAccentCyan}"/>
                             <TextBlock Text="{Binding System.Snapshot.CpuText}" Style="{StaticResource SxMetricValue}" FontSize="{StaticResource SxFontHeading1}"/>
-                            <ProgressBar Value="{Binding System.Snapshot.Cpu, Mode=OneWay}" Maximum="100" Style="{StaticResource SxProgressBarSlim}"/>
+                            <ProgressBar Value="{Binding System.Snapshot.Cpu, Mode=OneWay, Converter={StaticResource SafePercent}}" Visibility="{Binding System.Snapshot.Cpu, Converter={StaticResource FiniteToVisibility}}" Maximum="100" Style="{StaticResource SxProgressBarSlim}"/>
                             <TextBlock Text="Całkowite użycie" Style="{StaticResource SxMuted}" Margin="0,8,0,0"/>
                         </StackPanel>
                     </Border>
@@ -39,7 +39,7 @@
                             <Border Height="3" CornerRadius="2" Background="{StaticResource SxTealLimeGradient}" Margin="-18,-14,-18,12"/>
                             <TextBlock Text="GPU" Style="{StaticResource SxEyebrow}" Foreground="{DynamicResource SxAccentTeal}"/>
                             <TextBlock Text="{Binding System.Snapshot.GpuText}" Style="{StaticResource SxMetricValue}" FontSize="{StaticResource SxFontHeading1}"/>
-                            <ProgressBar Value="{Binding System.Snapshot.Gpu, Mode=OneWay}" Maximum="100" Foreground="{StaticResource SxTealLimeGradient}" Style="{StaticResource SxProgressBarSlim}"/>
+                            <ProgressBar Value="{Binding System.Snapshot.Gpu, Mode=OneWay, Converter={StaticResource SafePercent}}" Visibility="{Binding System.Snapshot.Gpu, Converter={StaticResource FiniteToVisibility}}" Maximum="100" Foreground="{StaticResource SxTealLimeGradient}" Style="{StaticResource SxProgressBarSlim}"/>
                             <TextBlock Text="Silnik 3D / Compute" Style="{StaticResource SxMuted}" Margin="0,8,0,0"/>
                         </StackPanel>
                     </Border>

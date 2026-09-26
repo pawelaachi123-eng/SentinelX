@@ -348,7 +348,9 @@ public static class UiSmokeTestRunner
                 "SxDivider", "SxDividerAccent", "SxTextBox", "SxProgressBar", "SxProgressBarSlim", "SxStatusDot", "SxShimmerBar",
                 "SxBubbleAssistant", "SxBubbleUser", "SxBubbleStreaming", "SxGradientTitle", "SxEyebrow", "SxMetricValue", "SxMono"];
             foreach (string token in tokenStyles)
-                if (!Application.Current.Resources.ContainsResource(token, true)) throw new InvalidOperationException("Design token style missing: " + token);
+                if (Application.Current.TryFindResource(token) is not Style) throw new InvalidOperationException("Design token style missing: " + token);
+            foreach (string token in new[] { "ReadinessBrush", "StatusBrush", "VoiceBrush", "RiskBrush", "BoolToVisibility", "StringNotEmptyToVisibility", "SafePercent", "FiniteToVisibility" })
+                if (Application.Current.TryFindResource(token) is not System.Windows.Data.IValueConverter) throw new InvalidOperationException("Converter missing: " + token);
             string[] tokenBoards = ["SxPageIn", "SxModalIn", "SxScrimIn", "SxFadeIn", "SxFadeOut", "SxHoverIn", "SxHoverOut", "SxPressIn",
                 "SxPressOut", "SxGlowIn", "SxGlowOut", "SxSheenIn", "SxLiftIn", "SxLiftOut", "SxNavBarGrow", "SxNavBarShrink", "SxLineGrow",
                 "SxLineShrink", "SxPulse", "SxPulseSoft", "SxBreathe", "SxShimmerSlide", "SxStripeSlide", "SxAuroraDriftA", "SxAuroraDriftB", "SxAuroraDriftC", "SxFadeSlideIn"];

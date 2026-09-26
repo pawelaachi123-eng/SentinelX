@@ -16,6 +16,9 @@
             <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
             <!-- 0.93 NOWOCZESNE GUI: widoczność komunikatów tekstowych (błędy walidacji, potwierdzenia zapisu). -->
             <c:StringNotEmptyToVisibilityConverter x:Key="StringNotEmptyToVisibility"/>
+            <!-- 0.93 NOWOCZESNE GUI: paski pomiarów — NaN z pustego odczytu nie udaje zera, pasek znika. -->
+            <c:SafePercentConverter x:Key="SafePercent"/>
+            <c:FiniteToVisibilityConverter x:Key="FiniteToVisibility"/>
         </ResourceDictionary>
     </Application.Resources>
 </Application>
