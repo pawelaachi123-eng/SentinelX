@@ -329,6 +329,9 @@
             </Setter.Value>
         </Setter>
     </Style>
+    <!-- Jeden styl domyślny ListBoxItem w całym słowniku (duplikat klucza typeof(ListBoxItem) = ArgumentException
+         przy ładowaniu słownika). Nawigacja w Views/MainWindow.xaml i tak nadpisuje go przez
+         ItemContainerStyle="{StaticResource SxSidebarItem}". -->
     <Style TargetType="ListBoxItem" BasedOn="{StaticResource SxListItem}"/>
 
     <!-- Kwadratowy chip na ikonę (paleta, zakładki Centrum, metryki). -->
@@ -1035,7 +1038,6 @@
         <Setter Property="Foreground" Value="{DynamicResource SxTextPrimary}"/>
         <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled"/>
     </Style>
-    <Style TargetType="ListBoxItem" BasedOn="{StaticResource SxSidebarItem}"/>
     <Style TargetType="ListView">
         <Setter Property="Background" Value="{DynamicResource SxTransparent}"/>
         <Setter Property="BorderThickness" Value="0"/>

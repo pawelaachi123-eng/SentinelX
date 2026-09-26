@@ -14,9 +14,17 @@ namespace SentinelX.Utilities;
 /// </summary>
 public static class Reveal
 {
-    private const string LayerName = "PART_RevealLayer";
     private const double Radius = 190;
     private const double TargetOpacity = 0.85;
+
+    /// <summary>Warstwa poświaty trzymana jako właściwość dołączona karty. Celowo nie
+    /// <c>Name</c> + <c>FindName</c>: element tworzony w kodzie nie rejestruje się w namescope
+    /// strony, więc <c>FindName</c> zwracałoby null, a warstwa byłaby dokładana przy każdym
+    /// ruchu myszy — karta zawijałaby się w kolejne siatki bez końca.</summary>
+    private static readonly DependencyProperty LayerProperty = DependencyProperty.RegisterAttached(
+        "Layer", typeof(Border), typeof(Reveal), new PropertyMetadata(null));
+    private static Border? GetLayer(Border card) => (Border?)card.GetValue(LayerProperty);
+    private static void SetLayer(Border card, Border? layer) => card.SetValue(LayerProperty, layer);
 
     public static readonly DependencyProperty EnabledProperty = DependencyProperty.RegisterAttached(
         "Enabled", typeof(bool), typeof(Reveal), new PropertyMetadata(false, OnEnabledChanged));
@@ -46,7 +54,7 @@ public static class Reveal
     /// </summary>
     private static void EnsureLayer(Border card)
     {
-        if (card.Child is Grid existing && existing.FindName(LayerName) != null) return;
+        if (GetLayer(card) is Border current && card.Child is Grid existing && existing.Children.Contains(current)) return;
 
         var reveal = new RadialGradientBrush
         {
@@ -61,7 +69,6 @@ public static class Reveal
 
         var layer = new Border
         {
-            Name = LayerName,
             Background = reveal,
             CornerRadius = card.CornerRadius,
             IsHitTestVisible = false,
@@ -72,16 +79,17 @@ public static class Reveal
         UIElement? content = card.Child;
         card.Child = null;
         if (content != null) grid.Children.Add(content);
-        grid.Children.Add(layer); // dodanie do Children rejestruje Name w namescope siatki
+        grid.Children.Add(layer);
         card.Child = grid;
         card.ClipToBounds = true;
+        SetLayer(card, layer);
     }
 
     private static void OnMouseMove(object sender, MouseEventArgs args)
     {
         if (sender is not Border card) return;
         EnsureLayer(card);
-        if (card.Child is not Grid grid || grid.FindName(LayerName) is not Border layer) return;
+        if (GetLayer(card) is not Border layer) return;
         if (layer.Background is not RadialGradientBrush brush) return;
 
         // Gradient jest w pikselach karty (MappingMode=Absolute): centrum musi iść za kursorem.
@@ -95,8 +103,8 @@ public static class Reveal
 
     private static void OnMouseLeave(object sender, MouseEventArgs args)
     {
-        if (sender is not Border card || card.Child is not Grid grid) return;
-        if (grid.FindName(LayerName) is not Border layer) return;
+        if (sender is not Border card) return;
+        if (GetLayer(card) is not Border layer) return;
         layer.BeginAnimation(UIElement.OpacityProperty,
             new DoubleAnimation(0, TimeSpan.FromMilliseconds(320)), HandoffBehavior.SnapshotAndReplace);
     }

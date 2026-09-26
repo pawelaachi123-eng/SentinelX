@@ -83,6 +83,22 @@ nie zmieniło ani jednego znaku; wersja aplikacji zostaje `0.93`.
   ma `double.NaN` w CPU/GPU/RAM, a `RangeBase` odrzuca wartości niekończone
   (`ValidateValueCallback IsValidDoubleValue` w źródłach WPF) — pasek więc **znika**, gdy pomiaru nie ma,
   zamiast udawać 0%; tekst obok nadal mówi „Niedostępne”.
+- **Kolejność scalania słowników w `App.xaml`** (świadome odstępstwo od opisu w §2.3 pkt 1 master
+  promptu): `Themes/Animations.xaml` jest scalany **przed** `Themes/Controls.xaml`, nie po nim.
+  Szablony z `Controls.xaml` sięgają po storyboardy przez `StaticResource` (poświata, błysk, hover,
+  press, pasek nawigacji, linia akcentu, gałka przełącznika, strzałka listy), a `StaticResource`
+  widzi tylko słowniki scalone wcześniej — przy starej kolejności `App.xaml` nie dało się w ogóle
+  załadować (`XamlParseException` przed `OnStartup`, przebieg CI `36235263621`: krok smoke zakończony
+  bez katalogu wyników). Zawartość słowników i wszystkie klucze zostały bez zmian.
+- **Jeden styl domyślny `ListBoxItem`** w `Themes/Controls.xaml` (był zduplikowany: `BasedOn SxListItem`
+  i `BasedOn SxSidebarItem`). Dwa style bez `x:Key` i z tym samym `TargetType` to dwa wpisy pod kluczem
+  `typeof(ListBoxItem)` w jednym słowniku = `ArgumentException` „Item has already been added” przy
+  ładowaniu `Controls.xaml`, czyli też przed `OnStartup`. Nawigacja i tak nadpisuje wygląd przez
+  `ItemContainerStyle="{StaticResource SxSidebarItem}"` w `Views/MainWindow.xaml`, więc nic nie straciło.
+- **`Utilities/Reveal.cs` bez `FindName`**: warstwa poświaty jest trzymana we właściwości dołączonej
+  `Reveal.Layer`. Element tworzony w kodzie nie rejestruje się w namescope strony, więc poprzednie
+  `grid.FindName("PART_RevealLayer")` zawsze zwracało `null` i karta zawijałaby się w kolejną siatkę
+  przy każdym ruchu myszy (nieskończony przyrost drzewa zamiast jednego reveal).
 
 ## Weryfikacja
 
@@ -108,6 +124,22 @@ nie zmieniło ani jednego znaku; wersja aplikacji zostaje `0.93`.
   (atrybut + element), `StringFormat` zaczynający się od `{` wymaga ucieczki `{}` (MC1000), duplikat
   `x:Name` w głównym zakresie nazw, właściwość dołączona `u:*` musi istnieć w `Utilities/`. Każda reguła
   została sprawdzona przez celowe wstrzyknięcie błędu (wszystkie 6 łapie, drzewo wraca do `PASS`).
+- `scripts/check-architecture.py` dostał dwie kolejne bramki po trzecim przebiegu CI (`36235263621`,
+  build już zielony, smoke zakończony bez żadnych artefaktów):
+  **kolejność zasobów** (symulacja ładowania `App.xaml`: każdy `StaticResource` musi istnieć w chwili
+  użycia — słowniki scalone później i klucze wpisane poniżej miejsca użycia są błędem; plus duplikat
+  stylu domyślnego w jednym słowniku) oraz **ścieżki animacji** (każdy `BeginStoryboard` w stylu musi
+  trafiać w element, którego `RenderTransform` ma żądane dziecko `TransformGroup` pod żądanym indeksem,
+  a storyboardy grane z `Utilities/` mieszczą się w konwencji `[Scale, Translate]` z
+  `Motion.EnsureTransform`). Obie sprawdzone przez celowe wstrzyknięcie błędu: zamiana kolejności
+  scalania, dopisanie drugiego stylu domyślnego `ListBoxItem`, przesunięcie stylu domyślnego
+  `TextBlock` na koniec pliku, usunięcie `RotateTransform` strzałki `ComboBox` i podstawienie
+  `SxChevronUp` do `Motion` — wszystkie pięć bramka łapie, po przywróceniu drzewo wraca do `PASS`.
+- Awaria sprzed `OnStartup` była w CI niewidoczna (katalog `test-results/ui` w ogóle nie powstawał,
+  więc krok nie miał czego wydrukować). `Utilities/CrashLogger.cs` dostał inicjalizator modułu: dla
+  `--ui-smoke` rejestruje `AppDomain.UnhandledException` **przed** `Main`, więc taki upadek zostawia
+  `FAILED.txt` w katalogu wyników, a istniejący krok CI już ten plik czyta. Poza smoke zachowanie
+  aplikacji się nie zmienia (handler nie jest rejestrowany). `.github/workflows/**` nietknięte.
 - `Themes/Colors.xaml`: tokeny `CornerRadius`/`Thickness` używają `assembly=PresentationFramework`
   (`Thickness.cs` i `CornerRadius.cs` leżą w `PresentationFramework/System/Windows` — sprawdzone w
   źródłach `dotnet/wpf`, nie w `PresentationCore`).
