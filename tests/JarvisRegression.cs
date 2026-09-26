@@ -196,8 +196,8 @@ internal static class JarvisRegression
         foreach (string notOurs in new[] { "ile mam ramu", "top procesy", "diagnostyka komputera", "włącz spotify", "plan dnia", "zadania", "pauza na 5 minut" })
             Check(await router.ProcessAsync(notOurs, ConversationMemoryService.Normalize(notOurs), default) == null,
                 "„" + notOurs + "” nie zostaje przejęte przez warstwę JARVIS");
-        string off = await router.ProcessAsync("pogoda", "pogoda", default) ?? "";
-        Check(off.Contains("wyłączona", StringComparison.OrdinalIgnoreCase) && off.Contains("Ustawienia", StringComparison.Ordinal),
+        string refusal = await router.ProcessAsync("pogoda", "pogoda", default) ?? "";
+        Check(refusal.Contains("wyłączona", StringComparison.OrdinalIgnoreCase) && refusal.Contains("Ustawienia", StringComparison.Ordinal),
             "wyłączona pogoda odmawia i mówi, gdzie ją włączyć (bez udawanej temperatury)");
         string overview = await router.ProcessAsync("jarvis", "jarvis", default) ?? "";
         Check(overview.Contains("Sekwencje") && overview.Contains("wymaga internetu"), "opis warstwy wymienia każdą rodzinę i jej warunki");
@@ -241,7 +241,7 @@ internal static class JarvisRegression
         Check(!honest.Success && honest.Message.ToLowerInvariant().Contains("brak"), "bez sieci i bez zapisu: odmowa, nie wymyślona temperatura");
         var timeout = new WeatherService(() => new JarvisSettings { WeatherEnabled = true, DefaultCity = "Kraków" },
             new Handler(async (request, token) => { await Task.Delay(Timeout.Infinite, token); throw new InvalidOperationException("nigdy"); }), Local("cache-hang"));
-        var hung = await timeout.GetAsync("Kraków", CancellationTokenSource.CreateLinkedTokenSource(default).Token);
+        var hung = await timeout.GetAsync("Kraków", default);
         Check(!hung.Success || hung.Message.Length > 0, "zawieszony serwer nie wiesza polecenia");
     }
 }
