@@ -324,7 +324,7 @@ public sealed class JarvisRouter
         string text = (value ?? "").Trim();
         text = text.TrimStart(':', '-', ' ');
         text = TrimWord(text);
-        if (text.EndsWith('?', '!')) text = text[..^1];
+        if (text.EndsWith('?') || text.EndsWith('!')) text = text[..^1];
         return text.Trim();
     }
 

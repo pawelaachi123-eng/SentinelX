@@ -168,7 +168,7 @@ public sealed class RoutineService
     {
         if (string.IsNullOrWhiteSpace(text)) return [];
         var parts = new List<string>();
-        foreach (string raw in Regex.Split(text, @"[;\n\r]+", TimeSpan.FromMilliseconds(200)))
+        foreach (string raw in Regex.Split(text, @"[;\n\r]+"))
         {
             string step = raw.Trim().Trim('-', '•', ' ');
             if (step.Length == 0) continue;

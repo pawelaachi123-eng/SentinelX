@@ -66,7 +66,7 @@ public static class ServiceLocator
         // rejstrowany wyżej, a JarvisRouter jest nieobowiązkowym dodatkiem do CommandRouter — bez niego
         // klasyczne polecenia działają identycznie (dlatego parametr w konstruktorze jest opcjonalny).
         services.AddSingleton<SentinelX.Services.Jarvis.WeatherService>(sp => new(() => sp.GetRequiredService<ISettingsService>().Current.Jarvis));
-        services.AddSingleton<SentinelX.Services.Jarvis.MediaService>();
+        services.AddSingleton<SentinelX.Services.Jarvis.MediaService>(sp => new SentinelX.Services.Jarvis.MediaService());
         services.AddSingleton<SentinelX.Services.Jarvis.HomeAutomationService>(sp => new(() => sp.GetRequiredService<ISettingsService>().Current.Jarvis));
         // Wykonawca kroków: agent i sekwencje idą przez JEDNĄ kolejkę z okna (STOP, zgody, audyt).
         services.AddSingleton<SentinelX.Services.Actions.StepRunner>();
@@ -76,7 +76,7 @@ public static class ServiceLocator
         services.AddSingleton<SentinelX.Services.Jarvis.VisionService>(sp => new(sp.GetRequiredService<LocalAiService>(), () => sp.GetRequiredService<ISettingsService>().Current.Jarvis));
         services.AddSingleton<SentinelX.Services.Jarvis.SemanticMemoryIndex>(sp => new(sp.GetRequiredService<LocalAiService>(),
             sp.GetRequiredService<ConversationMemoryService>(), () => sp.GetRequiredService<ISettingsService>().Current.Jarvis));
-        services.AddSingleton<SentinelX.Services.Jarvis.RoutineService>();
+        services.AddSingleton<SentinelX.Services.Jarvis.RoutineService>(sp => new SentinelX.Services.Jarvis.RoutineService());
         services.AddSingleton<SentinelX.Services.Jarvis.JarvisRouter>(sp => new(sp.GetRequiredService<SentinelX.Services.Jarvis.WeatherService>(),
             sp.GetRequiredService<SentinelX.Services.Jarvis.MediaService>(), sp.GetRequiredService<SentinelX.Services.Jarvis.HomeAutomationService>(),
             sp.GetRequiredService<SentinelX.Services.Jarvis.AgentService>(), sp.GetRequiredService<SentinelX.Services.Jarvis.VisionService>(),

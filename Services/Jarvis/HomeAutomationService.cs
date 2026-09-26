@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.IO;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
@@ -230,7 +231,7 @@ public sealed class HomeAutomationService
     /// <summary>Adres REST usługi. Walidacja, żeby z ustawień nie dało się wysłać żądania gdziekolwiek.</summary>
     public static string ServiceUrl(string baseUrl, string service)
     {
-        string[] parts = service.Split('.', 2);
+        string[] parts = service.Split(new[] { '.' }, 2);
         if (parts.Length != 2 || parts[0].Length == 0 || parts[1].Length == 0) throw new ArgumentException("Usługa musi mieć format domena.usluga.", nameof(service));
         return baseUrl.TrimEnd('/') + "/api/services/" + parts[0] + "/" + parts[1];
     }
