@@ -154,7 +154,11 @@ public sealed class RoutineService
             return "Nie mam żadnych sekwencji. Utwórz: „utwórz sekwencję: poranek = który jest dzień; plan dnia; ile mam ramu”.\n" +
                 "Sekwencja to nazwane kroki z podglądem — przy błędzie staje, a zgody nie wykonuje sama.";
         return "SEKWENCJE (" + items.Count + "):\n" + string.Join("\n", items.Select((x, i) =>
-            $"{i + 1}. {x.Name} — {x.Steps.Count} kroków ({x.Steps.Count <= 3 ? string.Join(" → ", x.Steps) : string.Join(" → ", x.Steps.Take(2)) + " → …"}) · {x.ShortSummary}"));
+        {
+            // Streść kroki POZA interpolacją: dwukropek w ternary kończyłby wyrażenie w stringu.
+            string trail = x.Steps.Count <= 3 ? string.Join(" → ", x.Steps) : string.Join(" → ", x.Steps.Take(2)) + " → …";
+            return $"{i + 1}. {x.Name} — {x.Steps.Count} kroków ({trail}) · {x.ShortSummary}";
+        }));
     }
 
     // ------------------------------------------------------------------ czyste funkcje
