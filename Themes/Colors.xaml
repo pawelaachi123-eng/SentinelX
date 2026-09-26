@@ -1,66 +1,192 @@
-<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <Color x:Key="SxBackgroundColor">#0D0F14</Color>
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:sys="clr-namespace:System;assembly=System.Runtime" xmlns:w="clr-namespace:System.Windows;assembly=PresentationFramework">
+
+    <!-- ============================================================
+         SENTINEL X · TOKENY DESIGNU (0.93 · NOWOCZESNE GUI)
+         Wzorzec tokenu: para
+             <Color x:Key="SxFooColor">#…</Color>
+             <SolidColorBrush x:Key="SxFoo" Color="{DynamicResource SxFooColor}"/>
+         Słowniki DarkTheme / DeepDarkTheme / LightTheme nadpisują WYŁĄCZNIE
+         klucze *Color, więc motyw, „Kolor akcentu" z ustawień i przełącznik
+         animacji działają w całym UI bez jednego literału koloru w Views/.
+         ============================================================ -->
+
+    <!-- Ruch: domyślnie włączony. DesktopService nadpisuje wartością
+         Ui.AnimationsEnabled && brak wykrytej gry. -->
+    <sys:Boolean x:Key="SxAnimationsEnabled">True</sys:Boolean>
+
+    <!-- ==== Powłoka i powierzchnie ==== -->
+    <Color x:Key="SxBackgroundColor">#0B0D14</Color>
     <SolidColorBrush x:Key="SxBackground" Color="{DynamicResource SxBackgroundColor}"/>
-    <Color x:Key="SxSurfaceColor">#141820</Color>
+    <Color x:Key="SxSurfaceColor">#141824</Color>
     <SolidColorBrush x:Key="SxSurface" Color="{DynamicResource SxSurfaceColor}"/>
-    <Color x:Key="SxSurfaceHoverColor">#1A1F2B</Color>
+    <Color x:Key="SxSurfaceRaisedColor">#191E2C</Color>
+    <SolidColorBrush x:Key="SxSurfaceRaised" Color="{DynamicResource SxSurfaceRaisedColor}"/>
+    <Color x:Key="SxSurfaceHoverColor">#1F2536</Color>
     <SolidColorBrush x:Key="SxSurfaceHover" Color="{DynamicResource SxSurfaceHoverColor}"/>
-    <Color x:Key="SxSurfaceActiveColor">#1E2433</Color>
+    <Color x:Key="SxSurfaceActiveColor">#262D42</Color>
     <SolidColorBrush x:Key="SxSurfaceActive" Color="{DynamicResource SxSurfaceActiveColor}"/>
-    <Color x:Key="SxSidebarColor">#0F1118</Color>
+    <Color x:Key="SxSurfaceSunkenColor">#0E1119</Color>
+    <SolidColorBrush x:Key="SxSurfaceSunken" Color="{DynamicResource SxSurfaceSunkenColor}"/>
+    <Color x:Key="SxSurfaceGlassColor">#B3151A26</Color>
+    <SolidColorBrush x:Key="SxSurfaceGlass" Color="{DynamicResource SxSurfaceGlassColor}"/>
+    <Color x:Key="SxSidebarColor">#0D1017</Color>
     <SolidColorBrush x:Key="SxSidebar" Color="{DynamicResource SxSidebarColor}"/>
-    <Color x:Key="SxSidebarHoverColor">#171B25</Color>
+    <Color x:Key="SxSidebarHoverColor">#171C28</Color>
     <SolidColorBrush x:Key="SxSidebarHover" Color="{DynamicResource SxSidebarHoverColor}"/>
-    <Color x:Key="SxSidebarActiveColor">#1C2030</Color>
+    <Color x:Key="SxSidebarActiveColor">#1B2233</Color>
     <SolidColorBrush x:Key="SxSidebarActive" Color="{DynamicResource SxSidebarActiveColor}"/>
-    <Color x:Key="SxBorderColor">#2A2F3C</Color>
+
+    <!-- ==== Linie i podziały ==== -->
+    <Color x:Key="SxBorderColor">#2B3245</Color>
     <SolidColorBrush x:Key="SxBorder" Color="{DynamicResource SxBorderColor}"/>
-    <Color x:Key="SxBorderSubtleColor">#1E222D</Color>
+    <Color x:Key="SxBorderSubtleColor">#1E2431</Color>
     <SolidColorBrush x:Key="SxBorderSubtle" Color="{DynamicResource SxBorderSubtleColor}"/>
-    <Color x:Key="SxTextPrimaryColor">#E8ECF4</Color>
+    <Color x:Key="SxBorderStrongColor">#3C4661</Color>
+    <SolidColorBrush x:Key="SxBorderStrong" Color="{DynamicResource SxBorderStrongColor}"/>
+
+    <!-- ==== Tekst ==== -->
+    <Color x:Key="SxTextPrimaryColor">#EDF1FA</Color>
     <SolidColorBrush x:Key="SxTextPrimary" Color="{DynamicResource SxTextPrimaryColor}"/>
-    <Color x:Key="SxTextSecondaryColor">#8B92A5</Color>
+    <Color x:Key="SxTextSecondaryColor">#98A2BC</Color>
     <SolidColorBrush x:Key="SxTextSecondary" Color="{DynamicResource SxTextSecondaryColor}"/>
-    <Color x:Key="SxTextMutedColor">#525868</Color>
+    <Color x:Key="SxTextMutedColor">#7B87A3</Color>
     <SolidColorBrush x:Key="SxTextMuted" Color="{DynamicResource SxTextMutedColor}"/>
-    <Color x:Key="SxTextDisabledColor">#3A3F4C</Color>
+    <Color x:Key="SxTextDisabledColor">#414A5E</Color>
     <SolidColorBrush x:Key="SxTextDisabled" Color="{DynamicResource SxTextDisabledColor}"/>
-    <Color x:Key="SxAccentCyanColor">#00D4FF</Color>
+    <Color x:Key="SxTextOnAccentColor">#04121A</Color>
+    <SolidColorBrush x:Key="SxTextOnAccent" Color="{DynamicResource SxTextOnAccentColor}"/>
+
+    <!-- ==== Akcenty: pełna paleta, nie dwa kolory ==== -->
+    <Color x:Key="SxAccentCyanColor">#22D3EE</Color>
     <SolidColorBrush x:Key="SxAccentCyan" Color="{DynamicResource SxAccentCyanColor}"/>
-    <Color x:Key="SxAccentCyanDimColor">#007A94</Color>
+    <Color x:Key="SxAccentCyanDimColor">#0E7490</Color>
     <SolidColorBrush x:Key="SxAccentCyanDim" Color="{DynamicResource SxAccentCyanDimColor}"/>
-    <Color x:Key="SxAccentVioletColor">#8B5CF6</Color>
+    <Color x:Key="SxAccentCyanSoftColor">#164E63</Color>
+    <SolidColorBrush x:Key="SxAccentCyanSoft" Color="{DynamicResource SxAccentCyanSoftColor}"/>
+    <Color x:Key="SxAccentVioletColor">#A78BFA</Color>
     <SolidColorBrush x:Key="SxAccentViolet" Color="{DynamicResource SxAccentVioletColor}"/>
-    <Color x:Key="SxAccentBlueColor">#3B82F6</Color>
+    <Color x:Key="SxAccentVioletDimColor">#6D28D9</Color>
+    <SolidColorBrush x:Key="SxAccentVioletDim" Color="{DynamicResource SxAccentVioletDimColor}"/>
+    <Color x:Key="SxAccentVioletSoftColor">#3B2A6B</Color>
+    <SolidColorBrush x:Key="SxAccentVioletSoft" Color="{DynamicResource SxAccentVioletSoftColor}"/>
+    <Color x:Key="SxAccentBlueColor">#60A5FA</Color>
     <SolidColorBrush x:Key="SxAccentBlue" Color="{DynamicResource SxAccentBlueColor}"/>
-    <Color x:Key="SxAccentGradStartColor">#00D4FF</Color>
-    <SolidColorBrush x:Key="SxAccentGradStart" Color="{DynamicResource SxAccentGradStartColor}"/>
-    <Color x:Key="SxAccentGradEndColor">#8B5CF6</Color>
-    <SolidColorBrush x:Key="SxAccentGradEnd" Color="{DynamicResource SxAccentGradEndColor}"/>
-    <Color x:Key="SxSuccessColor">#22C55E</Color>
+    <Color x:Key="SxAccentBlueDimColor">#1D4ED8</Color>
+    <SolidColorBrush x:Key="SxAccentBlueDim" Color="{DynamicResource SxAccentBlueDimColor}"/>
+    <Color x:Key="SxAccentBlueSoftColor">#1E3A8A</Color>
+    <SolidColorBrush x:Key="SxAccentBlueSoft" Color="{DynamicResource SxAccentBlueSoftColor}"/>
+    <Color x:Key="SxAccentTealColor">#2DD4BF</Color>
+    <SolidColorBrush x:Key="SxAccentTeal" Color="{DynamicResource SxAccentTealColor}"/>
+    <Color x:Key="SxAccentTealDimColor">#0F766E</Color>
+    <SolidColorBrush x:Key="SxAccentTealDim" Color="{DynamicResource SxAccentTealDimColor}"/>
+    <Color x:Key="SxAccentTealSoftColor">#134E4A</Color>
+    <SolidColorBrush x:Key="SxAccentTealSoft" Color="{DynamicResource SxAccentTealSoftColor}"/>
+    <Color x:Key="SxAccentPinkColor">#F472B6</Color>
+    <SolidColorBrush x:Key="SxAccentPink" Color="{DynamicResource SxAccentPinkColor}"/>
+    <Color x:Key="SxAccentPinkDimColor">#BE185D</Color>
+    <SolidColorBrush x:Key="SxAccentPinkDim" Color="{DynamicResource SxAccentPinkDimColor}"/>
+    <Color x:Key="SxAccentPinkSoftColor">#5B1D3C</Color>
+    <SolidColorBrush x:Key="SxAccentPinkSoft" Color="{DynamicResource SxAccentPinkSoftColor}"/>
+    <Color x:Key="SxAccentLimeColor">#A3E635</Color>
+    <SolidColorBrush x:Key="SxAccentLime" Color="{DynamicResource SxAccentLimeColor}"/>
+    <Color x:Key="SxAccentLimeDimColor">#4D7C0F</Color>
+    <SolidColorBrush x:Key="SxAccentLimeDim" Color="{DynamicResource SxAccentLimeDimColor}"/>
+    <!-- Królewskie złoto (herb, korona, wordmark): osobna rodzina niż semantyczny warning. -->
+    <Color x:Key="SxRoyalGoldColor">#E7C25C</Color>
+    <SolidColorBrush x:Key="SxRoyalGold" Color="{DynamicResource SxRoyalGoldColor}"/>
+    <Color x:Key="SxRoyalGoldDimColor">#8F6B1F</Color>
+    <SolidColorBrush x:Key="SxRoyalGoldDim" Color="{DynamicResource SxRoyalGoldDimColor}"/>
+    <Color x:Key="SxRoyalGoldSoftColor">#3A2E12</Color>
+    <SolidColorBrush x:Key="SxRoyalGoldSoft" Color="{DynamicResource SxRoyalGoldSoftColor}"/>
+    <Color x:Key="SxAccentGradStartColor">#155E75</Color>
+    <Color x:Key="SxAccentGradEndColor">#6D28D9</Color>
+
+    <!-- ==== Stany semantyczne ==== -->
+    <Color x:Key="SxSuccessColor">#34D399</Color>
     <SolidColorBrush x:Key="SxSuccess" Color="{DynamicResource SxSuccessColor}"/>
-    <Color x:Key="SxSuccessDimColor">#166534</Color>
+    <Color x:Key="SxSuccessDimColor">#065F46</Color>
     <SolidColorBrush x:Key="SxSuccessDim" Color="{DynamicResource SxSuccessDimColor}"/>
-    <Color x:Key="SxWarningColor">#F59E0B</Color>
+    <Color x:Key="SxSuccessGradEndColor">#047857</Color>
+    <SolidColorBrush x:Key="SxSuccessGradEnd" Color="{DynamicResource SxSuccessGradEndColor}"/>
+    <Color x:Key="SxSuccessBgColor">#0E3B2E</Color>
+    <SolidColorBrush x:Key="SxSuccessBg" Color="{DynamicResource SxSuccessBgColor}"/>
+    <Color x:Key="SxWarningColor">#FBBF24</Color>
     <SolidColorBrush x:Key="SxWarning" Color="{DynamicResource SxWarningColor}"/>
-    <Color x:Key="SxWarningDimColor">#92400E</Color>
+    <Color x:Key="SxWarningDimColor">#B45309</Color>
     <SolidColorBrush x:Key="SxWarningDim" Color="{DynamicResource SxWarningDimColor}"/>
-    <Color x:Key="SxErrorColor">#EF4444</Color>
+    <Color x:Key="SxWarningBgColor">#3D2A0B</Color>
+    <SolidColorBrush x:Key="SxWarningBg" Color="{DynamicResource SxWarningBgColor}"/>
+    <Color x:Key="SxErrorColor">#FB7185</Color>
     <SolidColorBrush x:Key="SxError" Color="{DynamicResource SxErrorColor}"/>
-    <Color x:Key="SxErrorDimColor">#991B1B</Color>
+    <Color x:Key="SxErrorDimColor">#BE123C</Color>
     <SolidColorBrush x:Key="SxErrorDim" Color="{DynamicResource SxErrorDimColor}"/>
-    <Color x:Key="SxVoiceActiveColor">#00D4FF</Color>
+    <Color x:Key="SxErrorGradEndColor">#F43F5E</Color>
+    <SolidColorBrush x:Key="SxErrorGradEnd" Color="{DynamicResource SxErrorGradEndColor}"/>
+    <Color x:Key="SxErrorBgColor">#3E1420</Color>
+    <SolidColorBrush x:Key="SxErrorBg" Color="{DynamicResource SxErrorBgColor}"/>
+    <Color x:Key="SxInfoColor">#7DD3FC</Color>
+    <SolidColorBrush x:Key="SxInfo" Color="{DynamicResource SxInfoColor}"/>
+    <Color x:Key="SxInfoBgColor">#12314A</Color>
+    <SolidColorBrush x:Key="SxInfoBg" Color="{DynamicResource SxInfoBgColor}"/>
+
+    <!-- ==== Głos ==== -->
+    <Color x:Key="SxVoiceActiveColor">#22D3EE</Color>
     <SolidColorBrush x:Key="SxVoiceActive" Color="{DynamicResource SxVoiceActiveColor}"/>
-    <Color x:Key="SxVoiceStandbyColor">#F59E0B</Color>
+    <Color x:Key="SxVoiceStandbyColor">#FBBF24</Color>
     <SolidColorBrush x:Key="SxVoiceStandby" Color="{DynamicResource SxVoiceStandbyColor}"/>
-    <Color x:Key="SxVoiceOffColor">#525868</Color>
+    <Color x:Key="SxVoiceOffColor">#7B87A3</Color>
     <SolidColorBrush x:Key="SxVoiceOff" Color="{DynamicResource SxVoiceOffColor}"/>
+
+    <!-- ==== Pierścień fokusu, cień, połysk, reveal ==== -->
+    <Color x:Key="SxFocusRingColor">#67E8F9</Color>
+    <SolidColorBrush x:Key="SxFocusRing" Color="{DynamicResource SxFocusRingColor}"/>
+    <Color x:Key="SxShadowColor">#80000000</Color>
+    <SolidColorBrush x:Key="SxShadow" Color="{DynamicResource SxShadowColor}"/>
+    <Color x:Key="SxShimmerColor">#22FFFFFF</Color>
+    <SolidColorBrush x:Key="SxShimmer" Color="{DynamicResource SxShimmerColor}"/>
+    <Color x:Key="SxRevealColor">#2E22D3EE</Color>
+    <SolidColorBrush x:Key="SxReveal" Color="{DynamicResource SxRevealColor}"/>
     <Color x:Key="SxWhiteColor">#FFFFFF</Color>
     <SolidColorBrush x:Key="SxWhite" Color="{DynamicResource SxWhiteColor}"/>
     <Color x:Key="SxTransparentColor">#00000000</Color>
     <SolidColorBrush x:Key="SxTransparent" Color="{DynamicResource SxTransparentColor}"/>
-    <Color x:Key="SxUserBubbleColor">#263E5866</Color>
+
+    <!-- ==== Rozmowa ==== -->
+    <Color x:Key="SxUserBubbleColor">#1B3A57</Color>
     <SolidColorBrush x:Key="SxUserBubble" Color="{DynamicResource SxUserBubbleColor}"/>
-    <SolidColorBrush x:Key="SxOverlayBg" Color="#CC0D0F14"/>
-    <SolidColorBrush x:Key="SxScrim" Color="#B30D0F14"/>
+    <Color x:Key="SxUserBubbleBorderColor">#3B82F6</Color>
+    <SolidColorBrush x:Key="SxUserBubbleBorder" Color="{DynamicResource SxUserBubbleBorderColor}"/>
+    <Color x:Key="SxAssistantBubbleColor">#171C2A</Color>
+    <SolidColorBrush x:Key="SxAssistantBubble" Color="{DynamicResource SxAssistantBubbleColor}"/>
+    <Color x:Key="SxAssistantBubbleBorderColor">#2B3245</Color>
+    <SolidColorBrush x:Key="SxAssistantBubbleBorder" Color="{DynamicResource SxAssistantBubbleBorderColor}"/>
+
+    <!-- ==== Aurora i nakładka ==== -->
+    <Color x:Key="SxAuroraAColor">#22D3EE</Color>
+    <Color x:Key="SxAuroraBColor">#A78BFA</Color>
+    <Color x:Key="SxAuroraCColor">#F472B6</Color>
+    <Color x:Key="SxOverlayBgColor">#CC0B0D14</Color>
+    <SolidColorBrush x:Key="SxOverlayBg" Color="{DynamicResource SxOverlayBgColor}"/>
+    <Color x:Key="SxScrimColor">#B3070910</Color>
+    <SolidColorBrush x:Key="SxScrim" Color="{DynamicResource SxScrimColor}"/>
+
+    <!-- ==== Promienie, odstępy i grubości linii (0.93) ====
+         Wartości układu też są tokenami: Views nie wpisują liczb na sztywno. -->
+    <w:CornerRadius x:Key="SxRadiusXs">2</w:CornerRadius>
+    <w:CornerRadius x:Key="SxRadiusSm">4</w:CornerRadius>
+    <w:CornerRadius x:Key="SxRadiusMd">12</w:CornerRadius>
+    <w:CornerRadius x:Key="SxRadiusLg">20</w:CornerRadius>
+    <w:CornerRadius x:Key="SxRadiusPill">999</w:CornerRadius>
+    <w:CornerRadius x:Key="SxRadiusCircle">999</w:CornerRadius>
+    <w:CornerRadius x:Key="SxRadiusModalTop">20,20,0,0</w:CornerRadius>
+    <w:CornerRadius x:Key="SxRadiusCardEdge">16,0,0,16</w:CornerRadius>
+    <w:Thickness x:Key="SxSpaceXs">4</w:Thickness>
+    <w:Thickness x:Key="SxSpaceSm">8</w:Thickness>
+    <w:Thickness x:Key="SxSpaceMd">12</w:Thickness>
+    <w:Thickness x:Key="SxSpaceLg">16</w:Thickness>
+    <w:Thickness x:Key="SxSpaceXl">24</w:Thickness>
+    <w:Thickness x:Key="SxSpaceCard">18,16</w:Thickness>
+    <w:Thickness x:Key="SxSpacePage">28,24,28,20</w:Thickness>
+    <w:Thickness x:Key="SxHairlineThickness">0,1,0,0</w:Thickness>
+    <w:Thickness x:Key="SxEdgeThickness">1</w:Thickness>
 </ResourceDictionary>

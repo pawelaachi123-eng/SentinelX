@@ -1,87 +1,136 @@
 <UserControl xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:u="clr-namespace:SentinelX.Utilities" x:Class="SentinelX.Views.Pages.ProjectsPage" u:PageTransitions.Enabled="True" u:UiInteraction.LoadedCommand="{Binding RefreshCommand}">
-    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-        <StackPanel Margin="28">
-            <TextBlock Text="Projekty" Style="{StaticResource SxHeading}"/>
-            <TextBlock Text="Przestrzenie robocze: notatki i rozmowy w projekcie tworzą odrębny kontekst AI — nic nie miesza się między projektami" Style="{StaticResource SxCaption}" Margin="0,0,0,24"/>
+    <!-- 0.93 · NOWOCZESNE GUI: projekty jako karty z paskiem stanu (aktywny / archiwum),
+         znacznikiem aktywacji i chipami akcji. Izolacja kontekstu AI jest opisana słowem,
+         nie tylko kolorem. -->
+    <Grid ClipToBounds="True">
+        <Border Style="{StaticResource SxPageWash}" Background="{StaticResource SxAuroraPinkBrush}" Opacity="0.13"/>
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Margin="28,24,28,20">
+                <DockPanel Margin="0,0,0,18">
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Top">
+                        <CheckBox Content="Pokaż zarchiwizowane" IsChecked="{Binding ShowArchived}" VerticalAlignment="Center" Margin="0,0,12,0" AutomationProperties.Name="Pokaż zarchiwizowane projekty"/>
+                        <Button Content="Odśwież" Command="{Binding RefreshCommand}" Style="{StaticResource SxChipButton}" Margin="0"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <Border Style="{StaticResource SxHeaderAccentBar}" Background="{StaticResource SxTealLimeGradient}"/>
+                        <StackPanel>
+                            <TextBlock Text="PRZESTRZENIE ROBOCZE" Style="{StaticResource SxEyebrow}" Foreground="{DynamicResource SxAccentTeal}"/>
+                            <TextBlock Text="Projekty" Style="{StaticResource SxHeading}" Margin="0"/>
+                            <TextBlock Text="Notatki i rozmowy w projekcie tworzą odrębny kontekst AI — nic nie miesza się między projektami." Style="{StaticResource SxCaption}" Margin="0,6,0,0"/>
+                        </StackPanel>
+                    </StackPanel>
+                </DockPanel>
 
-            <DockPanel Margin="0,0,0,12">
-                <Button Content="Odśwież" Command="{Binding RefreshCommand}" DockPanel.Dock="Right" Margin="12,0,0,0"/>
-                <CheckBox Content="Pokaż zarchiwizowane" IsChecked="{Binding ShowArchived}" VerticalAlignment="Center" DockPanel.Dock="Right" Margin="12,0,0,0" AutomationProperties.Name="Pokaż zarchiwizowane projekty"/>
-                <TextBlock/>
-            </DockPanel>
-            <TextBlock Text="{Binding ActiveLine}" Style="{StaticResource SxCaption}" TextWrapping="Wrap" Margin="0,0,0,8"/>
-            <TextBlock Text="{Binding Status}" Style="{StaticResource SxCaption}" TextWrapping="Wrap" Margin="0,0,0,16"/>
+                <Border Style="{StaticResource SxBadgeAccent}" HorizontalAlignment="Left" Margin="0,0,0,8" Padding="14,8">
+                    <TextBlock Text="{Binding ActiveLine}" Style="{StaticResource SxBadgeText}" Foreground="{DynamicResource SxTextPrimary}" TextWrapping="Wrap" MaxWidth="900"/>
+                </Border>
+                <TextBlock Text="{Binding Status}" Style="{StaticResource SxCaption}" TextWrapping="Wrap" Margin="0,0,0,16"/>
 
-            <Border Style="{StaticResource SxCard}" Margin="0,0,0,16">
-                <StackPanel>
-                    <TextBlock Text="Nowy projekt" Style="{StaticResource SxSectionTitle}"/>
-                    <TextBox Text="{Binding NewName, UpdateSourceTrigger=PropertyChanged}" u:InputHint.Text="Nazwa projektu — np. Sentinel X" Margin="0,12,0,8" AutomationProperties.Name="Nazwa nowego projektu"/>
-                    <TextBox Text="{Binding NewDescription, UpdateSourceTrigger=PropertyChanged}" u:InputHint.Text="Opis opcjonalny — cel, zakres, stan prac" TextWrapping="Wrap" MaxHeight="80" VerticalScrollBarVisibility="Auto" Margin="0,0,0,12" AutomationProperties.Name="Opis nowego projektu"/>
-                    <DockPanel>
-                        <Button Content="Utwórz i aktywuj" Command="{Binding CreateCommand}" Style="{StaticResource SxPrimaryButton}" DockPanel.Dock="Right"/>
-                    </DockPanel>
-                </StackPanel>
-            </Border>
+                <Border Style="{StaticResource SxCard}" Margin="0,0,0,16">
+                    <StackPanel>
+                        <TextBlock Text="NOWA PRZESTRZEŃ" Style="{StaticResource SxEyebrow}" Foreground="{DynamicResource SxAccentCyan}"/>
+                        <TextBlock Text="Nowy projekt" Style="{StaticResource SxSectionTitle}"/>
+                        <TextBox Text="{Binding NewName, UpdateSourceTrigger=PropertyChanged}" u:InputHint.Text="Nazwa projektu — np. Sentinel X" Margin="0,0,0,8" AutomationProperties.Name="Nazwa nowego projektu"/>
+                        <TextBox Text="{Binding NewDescription, UpdateSourceTrigger=PropertyChanged}" u:InputHint.Text="Opis opcjonalny — cel, zakres, stan prac" TextWrapping="Wrap" MaxHeight="80" VerticalScrollBarVisibility="Auto" Margin="0,0,0,12" AutomationProperties.Name="Opis nowego projektu"/>
+                        <Button Content="Utwórz i aktywuj" Command="{Binding CreateCommand}" Style="{StaticResource SxPrimaryButton}"/>
+                    </StackPanel>
+                </Border>
 
-            <Border Margin="0,0,0,16">
-                <Border.Style>
-                    <Style TargetType="Border" BasedOn="{StaticResource SxCard}">
-                        <Style.Triggers>
-                            <DataTrigger Binding="{Binding SelectedCard}" Value="{x:Null}">
-                                <Setter Property="Visibility" Value="Collapsed"/>
-                            </DataTrigger>
-                        </Style.Triggers>
-                    </Style>
-                </Border.Style>
-                <StackPanel>
-                    <TextBlock Text="Edycja wybranego projektu" Style="{StaticResource SxSectionTitle}"/>
-                    <TextBox Text="{Binding EditorName, UpdateSourceTrigger=PropertyChanged}" Margin="0,12,0,8" AutomationProperties.Name="Nazwa edytowanego projektu"/>
-                    <TextBox Text="{Binding EditorDescription, UpdateSourceTrigger=PropertyChanged}" TextWrapping="Wrap" MaxHeight="100" VerticalScrollBarVisibility="Auto" Margin="0,0,0,12" AutomationProperties.Name="Opis edytowanego projektu"/>
-                    <WrapPanel>
-                        <Button Content="Zapisz zmiany" Command="{Binding SaveSelectedCommand}" Style="{StaticResource SxPrimaryButton}" Margin="0,0,8,0"/>
-                    </WrapPanel>
-                </StackPanel>
-            </Border>
+                <Border Margin="0,0,0,16">
+                    <Border.Style>
+                        <Style TargetType="Border" BasedOn="{StaticResource SxAccentCard}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding SelectedCard}" Value="{x:Null}">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                    <StackPanel>
+                        <TextBlock Text="EDYCJA" Style="{StaticResource SxEyebrow}" Foreground="{DynamicResource SxAccentViolet}"/>
+                        <TextBlock Text="Edycja wybranego projektu" Style="{StaticResource SxSectionTitle}"/>
+                        <TextBox Text="{Binding EditorName, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8" AutomationProperties.Name="Nazwa edytowanego projektu"/>
+                        <TextBox Text="{Binding EditorDescription, UpdateSourceTrigger=PropertyChanged}" TextWrapping="Wrap" MaxHeight="100" VerticalScrollBarVisibility="Auto" Margin="0,0,0,12" AutomationProperties.Name="Opis edytowanego projektu"/>
+                        <Button Content="Zapisz zmiany" Command="{Binding SaveSelectedCommand}" Style="{StaticResource SxPrimaryButton}"/>
+                    </StackPanel>
+                </Border>
 
-            <Border Margin="0,0,0,16">
-                <Border.Style>
-                    <Style TargetType="Border" BasedOn="{StaticResource SxCard}">
-                        <Style.Triggers>
-                            <DataTrigger Binding="{Binding HasSummary}" Value="False">
-                                <Setter Property="Visibility" Value="Collapsed"/>
-                            </DataTrigger>
-                        </Style.Triggers>
-                    </Style>
-                </Border.Style>
-                <StackPanel>
-                    <TextBlock Text="Gdzie skończyliśmy?" Style="{StaticResource SxSectionTitle}"/>
-                    <TextBlock Text="{Binding SummaryText}" TextWrapping="Wrap" Margin="0,12,0,0"/>
-                </StackPanel>
-            </Border>
-
-            <ItemsControl ItemsSource="{Binding Cards}">
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                        <Border Style="{StaticResource SxCard}" Margin="0,0,0,12">
-                            <StackPanel>
-                                <TextBlock Text="{Binding Name}" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap"/>
-                                <TextBlock Text="{Binding Description}" Style="{StaticResource SxCaption}" TextWrapping="Wrap" Margin="0,4,0,8"/>
-                                <TextBlock Text="{Binding MetaText}" Style="{StaticResource SxCaption}" Margin="0,0,0,12"/>
-                                <WrapPanel>
-                                    <Button Content="{Binding ActivateLabel}" Command="{Binding DataContext.ToggleActiveCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" Style="{StaticResource SxPrimaryButton}" Margin="0,0,8,4" ToolTip="Tylko aktywny projekt ogranicza kontekst AI do swoich wpisów i globalnych"/>
-                                    <Button Content="{Binding StatusCycleLabel}" Command="{Binding DataContext.ToggleStatusCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" Style="{StaticResource SxGhostButton}" Margin="0,0,8,4" ToolTip="aktywny → wstrzymany → aktywny"/>
-                                    <Button Content="Gdzie skończyliśmy?" Command="{Binding DataContext.WhereDidWeStopCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" Style="{StaticResource SxGhostButton}" Margin="0,0,8,4" ToolTip="Podsumowanie z zapisanych danych i wznowienie ostatniej rozmowy projektu"/>
-                                    <Button Content="Nowa rozmowa w projekcie" Command="{Binding DataContext.NewConversationCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" Style="{StaticResource SxGhostButton}" Margin="0,0,8,4"/>
-                                    <Button Content="Przypisz aktywną rozmowę" Command="{Binding DataContext.AssignActiveConversationCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" Style="{StaticResource SxGhostButton}" Margin="0,0,8,4"/>
-                                    <Button Content="Eksport" Command="{Binding DataContext.ExportCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" Style="{StaticResource SxGhostButton}" Margin="0,0,8,4" ToolTip="JSON: karta projektu, notatki i metadane rozmów"/>
-                                    <Button Content="Wybierz do edycji" Command="{Binding DataContext.SelectCardCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" Style="{StaticResource SxGhostButton}" Margin="0,0,8,4"/>
-                                    <Button Content="{Binding ArchiveLabel}" Command="{Binding DataContext.ToggleArchiveCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" Style="{StaticResource SxGhostButton}" Margin="0,0,8,4" ToolTip="Archiwizacja ukrywa projekt, ale nic nie usuwa"/>
-                                </WrapPanel>
-                            </StackPanel>
+                <Border Margin="0,0,0,16">
+                    <Border.Style>
+                        <Style TargetType="Border" BasedOn="{StaticResource SxCard}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding HasSummary}" Value="False">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                    <StackPanel>
+                        <TextBlock Text="PODSUMOWANIE" Style="{StaticResource SxEyebrow}" Foreground="{DynamicResource SxAccentLime}"/>
+                        <TextBlock Text="Gdzie skończyliśmy?" Style="{StaticResource SxSectionTitle}"/>
+                        <Border Style="{StaticResource SxPanelSunken}">
+                            <TextBlock Text="{Binding SummaryText}" TextWrapping="Wrap" LineHeight="21" LineStackingStrategy="BlockLineHeight"/>
                         </Border>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
-        </StackPanel>
-    </ScrollViewer>
+                    </StackPanel>
+                </Border>
+
+                <TextBlock Text="KARTY PROJEKTÓW" Style="{StaticResource SxEyebrow}" Foreground="{DynamicResource SxAccentTeal}" Margin="0,0,0,10"/>
+                <ItemsControl ItemsSource="{Binding Cards}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Style="{StaticResource SxCardInteractive}" Margin="0,0,0,12" Padding="0" u:Reveal.Enabled="True">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Border Width="4" CornerRadius="{StaticResource SxRadiusCardEdge}">
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Setter Property="Background" Value="{StaticResource SxTealLimeGradient}"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsArchived}" Value="True">
+                                                        <Setter Property="Background" Value="{DynamicResource SxBorder}"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding IsActive}" Value="False">
+                                                        <Setter Property="Background" Value="{DynamicResource SxBorderStrong}"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Margin="18,16">
+                                        <DockPanel Margin="0,0,0,6">
+                                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                                <Border Style="{StaticResource SxBadgeSuccess}" Padding="9,3" Margin="0,0,6,0" Visibility="{Binding IsActive, Converter={StaticResource BoolToVisibility}}">
+                                                    <TextBlock Text="● AKTYWNY" Style="{StaticResource SxBadgeText}" Foreground="{DynamicResource SxSuccess}"/>
+                                                </Border>
+                                                <Border Style="{StaticResource SxBadge}" Padding="9,3" Visibility="{Binding IsArchived, Converter={StaticResource BoolToVisibility}}">
+                                                    <TextBlock Text="ZARCHIWIZOWANY" Style="{StaticResource SxBadgeText}" Foreground="{DynamicResource SxTextSecondary}"/>
+                                                </Border>
+                                            </StackPanel>
+                                            <TextBlock Text="{Binding Name}" FontSize="{StaticResource SxFontHeading3}" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,0,12,0"/>
+                                        </DockPanel>
+                                        <TextBlock Text="{Binding Description}" Style="{StaticResource SxCaption}" TextWrapping="Wrap" Margin="0,0,0,6"/>
+                                        <TextBlock Text="{Binding MetaText}" Style="{StaticResource SxMuted}" Margin="0,0,0,4"/>
+                                        <TextBlock Text="{Binding Status}" Style="{StaticResource SxMuted}" Margin="0,0,0,12"/>
+                                        <WrapPanel>
+                                            <Button Content="{Binding ActivateLabel}" Command="{Binding DataContext.ToggleActiveCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" Style="{StaticResource SxPrimaryButton}" Padding="16,7" MinHeight="34" FontSize="{StaticResource SxFontCaption}" Margin="0,0,8,8" ToolTip="Tylko aktywny projekt ogranicza kontekst AI do swoich wpisów i globalnych"/>
+                                            <Button Content="{Binding StatusCycleLabel}" Command="{Binding DataContext.ToggleStatusCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" Style="{StaticResource SxChipButton}" ToolTip="aktywny → wstrzymany → aktywny"/>
+                                            <Button Content="Gdzie skończyliśmy?" Command="{Binding DataContext.WhereDidWeStopCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" Style="{StaticResource SxChipButton}" ToolTip="Podsumowanie z zapisanych danych i wznowienie ostatniej rozmowy projektu"/>
+                                            <Button Content="Nowa rozmowa w projekcie" Command="{Binding DataContext.NewConversationCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" Style="{StaticResource SxChipButton}"/>
+                                            <Button Content="Przypisz aktywną rozmowę" Command="{Binding DataContext.AssignActiveConversationCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" Style="{StaticResource SxChipButton}"/>
+                                            <Button Content="Eksport" Command="{Binding DataContext.ExportCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" Style="{StaticResource SxChipButton}" ToolTip="JSON: karta projektu, notatki i metadane rozmów"/>
+                                            <Button Content="Wybierz do edycji" Command="{Binding DataContext.SelectCardCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" Style="{StaticResource SxChipButton}"/>
+                                            <Button Content="{Binding ArchiveLabel}" Command="{Binding DataContext.ToggleArchiveCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" Style="{StaticResource SxChipButton}" ToolTip="Archiwizacja ukrywa projekt, ale nic nie usuwa"/>
+                                        </WrapPanel>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
 </UserControl>

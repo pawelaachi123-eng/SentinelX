@@ -6,14 +6,22 @@
                 <ResourceDictionary Source="Themes/Colors.xaml"/>
                 <ResourceDictionary Source="Themes/Brushes.xaml"/>
                 <ResourceDictionary Source="Themes/Typography.xaml"/>
-                <ResourceDictionary Source="Themes/Controls.xaml"/>
+                <!-- Kolejność obowiązkowa: szablony z Controls.xaml sięgają po storyboardy przez
+                     StaticResource, więc Animations.xaml musi być scalony PRZED Controls.xaml
+                     (StaticResource nie widzi słownika scalonego później = XamlParseException przy starcie). -->
                 <ResourceDictionary Source="Themes/Animations.xaml"/>
+                <ResourceDictionary Source="Themes/Controls.xaml"/>
             </ResourceDictionary.MergedDictionaries>
             <c:ReadinessToBrushConverter x:Key="ReadinessBrush"/>
             <c:StatusToBrushConverter x:Key="StatusBrush"/>
             <c:VoiceStateToBrushConverter x:Key="VoiceBrush"/>
             <c:RiskLevelToBrushConverter x:Key="RiskBrush"/>
             <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
+            <!-- 0.93 NOWOCZESNE GUI: widoczność komunikatów tekstowych (błędy walidacji, potwierdzenia zapisu). -->
+            <c:StringNotEmptyToVisibilityConverter x:Key="StringNotEmptyToVisibility"/>
+            <!-- 0.93 NOWOCZESNE GUI: paski pomiarów — NaN z pustego odczytu nie udaje zera, pasek znika. -->
+            <c:SafePercentConverter x:Key="SafePercent"/>
+            <c:FiniteToVisibilityConverter x:Key="FiniteToVisibility"/>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

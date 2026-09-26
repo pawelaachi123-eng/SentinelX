@@ -1,50 +1,106 @@
 <UserControl xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:u="clr-namespace:SentinelX.Utilities" x:Class="SentinelX.Views.Pages.SettingsPage" u:PageTransitions.Enabled="True">
-    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-        <StackPanel Margin="28">
-            <TextBlock Text="Settings" Style="{StaticResource SxHeading}"/>
-            <TextBlock Text="Ustawienia zachowują format istniejącej instalacji · JSON + kopia zapasowa" Style="{StaticResource SxCaption}" Margin="0,0,0,24"/>
-            <TextBox Text="{Binding Search, UpdateSourceTrigger=PropertyChanged}" u:InputHint.Text="Szukaj…" AutomationProperties.Name="Szukaj ustawień" ToolTip="Szukaj: mikrofon, VAD, model, motyw…" Margin="0,0,0,16"/>
-            <DockPanel Margin="0,0,0,16">
-                <Button Content="Przywróć sekcję" Command="{Binding ResetSectionCommand}" DockPanel.Dock="Right" Margin="12,0,0,0"/>
-                <ComboBox ItemsSource="{Binding Sections}" SelectedItem="{Binding SelectedSection}" AutomationProperties.Name="Sekcja do przywrócenia"/>
-            </DockPanel>
-            <TextBlock Text="{Binding Status}" Style="{StaticResource SxCaption}" Margin="0,0,0,16"/>
-            <ItemsControl ItemsSource="{Binding FilteredFields}">
-                <ItemsControl.GroupStyle>
-                    <GroupStyle>
-                        <GroupStyle.HeaderTemplate>
-                            <DataTemplate>
-                                <TextBlock Text="{Binding Name}" Style="{StaticResource SxSectionTitle}" Margin="0,20,0,12"/>
-                            </DataTemplate>
-                        </GroupStyle.HeaderTemplate>
-                    </GroupStyle>
-                </ItemsControl.GroupStyle>
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                        <Border Style="{StaticResource SxCard}" Padding="20,16" Margin="0,0,0,8">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="220"/>
-                                    <ColumnDefinition Width="100"/>
-                                </Grid.ColumnDefinitions>
-                                <StackPanel Margin="0,0,20,0">
-                                    <TextBlock Text="{Binding Label}" FontWeight="SemiBold"/>
-                                    <TextBlock Text="{Binding Description}" Style="{StaticResource SxCaption}" Margin="0,6,0,0"/>
-                                </StackPanel>
-                                <StackPanel Grid.Column="1">
-                                    <Slider Minimum="{Binding Minimum}" Maximum="{Binding Maximum}" Value="{Binding NumericValue}" Visibility="{Binding IsSlider, Converter={StaticResource BoolToVisibility}}" AutomationProperties.Name="{Binding Label}"/>
-                                    <TextBox Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="{Binding Label}" Visibility="{Binding IsText, Converter={StaticResource BoolToVisibility}}"/>
-                                    <ComboBox ItemsSource="{Binding Choices}" SelectedItem="{Binding Value}" AutomationProperties.Name="{Binding Label}" Visibility="{Binding IsChoice, Converter={StaticResource BoolToVisibility}}"/>
-                                    <CheckBox IsChecked="{Binding Enabled}" AutomationProperties.Name="{Binding Label}" VerticalAlignment="Center" Margin="0,8" Visibility="{Binding IsToggle, Converter={StaticResource BoolToVisibility}}"/>
-                                    <TextBlock Text="{Binding Error}" Foreground="{DynamicResource SxWarning}" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0"/>
-                                </StackPanel>
-                                <Button Grid.Column="2" Content="Zapisz" Command="{Binding SaveCommand}" Margin="12,0,0,0" VerticalAlignment="Top"/>
-                            </Grid>
+    <!-- 0.93 · NOWOCZESNE GUI: sekcje jako lista z akcentem, każde pole jako karta
+         z paskiem koloru, odpowiednim edytorem (przełącznik / lista / tekst+suwak)
+         i jawnym przyciskiem Zapisz. Etykiety, opisy i zakresy pochodzą wyłącznie
+         z SettingsCatalog — ten plik niczego nie nazywa ani nie ogranicza. -->
+    <Grid ClipToBounds="True">
+        <Border Style="{StaticResource SxPageWash}" Opacity="0.14"/>
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Margin="{StaticResource SxSpacePage}">
+                <DockPanel Margin="0,0,0,18">
+                    <Button Content="Przywróć domyślne w sekcji" Command="{Binding ResetSectionCommand}" DockPanel.Dock="Right" Style="{StaticResource SxDangerButton}" Margin="12,0,0,0" VerticalAlignment="Top" ToolTip="Przywraca tylko domyślne wartości widocznej sekcji"/>
+                    <StackPanel Orientation="Horizontal">
+                        <Border Style="{StaticResource SxHeaderAccentBar}" Background="{StaticResource SxWarningGradient}"/>
+                        <StackPanel>
+                            <TextBlock Text="KONFIGURACJA LOKALNA" Style="{StaticResource SxEyebrow}" Foreground="{DynamicResource SxWarning}"/>
+                            <TextBlock Text="Ustawienia" Style="{StaticResource SxHeading}" Margin="0"/>
+                            <TextBlock Text="{Binding Status}" Style="{StaticResource SxCaption}" Margin="0,6,0,0" TextWrapping="Wrap" MaxWidth="760"/>
+                        </StackPanel>
+                    </StackPanel>
+                </DockPanel>
+
+                <Border Style="{StaticResource SxCard}" Padding="{StaticResource SxSpaceLg}" Margin="0,0,0,14">
+                    <DockPanel>
+                        <TextBlock Text="SZUKAJ" DockPanel.Dock="Right" VerticalAlignment="Center" Margin="12,0,0,0" Style="{StaticResource SxEyebrow}" Foreground="{DynamicResource SxAccentCyan}"/>
+                        <TextBox x:Name="SettingsSearch" Text="{Binding Search, UpdateSourceTrigger=PropertyChanged}" u:InputHint.Text="Szukaj ustawienia po nazwie lub opisie…" AutomationProperties.Name="Szukaj ustawień"/>
+                    </DockPanel>
+                </Border>
+
+                <Grid Margin="0,0,0,16">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="220"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Border Style="{StaticResource SxCard}" Margin="0,0,14,0" Padding="{StaticResource SxSpaceSm}" VerticalAlignment="Top">
+                        <StackPanel>
+                            <TextBlock Text="SEKCJE" Style="{StaticResource SxEyebrow}" Foreground="{DynamicResource SxAccentCyan}" Margin="10,8,10,10"/>
+                            <ListBox ItemsSource="{Binding Sections}" SelectedItem="{Binding SelectedSection}" BorderThickness="0" Background="{DynamicResource SxTransparent}" AutomationProperties.Name="Sekcje ustawień"/>
+                        </StackPanel>
+                    </Border>
+                    <StackPanel Grid.Column="1">
+                        <Border Style="{StaticResource SxBadgeAccent}" HorizontalAlignment="Left" Padding="14,8" Margin="0,0,0,12">
+                            <StackPanel Orientation="Horizontal">
+                                <Border Width="6" Height="6" CornerRadius="{StaticResource SxRadiusCircle}" Margin="0,0,10,0" VerticalAlignment="Center" Background="{StaticResource SxAccentGradient}" u:Motion.Pulse="True"/>
+                                <TextBlock Text="{Binding SelectedSection, StringFormat=Sekcja: {0}}" Style="{StaticResource SxBadgeText}" Foreground="{DynamicResource SxTextPrimary}"/>
+                            </StackPanel>
                         </Border>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
-        </StackPanel>
-    </ScrollViewer>
+                        <ItemsControl ItemsSource="{Binding FilteredFields}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Style="{StaticResource SxCardInteractive}" Margin="0,0,0,12" Padding="0" u:Motion.Entrance="True">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Border Width="4" CornerRadius="{StaticResource SxRadiusCardEdge}" Background="{StaticResource SxVioletPinkGradient}"/>
+                                            <StackPanel Grid.Column="1" Margin="{StaticResource SxSpaceCard}">
+                                                <DockPanel Margin="0,0,0,4">
+                                                    <Border Style="{StaticResource SxBadge}" DockPanel.Dock="Right" Padding="9,3" VerticalAlignment="Center">
+                                                        <TextBlock Text="{Binding Section}" Style="{StaticResource SxBadgeText}" Foreground="{DynamicResource SxTextSecondary}"/>
+                                                    </Border>
+                                                    <TextBlock Text="{Binding Label}" FontSize="{StaticResource SxFontSubheading}" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,0,12,0"/>
+                                                </DockPanel>
+                                                <TextBlock Text="{Binding Description}" Style="{StaticResource SxCaption}" TextWrapping="Wrap" Margin="0,0,0,12"/>
+
+                                                <!-- Przełącznik -->
+                                                <StackPanel Visibility="{Binding IsToggle, Converter={StaticResource BoolToVisibility}}">
+                                                    <CheckBox Content="{Binding Label}" IsChecked="{Binding Enabled}" AutomationProperties.Name="{Binding Label}"/>
+                                                </StackPanel>
+
+                                                <!-- Lista wyboru -->
+                                                <StackPanel Visibility="{Binding IsChoice, Converter={StaticResource BoolToVisibility}}">
+                                                    <ComboBox ItemsSource="{Binding Choices}" SelectedItem="{Binding Value}" AutomationProperties.Name="{Binding Label}"/>
+                                                </StackPanel>
+
+                                                <!-- Wartość tekstowa / liczbowa -->
+                                                <StackPanel Visibility="{Binding IsText, Converter={StaticResource BoolToVisibility}}">
+                                                    <TextBox Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="{Binding Label}"/>
+                                                    <StackPanel Visibility="{Binding IsSlider, Converter={StaticResource BoolToVisibility}}" Margin="0,12,0,0">
+                                                        <DockPanel Margin="0,0,0,6">
+                                                            <TextBlock Text="{Binding Maximum, StringFormat=maks. {0}}" DockPanel.Dock="Right" Style="{StaticResource SxBadgeText}" Foreground="{DynamicResource SxTextSecondary}"/>
+                                                            <TextBlock Text="{Binding Minimum, StringFormat=min. {0}}" Style="{StaticResource SxBadgeText}" Foreground="{DynamicResource SxTextSecondary}"/>
+                                                        </DockPanel>
+                                                        <Slider Minimum="{Binding Minimum}" Maximum="{Binding Maximum}" Value="{Binding NumericValue}" IsSnapToTickEnabled="False" AutomationProperties.Name="{Binding Label, StringFormat=Suwak: {0}}"/>
+                                                    </StackPanel>
+                                                </StackPanel>
+
+                                                <DockPanel Margin="0,12,0,0">
+                                                    <Button Content="Zapisz" Command="{Binding SaveCommand}" DockPanel.Dock="Right" Style="{StaticResource SxPrimaryButton}" Margin="12,0,0,0" Padding="18,7" MinHeight="34"/>
+                                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Visibility="{Binding Error, Converter={StaticResource StringNotEmptyToVisibility}}">
+                                                        <Ellipse Width="8" Height="8" VerticalAlignment="Center" Margin="0,0,8,0" Fill="{Binding Error, Converter={StaticResource StatusBrush}}"/>
+                                                        <TextBlock Text="{Binding Error}" Foreground="{Binding Error, Converter={StaticResource StatusBrush}}" Style="{StaticResource SxCaption}" TextWrapping="Wrap" MaxWidth="520"/>
+                                                    </StackPanel>
+                                                </DockPanel>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Grid>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
 </UserControl>

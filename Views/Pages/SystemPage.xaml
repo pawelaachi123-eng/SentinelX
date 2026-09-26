@@ -1,79 +1,123 @@
 <UserControl xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:u="clr-namespace:SentinelX.Utilities" x:Class="SentinelX.Views.Pages.SystemPage" u:PageTransitions.Enabled="True">
-    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-        <StackPanel Margin="28">
-            <TextBlock Text="System" Style="{StaticResource SxHeading}"/>
-            <TextBlock Text="Rzeczywiste pomiary Windows. Brak odczytu nigdy nie jest przedstawiany jako 0%." Style="{StaticResource SxCaption}" Margin="0,0,0,24"/>
-            <UniformGrid Columns="4" Margin="-4,0,-4,20">
-                <Border Style="{StaticResource SxMetricCard}" Margin="4">
+    <!-- 0.93 · NOWOCZESNE GUI: odczyty jako kafelki z paskiem i kolorem stanu,
+         dyski z procentem z modelu, procesy w tabeli z zaznaczeniem akcentem.
+         Brak odczytu jest zawsze pokazany słownie („Niedostępne"), nigdy jako 0%. -->
+    <Grid ClipToBounds="True">
+        <Border Style="{StaticResource SxPageWash}"/>
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Margin="28,24,28,20">
+                <DockPanel Margin="0,0,0,20">
+                    <Border Style="{StaticResource SxBadgeAccent}" DockPanel.Dock="Right" VerticalAlignment="Top">
+                        <TextBlock Text="{Binding Snapshot.Timestamp, StringFormat=Pomiar: HH:mm:ss}" Style="{StaticResource SxBadgeText}" Foreground="{DynamicResource SxAccentCyan}"/>
+                    </Border>
+                    <StackPanel Orientation="Horizontal">
+                        <Border Style="{StaticResource SxHeaderAccentBar}"/>
+                        <StackPanel>
+                            <TextBlock Text="ODCZYTY SYSTEMU" Style="{StaticResource SxEyebrow}" Foreground="{DynamicResource SxAccentCyan}"/>
+                            <TextBlock Text="System" Style="{StaticResource SxHeading}" Margin="0"/>
+                            <TextBlock Text="Rzeczywiste pomiary Windows. Brak odczytu nigdy nie jest przedstawiany jako 0%." Style="{StaticResource SxCaption}" Margin="0,6,0,0"/>
+                        </StackPanel>
+                    </StackPanel>
+                </DockPanel>
+
+                <UniformGrid Columns="4" Margin="-5,0,-5,16">
+                    <Border Style="{StaticResource SxMetricCard}" Margin="5" Padding="18,14" u:Reveal.Enabled="True">
+                        <StackPanel>
+                            <Border Height="3" CornerRadius="2" Background="{StaticResource SxAccentGradient}" Margin="-18,-14,-18,12"/>
+                            <TextBlock Text="CPU" Style="{StaticResource SxEyebrow}" Foreground="{DynamicResource SxAccentCyan}"/>
+                            <TextBlock Text="{Binding Snapshot.CpuText}" Style="{StaticResource SxMetricValue}" FontSize="{StaticResource SxFontHeading1}"/>
+                            <ProgressBar Value="{Binding Snapshot.Cpu, Mode=OneWay, Converter={StaticResource SafePercent}}" Visibility="{Binding Snapshot.Cpu, Converter={StaticResource FiniteToVisibility}}" Maximum="100" Style="{StaticResource SxProgressBarSlim}"/>
+                            <TextBlock Text="Całkowite użycie" Style="{StaticResource SxMuted}" Margin="0,8,0,0"/>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource SxMetricCard}" Margin="5" Padding="18,14" u:Reveal.Enabled="True">
+                        <StackPanel>
+                            <Border Height="3" CornerRadius="2" Background="{StaticResource SxVioletPinkGradient}" Margin="-18,-14,-18,12"/>
+                            <TextBlock Text="RAM" Style="{StaticResource SxEyebrow}" Foreground="{DynamicResource SxAccentViolet}"/>
+                            <TextBlock Text="{Binding Snapshot.RamText}" Style="{StaticResource SxMetricValue}" FontSize="{StaticResource SxFontHeading3}"/>
+                            <Border Height="5" CornerRadius="3" Background="{DynamicResource SxSurfaceActive}" Opacity="0.6"/>
+                            <TextBlock Text="Pamięć fizyczna" Style="{StaticResource SxMuted}" Margin="0,8,0,0"/>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource SxMetricCard}" Margin="5" Padding="18,14" u:Reveal.Enabled="True">
+                        <StackPanel>
+                            <Border Height="3" CornerRadius="2" Background="{StaticResource SxTealLimeGradient}" Margin="-18,-14,-18,12"/>
+                            <TextBlock Text="GPU" Style="{StaticResource SxEyebrow}" Foreground="{DynamicResource SxAccentTeal}"/>
+                            <TextBlock Text="{Binding Snapshot.GpuText}" Style="{StaticResource SxMetricValue}" FontSize="{StaticResource SxFontHeading1}"/>
+                            <ProgressBar Value="{Binding Snapshot.Gpu, Mode=OneWay, Converter={StaticResource SafePercent}}" Visibility="{Binding Snapshot.Gpu, Converter={StaticResource FiniteToVisibility}}" Maximum="100" Foreground="{StaticResource SxTealLimeGradient}" Style="{StaticResource SxProgressBarSlim}"/>
+                            <TextBlock Text="Silnik 3D / Compute" Style="{StaticResource SxMuted}" Margin="0,8,0,0"/>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource SxMetricCard}" Margin="5" Padding="18,14" u:Reveal.Enabled="True">
+                        <StackPanel>
+                            <Border Height="3" CornerRadius="2" Background="{StaticResource SxBlueCyanGradient}" Margin="-18,-14,-18,12"/>
+                            <TextBlock Text="VRAM" Style="{StaticResource SxEyebrow}" Foreground="{DynamicResource SxAccentBlue}"/>
+                            <TextBlock Text="{Binding Snapshot.VramText}" Style="{StaticResource SxMetricValue}" FontSize="{StaticResource SxFontHeading3}"/>
+                            <Border Height="5" CornerRadius="3" Background="{DynamicResource SxSurfaceActive}" Opacity="0.6"/>
+                            <TextBlock Text="Brak wiarygodnego licznika" Style="{StaticResource SxMuted}" Margin="0,8,0,0"/>
+                        </StackPanel>
+                    </Border>
+                </UniformGrid>
+
+                <Grid Margin="0,0,0,16">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition/>
+                        <ColumnDefinition/>
+                    </Grid.ColumnDefinitions>
+                    <Border Style="{StaticResource SxCard}" Margin="0,0,8,0">
+                        <StackPanel>
+                            <TextBlock Text="DYSKI" Style="{StaticResource SxEyebrow}" Foreground="{DynamicResource SxAccentViolet}"/>
+                            <TextBlock Text="Zajęte miejsce" Style="{StaticResource SxSectionTitle}"/>
+                            <ItemsControl ItemsSource="{Binding Snapshot.Disks}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Margin="0,0,0,16">
+                                            <DockPanel Margin="0,0,0,7">
+                                                <TextBlock Text="{Binding Percent, StringFormat={}{0:F0}%, Mode=OneWay}" DockPanel.Dock="Right" Style="{StaticResource SxBadgeText}" Foreground="{DynamicResource SxAccentViolet}"/>
+                                                <TextBlock Text="{Binding Label}" Style="{StaticResource SxCaption}" Foreground="{DynamicResource SxTextPrimary}"/>
+                                            </DockPanel>
+                                            <ProgressBar Value="{Binding Percent, Mode=OneWay}" Maximum="100" Foreground="{StaticResource SxVioletPinkGradient}"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+                    <Border Grid.Column="1" Style="{StaticResource SxCard}" Margin="8,0,0,0">
+                        <StackPanel>
+                            <TextBlock Text="SIEĆ I GRA" Style="{StaticResource SxEyebrow}" Foreground="{DynamicResource SxAccentTeal}"/>
+                            <TextBlock Text="Stan połączenia" Style="{StaticResource SxSectionTitle}"/>
+                            <Border Style="{StaticResource SxPanelSunken}" Margin="0,0,0,14">
+                                <TextBlock Text="{Binding Snapshot.Network}" TextWrapping="Wrap"/>
+                            </Border>
+                            <TextBlock Text="Wykryta gra" Style="{StaticResource SxLabel}" Margin="0,0,0,6"/>
+                            <Border Style="{StaticResource SxBadge}" HorizontalAlignment="Left">
+                                <StackPanel Orientation="Horizontal">
+                                    <Ellipse Width="9" Height="9" VerticalAlignment="Center" Margin="0,0,8,0" Fill="{DynamicResource SxAccentLime}" u:Motion.Pulse="True"/>
+                                    <TextBlock Text="{Binding Snapshot.GamingText}" Style="{StaticResource SxBadgeText}"/>
+                                </StackPanel>
+                            </Border>
+                            <TextBlock Text="Podczas gry odświeżanie jest rzadsze, a animacje wyłączają się automatycznie." Style="{StaticResource SxMuted}" Margin="0,12,0,0"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+
+                <Border Style="{StaticResource SxCard}" Margin="0,0,0,16">
                     <StackPanel>
-                        <TextBlock Text="CPU" Style="{StaticResource SxCaption}"/>
-                        <TextBlock Text="{Binding Snapshot.CpuText}" FontSize="28" FontWeight="SemiBold" Margin="0,10,0,8"/>
-                        <TextBlock Text="Całkowite użycie" Style="{StaticResource SxCaption}"/>
+                        <TextBlock Text="PROCESY" Style="{StaticResource SxEyebrow}" Foreground="{DynamicResource SxAccentBlue}"/>
+                        <TextBlock Text="Największe zużycie pamięci" Style="{StaticResource SxSectionTitle}"/>
+                        <TextBlock Text="Kliknij nagłówek, aby posortować. Pusty CPU oznacza brak uprawnień lub pierwszy pomiar." Style="{StaticResource SxCaption}"/>
+                        <DataGrid ItemsSource="{Binding Snapshot.Processes}" Height="360" Margin="0,16,0,0">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Proces" Binding="{Binding Name}" Width="*"/>
+                                <DataGridTextColumn Header="PID" Binding="{Binding Pid}" Width="100"/>
+                                <DataGridTextColumn Header="CPU %" Binding="{Binding CpuPercent, StringFormat=F1}" Width="100"/>
+                                <DataGridTextColumn Header="RAM MB" Binding="{Binding MemoryMb, StringFormat=F1}" Width="120"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
                     </StackPanel>
                 </Border>
-                <Border Style="{StaticResource SxMetricCard}" Margin="4">
-                    <StackPanel>
-                        <TextBlock Text="RAM" Style="{StaticResource SxCaption}"/>
-                        <TextBlock Text="{Binding Snapshot.RamText}" FontSize="21" FontWeight="SemiBold" Margin="0,10,0,8"/>
-                        <TextBlock Text="Pamięć fizyczna" Style="{StaticResource SxCaption}"/>
-                    </StackPanel>
-                </Border>
-                <Border Style="{StaticResource SxMetricCard}" Margin="4">
-                    <StackPanel>
-                        <TextBlock Text="GPU" Style="{StaticResource SxCaption}"/>
-                        <TextBlock Text="{Binding Snapshot.GpuText}" FontSize="28" FontWeight="SemiBold" Margin="0,10,0,8"/>
-                        <TextBlock Text="Silnik 3D / Compute" Style="{StaticResource SxCaption}"/>
-                    </StackPanel>
-                </Border>
-                <Border Style="{StaticResource SxMetricCard}" Margin="4">
-                    <StackPanel>
-                        <TextBlock Text="VRAM" Style="{StaticResource SxCaption}"/>
-                        <TextBlock Text="{Binding Snapshot.VramText}" FontSize="17" FontWeight="SemiBold" Margin="0,10,0,8"/>
-                        <TextBlock Text="Brak wiarygodnego licznika" Style="{StaticResource SxCaption}"/>
-                    </StackPanel>
-                </Border>
-            </UniformGrid>
-            <Grid Margin="0,0,0,20">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition/>
-                    <ColumnDefinition/>
-                </Grid.ColumnDefinitions>
-                <Border Style="{StaticResource SxCard}" Margin="0,0,8,0">
-                    <StackPanel>
-                        <TextBlock Text="Dyski" Style="{StaticResource SxSectionTitle}"/>
-                        <ItemsControl ItemsSource="{Binding Snapshot.Disks}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <StackPanel Margin="0,0,0,16">
-                                        <TextBlock Text="{Binding Label}" Margin="0,0,0,8"/>
-                                        <ProgressBar Value="{Binding Percent, Mode=OneWay}"/>
-                                    </StackPanel>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </StackPanel>
-                </Border>
-                <Border Grid.Column="1" Style="{StaticResource SxCard}" Margin="8,0,0,0">
-                    <StackPanel>
-                        <TextBlock Text="Sieć" Style="{StaticResource SxSectionTitle}"/>
-                        <TextBlock Text="{Binding Snapshot.Network}" TextWrapping="Wrap"/>
-                    </StackPanel>
-                </Border>
-            </Grid>
-            <Border Style="{StaticResource SxCard}" Margin="0,0,0,16">
-                <StackPanel>
-                    <TextBlock Text="Procesy · największe zużycie pamięci" Style="{StaticResource SxSectionTitle}"/>
-                    <TextBlock Text="Kliknij nagłówek, aby posortować. Pusty CPU oznacza brak uprawnień lub pierwszy pomiar." Style="{StaticResource SxCaption}"/>
-                    <DataGrid ItemsSource="{Binding Snapshot.Processes}" Height="360" Margin="0,16,0,0">
-                        <DataGrid.Columns>
-                            <DataGridTextColumn Header="Proces" Binding="{Binding Name}" Width="*"/>
-                            <DataGridTextColumn Header="PID" Binding="{Binding Pid}" Width="100"/>
-                            <DataGridTextColumn Header="CPU %" Binding="{Binding CpuPercent, StringFormat=F1}" Width="100"/>
-                            <DataGridTextColumn Header="RAM MB" Binding="{Binding MemoryMb, StringFormat=F1}" Width="120"/>
-                        </DataGrid.Columns>
-                    </DataGrid>
-                </StackPanel>
-            </Border>
-        </StackPanel>
-    </ScrollViewer>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
 </UserControl>

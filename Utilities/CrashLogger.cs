@@ -1,7 +1,35 @@
+using System.IO;
+using System.Runtime.CompilerServices;
 using System.Windows;
 namespace SentinelX.Utilities;
 public static class CrashLogger
 {
+    /// <summary>
+    /// Uruchamia się przed sparsowaniem <c>App.xaml</c> (inicjalizator modułu działa przed Main),
+    /// więc w trybie <c>--ui-smoke</c> nawet awaria ładowania słowników zasobów zostawia
+    /// <c>FAILED.txt</c> w katalogu wyników — CI już ten plik czyta i drukuje.
+    /// <c>OnStartup</c> jest na to za późno: zasoby aplikacji ładują się przed nim, a bez tego
+    /// krok smoke kończy się pustym logiem („Process completed with exit code 1”).
+    /// Poza smoke nie zmienia niczego: handler rejestruje się tylko dla <c>--ui-smoke</c>.
+    /// </summary>
+    [ModuleInitializer]
+    internal static void CaptureStartupCrashForUiSmoke()
+    {
+        string[] args = Environment.GetCommandLineArgs();
+        if (args.Length < 3 || args[1] != "--ui-smoke") return;
+        string output = Path.GetFullPath(args[2]);
+        AppDomain.CurrentDomain.UnhandledException += (_, error) =>
+        {
+            try
+            {
+                Directory.CreateDirectory(output);
+                string detail = error.ExceptionObject?.ToString() ?? "unknown fault";
+                File.WriteAllText(Path.Combine(output, "FAILED.txt"),
+                    $"Sentinel failed before the smoke runner started.{Environment.NewLine}{detail}{Environment.NewLine}");
+            }
+            catch { }
+        };
+    }
     public static void Initialize(Application app)
     {
         app.DispatcherUnhandledException += (_, error) =>
