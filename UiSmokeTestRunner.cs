@@ -198,8 +198,13 @@ public static class UiSmokeTestRunner
             if (!preview.Contains("Żadnego kroku nie wykonałem"))
                 throw new InvalidOperationException("Podgląd sekwencji musi deklaratywnie nic nie wykonywać: " + preview);
             var forbidden = await memoryEngine.ExecuteAsync("utwórz sekwencję: zle = usuń pliki z pulpitu");
-            if (!forbidden.Text.Contains("niszcz", StringComparison.OrdinalIgnoreCase))
+            // Twarda granica: taki wpis NIE może zostać zapisany. (Nie zakładamy tu jednego konkretnego
+            // komunikatu — odmowa może przyjść z warstwy sekwencji albo z ochron przed destrukcją.)
+            if (forbidden.Text.Contains("Zapisano sekwencję", StringComparison.Ordinal))
                 throw new InvalidOperationException("Sekwencja przyjęła krok niszczący: " + forbidden.Text);
+            if (File.Exists(Path.Combine(SentinelX.AppPaths.MemoryDirectory, "routines.json")) &&
+                File.ReadAllText(Path.Combine(SentinelX.AppPaths.MemoryDirectory, "routines.json")).Contains("\"zle\"", StringComparison.Ordinal))
+                throw new InvalidOperationException("Krok niszczący trafił do pliku sekwencji.");
             // 0.91 · CENTRUM: the grey zone must ask instead of guessing, and an explicit „tak” runs the known command.
             var ambiguous = await memoryEngine.ExecuteAsync("ile mam ramu dzis");
             if (!ambiguous.Text.Contains("Czy chodziło Ci o") || !ambiguous.Text.Contains("ile mam ramu"))
