@@ -112,7 +112,7 @@ public sealed class LearnedPatterns
             catch (Exception ex) when (ex is JsonException or KeyNotFoundException or InvalidOperationException or FormatException)
             {
                 // Nieczytelny plik — oryginał na bok, czysty zapis. Niczego nie kasuję.
-                string parked = filePath + ".corrupt-" + DateTime.Now.ToString("yyyyMMdd-HHmmss");
+                string parked = SelfRepair.UniqueAsidePath(filePath);
                 try { File.Move(filePath, parked); } catch (Exception io) when (io is IOException or UnauthorizedAccessException) { }
                 SaveLocked();
                 report = "· ⚠ " + Path.GetFileName(filePath) + " — plik był nieczytelny; zapisałem czystą wersję (oryginał: " + Path.GetFileName(parked) + ")";

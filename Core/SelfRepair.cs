@@ -9,6 +9,15 @@ namespace SentinelX.Core;
 /// wskazanej ścieżce, więc są testowalne na plikach tymczasowych.</summary>
 public static class SelfRepair
 {
+    /// <summary>Unikalna ścieżka parkingowa dla uszkodzonego pliku (data + licznik) —
+    /// dwa zdarzenia w tej samej sekundzie nigdy nie walczą o tę samą nazwę.</summary>
+    internal static string UniqueAsidePath(string path)
+    {
+        string candidate = path + ".corrupt-" + DateTime.Now.ToString("yyyyMMdd-HHmmss");
+        int counter = 1;
+        while (File.Exists(candidate) || Directory.Exists(candidate)) candidate = path + ".corrupt-" + DateTime.Now.ToString("yyyyMMdd-HHmmss") + "-" + counter++;
+        return candidate;
+    }
     /// <summary>Dziennik JSONL (np. Lessons.jsonl): odrzuca nieczytelne linie, zachowuje dobre.
     /// Zwraca liczbę usuniętych linii.</summary>
     public static int RepairJsonl(string path, out string report)
@@ -27,7 +36,7 @@ public static class SelfRepair
             }
             if (dropped > 0)
             {
-                string aside = path + ".corrupt-" + DateTime.Now.ToString("yyyyMMdd-HHmmss");
+                string aside = UniqueAsidePath(path);
                 File.Copy(path, aside, false);
                 File.WriteAllLines(path, kept);
                 report = "· ⚠ " + name + " — usunięto " + dropped + " nieczytelnych linii (zostało " + kept.Count +
@@ -73,7 +82,7 @@ public static class SelfRepair
                 {
                     string backupContent = File.ReadAllText(backup);
                     if (!Parses(backupContent)) continue;
-                    string aside = path + ".corrupt-" + DateTime.Now.ToString("yyyyMMdd-HHmmss");
+                    string aside = UniqueAsidePath(path);
                     File.Copy(path, aside, false);
                     File.Copy(backup, path, true);
                     report = "· ⚠ " + name + " — był uszkodzony; przywrócono z kopii " + Path.GetFileName(backup) +
@@ -84,7 +93,7 @@ public static class SelfRepair
             }
 
             // Brak kopii — odkładamy uszkodzony plik na bok (nigdy nie kasujemy).
-            string parked = path + ".corrupt-" + DateTime.Now.ToString("yyyyMMdd-HHmmss");
+            string parked = UniqueAsidePath(path);
             File.Move(path, parked);
             report = "· ⚠ " + name + " — był uszkodzony i nie miał czytelnej kopii; przeniosłem go na bok jako " +
                 Path.GetFileName(parked) + " (magazyn odtworzy się przy następnym zapisie)";
