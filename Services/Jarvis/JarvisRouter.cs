@@ -182,11 +182,11 @@ public sealed class JarvisRouter
     {
         city = "";
         if (IsOneOf(text, "pogoda", "jaka pogoda", "pogoda dzis", "temperatura na dworze", "temperatura na zewnatrz", "ile stopni")) return true;
-        Match match = Regex.Match(raw,
-            @"^(?:(?:pogoda|prognoza|przewidywanie)\s*(?:dla|w|we|na)?\s*|(?:sprawdz|sprawdź)\s+(?:pogode|pogodę|pogoda)\s*(?:dla|w|we)?\s*)(.+)$",
+        Match match = Regex.Match(text,
+            @"^(?:(?:pogoda|prognoza|przewidywanie)\s*(?:dla|w|we|na)?\s*|sprawdz\s+(?:pogode|pogoda)\s*(?:dla|w|we)?\s*)(.+)$",
             RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(200));
         if (!match.Success) return false;
-        string value = Tail(match.Groups[1].Value);
+        string value = ArgumentAt(raw, text, match.Groups[1].Index);
         if (value.Length is 0 or > 64) return false;
         if (ConversationMemoryService.Normalize(value).Length == 0) return false;
         city = value;
@@ -212,18 +212,16 @@ public sealed class JarvisRouter
     public static bool TryHomeCommand(string raw, string text, out string device, out bool on)
     {
         device = ""; on = false;
-        const string verbs = @"(?:wlacz|włącz|wylacz|wyłącz|zapal|zgas|zgaś|gasz|gas|turn\s+on|turn\s+off)";
+        const string verbs = @"(?:wlacz|wylacz|zapal|zgas|gasz|gas|turn\s+on|turn\s+off)";
         Match gate = Regex.Match(text, @"^(?:(?:dom|urzadzenia|home assistant)\s*[:\-]?\s*)?(" + verbs + @")\s+(.+)$",
             RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(200));
         if (!gate.Success) return false;
         bool prefixed = Regex.IsMatch(text, @"^(?:dom|urzadzenia|home assistant)\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(150));
         string rest = gate.Groups[2].Value.Trim();
         if (!prefixed && !LooksLikeHomeDevice(ConversationMemoryService.Normalize(rest))) return false;
-        on = gate.Groups[1].Value.StartsWith("wlacz", StringComparison.OrdinalIgnoreCase) || gate.Groups[1].Value.StartsWith("włącz", StringComparison.OrdinalIgnoreCase)
-            || gate.Groups[1].Value.StartsWith("zapal", StringComparison.OrdinalIgnoreCase) || gate.Groups[1].Value.Contains("on", StringComparison.OrdinalIgnoreCase);
-        Match fromRaw = Regex.Match(raw, @"^(?:(?:dom|urządzenia|urzadzenia|home assistant)\s*[:\-]?\s*)?" + verbs + @"\s+(.+)$",
-            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(200));
-        device = TrimWord(fromRaw.Success ? fromRaw.Groups[1].Value : rest);
+        on = gate.Groups[1].Value.StartsWith("wlacz", StringComparison.OrdinalIgnoreCase) || gate.Groups[1].Value.StartsWith("zapal", StringComparison.OrdinalIgnoreCase)
+            || gate.Groups[1].Value.Contains("on", StringComparison.OrdinalIgnoreCase);
+        device = ArgumentAt(raw, text, gate.Groups[2].Index);
         return device.Length is > 0 and <= 80;
     }
 
@@ -239,10 +237,9 @@ public sealed class JarvisRouter
     public static bool TryScene(string raw, string text, out string scene)
     {
         scene = "";
-        if (!Regex.IsMatch(text, @"^(scena|tryb\s+domu)\s*[:\-]?", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(150))) return false;
-        Match match = Regex.Match(raw, @"^(?:scena|tryb\s+domu)\s*[:\-]?\s*(.+)$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(200));
+        Match match = Regex.Match(text, @"^(?:scena|tryb\s+domu)\s*[:\-]?\s*(.+)$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(200));
         if (!match.Success) return false;
-        scene = Tail(match.Groups[1].Value);
+        scene = ArgumentAt(raw, text, match.Groups[1].Index);
         return scene.Length > 0 && scene.Length <= 60;
     }
 
@@ -250,9 +247,9 @@ public sealed class JarvisRouter
     {
         goal = "";
         if (!text.StartsWith("agent", StringComparison.Ordinal)) return false;
-        Match match = Regex.Match(raw, @"^agent\s*[:\-]?\s*(.+)$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(200));
+        Match match = Regex.Match(text, @"^agent\s*[:\-]?\s*(.+)$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(200));
         if (!match.Success) return false;
-        string value = Tail(match.Groups[1].Value);
+        string value = ArgumentAt(raw, text, match.Groups[1].Index);
         if (value.Length == 0 || IsOneOf(ConversationMemoryService.Normalize(value), "status", "co umiesz", "narzedzia", "narzędzia")) return false;
         goal = value;
         return true;
@@ -262,8 +259,8 @@ public sealed class JarvisRouter
     {
         instruction = "";
         if (!Regex.IsMatch(text, @"^(przeczytaj|opisz)\b.*ekran", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(200))) return false;
-        Match match = Regex.Match(raw, @"^(?:przeczytaj|opisz)\s+(?:mi\s+)?(.+)$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(200));
-        string what = match.Success ? Tail(match.Groups[1].Value) : "";
+        Match match = Regex.Match(text, @"^(?:przeczytaj|opisz)\s+(?:mi\s+)?(.+)$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(200));
+        string what = match.Success ? ArgumentAt(raw, text, match.Groups[1].Index) : "";
         instruction = what.Length == 0 || ConversationMemoryService.Normalize(what).Contains("ekran", StringComparison.Ordinal)
             ? DescribeScreenInstruction
             : "Na tym zrzucie ekranu jest fragment: „" + what + "”. Odpowiedz tylko na podstawie obrazu i nie dopisuj nic, czego nie widać.";
@@ -274,10 +271,10 @@ public sealed class JarvisRouter
     {
         query = "";
         if (!Regex.IsMatch(text, @"^szukaj\s+(semantycznie|podobnie)|^semantycznie\s*:", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(200))) return false;
-        Match match = Regex.Match(raw, @"^szukaj\s+(?:semantycznie|podobnie)\s*[:\-]?\s*(.+)$|^semantycznie\s*[:\-]?\s*(.+)$",
+        Match match = Regex.Match(text, @"^szukaj\s+(?:semantycznie|podobnie)\s*[:\-]?\s*(.+)$|^semantycznie\s*[:\-]?\s*(.+)$",
             RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(200));
         if (!match.Success) return false;
-        query = Tail(match.Groups[1].Success ? match.Groups[1].Value : match.Groups[2].Value);
+        query = ArgumentAt(raw, text, (match.Groups[1].Success ? match.Groups[1] : match.Groups[2]).Index);
         return query.Length > 0 && query.Length <= 200;
     }
 
@@ -291,7 +288,7 @@ public sealed class JarvisRouter
         string head = raw[..equals].Trim();
         int colon = head.IndexOf(':');
         string label = colon >= 0 ? head[(colon + 1)..].Trim() : head;
-        label = Regex.Replace(label, @"^(?:utworz|dodaj|zapisz|stworz|utwórz)\s+", "", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(100)).Trim();
+        label = Regex.Replace(label, @"^(?:utworz|utwórz|dodaj|zapisz|stworz)\s+", "", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100)).Trim();
         label = Regex.Replace(label, @"^sekwencj\w*\s*", "", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(100)).Trim();
         name = TrimWord(label);
         steps = raw[(equals + 1)..].Trim();
@@ -305,15 +302,30 @@ public sealed class JarvisRouter
         name = "";
         string pattern = verb switch
         {
-            "podglad" => @"^(?:podglad|podgląd|podlad|podgląd|preview)\s+sekwencj\w*\s*[:\-]?\s*(.+)$",
-            "usun" => @"^(?:usun|usuń|usuwam)\s+sekwencj\w*\s*[:\-]?\s*(.+)$",
-            _ => @"^(?:uruchom|wlacz|włącz|start|odtworz|odtwórz|wykonaj)\s+sekwencj\w*\s*[:\-]?\s*(.+)$",
+            "podglad" => @"^(?:podglad|podlad|preview)\s+sekwencj\w*\s*[:\-]?\s*(.+)$",
+            "usun" => @"^(?:usun|usuwam)\s+sekwencj\w*\s*[:\-]?\s*(.+)$",
+            _ => @"^(?:uruchom|wlacz|start|odtworz|wykonaj)\s+sekwencj\w*\s*[:\-]?\s*(.+)$",
         };
-        if (!Regex.IsMatch(text, pattern, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(200))) return false;
-        Match match = Regex.Match(raw, pattern, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(200));
+        Match match = Regex.Match(text, pattern, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(200));
         if (!match.Success) return false;
-        name = TrimWord(match.Groups[1].Value);
+        name = ArgumentAt(raw, text, match.Groups[1].Index);
         return name.Length is > 0 and <= 60;
+    }
+
+    /// <summary>Argument wycinamy z ORIGINALU (żeby „Lwów” nie stał się „Lwowem” bez znaków), ale
+    /// dopasowanie liczymy na tekście znormalizowanym — inaczej „podgląd”, „wyłącz” czy „sprawdź
+    /// pogodę” rozbijałyby się o polskie znaki. Gdy pozycje się rozjadą (pojedyncze wielkie spacje
+    /// w source), bierzemy wersję znormalizowaną: wciąż poprawną, tylko bez wielkich liter.</summary>
+    private static string ArgumentAt(string raw, string text, int index)
+    {
+        if (index < 0) return "";
+        string normalizedTail = index < text.Length ? text[index..] : "";
+        string rawTail = index < raw.Length ? raw[index..] : "";
+        // „z” = „raw” po normalizacji oznacza tylko jedno: pozycje się zgadzają i można oddać
+        // oryginal z polskimi znakami i wielkimi literami. Inaczej zostaje wersja znormalizowana.
+        string chosen = rawTail.Length > 0 && ConversationMemoryService.Normalize(rawTail).Contains(normalizedTail, StringComparison.Ordinal)
+            ? rawTail : normalizedTail;
+        return Tail(chosen);
     }
 
     private static string TrimWord(string value) => (value ?? "").Trim().Trim('"', '”', '„', '\'', '.', ',').Trim();

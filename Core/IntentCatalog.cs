@@ -112,8 +112,8 @@ public static class IntentCatalog
             "co gra", "pauza", "wznow odtwarzanie", "nastepny utwor", "poprzedni utwor", "stop odtwarzanie", "wycisz odtwarzacz",
             "glosniej", "ciszej", "dom", "dom status", "dom lista", "encje",
             "agent status", "tryb agenta", "narzedzia agenta", "co jest na ekranie", "przeczytaj ekran", "opisz ekran",
-            "indeks semantyczny", "zbuduj indeks", "usun indeks", "szukaj semantycznie", "sekwencje", "utworz sekwencje",
-            "uruchom sekwencje", "usun sekwencje", "podglad sekwencji", "scena", "jarvis"
+            "indeks semantyczny", "zbuduj indeks", "szukaj semantycznie", "sekwencje", "utworz sekwencje",
+            "uruchom sekwencje", "podglad sekwencji", "scena", "jarvis" // „usuń indeks”/„usuń sekwencję” działają, ale NIE trafiają do słownika napraw: reguła bezpieczeństwa 0.95
         ];
         foreach (string phrase in extra) phrases.Add(phrase);
         return phrases.OrderBy(x => x, StringComparer.Ordinal).ToArray();

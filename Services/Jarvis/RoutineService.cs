@@ -76,7 +76,7 @@ public sealed class RoutineService
 
         foreach (string step in steps)
         {
-            string refusal = RefuseIfDangerous(step);
+            string? refusal = RefuseIfDangerous(step);
             if (refusal != null) return RoutineResult.Bad(refusal);
         }
         if (Find(name) != null) return RoutineResult.Bad($"Sekwencja „{name}” już istnieje. Usuń ją („usuń sekwencję: {name}”) albo wybierz inną nazwę.");
@@ -114,7 +114,7 @@ public sealed class RoutineService
         {
             token.ThrowIfCancellationRequested();
             string step = routine.Steps[index];
-            string refusal = RefuseIfDangerous(step);
+            string? refusal = RefuseIfDangerous(step);
             if (refusal != null)
             {
                 failed++;

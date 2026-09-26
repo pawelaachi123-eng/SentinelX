@@ -50,9 +50,16 @@ internal static class JarvisRegression
         // ---------------- rozpoznawanie pogody: argument z originalu ----------------
         Check(JarvisRouter.TryWeatherCity("pogoda", "pogoda", out string emptyCity) && emptyCity.Length == 0, "samo „pogoda” bierze miasto z ustawień");
         Check(JarvisRouter.TryWeatherCity("Pogoda Lwów", "pogoda lwow", out string lwow) && lwow == "Lwów", "nazwa miasta zachowuje polskie znaki");
-        Check(JarvisRouter.TryWeatherCity("sprawdź pogodę w Krakowie", "sprawdz pogodę w krakowie", out string krakow) && krakow.StartsWith("Krakow", StringComparison.Ordinal),
+        Check(JarvisRouter.TryWeatherCity("sprawdź pogodę w Krakowie", "sprawdz pogode w krakowie", out string krakow) && krakow.StartsWith("Krakow", StringComparison.Ordinal),
             "forma „w + miejscownik” jest obsłużona");
         Check(!JarvisRouter.TryWeatherCity("ile mam ramu", "ile mam ramu", out _), "odczyty RAM nie są pogodą");
+        // Polska odmiana w zdaniu sterującym: dopasowanie na tekście znormalizowanym, argument z originalu.
+        Check(JarvisRouter.TryWeatherCity("Pogoda   dla   Zakopanego", "pogoda dla zakopanego", out string zakopane) && zakopane.StartsWith("Zakop", StringComparison.Ordinal),
+            "wielkie spacje nie psują wycinania miasta");
+        Check(JarvisRouter.TryRoutine("podglad", "podgląd sekwencji: poranek", "podglad sekwencji: poranek", out string previewName) && previewName == "poranek",
+            "„podgląd” z ą działa tak samo jak jego znormalizowana forma");
+        Check(JarvisRouter.TryHomeCommand("Dom: wyłącz Światła Kitchen", "dom: wylacz swiatla kitchen", out string kitchen, out bool kitchenOn) && !kitchenOn && kitchen.Contains("Kitchen", StringComparison.Ordinal),
+            "wielkie litery nazwy urządzenia przeżywają");
         Check(WeatherService.NameCandidates("Krakowie").Contains("Krakow", StringComparer.Ordinal), "końcówka przypadka jest odcinana jako trzecia próba");
         Check(WeatherService.Describe(95) == "burza" && WeatherService.IconFor(61) == "🌦", "kody WMO mają polski opis");
         Check(WeatherService.ParseGeocoding("""{"results":[]}""", "X") == null, "pusty wynik geokodowania nie jest miastem");
