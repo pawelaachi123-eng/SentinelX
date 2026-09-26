@@ -51,6 +51,7 @@ public static class CommandLexicon
     public static readonly IReadOnlySet<string> Inquiry = new HashSet<string>(StringComparer.Ordinal)
     {
         "powiedz", "powiedziec", "sprawdz", "sprawdzic", "sprawdzmy", "pokaz", "pokazac", "podaj", "podac",
+        "zobacz", "zobaczmy", "zobaczcie", "zobacze", "zobaczylem", "zobaczyles", "zobaczylas",
         "wyswietl", "wyswietlic", "wypisz", "zacznij", "zaczel", "zaczelam", "kontynuuj", "sprobuj",
         "jakie", "jaki", "jaka", "jacy", "ktora", "ktore", "ktory", "co", "gdzie", "kiedy",
         "jest", "sa", "mam", "masz", "mamy", "moj", "moja", "moje", "moich", "obecne", "obecny", "obecna",
@@ -96,9 +97,11 @@ public static class CommandLexicon
     {
         foreach (string word in words)
         {
+            string raw = (word ?? \"\").Trim().TrimEnd('.', ',', '!', '?', ':').ToLowerInvariant();
             string form = CompareForm(word);
             foreach (string verb in ConversationVerbs)
-                if (form == verb || form.StartsWith(verb, StringComparison.Ordinal)) return true;
+                if (form == verb || form.StartsWith(verb, StringComparison.Ordinal) ||
+                    raw == verb || raw.StartsWith(verb, StringComparison.Ordinal)) return true;
         }
         return false;
     }
@@ -128,7 +131,7 @@ public static class CommandLexicon
         if (ca.Length < 4 || cb.Length < 4) return false;
         if (Stem(ca) == Stem(cb)) return true;
         // Jedna literówka/transpozycja na krótkie słowo — ten sam próg co naprawa pojedynczych słów.
-        return CommandUnderstanding.Similarity(ca, cb) >= 0.86;
+        return CommandUnderstanding.Similarity(ca, cb) >= CommandUnderstanding.MinWordConfidence;
     }
 
     /// <summary>Dopasowanie nieostre do wyszukiwania treści (wspomnienia, rozmowa): dokładne,
