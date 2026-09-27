@@ -279,7 +279,7 @@ Twoim sprzęcie, automatycznego doboru modelu do zadania i licencji modeli.
   tworzy pliki, sprawdza rozmiary, wiek, próg dużych plików, podgląd retencji (łącznie z tym,
   że **plik nadal istnieje**), treść deklaracji i siedem zdań, które nie są poleceniami.
 
-## 15. Studio 0.97 — nowa strona interfejsu (najlepsze UI na .NET 10)
+## 14. Studio 0.97 — nowa strona interfejsu (najlepsze UI na .NET 10)
 
 - **Po co**: narzędzia rosły szybciej niż interfejs — 70 poleceń z sekcji 2, 3, 14, 15, 17 i rdzenia
   nie miało miejsca, w którym da się je zobaczyć i uruchomić bez pamiętania składni.
@@ -303,7 +303,7 @@ Twoim sprzęcie, automatycznego doboru modelu do zadania i licencji modeli.
   kategorii, staging polecenia, realne uruchomienie BMR („1780 kcal”) i statystyk („mediana: 4,5”),
   historia, kopiowanie (schowek może odmówić w sesji CI — VM ma to obsłużyć) i czyszczenie.
 
-## 16. Zestawy regresji po tym przyroście
+## 15. Zestawy regresji po tym przyroście
 
 `--ui-smoke` uruchamia teraz **21 zestawów**: dotychczasowe 18 plus `analysis`, `life` i `privacy`.
 Zestawy działają na jawnych danych i nie zależą od sieci ani od modelu.
