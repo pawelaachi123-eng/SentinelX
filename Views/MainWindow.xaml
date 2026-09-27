@@ -37,6 +37,9 @@
         <DataTemplate DataType="{x:Type vm:SettingsViewModel}">
             <pages:SettingsPage/>
         </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:StudioViewModel}">
+            <pages:StudioPage/>
+        </DataTemplate>
     </Window.Resources>
     <Grid Background="{StaticResource SxShellGradient}">
         <Grid.ColumnDefinitions>

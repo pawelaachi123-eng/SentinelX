@@ -33,7 +33,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         CommandCenterViewModel command, SystemViewModel system, GamingViewModel gaming,
         VoiceViewModel voice, AiViewModel ai, ActionsViewModel actions, HistoryViewModel history, SettingsViewModel settings,
         CommandPaletteViewModel palette, ReadinessViewModel readiness, MemoryViewModel memory, ProjectViewModel projects, TaskViewModel tasks,
-        DiagnosticViewModel diagnostics)
+        DiagnosticViewModel diagnostics, StudioViewModel studio)
     {
         this.engine = engine; this.desktop = desktop; this.dispatcher = dispatcher; Voice = voice; Palette = palette; Readiness = readiness; commandCenter = command;
         Palette.Chosen += PaletteChosen; Readiness.OpenSectionRequested += Navigate; commandCenter.NavigationRequested += Navigate;
@@ -42,6 +42,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
             new NavItem("command", "⌘", "Centrum", command),
             new NavItem("memory", "▤", "Pamięć", memory),
             new NavItem("projects", "▣", "Projekty", projects),
+            new NavItem("studio", "◈", "Studio 0.97", studio),
             new NavItem("settings", "⚙", "Ustawienia", settings)
         ];
         SelectedItem = NavItems[0]; Readiness.IsOpen = command.Messages.Count == 0; engine.Changed += Sync; desktop.StatusChanged += DesktopChanged;
@@ -56,6 +57,13 @@ public partial class MainViewModel : ObservableObject, IDisposable
     }
     private void Navigate(string key)
     {
+        // 0.97 · STUDIO: paleta może wskazać kategorię („studio:analiza”), a nie tylko stronę.
+        if (key.StartsWith("studio", StringComparison.Ordinal))
+        {
+            SelectedItem = NavItems.FirstOrDefault(x => x.Key == "studio") ?? SelectedItem;
+            if (key.Length > "studio:".Length) (SelectedItem?.ViewModel as StudioViewModel)?.ShowCategory(key["studio:".Length..]);
+            return;
+        }
         if (CenterTabByLegacyKey.TryGetValue(key, out string? tab))
         {
             SelectedItem = NavItems[0]; // Centrum

@@ -287,3 +287,16 @@ Stan na 2026-09-27 (0.97). Zasada: każda pojedyncza pozycja znika z listy dopie
 - **Zostaje w tych sekcjach**: wykresy i eksport danych do CSV/JSON, rozpoznawanie intencji
   pomiarów z naturalnych pytań, integracja kalendarza/poczty (świadomie brak — wymaga sieci i konta),
   WIZJA i YOLO (sekcja 10), smart home (18), GUI zaawansowane (19), agentic (20).
+
+## Gotowe w 0.97 — Studio 0.97 (interfejs narzędzi, .NET 10)
+
+- **`ViewModels/StudioViewModel.cs`** — katalog 6 kategorii i 70 poleceń z opisami, staging polecenia,
+  uruchomienie przez `IActionEngine`, historia 6 ostatnich wyników w pamięci, kopiowanie i czyszczenie.
+- **`Views/Pages/StudioPage.xaml`** — strona w motywie 0.93+ (karty, chipy, monospace, animacje wejścia),
+  kategorie, lista przykładowych poleceń, pole polecenia, wynik i panel historii.
+- **Wpięcie**: `ServiceLocator` (singleton VM), `Views/MainWindow.xaml` (DataTemplate), `MainViewModel`
+  (pozycja w menu + nawigacja `studio:<kategoria>`), `CommandCatalog` (6 presetów palety).
+- **Regresja w `--ui-smoke`**: render strony bez błędów wiązań, katalog ≥ 60 poleceń z opisami,
+  wybór kategorii, staging, realne uruchomienie BMR i statystyk, historia, kopiowanie, czyszczenie.
+- **Zostaje w UI**: wykresy (histogram i trend jako obraz, nie znaki), eksport wyniku do pliku jednym
+  kliknięciem, ulubione polecenia użytkownika i skróty klawiszowe per kategoria.

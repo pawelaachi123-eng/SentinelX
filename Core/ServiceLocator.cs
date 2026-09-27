@@ -95,6 +95,8 @@ public static class ServiceLocator
         services.AddSingleton<ProjectViewModel>();
         services.AddSingleton<TaskViewModel>();
         services.AddSingleton<DiagnosticViewModel>();
+        // 0.97 · STUDIO: strona narzędzi lokalnych (analiza danych, zdrowie, komunikacja, prywatność, modele).
+        services.AddSingleton<StudioViewModel>();
         services.AddSingleton<OverlayViewModel>();
         services.AddSingleton<MainViewModel>();
         services.AddSingleton<Views.MainWindow>();

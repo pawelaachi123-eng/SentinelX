@@ -279,7 +279,31 @@ Twoim sprzęcie, automatycznego doboru modelu do zadania i licencji modeli.
   tworzy pliki, sprawdza rozmiary, wiek, próg dużych plików, podgląd retencji (łącznie z tym,
   że **plik nadal istnieje**), treść deklaracji i siedem zdań, które nie są poleceniami.
 
-## 14. Zestawy regresji po tym przyroście
+## 15. Studio 0.97 — nowa strona interfejsu (najlepsze UI na .NET 10)
+
+- **Po co**: narzędzia rosły szybciej niż interfejs — 70 poleceń z sekcji 2, 3, 14, 15, 17 i rdzenia
+  nie miało miejsca, w którym da się je zobaczyć i uruchomić bez pamiętania składni.
+  Studio to jedna strona (menu → „Studio 0.97”, ikona ◈), która robi dokładnie to.
+- **Kategorie i przykłady**: sześć kategorii (Analiza danych · Zdrowie · Komunikacja · Prywatność ·
+  Modele lokalne · Rdzeń i narzędzia) i 70 gotowych poleceń. Kliknięcie polecenia wstawia je do pola
+  i pokazuje jedno zdanie wyjaśnienia (co zwróci, czego nie zrobi). Każde polecenie w katalogu ma opis
+  — pilnuje tego `--ui-smoke`.
+- **Prawdziwe uruchomienie, nie podgląd**: „Policz ⏎” (albo Enter w polu) idzie tą samą drogą co czat
+  (`IActionEngine` → router poleceń), więc narzędzie samo waliduje składnię, a akcje systemowe nadal
+  pytają o zgodę i zostawiają dowód wykonania. Wynik trafia do pola monospace (zawijanie wyłączone,
+  bo raporty mają kolumny), a ostatnie 6 uruchomień pojawia się na liście — **wyłącznie w pamięci
+  procesu**, bez zapisu na dysk (wynik może zawierać dane użytkownika).
+- **Integracja z paletą `//`**: sześć wpisów palety prowadzi wprost do Studia, łącznie z wyborem
+  kategorii (`PageKey: "studio:analiza"` itd.) — klucz nieznany nie psuje wyboru, tylko go zostawia.
+- **Bez nowych zależności**: strona korzysta wyłącznie z motywu 0.93+ (`SxCard`, `SxChipButton`,
+  `SxTextBox`, `SxFontMono`, gradienty i animacje wejścia `u:Reveal.Enabled`), więc działa w jasnym
+  i ciemnym motywie oraz respektuje wyłączone animacje. UI na .NET 10 bez zmian w pakietach.
+- **Dowód w CI**: `--ui-smoke` renderuje wszystkie strony (nowa też) i wywala bieg na najmniejszym
+  błędzie wiązania; osobny blok testuje Studium jak funkcję: katalog ≥ 60 poleceń z opisami, wybór
+  kategorii, staging polecenia, realne uruchomienie BMR („1780 kcal”) i statystyk („mediana: 4,5”),
+  historia, kopiowanie (schowek może odmówić w sesji CI — VM ma to obsłużyć) i czyszczenie.
+
+## 16. Zestawy regresji po tym przyroście
 
 `--ui-smoke` uruchamia teraz **21 zestawów**: dotychczasowe 18 plus `analysis`, `life` i `privacy`.
 Zestawy działają na jawnych danych i nie zależą od sieci ani od modelu.

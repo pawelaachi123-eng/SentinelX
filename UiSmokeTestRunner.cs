@@ -318,6 +318,35 @@ public static class UiSmokeTestRunner
                 var png = new PngBitmapEncoder(); png.Frames.Add(BitmapFrame.Create(image));
                 using var imageFile = File.Create(Path.Combine(output, item.Key + ".png")); png.Save(imageFile);
             }
+            // 0.97 · STUDIO: strona narzędzi musi realnie uruchamiać narzędzia nowych sekcji,
+            // a nie tylko je wyświetlać. Sprawdzam też historię, czyszczenie i to, że schowek
+            // odmawiający pracy (sesja CI bez interaktywnego pulpitu) nie wywala aplikacji.
+            var studio = services.GetRequiredService<StudioViewModel>();
+            if (studio.Categories.Count < 6 || studio.Categories.Sum(x => x.Samples.Count) < 60)
+                throw new InvalidOperationException("Studio nie ma pełnego katalogu narzędzi: " + studio.Categories.Count + " kategorii, " + studio.Categories.Sum(x => x.Samples.Count) + " poleceń.");
+            if (studio.Categories.Any(x => x.Samples.Count == 0) || studio.Categories.Any(x => x.Samples.Any(y => y.Note.Length < 10)))
+                throw new InvalidOperationException("Każde polecenie w Studiu musi mieć opis — inaczej lista jest ślepa.");
+            studio.ShowCategory("prywatnosc");
+            if (studio.SelectedCategory.Key != "prywatnosc" || !studio.SelectedCategoryLine.Contains("10"))
+                throw new InvalidOperationException("Wybór kategorii Studia (paleta „studio:…”) nie działa.");
+            var staged = studio.Categories.SelectMany(x => x.Samples).First(x => x.Command.StartsWith("bmr"));
+            studio.UseSampleCommand.Execute(staged);
+            if (!studio.Input.StartsWith("bmr") || !studio.Status.Contains("Mifflin"))
+                throw new InvalidOperationException("Kliknięcie gotowego polecenia nie wypełnia pola wraz z opisem.");
+            await studio.RunCommand.ExecuteAsync(null);
+            if (!studio.Result.Contains("1780 kcal"))
+                throw new InvalidOperationException("Studio nie policzyło BMR. Wynik: " + studio.Result.Replace(Environment.NewLine, " | "));
+            studio.ShowCategory("analiza");
+            studio.Input = "statystyki liczb: 3 4 4 5 9 12";
+            await studio.RunCommand.ExecuteAsync(null);
+            if (!studio.Result.Contains("mediana: 4,5"))
+                throw new InvalidOperationException("Studio nie policzyło statystyk. Wynik: " + studio.Result.Replace(Environment.NewLine, " | "));
+            if (studio.Recent.Count < 2 || !studio.HasRecent || !studio.ResultHeader.Contains("statystyki liczb"))
+                throw new InvalidOperationException("Historia uruchomień Studia nie działa.");
+            studio.CopyCommand.Execute(null);
+            studio.ClearCommand.Execute(null);
+            if (studio.Input.Length != 0 || studio.Result.Length != 0 || studio.SelectedSample != null)
+                throw new InvalidOperationException("Czyszczenie Studia nie działa.");
             // 0.91 · CENTRUM: every embedded tab inside Centrum must render without binding errors.
             foreach (var tab in chat.Sections)
             {
@@ -430,7 +459,7 @@ public static class UiSmokeTestRunner
             string errors = buffer.ToString();
             File.WriteAllText(Path.Combine(output, "bindings.log"), errors);
             if (errors.Length != 0) throw new InvalidOperationException("WPF binding errors: " + errors);
-            File.WriteAllText(Path.Combine(output, "ui-smoke.txt"), "PASS\nPages: " + string.Join(", ", visited) + "\nCentrum tabs, // palette and voice default verified\nDark/DeepDark/System themes rendered\nSTOP/Resume/voice approval passed\nPalette, readiness, draft preservation and execution-scoped evidence passed\nTypo repair, grey-zone questions, lessons, self-check, offline tools, archives, insights and unified search passed\nAnalysis (section 15), health and communication (sections 17 and 14), privacy (section 3) and local models (section 2) passed\n");
+            File.WriteAllText(Path.Combine(output, "ui-smoke.txt"), "PASS\nPages: " + string.Join(", ", visited) + "\nCentrum tabs, // palette and voice default verified\nDark/DeepDark/System themes rendered\nSTOP/Resume/voice approval passed\nPalette, readiness, draft preservation and execution-scoped evidence passed\nTypo repair, grey-zone questions, lessons, self-check, offline tools, archives, insights and unified search passed\nAnalysis (section 15), health and communication (sections 17 and 14), privacy (section 3) and local models (section 2) passed\nStudio 0.97: catalogue, staging, real runs, history and clearing passed\n");
         }
         finally { PresentationTraceSources.DataBindingSource.Listeners.Remove(listener); }
     }

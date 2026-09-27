@@ -1,0 +1,139 @@
+<UserControl xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:u="clr-namespace:SentinelX.Utilities" x:Class="SentinelX.Views.Pages.StudioPage" u:PageTransitions.Enabled="True">
+    <!-- 0.97 · STUDIO: jedno miejsce na wszystkie narzędzia lokalne. Lewa kolumna to kategorie
+         i gotowe polecenia (klik wstawia treść i pokazuje, co zwróci), prawa to pole polecenia,
+         wynik w czcionce monospace i historia ostatnich uruchomień (tylko w pamięci procesu).
+         Kolor tła bierze się z tokenów motywu, więc jasny i ciemny motyw działają bez zmian. -->
+    <Grid ClipToBounds="True">
+        <Border Style="{StaticResource SxPageWash}" Background="{StaticResource SxAuroraVioletBrush}" Opacity="0.14"/>
+        <Grid Margin="{StaticResource SxSpacePage}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <DockPanel Margin="0,0,0,14">
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Top">
+                    <Button Content="Wyczyść" Command="{Binding ClearCommand}" Style="{StaticResource SxGhostButton}"/>
+                    <Button Content="Kopiuj wynik" Command="{Binding CopyCommand}" Style="{StaticResource SxChipButton}" Margin="8,0,0,0"/>
+                    <Button Content="Policz  ⏎" Command="{Binding RunCommand}" Style="{StaticResource SxPrimaryButton}" Margin="8,0,0,0"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal">
+                    <Border Style="{StaticResource SxHeaderAccentBar}" Background="{StaticResource SxAccentGradient}"/>
+                    <StackPanel>
+                        <TextBlock Text="STUDIO 0.97 · NARZĘDZIA LOKALNE" Style="{StaticResource SxEyebrow}" Foreground="{DynamicResource SxAccentViolet}"/>
+                        <TextBlock Text="Studio narzędzi" Style="{StaticResource SxHeading}" Margin="0"/>
+                        <TextBlock Text="{Binding CatalogLine}" Style="{StaticResource SxCaption}" Margin="0,6,0,0" TextWrapping="Wrap" MaxWidth="780"/>
+                    </StackPanel>
+                </StackPanel>
+            </DockPanel>
+
+            <Grid Grid.Row="1">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="360"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <Border Grid.Column="0" Style="{StaticResource SxCard}" Margin="0,0,12,0" u:Reveal.Enabled="True">
+                    <DockPanel>
+                        <TextBlock DockPanel.Dock="Top" Text="KATEGORIE" Style="{StaticResource SxEyebrow}" Margin="0,0,0,6"/>
+                        <ListBox DockPanel.Dock="Top" ItemsSource="{Binding Categories}" SelectedItem="{Binding SelectedCategory}"
+                                 Background="Transparent" BorderThickness="0" ItemContainerStyle="{StaticResource SxListItem}" MaxHeight="216"
+                                 AutomationProperties.Name="Kategorie narzędzi">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Border Grid.Column="0" Style="{StaticResource SxIconChipAccent}" Width="30" Height="30" Margin="0,0,10,0" VerticalAlignment="Top">
+                                            <TextBlock Text="{Binding Index}" Style="{StaticResource SxBadgeText}"/>
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Margin="0,6,0,6">
+                                            <TextBlock Text="{Binding Title}" Style="{StaticResource SxSubheading}" Margin="0"/>
+                                            <TextBlock Text="{Binding Blurb}" Style="{StaticResource SxMuted}" TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                        <Border DockPanel.Dock="Top" Style="{StaticResource SxDivider}" Margin="0,10,0,10"/>
+                        <TextBlock DockPanel.Dock="Top" Text="{Binding SelectedCategoryLine}" Style="{StaticResource SxLabel}" Margin="0,0,0,8"/>
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                            <ItemsControl ItemsSource="{Binding SelectedCategory.Samples}" AutomationProperties.Name="Gotowe polecenia">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Button Content="{Binding Command}" ToolTip="{Binding Note}" Style="{StaticResource SxChipButton}"
+                                                Margin="0,0,6,6" MaxWidth="330"
+                                                Command="{Binding DataContext.UseSampleCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                CommandParameter="{Binding}"/>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </DockPanel>
+                </Border>
+
+                <Grid Grid.Column="1">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <Border Style="{StaticResource SxCardElevated}" u:Reveal.Enabled="True">
+                        <StackPanel>
+                            <TextBlock Text="POLECENIE" Style="{StaticResource SxEyebrow}" Foreground="{DynamicResource SxAccentCyan}"/>
+                            <TextBox Style="{StaticResource SxTextBox}" FontFamily="{StaticResource SxFontMono}"
+                                     Text="{Binding Input, UpdateSourceTrigger=PropertyChanged}"
+                                     u:InputHint.Text="np. statystyki liczb: 3 4 4 5 9 12" AutomationProperties.Name="Polecenie studia">
+                                <TextBox.InputBindings>
+                                    <KeyBinding Key="Return" Command="{Binding RunCommand}"/>
+                                </TextBox.InputBindings>
+                            </TextBox>
+                            <TextBlock Text="{Binding Status}" Style="{StaticResource SxCaption}" TextWrapping="Wrap" Margin="0,10,0,0"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Grid.Row="1" Style="{StaticResource SxCard}" Margin="0,12,0,0" u:Reveal.Enabled="True">
+                        <DockPanel>
+                            <TextBlock DockPanel.Dock="Top" Text="WYNIK" Style="{StaticResource SxEyebrow}" Foreground="{DynamicResource SxAccentTeal}"/>
+                            <TextBlock DockPanel.Dock="Top" Text="{Binding ResultHeader}" Style="{StaticResource SxCaption}" Margin="0,0,0,8" TextTrimming="CharacterEllipsis"/>
+                            <TextBox Text="{Binding Result, Mode=OneWay}" Style="{StaticResource SxTextBox}" FontFamily="{StaticResource SxFontMono}"
+                                     IsReadOnly="True" AcceptsReturn="True" TextWrapping="NoWrap"
+                                     VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" MinHeight="220"
+                                     AutomationProperties.Name="Wynik studia"/>
+                        </DockPanel>
+                    </Border>
+
+                    <Border Grid.Row="2" Style="{StaticResource SxCard}" Margin="0,12,0,0"
+                            Visibility="{Binding HasRecent, Converter={StaticResource BoolToVisibility}}">
+                        <StackPanel>
+                            <TextBlock Text="OSTATNIE URUCHOMIENIA · TYLKO W PAMIĘCI, NIC NIE ZAPISUJĘ NA DYSK" Style="{StaticResource SxEyebrow}"/>
+                            <ItemsControl ItemsSource="{Binding Recent}" Margin="0,6,0,0">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid Margin="0,2,0,2">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="{Binding Time}" Style="{StaticResource SxMono}" Margin="0,0,10,0"/>
+                                            <StackPanel Grid.Column="1">
+                                                <TextBlock Text="{Binding Command}" Style="{StaticResource SxLabel}" TextTrimming="CharacterEllipsis"/>
+                                                <TextBlock Text="{Binding Preview}" Style="{StaticResource SxMuted}" TextTrimming="CharacterEllipsis"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </Grid>
+        </Grid>
+    </Grid>
+</UserControl>
