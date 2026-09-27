@@ -55,10 +55,16 @@ public static class UtilityToolbox
             return Vat(amount, rate, gross);
         }
         // 0.94 · finanse i zakupy (offline, bez kursów walut i bez sieci)
-        var discount = Regex.Match(text, @"^znizka[:\s]+(\d+[.,]?\d*)\s+(\d+[.,]?\d*)$");
+        // 0.97 · Kolejność jak w „vat <stawka> <kwota>”: „znizka 20 80” = 20% z 80 zł.
+        // Gdy pierwsza liczba jest większa od 100, procentem być nie może — wtedy czytam starszy
+        // zapis „<cena> <procent>” („znizka 200 30”), a odpowiedź i tak powtarza odczyt.
+        var discount = Regex.Match(text, @"^znizka[:\s]+(\d+[.,]?\d*)\s+(?:z\s+)?(\d+[.,]?\d*)$");
         if (discount.Success)
         {
-            if (!TryNumber(discount.Groups[1].Value, out double price) || !TryNumber(discount.Groups[2].Value, out double pct)) return NumberError;
+            if (!TryNumber(discount.Groups[1].Value, out double first) || !TryNumber(discount.Groups[2].Value, out double second)) return NumberError;
+            bool priceFirst = first > 100 && second <= 100;
+            double price = priceFirst ? first : second;
+            double pct = priceFirst ? second : first;
             return Discount(price, pct);
         }
         var tip = Regex.Match(text, @"^napiwek[:\s]+(\d+[.,]?\d*)\s+(\d+[.,]?\d*)$");

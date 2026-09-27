@@ -209,7 +209,9 @@ internal static class UtilityRegression
 
         // --- text ---
         string spelled = Require(UtilityToolbox.Process("literuj kot", "literuj kot"), "spell");
-        Check(spelled.Contains("Literowanie") && spelled.Contains("kapelusz"), "spelling out letters: " + spelled);
+        // 0.97: alfabet fonetyczny to nazwy (Karolina, Ola, Tadeusz) — dokładnie tak, jak w implementacji.
+        Check(spelled.Contains("Literowanie") && spelled.Contains("K jak Karolina") && spelled.Contains("T jak Tadeusz"),
+            "spelling out letters: " + spelled);
         Check(Require(UtilityToolbox.Process("czestotliwosc slow kot kot pies", "czestotliwosc slow kot kot pies"), "freq").Contains("4 słów, 2 różnych"), "word frequency counts");
         Check(Require(UtilityToolbox.Process("skrable kot", "skrable kot"), "scrabble").Contains("5 pkt"), "kot is worth 5 scrabble points");
         Check(Require(UtilityToolbox.Process("posortuj slowa: c a b", "posortuj slowa: c a b"), "sort").Contains("a b c"), "words get sorted");
