@@ -119,7 +119,7 @@ public static class RuntimeCommands
         {
             string[] parts = command.Trim()["flaga ".Length..].Split([' ', '\t'], StringSplitOptions.RemoveEmptyEntries);
             if (parts.Length == 0) return "Podaj nazwę flagi: „flaga eksperyment” albo „flaga eksperyment sesja-42”.";
-            string subject = parts.Length > 1 ? parts[1] : null;
+            string? subject = parts.Length > 1 ? parts[1] : null;
             bool enabled = core.Flags.IsEnabled(parts[0], subject);
             var flag = core.Flags.Get(parts[0]);
             return flag is null

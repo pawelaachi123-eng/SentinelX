@@ -192,7 +192,8 @@ public sealed class CronSchedule
         int[] minuteList = minutes.ToArray();
         int[] hourList = hours.ToArray();
         bool everyMinute = minutes.Count == 60;
-        bool stepMinutes = minuteList.Length > 1 && IsArithmetic(minuteList, out int minuteStep) && minuteList[0] == 0 && hourList.Length == 24 &&
+        int minuteStep = 0;
+        bool stepMinutes = minuteList.Length > 1 && IsArithmetic(minuteList, out minuteStep) && minuteList[0] == 0 && hourList.Length == 24 &&
             !dayOfMonthRestricted && !dayOfWeekRestricted;
 
         if (everyMinute && hourList.Length == 24 && !dayOfMonthRestricted && !dayOfWeekRestricted && months.Count == 12)

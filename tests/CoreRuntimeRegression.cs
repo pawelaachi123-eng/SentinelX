@@ -324,7 +324,7 @@ internal static class CoreRuntimeRegression
         var reordered = new Dictionary<string, object?> { ["lista"] = new List<string> { "a", "b" }, ["tekst"] = "Zażółć",
             ["liczba"] = 42L, ["ujemna"] = -7L, ["rzeczywista"] = 3.5, ["flaga"] = true, ["pusto"] = null, ["bajty"] = new byte[] { 1, 2, 3 } };
         Check(BinarySerializer.Encode(reordered).SequenceEqual(encoded), "kolejność kluczy nie zmienia bajtów (determinizm)");
-        Check(!BinarySerializer.TryDecode([1, 2, 3], out _, out string shortError) && shortError.Length > 0, "za krótkie dane są odrzucane");
+        Check(!BinarySerializer.TryDecode([1, 2, 3], out _, out string decodeError) && decodeError.Length > 0, "za krótkie dane są odrzucane");
         var corrupted = (byte[])encoded.Clone();
         corrupted[^1] = 0xFF;
         Check(!BinarySerializer.TryDecode(corrupted[..(corrupted.Length - 3)], out _, out string corruptError) && corruptError.Length > 0,

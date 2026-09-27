@@ -1157,13 +1157,13 @@ public static class DeveloperToolbox
         {
             string type = check.Groups[1].Value.ToLowerInvariant();
             string scope = check.Groups[2].Success ? check.Groups[2].Value : "";
-            string description = check.Groups[3].Value;
+            string detail = check.Groups[3].Value;
             var notes = new List<string>();
-            if (description.Length > 72) notes.Add("opis ma " + description.Length + " znaków — konwencja mówi o maks. 72");
-            if (description.EndsWith('.')) notes.Add("usuń kropkę na końcu");
-            if (description.Length > 0 && char.IsUpper(description[0])) notes.Add("opis zaczyna się wielką literą — konwencja woli małą");
+            if (detail.Length > 72) notes.Add("opis ma " + detail.Length + " znaków — konwencja mówi o maks. 72");
+            if (detail.EndsWith('.')) notes.Add("usuń kropkę na końcu");
+            if (detail.Length > 0 && char.IsUpper(detail[0])) notes.Add("opis zaczyna się wielką literą — konwencja woli małą");
             return "Commit poprawny konwencjonalnie: " + type + (scope.Length > 0 ? " (zakres: " + scope.Trim('(', ')') + ")" : "") +
-                Environment.NewLine + "· opis: " + description +
+                Environment.NewLine + "· opis: " + detail +
                 (notes.Count == 0 ? Environment.NewLine + "· uwagi: brak — wszystko trzyma się konwencji." :
                     Environment.NewLine + "· uwagi: " + string.Join("; ", notes) + ".");
         }

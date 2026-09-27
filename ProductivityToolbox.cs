@@ -294,7 +294,7 @@ public static class ProductivityToolbox
             "· dokładna liczba sztuk: " + units.ToString("0.##", Pl) + " (zaokrąglam w górę — nie sprzedasz 0,4 sztuki)";
     }
 
-    public static string Depreciation(string value, string years, string? rate)
+    public static string Depreciation(string value, string years, string? rate = null)
     {
         if (!TryNumber(value, out double initial)) return "Podaj wartość i liczbę lat, np. „amortyzacja: 12000 4”.";
         if (!int.TryParse(years, out int life) || life is < 1 or > 50) return "Liczba lat musi być z zakresu 1–50.";
@@ -325,7 +325,7 @@ public static class ProductivityToolbox
             "· różnica: " + Money(needed - value) + " (utrata wartości pieniądza: " + (100 - real / value * 100).ToString("0.#", Pl) + "%)";
     }
 
-    public static string Savings(string monthly, string rate, string years, string? initial)
+    public static string Savings(string monthly, string rate, string years, string? initial = null)
     {
         if (!TryNumber(monthly, out double contribution) || !TryNumber(rate, out double annualPercent)) return "Użyj: „oszczednosci: miesięcznie procent lat [start]”, np. „oszczednosci: 500 6 10 1000”.";
         if (!int.TryParse(years, out int span) || span is < 1 or > 60) return "Liczba lat musi być z zakresu 1–60.";

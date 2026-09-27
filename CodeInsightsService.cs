@@ -167,7 +167,7 @@ public static class CodeInsightsService
                 else if (IsComment(line, file.Language)) fileComments++;
                 else fileCode++;
                 var todo = Regex.Match(line, @"\b(TODO|FIXME|HACK|XXX)\b[:\s]*(.{0,80})");
-                if (todo.Success) todos.Add(file.RelativePath + ":" + (index + 1) + " · " + todo.Groups[1].Value + " " + todo.Groups[2].Trim());
+                if (todo.Success) todos.Add(file.RelativePath + ":" + (index + 1) + " · " + todo.Groups[1].Value + " " + todo.Groups[2].Value.Trim());
                 if (line.Length > 160) longestLines.Add((file.RelativePath, index + 1, line.Length));
             }
             code += fileCode;
@@ -270,7 +270,7 @@ public static class CodeInsightsService
             {
                 if (dependency.StartsWith('.') || dependency.StartsWith('/'))
                 {
-                    string target = ResolveRelative(file.RelativePath, dependency);
+                    string? target = ResolveRelative(file.RelativePath, dependency);
                     if (target is not null)
                     {
                         if (!edges.TryGetValue(module, out var set)) { set = new HashSet<string>(StringComparer.OrdinalIgnoreCase); edges[module] = set; }
