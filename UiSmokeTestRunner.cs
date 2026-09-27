@@ -264,9 +264,10 @@ public static class UiSmokeTestRunner
             if (!findFile.Contains("znajd") && !findFile.Contains("Znalazłem") && !findFile.Contains("Nie znalazłem"))
                 throw new InvalidOperationException("File search must answer: " + findFile);
             // 0.97: automation and the honest 1550 map — schedules refuse power commands, nothing registers in Windows.
-            string scheduleRefusal = (await memoryEngine.ExecuteAsync("zaplanuj: 8:00 zamknij komputer")).Text;
-            if (!scheduleRefusal.Contains("zgody"))
-                throw new InvalidOperationException("A scheduled shutdown must be refused: " + scheduleRefusal);
+            // Bezpieczna kolejność: najpierw czysta lista (żadnego wykonania), a odmowę harmonogramu
+            // dla poleceń zasilania sprawdza tests/SystemAutomationRegression.cs bezpośrednio na warstwie
+            // poleceń — tu nie wysyłam „zamknij komputer”, bo warstwa rozumienia mogłaby je wyciągnąć
+            // z dłuższego zdania i uzbroić prawdziwe zamknięcie maszyny CI.
             string scheduleList = (await memoryEngine.ExecuteAsync("zaplanowane")).Text;
             if (!scheduleList.Contains("HARMONOGRAM") && !scheduleList.Contains("Harmonogram jest pusty"))
                 throw new InvalidOperationException("The schedule list must answer: " + scheduleList);

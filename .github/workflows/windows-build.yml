@@ -36,7 +36,10 @@ jobs:
         run: |
           $exe = Resolve-Path 'bin/Release/net9.0-windows/SentinelX.exe'
           $output = Join-Path $PWD 'test-results/ui'
-          $p = Start-Process $exe -ArgumentList '--ui-smoke', $output -PassThru
+          New-Item -ItemType Directory -Force $output | Out-Null
+          $p = Start-Process $exe -ArgumentList '--ui-smoke', $output -PassThru `
+            -RedirectStandardOutput (Join-Path $output 'stdout.txt') `
+            -RedirectStandardError (Join-Path $output 'stderr.txt')
           if (-not $p.WaitForExit(120000)) { $p.Kill(); throw 'UI smoke timeout' }
           if ($p.ExitCode -ne 0 -or -not (Test-Path "$output/ui-smoke.txt")) {
             Get-ChildItem $output -Recurse -Include FAILED.txt,errors.log,bindings.log | ForEach-Object {
@@ -73,7 +76,10 @@ jobs:
           if (-not (Test-Path 'bin/portable/coreclr.dll')) { throw 'Missing self-contained .NET runtime' }
           $exe = Resolve-Path 'bin/portable/SentinelX.exe'
           $output = Join-Path $PWD 'test-results/portable'
-          $p = Start-Process $exe -ArgumentList '--ui-smoke', $output -PassThru
+          New-Item -ItemType Directory -Force $output | Out-Null
+          $p = Start-Process $exe -ArgumentList '--ui-smoke', $output -PassThru `
+            -RedirectStandardOutput (Join-Path $output 'stdout.txt') `
+            -RedirectStandardError (Join-Path $output 'stderr.txt')
           if (-not $p.WaitForExit(120000)) { $p.Kill(); throw 'Portable smoke timeout' }
           if ($p.ExitCode -ne 0 -or -not (Test-Path "$output/ui-smoke.txt")) {
             Get-ChildItem $output -Recurse -Include FAILED.txt,errors.log,bindings.log | ForEach-Object {
