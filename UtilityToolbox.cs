@@ -1341,23 +1341,35 @@ public static class UtilityToolbox
         return name + "(" + Format(degrees) + "°) = " + Format(value);
     }
 
+    private const string WeightedHint = "Podaj pary „wartość waga”, np. „srednia wazona: 4 2, 5 1” albo ciągiem „srednia wazona: 4 2 5 1”.";
+
     public static string WeightedAverage(string list)
     {
-        string[] pieces = list.Split(new[] { ',', ';', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+        // 0.97 · Przyjmuję oba zapisy: pary rozdzielone przecinkami („4 2, 5 1”) oraz jeden ciąg
+        // liczb czytany parami („4 2 5 1”). Wcześniej drugi zapis kończył się komunikatem o błędzie,
+        // choć jest naturalnym sposobem podania danych.
+        string[] groups = list.Split(new[] { ',', ';', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+        var numbers = new List<double>();
+        foreach (string group in groups)
+            foreach (string piece in group.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+            {
+                if (!TryNumber(piece, out double number)) return WeightedHint;
+                numbers.Add(number);
+            }
+        if (numbers.Count < 2 || numbers.Count % 2 != 0) return WeightedHint;
         double sumWeighted = 0, sumWeights = 0;
         int pairs = 0;
-        foreach (string piece in pieces)
+        for (int index = 0; index + 1 < numbers.Count; index += 2)
         {
-            string[] numbers = piece.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-            if (numbers.Length != 2 || !TryNumber(numbers[0], out double value) || !TryNumber(numbers[1], out double weight))
-                return "Podaj pary „wartość waga”, np. „srednia wazona: 4 2, 5 1” — 4 z wagą 2 i 5 z wagą 1.";
+            double value = numbers[index], weight = numbers[index + 1];
             if (weight < 0) return "Wagi nie mogą być ujemne.";
             sumWeighted += value * weight;
             sumWeights += weight;
             pairs++;
         }
         if (pairs == 0 || sumWeights == 0) return "Suma wag musi być większa od zera.";
-        return "Średnia ważona (" + pairs + " pary) = " + Format(sumWeighted / sumWeights);
+        string counted = pairs == 1 ? "1 para" : pairs < 5 ? pairs + " pary" : pairs + " par";
+        return "Średnia ważona (" + counted + ") = " + Format(sumWeighted / sumWeights);
     }
 
     public static string Quadratic(string aText, string bText, string cText)
