@@ -190,6 +190,20 @@ Stan na 2026-09-27 (0.97). Zasada: każda pojedyncza pozycja znika z listy dopie
 - **Regresje**: `tests/CoreRuntimeRegression.cs` i `tests/DeveloperToolboxRegression.cs`
   wpięte w `--ui-smoke`; paleta `//` i `pomoc` rozszerzone o nowe rodziny poleceń.
 
+## Gotowe w 0.97 — sekcja 2 (pierwszy przyrost): modele lokalne
+
+- **`ModelToolbox.cs`** — katalog 17 modeli, karta modelu, dobór do pamięci (`model dopasuj: 8`,
+  `model audyt` od realnego RAM), role, kwantyzacje (8 wariantów, bity na wagę), presety parametrów,
+  10 szablonów promptów, `model kv`, `model pamiec`, `model porownaj`, `model kolejka`,
+  `model polityka`, `model offline`. Rachunek pamięci: wagi = parametry × bity/wagę ÷ 8,
+  KV cache = 2 × warstwy × głowy KV × wymiar × tokeny × 2 B, narzut 0,8 GB — zawsze z jawnym
+  zastrzeżeniem, że to szacunek.
+- **Regresja**: `tests/ModelToolboxRegression.cs` jako 18. zestaw `--ui-smoke` (liczby, odrzucanie
+  śmieci, brak przechwytywania zwykłych zdań o modelach).
+- **Zostaje w sekcji 2**: pobieranie/usuwanie modeli i podgląd postępu, indeks embeddingów
+  i wyszukiwanie wektorowe, benchmark tokenów na sprzęcie użytkownika, automatyczny dobór modelu
+  do zadania, licencje modeli, panel UI do modeli.
+
 ## Priorytet P0 — kolejny przyrost
 
 1. **Pliki — DOMKNIĘTE w 0.92/0.93**: duplikaty po treści (SHA-256), raport porządkowy, usuwanie pojedynczych plików do Kosza z potwierdzeniem, usuwanie duplikatów (`usuń duplikaty:`) z pozostawieniem 1 kopii na grupę, sprzątanie pustych plików (`usuń puste pliki:`), zbiorcze zmiany nazw z podglądem (`zmien nazwy: … zamien … na …`). Ewentualne rozszerzenia (filtry rozmiaru, podfoldery w zmianach nazw) to P1.

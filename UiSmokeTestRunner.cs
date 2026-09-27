@@ -45,6 +45,7 @@ public static class UiSmokeTestRunner
             await Tests.MemoryArchiveRegression.RunAsync(Path.Combine(output, "archives"));
             await Tests.CoreRuntimeRegression.RunAsync(Path.Combine(output, "core"));
             await Tests.DeveloperToolboxRegression.RunAsync(Path.Combine(output, "developer-tools"));
+            await Tests.ModelToolboxRegression.RunAsync(Path.Combine(output, "models"));
             var vm = services.GetRequiredService<MainViewModel>();
             vm.Readiness.IsOpen = false;
             if (vm.InitializeCommand.IsRunning) await vm.InitializeCommand.ExecutionTask!;

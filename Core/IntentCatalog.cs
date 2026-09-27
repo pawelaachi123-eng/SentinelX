@@ -132,7 +132,14 @@ public static class IntentCatalog
             "liczba slownie", "lorem", "statystyki tekstu", "roi", "break even", "amortyzacja",
             "inflacja", "oszczednosci", "macierz", "slajdy",
             "skan kodu", "statystyki kodu", "zaleznosci kodu", "bezpieczenstwo kodu",
-            "duplikaty kodu", "licencje", "funkcje kodu", "drzewo kodu"
+            "duplikaty kodu", "licencje", "funkcje kodu", "drzewo kodu",
+            // 0.97 · SEKCJA 2 (pierwszy przyrost) — modele lokalne: katalog i dobór, bez pobierania
+            "modele lokalne", "katalog modeli", "katalog llm",
+            "model karta", "model dopasuj", "model rola", "model audyt",
+            "kwantyzacje", "kwantyzacja", "presety modelu", "preset modelu", "parametry modelu",
+            "prompt szablony", "prompt szablon", "szablony promptow",
+            "model kolejka", "model limity", "model polityka",
+            "model kv", "model pamiec", "model porownaj", "model offline", "tryb bez modelu"
         ];
         foreach (string phrase in extra) phrases.Add(phrase);
         return phrases.OrderBy(x => x, StringComparer.Ordinal).ToArray();

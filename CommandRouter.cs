@@ -64,6 +64,12 @@ public sealed class CommandRouter
         // 0.97 · narzędzia deweloperskie: diff, regex, semver, IP/podsieci, JWT, generatory kodu, kodowania.
         string? developerResponse = DeveloperToolbox.TryHandle(command.Trim(), text);
         if (developerResponse != null) return developerResponse;
+        // 0.97 · SEKCJA 2 (pierwszy przyrost): modele lokalne — katalog, karta, dobór do pamięci,
+        // kwantyzacje, presety, szablony promptów, KV cache i tryb bez modelu. Nic nie pobiera.
+        if (text is "model audyt" or "model dopasuj do komputera" or "model na moim komputerze" or "model analiza pamieci")
+            return ModelToolbox.FitForMachine(systemMonitor.GetTotalRamGB());
+        string? modelResponse = ModelToolbox.TryHandle(command.Trim(), text);
+        if (modelResponse != null) return modelResponse;
         // 0.97 · finanse, tekst i produktywność (kwota słownie, statystyki tekstu, ROI, budżet, slajdy).
         string? productivityResponse = ProductivityToolbox.TryHandle(command.Trim(), text);
         if (productivityResponse != null) return productivityResponse;
@@ -212,6 +218,7 @@ public sealed class CommandRouter
                 "· Narzędzia deweloperskie: diff, wyrażenia regularne, semver, adresy IP i podsieci (tylko pełny zapis kropkowany), JWT, UUID/NanoID, generator zapytań SQL i INSERT-ów, konwencja commitów, Base32/Base58, CRC32 i inne.\n" +
                 "· Analiza kodu — wyłącznie odczyt: złożoność, dług techniczny, martwy kod, sekrety w plikach, zależności, TODO. Zawsze podaję limit, którego nie przekraczam, i mówię wprost, że to podpowiedź, a nie wyrok.\n" +
                 "· Finanse, tekst i produktywność: kwota słownie, ROI, budżet 50/30/20, statystyki tekstu, generator slajdów, karta produktu.\n" +
+                "· Modele lokalne (pierwszy przyrost sekcji 2): „modele lokalne” (katalog z rolą i notką) · „model karta: qwen2.5:7b” (wagi, KV cache i suma z narzutem, z wypisanym wzorem) · „model dopasuj: 8” i „model audyt” (co wejdzie w Twoją pamięć) · „model rola: kod|wizja|embeddingi…” · „kwantyzacje” · „presety modelu” · „prompt szablony” (10 gotowych promptów) · „model kv” · „model pamiec” · „model porownaj” · „model kolejka” (jedna ścieżka, limit 180 s, model zapasowy) · „model polityka” · „model offline”. Wszystko offline i zawsze jako szacunek z podanym wzorem — nic nie pobieram.\n" +
                 "· Rozumienie bez podmian: polecenie, które jest już znane („snapshoty”), zostaje sobą — naprawa literówek nie zamienia go na inne polecenie.\n" +
                 "\nCO NOWEGO W 0.96 · JARVIS: PULPIT, MULTIMEDIA, ZASILANIE\n" +
                 "· Steruję oknami: „okna” (lista), „minimalizuj wszystko” (Windows+D), „minimalizuj/maksymalizuj/zamknij okno”, „przełącz okno” (Alt+Tab), „przełącz na: chrome”, „okno w lewo/prawo”, „pełny ekran”. Zamykam przez WM_CLOSE — dokładnie jak kliknięcie „X”, więc program może zapytać o zapis.\n" +
@@ -913,6 +920,7 @@ public sealed class CommandRouter
         Losowe: losuj 1-100 · rzuc kostka · kostka 2d6 · wylosuj karte · rzut moneta · lotto · pin 6 · haslo 20 · uuid · wybierz losowo: a, b · bmi 80 180 · cytat
         Podsumowania: plan dnia · szukaj wszystkiego: fraza · statystyki · backup
         Rdzeń 0.97: rdzen · zdrowie · metryki · bezpieczniki · zdarzenia · dziennik json · maszyna · workflow: a > b > c (analiza, nic nie uruchamiam)
+        Modele lokalne 0.97: modele lokalne · model karta: qwen2.5:7b · model dopasuj: 8 · model audyt (Twój RAM) · model rola: kod|rozmowa|szybkie|wizja|embeddingi|rozumowanie · kwantyzacje · kwantyzacja: q4_K_M · presety modelu · preset modelu: szybki · prompt szablony · prompt szablon: kod · model kv: qwen2.5:7b 8192 · model pamiec: 8192 · model porownaj: qwen2.5:7b vs qwen2.5:14b · model kolejka · model polityka · model offline (wszystko lokalnie, nic nie pobieram)
         Kolejka zadań: kolejka · kolejka dodaj: log: info treść · kolejka przetworz · zwroty · zwrot ponow: T0001 · kolejka anuluj: T0001
         Harmonogram i flagi: cron opis: */15 * * * * · cron nastepne: 0 8 * * 1-5 · flagi · ustaw flage: eksperyment on|off|30
         Kopie i integralność: kopie danych · kopia danych · weryfikuj kopie: nazwa · integralnosc zbuduj: katalog · integralnosc sprawdz: katalog · integralnosc

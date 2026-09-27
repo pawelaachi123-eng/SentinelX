@@ -172,3 +172,37 @@ Stan bramek po tych poprawkach (gałąź `arena/01a0e28e-sentinelx`):
 Kroki publikacji EXE/instalatora i wysyłki artefaktów pozostają wyłączone przy pushu
 (sekcja 8) — zielone CI nie oznacza, że powstał instalator.
 
+## 10. Modele lokalne — `ModelToolbox.cs` (sekcja 2, pierwszy przyrost)
+
+Sekcja 2 listy (poz. 46–120) mówi o modelach lokalnych. Ten przyrost bierze z niej to, co da się
+zrobić uczciwie **bez sieci i bez uruchamiania modelu**: katalog orientacyjny, rachunek pamięci
+i gotowe materiały do pracy z Ollamą. Każda odpowiedź podaje wzór, z którego liczy, i mówi wprost,
+że to szacunek — żadna liczba nie udaje pomiaru z Twojej maszyny.
+
+| Polecenie | Co daje |
+| --- | --- |
+| `modele lokalne` | katalog 17 modeli: rola, rozmiar parametrów, notka (m.in. `qwen3:1.7b`, `qwen3:4b-instruct`, `gemma3:4b` — te same, których Sentinel używa domyślnie) |
+| `model karta: qwen2.5:7b` | warstwy, głowy KV, wymiar głowy, maksymalny kontekst, wagi w q4_K_M, KV cache przy 8 192 tokenach, suma z narzutem 0,8 GB |
+| `model dopasuj: 8` | podział katalogu na „zmieści się spokojnie / na styk / nie zmieści się” dla podanej pamięci |
+| `model audyt` | to samo, ale od realnego RAM-u komputera (2 GB zostają dla systemu) |
+| `model rola: kod` · `…: wizja` · `…: embeddingi` | propozycje modeli w tej roli z uzasadnieniem i szacunkiem pamięci |
+| `kwantyzacje` · `kwantyzacja: q4_K_M` | tabela 8 wariantów: bity na wagę (2,6–16) → rozmiar wag dla 7B |
+| `presety modelu` · `preset modelu: szybki` | trzy zestawy parametrów (temperatura, top_p, num_ctx, num_predict, keep_alive) — do wykorzystania, nie wymuszane |
+| `prompt szablony` · `prompt szablon: kod` | 10 gotowych promptów systemowych (kod, testy, dokumentacja, tłumaczenie, streszczenie, ekstrakcja, SQL, refaktor, błąd, e-mail) |
+| `model kv: qwen2.5:7b 8192` | KV cache z wypisanym wzorem: `2 × warstwy × głowy KV × wymiar × tokeny × 2 B` |
+| `model pamiec: 8192` | ile pamięci zjada kontekst dla trzech rozmiarów modelu |
+| `model porownaj: a vs b` | dwa modele obok siebie + który jest lżejszy i o ile |
+| `model kolejka` | stan faktyczny: jedna ścieżka wykonania, limit 180 s, „przerwij”, model zapasowy (maks. dwie próby), `keep_alive` 10m / 0 w trybie gry |
+| `model polityka` | domyślne role i liczby z `AiSettings` (temperatura 0,22 · kontekst 4096 · odpowiedź 700 · progi 78/85/70) |
+| `model offline` | co działa bez modelu, a czego bez niego nie ma |
+
+Regresja: `tests/ModelToolboxRegression.cs` (18. zestaw w `--ui-smoke`) sprawdza liczby
+(7B w q4_K_M = 4,24375 GB, f16 = 14 GB, KV cache 28×4×128×8192 = 0,46976 GB, podwojenie kontekstu
+= podwojenie KV), odrzucanie śmieci (nieznany model, rola, preset, szablon, kwantyzacja,
+absurdalna pamięć) oraz to, że **zwykłe zdanie o modelach nie jest przechwytywane** — ta sama
+pułapka, która wcześniej zabierała pytania zaczynające się od „czy”.
+
+Czego w sekcji 2 **nadal nie ma** (żeby nie było wątpliwości): pobierania i usuwania modeli,
+podglądu pobierania, indeksu embeddingów i wyszukiwania wektorowego, benchmarku tokenów na
+Twoim sprzęcie, automatycznego doboru modelu do zadania i licencji modeli.
+
