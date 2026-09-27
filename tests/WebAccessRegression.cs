@@ -47,7 +47,7 @@ internal static class WebAccessRegression
         string settings = Path.Combine(directory, "settings");
 
         // ————— domyślnie WYŁĄCZONE: nic nie wychodzi bez zgody —————
-        var offline = new WebAccessService(settingsDirectory: settings);
+        var offline = new WebAccessService(new FakeWebHandler(), settingsDirectory: settings);
         Check(!offline.Enabled, "domyślnie wyłączone");
         Check((await offline.SearchAsync("test")).Contains("WYŁĄCZONE") && (await offline.SearchAsync("test")).Contains("wifi on"),
             "szukanie przy wyłączonym WiFi odmawia i wskazuje „wifi on”");
@@ -57,7 +57,7 @@ internal static class WebAccessRegression
         // ————— włączenie: parsowanie wyników —————
         string toggled = offline.Toggle(true);
         Check(toggled.Contains("WŁĄCZONE"), "włączenie zwraca status WŁĄCZONE");
-        var fresh = new WebAccessService(settingsDirectory: settings);
+        var fresh = new WebAccessService(new FakeWebHandler(), settingsDirectory: settings);
         Check(fresh.Enabled, "stan wyłącznika przeżył restart (zapis w ustawieniach)");
 
         string results = await fresh.SearchAsync("roblox datastore");
