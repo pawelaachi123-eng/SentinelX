@@ -53,7 +53,13 @@ internal static class ModelToolboxRegression
         // ---------------- dobór do pamięci ----------------
         string fit8 = Handle("model dopasuj: 8");
         Check(fit8.Contains("qwen2.5:7b"), "8 GB musi pomieścić model 7B: " + fit8.Replace(Environment.NewLine, " | "));
-        Check(!fit8.Contains("qwen2.5:14b (~"), "14B nie może wejść w 8 GB");
+        // Sekcje rozdzielam po nagłówkach, żeby asercja nie zależała od tego, gdzie model się pojawia.
+        int comfortableFrom = fit8.IndexOf("zmieści się spokojnie:", StringComparison.Ordinal);
+        int tightFrom = fit8.IndexOf("na styk", StringComparison.Ordinal);
+        int noFitFrom = fit8.IndexOf("nie zmieści się:", StringComparison.Ordinal);
+        Check(comfortableFrom >= 0 && tightFrom > comfortableFrom && noFitFrom > tightFrom, "dobór ma trzy sekcje: " + fit8.Replace(Environment.NewLine, " | "));
+        Check(!fit8[comfortableFrom..tightFrom].Contains("qwen2.5:14b"), "14B nie może być w sekcji „zmieści się spokojnie”");
+        Check(fit8[noFitFrom..].Contains("qwen2.5:14b"), "14B musi być w sekcji „nie zmieści się” przy 8 GB");
         string fit48 = Handle("model dopasuj: 48");
         Check(fit48.Contains("qwen2.5:14b"), "48 GB mieści model 14B");
         Check(Handle("model dopasuj: 0").Contains("Podaj pamięć"), "zerowa pamięć jest odrzucana z podpowiedzią");
