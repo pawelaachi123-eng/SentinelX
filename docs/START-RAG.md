@@ -1,42 +1,48 @@
-# RAG w Sentinelu — jak odpalić na swojej maszynie (po pobraniu repo)
+# Lokalny RAG w SentinelX — .NET 10 / Windows
 
-## Co dostajesz
-RAG (Retrieval-Augmented Generation) **bez chmury**: Sentinel tnie Twoje pliki `.txt`/`.md` na
-fragmenty, liczy dla każdego fragmentu **wektor lokalną Ollamą** (`nomic-embed-text`,
-wyłącznie `127.0.0.1:11434`), a szukanie to kosinus po wektorach. Baza żyje **tylko w RAM
-aplikacji** — po zamknięciu znika, na dysk nie zapisuje się nic, nic nie wychodzi poza komputer.
+Baza robocza działa w pamięci. Opcjonalne archiwum jest szyfrowane Windows DPAPI i powstaje dopiero po planie oraz potwierdzeniu użytkownika. Aplikacja łączy się tylko z Ollamą na `127.0.0.1:11434`.
 
-## Jedno polecenie (po pobraniu repo, na Windows)
+## Wymagania i przygotowanie
 
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts\setup-rag.ps1
-```
+Zainstalowane .NET 10 SDK, lokalna Ollama, model embeddingów `nomic-embed-text` oraz lokalny model rozmowy. Ta zmiana nie instaluje ani nie pobiera modeli.
 
-Skrypt **sprawdza** środowisko (dotnet, ollama), **pobiera przez Ollamę** modele
-`nomic-embed-text` i `qwen3:4b-instruct` (to jedyny moment z internetem — pobiera Twoja
-lokalna Ollama) i wypisuje kolejne kroki. **Nie buduje EXE, nie instaluje niczego w systemie.**
+Istniejący `scripts/setup-rag.ps1` uruchamia pobieranie modeli przez Ollamę. Nie uruchamiaj go wyłącznie w celu sprawdzenia środowiska. Pobieranie wymaga osobnej świadomej zgody; panel AI i polecenie `model pobierz: nazwa` zapewniają plan oraz jednorazowe potwierdzenie.
 
-## Polecenia w aplikacji (w czacie Sentinela)
+## Polecenia
 
-| Polecenie | Co robi |
+| Polecenie | Działanie |
 |---|---|
-| `rag zbuduj: C:\folder\z\plikami` | tnie .txt/.md na fragmenty (limit 200 plików, fragmenty ≤ 800 znaków z zakładką) i liczy wektory |
-| `rag szukaj: fraza` | wektor frazy → kosinus z bazą → top 5 z procentem podobieństwa i nazwą pliku |
-| `rag prompt: pytanie` | składa gotowiec: pytanie + top 3 fragmenty + lista źródeł — do wklejenia w czat |
-| `rag model: nomic-embed-text` | zmiana modelu embeddingów (zmiana **nie** przelicza istniejącej bazy) |
-| `rag status` | ile plików/fragmentów, źródło, model |
-| `rag reset` | czyszczenie bazy (była tylko w RAM) |
+| `rag zbuduj: C:\dokumenty` | .txt/.md → fragmenty do 800 znaków, zakładka 120 w długich akapitach, do 200 plików / 400 fragmentów |
+| `rag szukaj: fraza` | do 5 trafień kosinusowych; procent to podobieństwo, nie pewność odpowiedzi |
+| `rag prompt: pytanie` | gotowy prompt z maksymalnie 3 fragmentami i źródłami |
+| `rag pytaj: pytanie` | odpowiedź lokalnego modelu, odsyłacze oraz literalne cytaty z fragmentów |
+| `rag model: nomic-embed-text` | model dla kolejnej budowy; istniejąca baza zachowuje model swoich wektorów |
+| `rag status` | liczba plików/fragmentów, źródło, model ustawiony i model bazy |
+| `rag archiwa` | lista do 200 nazw zapisanych kopii |
+| `rag zapisz: notatki` | plan zapisu zaszyfrowanej kopii |
+| `rag zapisz: notatki potwierdzam` | zapis po planie, bez nadpisywania istniejącego pliku |
+| `rag wczytaj: notatki` | plan zastąpienia RAM zawartością archiwum |
+| `rag wczytaj: notatki potwierdzam` | walidacja i przywrócenie bazy oraz modelu embeddingów |
+| `rag reset` | wyczyszczenie RAM; zapisane archiwa pozostają na dysku |
 
-## Bez Ollamy
-Każda operacja kończy się **jawnym komunikatem** z adresem `127.0.0.1:11434` — żadnych
-wyciszonych awarii, żadnego zgadywania. Nieudana budowa **nie czyści** istniejącej bazy.
+Nazwa archiwum: 1–60 liter ASCII, cyfr, `_` lub `-`, bez ścieżki i nazw urządzeń Windows. Zgoda wygasa po 10 minutach; zmiana bazy lub modelu unieważnia plan. Nie można jej powtórnie wykorzystać. Zapis jest blokowany w trybie prywatnym.
 
-## Co jest przetestowane bez sieci (CI Windows)
-`tests/RagRegression.cs` — cięcie fragmentów, matematyka kosinusa (1 / 0 / nie-NaN),
-budowa i ranking na deterministycznych fejkowych wektorach (worki słów w 16 kubełkach),
-prompt ze źródłami, uczciwość bez Ollamy, reset. RAG przechodzi przez **realny router**.
+## Co chroni archiwum
 
-## Co dalej (opcje, gdy przetestujesz u siebie)
-- trwałe archiwum bazy (zaszyfrowany plik w danych aplikacji — na Twoją zgodę),
-- `rag pytaj: …` — automatyczne pytanie do lokalnego modelu rozmowy z gotowym promptem,
-- indeksowanie PDF/DOCX (teraz tylko .txt/.md).
+Pliki leżą w `RagArchives` pod katalogiem danych SentinelX (domyślnie `%LOCALAPPDATA%\SentinelX`). Zaszyfrowane są fragmenty, wektory, model i źródło bazy. Nazwa pliku archiwum pozostaje jawna. DPAPI wymaga kontekstu tego konta Windows; to nie jest format przenośnej kopii między kontami. Nie chroni przed procesem działającym już z uprawnieniami tego użytkownika.
+
+Zapis używa pliku tymczasowego z samym szyfrogramem i przeniesienia bez nadpisania. Wczytanie sprawdza wersję formatu, rozmiar (64 MiB), limit fragmentów i skończone wektory o zgodnych wymiarach przed zmianą RAM. Błąd odszyfrowania pozostawia obecną bazę.
+
+Archiwum nie obejmuje historii rozmów. Wynik `rag pytaj` może trafić do zwykłej historii czatu zgodnie z ustawieniami prywatności — samo szyfrowanie archiwum nie szyfruje historii.
+
+## Uczciwość odpowiedzi i ograniczenia
+
+Puste zapytanie, pusta baza, brak trafień lub niedostępna Ollama dają jawny komunikat. Brak trafień nie uruchamia generowania. Model otrzymuje polecenie traktowania dokumentów jako danych i ignorowania instrukcji zawartych w nich. Sprawdzamy zakres numerów odsyłaczy, ale nie automatyczną zgodność każdego zdania z cytatem. Cytaty pokazujemy, aby użytkownik mógł to sprawdzić.
+
+Brak importu PDF/DOCX, automatycznego zapisu bazy, usuwania archiwów z czatu i niezależnego hasła przenośnej kopii. Nie testowano jakości odpowiedzi na rzeczywistej Ollamie.
+
+## Weryfikacja
+
+Kod `845f4b6`: [Windows build and WPF smoke](https://github.com/pawelaachi123-eng/SentinelX/actions/runs/36347938885) oraz [Build Windows app (.NET 10)](https://github.com/pawelaachi123-eng/SentinelX/actions/runs/36347938810) — **success**.
+
+`RagRegression`: dzielenie, kosinus i ranking; `RagArchiveRegression`: szyfrowanie, odczyt nową instancją magazynu, uszkodzenie, format, wymiary i zgody; `RagAnswerRegression`: odpowiedź przez router, cytaty, model bazy, brak trafień, awaria i anulowanie. Wszystko bez pobierania modeli. `ModelPanelRegression` sprawdza plan oraz dokładne potwierdzenie w VM; WPF smoke renderuje stronę AI.

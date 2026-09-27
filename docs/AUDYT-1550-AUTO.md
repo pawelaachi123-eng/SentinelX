@@ -27,7 +27,7 @@ wyzwalacze poleceń (`Starts`, `text is`, `case`, `StartsWith`) oraz wzorce `Reg
 | 8. RAG (wektory z lokalnej Ollamy) | 591–670 (dopełnienie) | `KnowledgeRagService.cs` | 6 | 1 |
 | 20. Agentic (reszta: planowanie przez model, autonomia z budżetem) | 1401–1500 | — | 0 (GoalToolbox pokrywa szablony; modelowe planowanie celów nadal nie istnieje) | 0 |
 
-**Suma wyzwalaczy w modułach obsługi:** 713 · **paleta `//`:** 88 wpisów · **rozumienie języka:** 599 fraz
+**Suma wyzwalaczy w modułach obsługi:** 713 · **paleta `//`:** 90 wpisów · **rozumienie języka:** 601 fraz
 
 Werdykt (ludzki, z listą braków per sekcja): [AUDYT-1550.md](AUDYT-1550.md).
 

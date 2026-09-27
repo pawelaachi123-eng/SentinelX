@@ -1,5 +1,18 @@
 # RELEASE 0.97 · RDZEŃ — .NET 10, runtime rdzenia i narzędzia offline
 
+## Przyrost RAG i panelu modeli — 2026-09-27
+
+Kod `845f4b6`: [Windows build and WPF smoke](https://github.com/pawelaachi123-eng/SentinelX/actions/runs/36347938885) oraz [Build Windows app (.NET 10)](https://github.com/pawelaachi123-eng/SentinelX/actions/runs/36347938810) — **success**.
+
+- **Sekcja 8, archiwa:** `rag zapisz: nazwa` i `rag wczytaj: nazwa` pokazują plan. Dopiero to samo polecenie z ` potwierdzam` wykonuje operację. Zgoda jest jednorazowa, związana z nazwą, operacją i wersją bazy RAM; wygasa po 10 minutach. `rag archiwa` listuje kopie.
+- **Szyfrowanie:** Windows DPAPI dla bieżącego konta. Pliki `.sxrag` w `RagArchives` pod katalogiem danych aplikacji zawierają zaszyfrowane fragmenty, wektory i metadane. Brak automatycznego zapisu/wczytania; zapis zabroniony w trybie prywatnym. Istniejących kopii nie nadpisujemy. Błąd odczytu, uszkodzenie lub niepoprawne wymiary wektorów nie zmieniają bazy RAM.
+- **Sekcja 8, odpowiedzi:** `rag pytaj: pytanie` wybiera do 3 fragmentów i pyta lokalny model. Odsyłacze muszą wskazywać dostarczone fragmenty; brak odsyłaczy albo numer spoza zakresu daje jawną odmowę. Wynik zawiera literalne cytaty i ścieżki względne plików. Kontrola numerów nie dowodzi prawdziwości każdego twierdzenia modelu.
+- **Sekcja 2/19, GUI:** istniejąca strona AI ma szczegóły modelu, uruchomione modele, plany pobrania/usunięcia, postęp i anulowanie. Dokładne potwierdzenie wpisuje użytkownik. Polecenia przechodzą przez `IActionEngine` i istniejący `CommandRouter`.
+- **Regresje:** 3 nowe zestawy (`RagArchiveRegression`, `RagAnswerRegression`, `ModelPanelRegression`), razem **36 zestawów** w `UiSmokeTestRunner.RunAsync`; nadal **13 stron**. Testy korzystają z podstawionego transportu, bez rzeczywistej Ollamy i bez pobierania modeli.
+- **Liczniki skryptu:** **713 wyzwalaczy**, **601 fraz**, **90 wpisów palety**. Cztery nowe rodziny poleceń RAG są w centralnym routerze, którego skrypt nie wlicza do 713. To licznik wzorców, nie liczba ukończonych funkcji z listy 1550.
+- **Pozostaje:** import PDF/DOCX, OCR, wake-word, streaming ASR, test jakości odpowiedzi z rzeczywistym modelem, przenośne archiwa między kontami/komputerami, benchmark modeli i sterowanie urządzeniami smart home.
+- **Dystrybucja:** nie uruchamiano `workflow_dispatch`, nie pakowano EXE/instalatora. Istniejące CI kompiluje aplikację i uruchamia testy; bramki pakowania pozostały niezmienione.
+
 Data: 2026-09-27. Gałąź: `arena/01a0e28e-sentinelx`. Wersja: `0.97 · RDZEŃ`, pakiet `0.97.0`.
 Bez pakowania EXE — zgodnie z poleceniem użytkownika ten przyrost to **funkcje i narzędzia**,
 a weryfikacją jest build i testy na Windows w CI.
@@ -368,7 +381,7 @@ usuwanie, dobór do zadania i licencje doszły w drugim przyroście — sekcja 1
   „rag zbuduj: folder” (fragmenty ≤ 800 znaków z zakładką 120, wektory z nomic-embed-text przez
   loopback, limit 200 plików / 400 fragmentów), „rag szukaj: fraza” (kosinus, top 5 z procentem
   i nazwą pliku), „rag prompt: pytanie” (gotowiec z obowiązkowymi źródłami), „rag model/status/reset”.
-  Baza tylko w RAM; bez Ollamy jawny komunikat; nieudana budowa nie czyści bazy. Regresja:
+  Baza robocza w RAM; opcjonalne archiwum DPAPI opisano na początku pliku. Bez Ollamy jawny komunikat; nieudana budowa nie czyści bazy. Regresja:
   `tests/RagRegression.cs` na deterministycznych fejkowych wektorach (worki słów, 16 kubełków),
   przejście przez realny router — 33 zestawy. Dla maszyny użytkownika: `scripts/setup-rag.ps1`
   (jedno polecenie: sprawdza dotnet/ollama, pociąga modele, NIE buduje EXE) i `docs/START-RAG.md`.
@@ -381,6 +394,6 @@ usuwanie, dobór do zadania i licencje doszły w drugim przyroście — sekcja 1
 ## 17. Zestawy regresji po tym przyroście
 
 
-`--ui-smoke` uruchamia teraz **30 zestawów**: dotychczasowe 22 plus `architecture`, `research`,
+Przed przyrostami indeksu, RAG i panelu modeli `--ui-smoke` uruchamiał **30 zestawów** (obecnie 36): dotychczasowe 22 plus `architecture`, `research`,
 `knowledge`, `goals`, `fullstack`, `smarthome`, `media-vision` i `everyday` (pozostałe sekcje naraz).
 Zestawy działają na jawnych danych i nie zależą od sieci ani od modelu.
