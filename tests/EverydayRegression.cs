@@ -37,6 +37,9 @@ internal static class EverydayRegression
         Check(sessions.Contains("razem: 130 min"), "4×25 pracy + 3×5 + 15 przerwy = 130 min: " + sessions.Split('\n').Last());
         Check(Handle("koszt spotkania: 6 60 120").Contains("= 720 zł"), "6 osób × 1 h × 120 zł = 720 zł");
         Check(Handle("godziny pracy: 8:00-16:30 45").Contains("7 h 45 netto (465 min)"), "510 min minus 45 przerwy");
+        string week = Handle("plan tygodnia: pn=raport; wt=testy; beda=inne");
+        Check(week.Contains("· Pn: raport") && week.Contains("· Wt: testy") && week.Contains("· Śr: —"), "siatka tygodnia z pustymi dniami: " + week.Split('\n')[1]);
+        Check(week.Contains("nieznane dni: 1"), "nieznany dzień liczony uczciwie");
 
         // istniejące polecenia produktywności nadal działają (brak regresji po doklejce)
         Check(Handle("roi: 13000 2000").Contains("650"), "ROI nadal liczone (zysk 13000 / koszt 2000 = 650%)");

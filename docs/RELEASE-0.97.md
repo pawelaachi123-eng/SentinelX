@@ -359,8 +359,16 @@ usuwanie, dobór do zadania i licencje doszły w drugim przyroście — sekcja 1
   `i18n:` (braki kluczy między wersjami), `webhook szablon:` (HMAC + idempotencja),
   `token bucket:`, `retry plan:` (backoff ×2 + jitter; 4xx nie ponawiane), `sesje:`, `koszt spotkania:`,
   `godziny pracy:`.
+- **Dokładki po pierwszej zieleni pakietu**: „wykres: 3 5 8 4 | Sty Lut Mar Kwi” renderuje
+  słupkowy **PNG** (`ChartCommands.cs`, WPF DrawingVisual → RenderTargetBitmap) i zapisuje go w danych
+  aplikacji (ścieżka i statystyki w odpowiedzi); „indeks zbuduj: folder” / „indeks szukaj: fraza” /
+  „indeks status” (`KnowledgeIndexService.cs`) skanują .txt/.md do mapy słów **tylko w RAM** (200 plików,
+  głębokość 3, 2 MB/plik — nic na dysk); „plan tygodnia: pn=…; wt=…” daje siatkę tygodnia.
+- **Router ma teraz jawną regresję dispatchu**: `ModelManagementRegression` przechodzi przez realny
+  `CommandRouter` także dla architektury, researchu, indeksu i wykresu — dziura w dispatchu (moduły bez
+  wpięcia po inkydencie z force-pushe) nie może się już powtórzyć niezauważona.
 - Wszystko offline, bez sieci i bez modelu; każdy moduł ma własny zestaw regresji z liczbami
-  do sprawdzenia na kalkulatorze — łącznie **30 zestawów** w `--ui-smoke`.
+  do sprawdzenia na kalkulatorze — łącznie **32 zestawy** w `--ui-smoke`.
 
 ## 17. Zestawy regresji po tym przyroście
 

@@ -76,6 +76,8 @@ public static class CommandCatalog
         new("Research bez internetu", "Cytowania, bibliografia, wiarygodność źródeł, plany badań, słowa kluczowe", "cytuj bibliografia wiarygodnosc plan badan slowa kluczowe", CommandText: "cytuj apa: Kowalski | 2024 | Tytuł | Wydawnictwo"),
         new("Cele i ryzyko (agentic)", "Rozkład celu, plan kroków, budżet czasu, plan wycofania, klasyfikacja ryzyka", "cel plan krokow ryzyko wycofania autonomia", CommandText: "cel rozloz: nauczyć się gitary"),
         new("Język i automatyzacja", "Rozpoznawanie języka, braki i18n, webhook, token bucket, sesje, spotkania", "jezyk i18n webhook token bucket sesje spotkanie", CommandText: "jezyk: fragment tekstu do rozpoznania"),
+        new("Wykres z danych", "Słupkowy PNG z liczb i etykiet · zapis w danych aplikacji", "wykres chart png slupki", CommandText: "wykres: 3 5 8 4 | Sty Lut Mar Kwi"),
+        new("Indeks plików tekstowych", "Skan .txt/.md do indeksu w RAM i szukanie po frazie", "indeks szukaj zbuduj pliki tekst md", CommandText: "indeks szukaj: prywatność"),
         new("Centrum", "Rozmowa i lokalne polecenia — wszystkie zakładki w jednym miejscu", "czat chat rozmowa centrum center", PageKey: "command"),
         new("Pamięć", "Wspomnienia, profil i prywatność", "pamiec memory wspomnienia", PageKey: "memory"),
         new("Projekty", "Kontekst projektów i ich notatki", "projekt projects kontekst", PageKey: "projects"),

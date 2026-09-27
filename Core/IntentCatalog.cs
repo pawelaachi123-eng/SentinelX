@@ -162,7 +162,9 @@ public static class IntentCatalog
             "cel rozloz", "plan krokow", "czas na zadanie", "plan wycofania", "polityka autonomii",
             "ryzyko", "samoocena", "definicja sukcesu",
             "jezyk", "i18n", "webhook szablon", "token bucket", "retry plan", "sesje", "koszt spotkania",
-            "godziny pracy",
+            "godziny pracy", "plan tygodnia",
+            // 0.97 · dokładki po green-CI: wykres jako obraz (19), indeks plików w RAM (8)
+            "wykres", "indeks zbuduj", "indeks buduj", "indeks szukaj", "indeks znajdz", "indeks status", "status indeksu",
             // 0.97 · SEKCJA 15 — analiza danych (nazwy własne, więc mogą stać w katalogu naprawy)
             "statystyki liczb", "analiza liczb", "opis zbioru", "kwartyle", "odchylenie", "wariancja",
             "skosnosc", "kurtoza", "wspolczynnik zmiennosci", "przedzial ufnosci", "korelacja", "regresja",

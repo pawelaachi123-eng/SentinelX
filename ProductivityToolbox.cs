@@ -38,6 +38,7 @@ public static class ProductivityToolbox
         // ————— 0.97 · DOŁĄCZONE: §7 język, §11 reguły automatyzacji, §13 sesje/spotkania/czas pracy —————
         string en = ExtraFlat(text);
         if (ExtraIs(en, "jezyk")) return LanguageDetect(Payload(raw, "jezyk"));
+        if (ExtraIs(en, "plan tygodnia")) return WeekPlan(Payload(raw, "plan tygodnia"));
         if (ExtraIs(en, "i18n")) return I18nGaps(Payload(raw, "i18n"));
         if (ExtraIs(en, "webhook szablon")) return WebhookTemplate(Payload(raw, "webhook szablon"));
         if (ExtraIs(en, "token bucket")) return TokenBucket(Payload(raw, "token bucket"));

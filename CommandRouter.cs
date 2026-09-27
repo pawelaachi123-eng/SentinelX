@@ -81,6 +81,25 @@ public sealed class CommandRouter
         // komunikatem, więc regresja bez sieci jest deterministyczna.
         string? managementResponse = await TryHandleModelManagementAsync(command.Trim(), text, cancellationToken, onDelta);
         if (managementResponse != null) return managementResponse;
+        // 0.97 · POZOSTAŁE SEKCJE (5, 12, 8, 20, 6, 18, 9–10): architektura, research, wiedza, cele,
+        // full-stack, smart home i media — wszystko offline, na danych podanych w poleceniu.
+        string? architectureResponse = ArchitectureToolbox.TryHandle(command.Trim(), text);
+        if (architectureResponse != null) return architectureResponse;
+        string? researchResponse = ResearchToolbox.TryHandle(command.Trim(), text);
+        if (researchResponse != null) return researchResponse;
+        string? knowledgeResponse = KnowledgeToolbox.TryHandle(command.Trim(), text);
+        if (knowledgeResponse != null) return knowledgeResponse;
+        // 0.97 · SEKCJA 8 (dopełnienie): indeks plików tekstowych w RAM — zbuduj/szukaj/status.
+        string? indexResponse = KnowledgeIndexService.TryHandleCommand(command.Trim(), text);
+        if (indexResponse != null) return indexResponse;
+        string? goalResponse = GoalToolbox.TryHandle(command.Trim(), text);
+        if (goalResponse != null) return goalResponse;
+        string? fullStackResponse = FullStackToolbox.TryHandle(command.Trim(), text);
+        if (fullStackResponse != null) return fullStackResponse;
+        string? smartHomeResponse = SmartHomeToolbox.TryHandle(command.Trim(), text);
+        if (smartHomeResponse != null) return smartHomeResponse;
+        string? mediaResponse = MediaVisionToolbox.TryHandle(command.Trim(), text);
+        if (mediaResponse != null) return mediaResponse;
         // 0.97 · SEKCJA 15: analiza danych (statystyki, korelacja, regresja, metryki klasyfikacji).
         string? analysisResponse = AnalysisToolbox.TryHandle(command.Trim(), text);
         if (analysisResponse != null) return analysisResponse;
@@ -1052,7 +1071,8 @@ public sealed class CommandRouter
         Smart home 0.97 (sekcja 18): energia: 100 5 1,0 · koszt urzadzen: 100 5 1,0; 60 10 1,0 · termostat: 21 20 · scena dom: film | światła 20 · yaml automatyzacji: 22:00 | akcja · mqtt: dom/parter/lampa/stan · prad: 1500 · luminy: 18 · czujnik baterii: 3000 15 8 · tarif: 2000 1,0 0,85
         Media i obraz 0.97 (sekcje 9–10): kontrast: #fff #000 · ppi: 1920 1080 24 · proporcje: 1920 1080 · bitrate wideo: 90 1080p · audio czas: 50 320 · audio rozmiar: 3:30 320 · tempo mowy: 420 3 · db: 20 3
         Research i cele 0.97 (sekcje 12 i 20): cytuj apa: autor | rok | tytuł | źródło · bibliografia: … · wiarygodnosc: praca naukowa|dokumentacja|blog|forum · plan badan: temat · slowa kluczowe: tekst · zapytanie: fraza · macierz porownania: A | B | kryteria · podsumuj notatki: tekst · fakt zapisz: fakt | źródło · pytania badawcze: temat · cel rozloz: cel · plan krokow: a; b; c · czas na zadanie: 4 60 · plan wycofania: operacja · polityka autonomii · ryzyko: operacja · samoocena: zadanie | oczekiwane · definicja sukcesu: cel
-        Język i automatyzacja 0.97 (sekcje 7, 11, 13): jezyk: tekst · i18n: pl: a=1 | en: a=1 · webhook szablon: zdarzenie · token bucket: 100 10 · retry plan: 3 30 · sesje: 4 25 5 · koszt spotkania: 6 60 120 · godziny pracy: 8:00-16:30 45
+        Język i automatyzacja 0.97 (sekcje 7, 11, 13): jezyk: tekst · i18n: pl: a=1 | en: a=1 · webhook szablon: zdarzenie · token bucket: 100 10 · retry plan: 3 30 · sesje: 4 25 5 · koszt spotkania: 6 60 120 · godziny pracy: 8:00-16:30 45 · plan tygodnia: pn=zadanie; wt=zadanie
+        Wykresy 0.97 (sekcja 19): wykres: 3 5 8 4 | Sty Lut Mar Kwi — słupkowy PNG zapisany w danych aplikacji, ścieżka w odpowiedzi
         Kolejka zadań: kolejka · kolejka dodaj: log: info treść · kolejka przetworz · zwroty · zwrot ponow: T0001 · kolejka anuluj: T0001
         Harmonogram i flagi: cron opis: */15 * * * * · cron nastepne: 0 8 * * 1-5 · flagi · ustaw flage: eksperyment on|off|30
         Kopie i integralność: kopie danych · kopia danych · weryfikuj kopie: nazwa · integralnosc zbuduj: katalog · integralnosc sprawdz: katalog · integralnosc

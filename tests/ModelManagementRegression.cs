@@ -109,6 +109,16 @@ internal static class ModelManagementRegression
         string copyUsage = await router.ProcessAsync("model kopiuj: /etc/passwd do kopia");
         Check(copyUsage.Contains("Użycie") || copyUsage.Contains("Nazwy bez"), "ścieżka nie przechodzi jako źródło kopii: " + copyUsage.Split('\n')[0]);
 
+        // ---------------- routing pozostałych sekcji (przez realny router) ----------------
+        string arch = await router.ProcessAsync("moduly: a>b b>c c");
+        Check(arch.Contains("GRAF MODUŁÓW"), "router dopina architekturę (moduly:): " + arch.Split('\n')[0]);
+        string cite = await router.ProcessAsync("cytuj apa: Nowak | 2024 | Raport | Wydawnictwo");
+        Check(cite.Contains("Nowak (2024)"), "router dopina research (cytuj apa): " + cite);
+        string indexUsage = await router.ProcessAsync("indeks zbuduj");
+        Check(indexUsage.Contains("Podaj folder"), "router dopina indeks wiedzy: " + indexUsage);
+        string chart = await router.ProcessAsync("wykres: 1 2");
+        Check(chart.Contains("WYKRES ZAPISANY"), "router dopina wykres (Analysis): " + chart.Split('\n')[0]);
+
         // ---------------- zwykłe zdania nie są poleceniami zarządzania ----------------
         // (przez router nie idą: bez Ollamy wpadłyby w ścieżkę AI, która nie jest tematem tej suity)
         foreach (string sentence in new[]
