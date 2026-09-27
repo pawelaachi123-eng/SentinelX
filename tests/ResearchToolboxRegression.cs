@@ -38,7 +38,7 @@ internal static class ResearchToolboxRegression
 
         string query = Handle("zapytanie: lokalne modele ai");
         Check(query.Contains("filetype:pdf") && query.Contains("site:wikipedia.org"), "warianty zapytania z operatorami");
-        Check(query.Contains("nie pobieram") || query.Contains("niczego nie pobieram") || query.Contains("nie pobieram sam"), "uczciwa deklaracja braku pobierania");
+        Check(query.Contains("niczego nie pobiera"), "uczciwa deklaracja braku pobierania");
 
         Check(Handle("macierz porownania: Ollama | llama.cpp | cena;jakosc").Contains("| cena |  |  |"), "macierz porównania z pustymi komórkami");
 
