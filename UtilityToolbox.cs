@@ -41,7 +41,10 @@ public static class UtilityToolbox
             return part.ToString("0.##", Pl) + "% z " + whole.ToString("0.##", Pl) + " = " + (part / 100d * whole).ToString("0.####", Pl);
         }
         // 0.94: VAT z własną stawką (23/8/5/0) — stawkę podajesz pierwszą: „vat 8 100”.
-        var vat = Regex.Match(text, @"^vat[:\s]+(?:(\d{1,2})(?:\s*(?:%|procent))?\s+)?(\d+[.,]?\d*)(?:\s*(netto|brutto))?$");
+        // 0.97 · stawka łapana jako 1–3 cyfry: „vat 120 100” musi trafić do walidacji 0–100
+        // (wcześniej wzorzec milczał i polecenie nie było obsługiwane wcale), a „vat 100” nadal
+        // czyta się jako kwota bez stawki.
+        var vat = Regex.Match(text, @"^vat[:\s]+(?:(\d{1,3})(?:\s*(?:%|procent))?\s+)?(\d+[.,]?\d*)(?:\s*(netto|brutto))?$");
         if (vat.Success)
         {
             if (!TryNumber(vat.Groups[2].Value, out double amount)) return NumberError;
