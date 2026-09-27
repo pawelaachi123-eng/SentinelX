@@ -21,6 +21,10 @@ public static class AnalysisToolbox
     {
         string raw = command ?? "";
 
+        // 0.97 · SEKCJA 19: wykres jako obraz PNG (ChartCommands; regresja podaje folder testowy).
+        var chart = Regex.Match(text, @"^wykres[:\s]+(.+)$", RegexOptions.Singleline);
+        if (chart.Success) return ChartCommands.Handle(chart.Groups[1].Value.Trim());
+
         if (Starts(text, "statystyki liczb", "analiza liczb", "opis zbioru"))
             return Describe(Numbers(Payload(raw, "statystyki liczb", "analiza liczb", "opis zbioru")));
         if (Starts(text, "kwartyle", "kwartyl"))
