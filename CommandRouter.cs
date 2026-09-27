@@ -22,6 +22,9 @@ public sealed class CommandRouter
     private readonly UnderstandingJournal? journal;
     private readonly SessionFactBook? facts;
     private readonly Core.LearnedPatterns? learned;
+    private readonly RagArchiveStore ragArchives;
+    private readonly Func<DateTime> ragClock;
+    private (string Operation, string Name, DateTime Expires, long Revision)? pendingRagArchive;
     private string lastTopic = "";
     private DateTime lastTopicTime;
     private (string Text, DateTime When, string Description, DateTime Expires)? pendingReminder;
@@ -48,9 +51,11 @@ public sealed class CommandRouter
     public CommandRouter(SystemMonitor systemMonitor, SystemInfoService systemInfo, LocalAiService localAi, ConversationMemoryService memory,
         ProjectService? projects = null, TaskService? tasks = null, DiagnosticSnapshotService? snapshots = null,
         MemoryArchiveService? archives = null, WorkspaceInsightsService? insights = null, UnderstandingJournal? journal = null,
-        SessionFactBook? facts = null, Core.LearnedPatterns? learned = null)
+        SessionFactBook? facts = null, Core.LearnedPatterns? learned = null, string? ragArchiveDirectory = null, Func<DateTime>? ragClock = null)
     {
         this.systemMonitor = systemMonitor; this.systemInfo = systemInfo; this.localAi = localAi; this.memory = memory;
+        ragArchives = new RagArchiveStore(ragArchiveDirectory);
+        this.ragClock = ragClock ?? (() => DateTime.UtcNow);
         this.projects = projects; this.tasks = tasks; this.snapshots = snapshots; this.archives = archives; this.insights = insights;
         this.journal = journal; this.facts = facts; this.learned = learned;
     }
@@ -260,7 +265,8 @@ public sealed class CommandRouter
                 "· Narzędzia deweloperskie: diff, wyrażenia regularne, semver, adresy IP i podsieci (tylko pełny zapis kropkowany), JWT, UUID/NanoID, generator zapytań SQL i INSERT-ów, konwencja commitów, Base32/Base58, CRC32 i inne.\n" +
                 "· Analiza kodu — wyłącznie odczyt: złożoność, dług techniczny, martwy kod, sekrety w plikach, zależności, TODO. Zawsze podaję limit, którego nie przekraczam, i mówię wprost, że to podpowiedź, a nie wyrok.\n" +
                 "· Finanse, tekst i produktywność: kwota słownie, ROI, budżet 50/30/20, statystyki tekstu, generator slajdów, karta produktu.\n" +
-                "· RAG bez chmury (sekcja 8): „rag zbuduj: folder” tnie .txt/.md na fragmenty i liczy wektory lokalną Ollamą (nomic-embed-text), „rag szukaj: fraza” to kosinus po wektorach z nazwą pliku i procentem, „rag prompt: pytanie” składa gotowiec ze źródłami. Baza żyje tylko w RAM; bez Ollamy jawny komunikat, a nieudana budowa nie czyści istniejącej bazy.\n" +
+                "· RAG: zaszyfrowane archiwa na żądanie, rag pytaj z odsyłaczami i cytatami. Panel AI: plany pobrania/usunięcia przez router.\n" +
+                "· RAG bez chmury (sekcja 8): „rag zbuduj: folder” tnie .txt/.md na fragmenty i liczy wektory lokalną Ollamą (nomic-embed-text), „rag szukaj: fraza” to kosinus po wektorach z nazwą pliku i procentem, „rag prompt: pytanie” składa gotowiec ze źródłami. Baza robocza żyje w RAM, archiwum zapisujesz osobno; bez Ollamy jawny komunikat, a nieudana budowa nie czyści istniejącej bazy.\n" +
                 "· Pozostałe sekcje (5, 6, 8, 12, 18, 20 + braki 7, 9–11, 13): architektura bez rysowania (graf modułów z kolejnością budowy, cykle, sprzężenia, naruszenia warstw, dług, ADR, pojemność, latencja), full-stack offline (szkielety API, OpenAPI, encje TS/C#, SQL, compose, CORS, paginacja), wiedza bez embeddingów (fiszki, Anki, rozłożone powtórki, podobieństwo kosinusowe), research bez internetu (cytowania, wiarygodność źródeł, plany badań, karty faktów — nic nie pobieram), smart home bez sprzętu (energia i koszty, termostat, YAML automatyzacji do wklejenia, konwencje MQTT), cele agentic (rozkład celu, walidacja planu, plan wycofania, klasyfikacja ryzyka, polityka autonomii) oraz media (kontrast WCAG, PPI, proporcje, audio, tempo mowy, decybele). Wszystko liczone na danych z polecenia — zero sieci, zero urządzeń, zero zmyślonych liczb.\n" +
                 "· Modele lokalne — zarządzanie (drugi przyrost sekcji 2): „model do zadania: …” (dobór modelu pod opis), „model licencje”, „model info: …”, „model uruchomione”, „model status pobierania”. Pobieranie i usuwanie mają zgodę dwuetapową: najpierw plan („model pobierz: qwen3:1.7b”), potem dokładnie „… potwierdzam” — zgoda jest jednorazowa, związana z nazwą i wygasa po 10 minutach; usuwanie odmówi, gdy model jest ustawiony, albo gdy trwa pobieranie. Połączenie tylko z lokalną Ollamą (127.0.0.1:11434); bez niej dostajesz uczciwy komunikat, nie wyciszoną awarię.\n" +
                 "· Modele lokalne (pierwszy przyrost sekcji 2): „modele lokalne” (katalog z rolą i notką) · „model karta: qwen2.5:7b” (wagi, KV cache i suma z narzutem, z wypisanym wzorem) · „model dopasuj: 8” i „model audyt” (co wejdzie w Twoją pamięć) · „model rola: kod|wizja|embeddingi…” · „kwantyzacje” · „presety modelu” · „prompt szablony” (10 gotowych promptów) · „model kv” · „model pamiec” · „model porownaj” · „model kolejka” (jedna ścieżka, limit 180 s, model zapasowy) · „model polityka” · „model offline”. Wszystko offline i zawsze jako szacunek z podanym wzorem — nic nie pobieram.\n" +
@@ -944,12 +950,47 @@ public sealed class CommandRouter
     /// łapię per polecenie i zamieniam na uczciwy komunikat offline, żeby brak Ollamy nie wyglądał na awarię.</summary>
     private async Task<string?> TryHandleRagAsync(string command, string text, CancellationToken cancellationToken)
     {
+        if (text == "rag archiwa") return ragArchives.List();
+        var archive = Regex.Match(command, @"^rag (zapisz|wczytaj)[:\s]+([a-zA-Z0-9_-]+)(\s+potwierdzam)?$", RegexOptions.IgnoreCase);
+        if (archive.Success)
+        {
+            string operation = archive.Groups[1].Value.ToLowerInvariant();
+            string name = archive.Groups[2].Value.ToLowerInvariant();
+            if (!RagArchiveStore.ValidName(name)) return "Niepoprawna nazwa archiwum RAG.";
+            if (operation == "zapisz" && memory.PrivateMode)
+            { pendingRagArchive = null; return "Tryb prywatny: nie zapisuję archiwum RAG."; }
+            if (!archive.Groups[3].Success)
+            {
+                pendingRagArchive = (operation, name, ragClock().Add(ConsentTimeToLive), KnowledgeRagService.Revision);
+                return "PLAN RAG: " + operation + " „" + name + "”. " +
+                    (operation == "zapisz" ? "Zaszyfrowana kopia dla tego konta Windows; bez nadpisywania istniejącej kopii. " : "Zastąpi bazę roboczą w RAM i przywróci model embeddingów z kopii. ") +
+                    "Potwierdź dokładnie: rag " + operation + ": " + name + " potwierdzam. Zgoda jednorazowa, ważna 10 minut.";
+            }
+            var consent = pendingRagArchive;
+            pendingRagArchive = null;
+            if (consent is not { } c || c.Operation != operation || c.Name != name || c.Expires <= ragClock() || c.Revision != KnowledgeRagService.Revision)
+                return "Zgoda RAG nieaktualna albo dotyczy innej bazy lub nazwy. Najpierw ponów plan.";
+            cancellationToken.ThrowIfCancellationRequested();
+            try
+            {
+                if (operation == "wczytaj") return KnowledgeRagService.Restore(ragArchives.Load(name), c.Revision);
+                ragArchives.Save(name, KnowledgeRagService.Snapshot());
+                return "Zapisano zaszyfrowane archiwum RAG: " + name + ". Odczyt wymaga tego konta Windows. Kopia nie obejmuje historii czatu.";
+            }
+            catch (Exception ex) when (ex is System.IO.IOException or System.IO.InvalidDataException or UnauthorizedAccessException or System.Security.Cryptography.CryptographicException or System.Text.Json.JsonException)
+            { return "Operacja archiwum RAG nie powiodła się (" + ex.GetType().Name + "). Baza RAM pozostaje bez zmian; sprawdź nazwę, uprawnienia i konto Windows."; }
+        }
+        if (text.StartsWith("rag zapisz", StringComparison.Ordinal) || text.StartsWith("rag wczytaj", StringComparison.Ordinal))
+            return "Użycie: rag zapisz: nazwa albo rag wczytaj: nazwa. Najpierw plan, potem to samo polecenie z potwierdzam. Nazwa: litery ASCII, cyfry, _ i -.";
+        var ask = Regex.Match(command, @"^rag pytaj[:\s]+(.*)$", RegexOptions.IgnoreCase);
+        if (ask.Success) return await KnowledgeRagService.AskAsync(ask.Groups[1].Value, localAi, cancellationToken);
+        if (text == "rag pytaj") return "Użycie: rag pytaj: pytanie";
         var build = Regex.Match(command, @"^rag zbuduj[:\s]+(.+)$", RegexOptions.IgnoreCase);
         if (build.Success) return await KnowledgeRagService.BuildAsync(build.Groups[1].Value, localAi, cancellationToken);
         var search = Regex.Match(command, @"^rag szukaj[:\s]+(.+)$", RegexOptions.IgnoreCase);
-        if (search.Success) return await KnowledgeRagService.SearchAsync(search.Groups[1].Value, localAi);
+        if (search.Success) return await KnowledgeRagService.SearchAsync(search.Groups[1].Value, localAi, cancellationToken: cancellationToken);
         var prompt = Regex.Match(command, @"^rag prompt[:\s]+(.+)$", RegexOptions.IgnoreCase);
-        if (prompt.Success) return await KnowledgeRagService.PromptAsync(prompt.Groups[1].Value, localAi);
+        if (prompt.Success) return await KnowledgeRagService.PromptAsync(prompt.Groups[1].Value, localAi, cancellationToken);
         return KnowledgeRagService.TryHandleCommand(command, text);
     }
 
@@ -1082,7 +1123,8 @@ public sealed class CommandRouter
         Modele lokalne 0.97: modele lokalne · model karta: qwen2.5:7b · model dopasuj: 8 · model audyt (Twój RAM) · model do zadania: pisanie kodu | streszczanie | zdjęcia | embeddingi | rozumowanie · model licencje · model rola: kod|rozmowa|szybkie|wizja|embeddingi|rozumowanie · kwantyzacje · kwantyzacja: q4_K_M · presety modelu · preset modelu: szybki · prompt szablony · prompt szablon: kod · model kv: qwen2.5:7b 8192 · model pamiec: 8192 · model porownaj: qwen2.5:7b vs qwen2.5:14b · model kolejka · model polityka · model offline · model info: qwen2.5:7b · model uruchomione · model status pobierania · model pobierz: <nazwa> + „… potwierdzam” (zgoda dwuetapowa, 10 minut) · model usun: <nazwa> + „… potwierdzam” · model kopiuj: <nazwa> do <kopia> (wszystko lokalnie; pobieranie tylko za jawną zgodą)
         Architektura 0.97 (sekcja 5): moduly: a>b,c · cykle: … · sprzezenie: … · warstwy: ui>logika>dane | wywolania · dlug techniczny: a=7 · adr: tytuł | kontekst | decyzja | konsekwencje · styl: monolit|modularny|mikro · c4: nazwa | opis | technologia · kapacyt: 5000 250 · pojemnosc kolejki: 5000 100 · latencja: 50 20 10 5 · migracja bazy: nazwa · wdrozenie kanary: 5 · karta modulu: nazwa | odpowiedzialnosc
         Full-stack 0.97 (sekcja 6): api szkielet: encja | pola · openapi: … · encja ts: … · encja csharp: … · migracja sql: dodaj tabela kolumna typ · sql indeks: tabela kol1,kol2 · compose: web 8080 nginx · cors: https://… · env: KLUCZ=opis · dostep: role | zasob · status http: 404 · rest tabela · walidacja: email; haslo:min8 · relacja: 1:n|m:n|1:1 · paginacja: 1000 20 5
-        Wiedza i nauka 0.97 (sekcja 8): fiszki: pojęcie = definicja; … · anki: … · powtorki: RRRR-MM-DD · slownik pojec: … · podobienstwo: A | B · wspolne tematy: A | B | C · mapa wiedzy: temat > gałęzie · indeks pojec: tekst · pytania kontrolne: tekst · indeks zbuduj: folder · indeks szukaj: fraza · indeks status (indeks .txt/.md tylko w RAM) · RAG: rag zbuduj: folder · rag szukaj: fraza · rag prompt: pytanie · rag model: nomic-embed-text · rag status · rag reset (wektory liczy lokalna Ollama, baza tylko w RAM)
+        RAG rozszerzony: rag pytaj: pytanie · rag archiwa · rag zapisz: nazwa · rag wczytaj: nazwa (plan, potem to samo z potwierdzam; DPAPI konta Windows). Panel zarządzania modelami: strona AI.
+        Wiedza i nauka 0.97 (sekcja 8): fiszki: pojęcie = definicja; … · anki: … · powtorki: RRRR-MM-DD · slownik pojec: … · podobienstwo: A | B · wspolne tematy: A | B | C · mapa wiedzy: temat > gałęzie · indeks pojec: tekst · pytania kontrolne: tekst · indeks zbuduj: folder · indeks szukaj: fraza · indeks status (indeks .txt/.md tylko w RAM) · RAG: rag zbuduj: folder · rag szukaj: fraza · rag prompt: pytanie · rag model: nomic-embed-text · rag status · rag reset (wektory liczy lokalna Ollama, baza robocza w RAM; opcjonalne szyfrowane archiwa)
         Smart home 0.97 (sekcja 18): energia: 100 5 1,0 · koszt urzadzen: 100 5 1,0; 60 10 1,0 · termostat: 21 20 · scena dom: film | światła 20 · yaml automatyzacji: 22:00 | akcja · mqtt: dom/parter/lampa/stan · prad: 1500 · luminy: 18 · czujnik baterii: 3000 15 8 · tarif: 2000 1,0 0,85
         Media i obraz 0.97 (sekcje 9–10): kontrast: #fff #000 · ppi: 1920 1080 24 · proporcje: 1920 1080 · bitrate wideo: 90 1080p · audio czas: 50 320 · audio rozmiar: 3:30 320 · tempo mowy: 420 3 · db: 20 3
         Research i cele 0.97 (sekcje 12 i 20): cytuj apa: autor | rok | tytuł | źródło · bibliografia: … · wiarygodnosc: praca naukowa|dokumentacja|blog|forum · plan badan: temat · slowa kluczowe: tekst · zapytanie: fraza · macierz porownania: A | B | kryteria · podsumuj notatki: tekst · fakt zapisz: fakt | źródło · pytania badawcze: temat · cel rozloz: cel · plan krokow: a; b; c · czas na zadanie: 4 60 · plan wycofania: operacja · polityka autonomii · ryzyko: operacja · samoocena: zadanie | oczekiwane · definicja sukcesu: cel

@@ -58,6 +58,9 @@ public static class UiSmokeTestRunner
             await Tests.ChartRegression.RunAsync(Path.Combine(output, "charts"));
             await Tests.KnowledgeIndexRegression.RunAsync(Path.Combine(output, "knowledge-index"));
             await Tests.RagRegression.RunAsync(Path.Combine(output, "rag"));
+            await Tests.RagArchiveRegression.RunAsync(Path.Combine(output, "rag-archive"));
+            await Tests.RagAnswerRegression.RunAsync(Path.Combine(output, "rag-answer"));
+            await Tests.ModelPanelRegression.RunAsync(Path.Combine(output, "model-panel"));
             await Tests.AnalysisToolboxRegression.RunAsync(Path.Combine(output, "analysis"));
             await Tests.LifeToolboxRegression.RunAsync(Path.Combine(output, "life"));
             await Tests.PrivacyToolboxRegression.RunAsync(Path.Combine(output, "privacy"));
