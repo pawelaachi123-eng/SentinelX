@@ -143,7 +143,9 @@ public static class IntentCatalog
             // 0.97 · SEKCJA 2 (drugi przyrost) — zarządzanie: dobór do zadania, licencje, zgoda dwuetapowa
             "model do zadania", "dobierz model", "model licencje", "licencje modeli", "model licencja",
             "model info", "model uruchomione", "model procesy", "model status pobierania", "status pobierania modelu",
-            "model pobierz", "pobierz model", "model usun", "model kopiuj",
+            "model pobierz", "pobierz model", "model kopiuj",
+            // Uwaga: „model usun” celowo poza katalogiem — kontrakt bezpieczeństwa (destructive verbs
+            // nigdy nie są kandydatami naprawy). Polecenie obsługuje regex w CommandRouter.
             // 0.97 · SEKCJA 15 — analiza danych (nazwy własne, więc mogą stać w katalogu naprawy)
             "statystyki liczb", "analiza liczb", "opis zbioru", "kwartyle", "odchylenie", "wariancja",
             "skosnosc", "kurtoza", "wspolczynnik zmiennosci", "przedzial ufnosci", "korelacja", "regresja",
