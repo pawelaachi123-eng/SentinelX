@@ -7,12 +7,32 @@ on:
 jobs:
   build:
     runs-on: windows-latest
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-dotnet@v4
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v4
         with:
-         dotnet-version: '10.0.x'
+          dotnet-version: '10.0.x'
 
-      - name: Build
-        run: dotnet build --configuration Release
+      - name: Restore and build
+        shell: pwsh
+        run: |
+          $solution = Get-ChildItem -Path . -File -Filter *.sln | Select-Object -First 1
+
+          if ($solution) {
+            $target = $solution.FullName
+          } else {
+            $projects = @(Get-ChildItem -Path . -File -Filter *.csproj)
+
+            if ($projects.Count -ne 1) {
+              throw "Nie znaleziono jednej solucji .sln ani jednego projektu .csproj w głównym katalogu repozytorium."
+            }
+
+            $target = $projects[0].FullName
+          }
+
+          dotnet restore $target
+          dotnet build $target --configuration Release --no-restore
