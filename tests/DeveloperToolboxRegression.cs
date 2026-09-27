@@ -139,7 +139,7 @@ internal static class DeveloperToolboxRegression
         // ---------------- tokeny i kontekst ----------------
         Check(DeveloperToolbox.TokenEstimate(new string('a', 360)).Contains("~100 tokenów"), "szacunek tokenów: " + DeveloperToolbox.TokenEstimate(new string('a', 360)).Replace(Environment.NewLine, " | "));
         Check(DeveloperToolbox.ContextBudget(8192, "krótki tekst").Contains("mieści się"), "krótka treść mieści się w oknie");
-        Check(DeveloperToolbox.ContextBudget(512, new string('a', 5000)).Contains("NIE zmieści się"), "zbyt długa treść jest zgłaszana");
+        Check(DeveloperToolbox.ContextBudget(512, new string('a', 5000)).Contains("NIE zmieści"), "zbyt długa treść jest zgłaszana");
 
         // ---------------- finanse i produktywność ----------------
         Check(ProductivityToolbox.NumberToPolishWords("1234").Contains("tysiąc dwieście trzydzieści cztery"),
