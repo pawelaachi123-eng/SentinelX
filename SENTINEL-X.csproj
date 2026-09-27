@@ -1,58 +1,45 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-	<PropertyGroup>
-		<OutputType>WinExe</OutputType>
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
 
-		<TargetFramework>net9.0-windows</TargetFramework>
+    <TargetFramework>net10.0-windows</TargetFramework>
 
-		<UseWPF>true</UseWPF>
-        <EnableWindowsTargeting>true</EnableWindowsTargeting>
-        <LangVersion>13.0</LangVersion>
-        <ApplicationManifest>app.manifest</ApplicationManifest>
-        <ApplicationIcon>Assets/sentinel.ico</ApplicationIcon>
-        <NoWarn>$(NoWarn);WPF0001</NoWarn>
+    <UseWPF>true</UseWPF>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <LangVersion>14.0</LangVersion>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets/sentinel.ico</ApplicationIcon>
+    <NoWarn>$(NoWarn);WPF0001</NoWarn>
 
-		<Nullable>enable</Nullable>
-		<ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
 
-		<RootNamespace>SentinelX</RootNamespace>
-		<AssemblyName>SentinelX</AssemblyName>
+    <RootNamespace>SentinelX</RootNamespace>
+    <AssemblyName>SentinelX</AssemblyName>
 
-		<PlatformTarget>x64</PlatformTarget>
-		<Prefer32Bit>false</Prefer32Bit>
-		<Version>0.93.0</Version>
-		<Description>Lokalny asystent i diagnostyka Windows</Description>
-	</PropertyGroup>
+    <PlatformTarget>x64</PlatformTarget>
+    <Prefer32Bit>false</Prefer32Bit>
+    <Version>0.93.0</Version>
+    <Description>Lokalny asystent i diagnostyka Windows</Description>
+  </PropertyGroup>
 
-	<ItemGroup>
-        <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
-        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.0" />
-        <PackageReference Include="OllamaSharp" Version="5.4.18" />
-        <!-- 5.x uses the stable IChatClient ABI required by existing Whisper.net 1.9.1. -->
-		<PackageReference Include="System.Speech" Version="9.0.0" />
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.0" />
+    <PackageReference Include="OllamaSharp" Version="5.4.18" />
+    <!-- 5.x uses the stable IChatClient ABI required by existing Whisper.net 1.9.1. -->
+    <PackageReference Include="System.Speech" Version="9.0.0" />
+    <PackageReference Include="NAudio" Version="2.2.1" />
+    <PackageReference Include="Whisper.net" Version="1.9.1" />
+    <PackageReference Include="Whisper.net.Runtime" Version="1.9.1" />
+    <PackageReference Include="org.k2fsa.sherpa.onnx" Version="1.13.5" />
+    <PackageReference Include="SharpCompress" Version="0.50.4" />
+    <PackageReference Include="System.Diagnostics.PerformanceCounter" Version="9.0.0" />
+  </ItemGroup>
 
-		<PackageReference Include="NAudio"
-						  Version="2.2.1" />
+  <ItemGroup>
+    <Resource Include="Assets/sentinel.ico" />
+  </ItemGroup>
 
-		<PackageReference Include="Whisper.net"
-						  Version="1.9.1" />
-
-		<PackageReference Include="Whisper.net.Runtime"
-						  Version="1.9.1" />
-
-		<PackageReference Include="org.k2fsa.sherpa.onnx"
-						  Version="1.13.5" />
-
-		<PackageReference Include="SharpCompress"
-						  Version="0.50.4" />
-
-		<PackageReference Include="System.Diagnostics.PerformanceCounter"
-						  Version="9.0.0" />
-
-	</ItemGroup>
-
-    <ItemGroup>
-        <Resource Include="Assets/sentinel.ico" />
-    </ItemGroup>
 </Project>
-
