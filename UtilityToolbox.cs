@@ -1803,9 +1803,9 @@ public static class UtilityToolbox
             {
                 string[] numbers = part.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
                 if (numbers.Length < 2 || numbers.Length > 3) { ok = false; break; }
-                double rate = numbers.Length == 3 && Core.PlCalculators.TryNumber(numbers[2], out double parsedRate) ? parsedRate : 0;
+                double annual = numbers.Length == 3 && Core.PlCalculators.TryNumber(numbers[2], out double parsedRate) ? parsedRate : 0;
                 if (!Core.PlCalculators.TryNumber(numbers[0], out double balance) || !Core.PlCalculators.TryNumber(numbers[1], out double payment)) { ok = false; break; }
-                list.Add(("dług " + (list.Count + 1), balance, payment, rate));
+                list.Add(("dług " + (list.Count + 1), balance, payment, annual));
             }
             if (!ok || list.Count == 0)
                 return "Podaj długi jako „kwota rata oprocentowanie”, kilka rozdziel „|”, np. „spłata długu: 5000 200 12 | 12000 300 8”.";
