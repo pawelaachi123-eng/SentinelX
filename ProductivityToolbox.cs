@@ -557,6 +557,38 @@ public static class ProductivityToolbox
             " z przerwą " + N(brk, 0) + " min = " + (net / 60) + " h " + (net % 60).ToString("00", Pl) + " netto (" + N(net, 0) + " min)";
     }
 
+    private static string WeekPlan(string input)
+    {
+        var dayMap = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["pn"] = "Pn", ["pon"] = "Pn", ["wt"] = "Wt", ["sr"] = "Śr", ["cz"] = "Cz", ["czw"] = "Cz",
+            ["pt"] = "Pt", ["sb"] = "So", ["so"] = "So", ["nd"] = "Nd", ["niedz"] = "Nd", ["niedziela"] = "Nd",
+        };
+        var plan = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+        foreach (string part in (input ?? "").Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            int eq = part.IndexOf('=');
+            if (eq <= 0) continue;
+            string rawDay = ExtraFlat(part[..eq].Trim());
+            if (!dayMap.TryGetValue(rawDay, out var day)) day = "??";
+            if (!plan.TryGetValue(day, out var list)) plan[day] = list = [];
+            list.Add(part[(eq + 1)..].Trim());
+        }
+        if (plan.Count == 0)
+            return "Użycie: „plan tygodnia: pn=raport; wt=testy; pt=przegląd”. Dostaniesz siatkę tygodnia — tekst, nie kalendarz z powiadomieniami.";
+        var order = new[] { "Pn", "Wt", "Śr", "Cz", "Pt", "So", "Nd" };
+        var sb = new StringBuilder("PLAN TYGODNIA (siatka do wklejenia; pilnowanie terminów zostaje za tobą):").AppendLine();
+        foreach (string day in order)
+        {
+            plan.TryGetValue(day, out var items);
+            sb.Append("· ").Append(day).Append(": ").Append(items is { Count: > 0 } ? string.Join(" · ", items) : "—").AppendLine();
+        }
+        int unknown = plan.GetValueOrDefault("??", []).Count;
+        if (unknown > 0) sb.Append("(nieznane dni: ").Append(unknown).Append(" wpisów — użyj pn/wt/sr/cz/pt/so/nd)").AppendLine();
+        sb.Append("· plan bez przeglądu w piątek to życzenia — sprawdź w Piątek, co zeszło, i przenieś resztę");
+        return sb.ToString();
+    }
+
     private static string ExtraFlat(string input)
     {
         string s = (input ?? "").ToLowerInvariant();
