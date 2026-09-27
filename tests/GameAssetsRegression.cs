@@ -60,7 +60,7 @@ internal static class GameAssetsRegression
         string[] luaClientControllers = { "HudController.lua", "ShopUI.lua", "SettingsUI.lua", "MusicController.lua" };
         string[] blenderFiles = { "build_all.py", "lib/bpyutil.py", "character.py", "animations.py", "props.py", "export.py" };
 
-        var allLua = new List<string> { "src/Shared", "src/Server/Main.server.lua", "src/Client/Main.client.lua" };
+        var allLua = new List<string> { "src/Server/Main.server.lua", "src/Client/Main.client.lua" };
         foreach (var file in luaShared) allLua.Add("src/Shared/" + file);
         foreach (var file in luaServerModules) allLua.Add("src/Server/Modules/" + file);
         foreach (var file in luaClientControllers) allLua.Add("src/Client/Controllers/" + file);
