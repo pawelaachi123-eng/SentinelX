@@ -290,26 +290,26 @@ public static class ArchitectureToolbox
     {
         var graph = new Dictionary<string, List<string>>(StringComparer.Ordinal);
         foreach (string part in Regex.Split(input ?? "", @"[;\n|]+"))
-        {
-            string s = part.Trim();
-            if (s.Length == 0) continue;
-            int arrow = s.IndexOf('>');
-            if (arrow < 0)
+            foreach (string token in part.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
             {
-                string node = s.Trim();
-                if (node.Length is > 0 and <= 40 && !graph.ContainsKey(node)) graph[node] = [];
-                continue;
+                string s = token.Trim();
+                if (s.Length == 0) continue;
+                int arrow = s.IndexOf('>');
+                if (arrow < 0)
+                {
+                    if (s.Length is > 0 and <= 40 && !graph.ContainsKey(s)) graph[s] = [];
+                    continue;
+                }
+                string from = s[..arrow].Trim();
+                if (from.Length is 0 or > 40) continue;
+                if (!graph.ContainsKey(from)) graph[from] = [];
+                foreach (string to in s[(arrow + 1)..].Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                {
+                    if (to.Length is 0 or > 40) continue;
+                    if (!graph[from].Contains(to)) graph[from].Add(to);
+                    if (!graph.ContainsKey(to)) graph[to] = [];
+                }
             }
-            string from = s[..arrow].Trim();
-            if (from.Length is 0 or > 40) continue;
-            if (!graph.ContainsKey(from)) graph[from] = [];
-            foreach (string to in s[(arrow + 1)..].Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
-            {
-                if (to.Length is 0 or > 40) continue;
-                if (!graph[from].Contains(to)) graph[from].Add(to);
-                if (!graph.ContainsKey(to)) graph[to] = [];
-            }
-        }
         return graph;
     }
 
