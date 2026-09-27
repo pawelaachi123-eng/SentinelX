@@ -234,5 +234,10 @@ project = ET.parse(ROOT / "SENTINEL-X.csproj")
 assert project.findtext(".//TargetFramework") == "net10.0-windows", "TargetFramework must stay on .NET 10"
 assert (project.findtext(".//LangVersion") or "") == "14.0", "LangVersion must stay on C# 14"
 assert project.findtext(".//UseWindowsForms") != "true"
-assert len(list((ROOT / "Views/Pages").glob("*Page.xaml"))) == 12
-print("PASS: XML, resources, resource order, animation paths, 12 views, thin code-behind, VM boundaries, .NET 10 + C# 14 target, no WinForms flag, XAML pitfalls")
+# 0.97 · STUDIO: liczba stron jest bramką, nie ciekawostką — każda nowa strona musi mieć
+# DataTemplate w Views/MainWindow.xaml, miejsce w nawigacji (NavItem albo zakładkę Centrum)
+# i odwiedziny w --ui-smoke. Dodanie pliku bez tego jest błędem, dlatego liczba jest stała.
+pages = sorted((ROOT / "Views/Pages").glob("*Page.xaml"))
+assert len(pages) == 13, f"page count changed ({len(pages)}) — wire the new page into MainWindow, navigation and --ui-smoke first: {[x.name for x in pages]}"
+assert (ROOT / "Views/Pages/StudioPage.xaml").exists(), "Studio 0.97 page is part of the 0.97 surface"
+print(f"PASS: XML, resources, resource order, animation paths, {len(pages)} views, thin code-behind, VM boundaries, .NET 10 + C# 14 target, no WinForms flag, XAML pitfalls")
