@@ -6,7 +6,7 @@ wyzwalacze poleceń (`Starts`, `text is`, `case`, `StartsWith`) oraz wzorce `Reg
 | Sekcja | Pozycje | Moduł | Wyzwalacze poleceń | Wzorce |
 |---|---|---|---|---|
 | 1. Rdzeń | 1–45 | `Core/Runtime/RuntimeCommands.cs` | 86 | 0 |
-| 2. Modele lokalne (Ollama) | 46–120 | `ModelToolbox.cs` | 20 | 9 |
+| 2. Modele lokalne (Ollama) | 46–120 | `ModelToolbox.cs` | 23 | 10 |
 | 3. Prywatność i dane | 121–185 | `PrivacyToolbox.cs` | 30 | 3 |
 | 4. Kodowanie | 186–340 | `DeveloperToolbox.cs` | 12 | 39 |
 | 4. Kodowanie (analiza kodu) | 186–340 | `CodeInsightsService.cs` | 3 | 14 |
@@ -22,7 +22,7 @@ wyzwalacze poleceń (`Starts`, `text is`, `case`, `StartsWith`) oraz wzorce `Reg
 | 18. Smart home | 1251–1300 | — | 0 (brak modułu) | 0 |
 | 20. Agentic | 1401–1500 | — | 0 (częściowo w ActionEngine/permissions — bez własnego modułu poleceń) | 0 |
 
-**Suma wyzwalaczy w modułach obsługi:** 604 · **paleta `//`:** 73 wpisów · **rozumienie języka:** 490 fraz
+**Suma wyzwalaczy w modułach obsługi:** 608 · **paleta `//`:** 76 wpisów · **rozumienie języka:** 504 fraz
 
 Werdykt (ludzki, z listą braków per sekcja): [AUDYT-1550.md](AUDYT-1550.md).
 

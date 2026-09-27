@@ -140,6 +140,10 @@ public static class IntentCatalog
             "prompt szablony", "prompt szablon", "szablony promptow",
             "model kolejka", "model limity", "model polityka",
             "model kv", "model pamiec", "model porownaj", "model offline", "tryb bez modelu",
+            // 0.97 · SEKCJA 2 (drugi przyrost) — zarządzanie: dobór do zadania, licencje, zgoda dwuetapowa
+            "model do zadania", "dobierz model", "model licencje", "licencje modeli", "model licencja",
+            "model info", "model uruchomione", "model procesy", "model status pobierania", "status pobierania modelu",
+            "model pobierz", "pobierz model", "model usun", "model kopiuj",
             // 0.97 · SEKCJA 15 — analiza danych (nazwy własne, więc mogą stać w katalogu naprawy)
             "statystyki liczb", "analiza liczb", "opis zbioru", "kwartyle", "odchylenie", "wariancja",
             "skosnosc", "kurtoza", "wspolczynnik zmiennosci", "przedzial ufnosci", "korelacja", "regresja",

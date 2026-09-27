@@ -25,6 +25,12 @@ public sealed class CommandRouter
     private string lastTopic = "";
     private DateTime lastTopicTime;
     private (string Text, DateTime When, string Description, DateTime Expires)? pendingReminder;
+    // 0.97 · SEKCJA 2: zgody dwuetapowe na pobieranie/usuwanie modelu — jednorazowe, związane z nazwą, z terminem.
+    private (string Model, DateTime When)? pendingPull;
+    private (string Model, DateTime When)? pendingDelete;
+    private static readonly TimeSpan ConsentTimeToLive = TimeSpan.FromMinutes(10);
+    private const string OllamaOfflineMessage =
+        "Nie mogę połączyć się z Ollamą (127.0.0.1:11434). Uruchom Ollamę i spróbuj ponownie — poza ten komputer nic nie wysyłam.";
 
     /// <summary>Common words ignored by the extractive conversation summary („podsumuj rozmowę”).</summary>
     private static readonly HashSet<string> SummaryStopWords = new(StringComparer.Ordinal)
@@ -70,6 +76,11 @@ public sealed class CommandRouter
             return ModelToolbox.FitForMachine(systemMonitor.GetTotalRamGB());
         string? modelResponse = ModelToolbox.TryHandle(command.Trim(), text);
         if (modelResponse != null) return modelResponse;
+        // 0.97 · SEKCJA 2 (drugi przyrost): zarządzanie modelami — pobieranie i usuwanie ZAWSZE w dwóch
+        // krokach (plan → „potwierdzam”), odczyty od razu przez loopback. Bez Ollamy kończę jawnym
+        // komunikatem, więc regresja bez sieci jest deterministyczna.
+        string? managementResponse = await TryHandleModelManagementAsync(command.Trim(), text, cancellationToken, onDelta);
+        if (managementResponse != null) return managementResponse;
         // 0.97 · SEKCJA 15: analiza danych (statystyki, korelacja, regresja, metryki klasyfikacji).
         string? analysisResponse = AnalysisToolbox.TryHandle(command.Trim(), text);
         if (analysisResponse != null) return analysisResponse;
@@ -227,6 +238,7 @@ public sealed class CommandRouter
                 "· Narzędzia deweloperskie: diff, wyrażenia regularne, semver, adresy IP i podsieci (tylko pełny zapis kropkowany), JWT, UUID/NanoID, generator zapytań SQL i INSERT-ów, konwencja commitów, Base32/Base58, CRC32 i inne.\n" +
                 "· Analiza kodu — wyłącznie odczyt: złożoność, dług techniczny, martwy kod, sekrety w plikach, zależności, TODO. Zawsze podaję limit, którego nie przekraczam, i mówię wprost, że to podpowiedź, a nie wyrok.\n" +
                 "· Finanse, tekst i produktywność: kwota słownie, ROI, budżet 50/30/20, statystyki tekstu, generator slajdów, karta produktu.\n" +
+                "· Modele lokalne — zarządzanie (drugi przyrost sekcji 2): „model do zadania: …” (dobór modelu pod opis), „model licencje”, „model info: …”, „model uruchomione”, „model status pobierania”. Pobieranie i usuwanie mają zgodę dwuetapową: najpierw plan („model pobierz: qwen3:1.7b”), potem dokładnie „… potwierdzam” — zgoda jest jednorazowa, związana z nazwą i wygasa po 10 minutach; usuwanie odmówi, gdy model jest ustawiony, albo gdy trwa pobieranie. Połączenie tylko z lokalną Ollamą (127.0.0.1:11434); bez niej dostajesz uczciwy komunikat, nie wyciszoną awarię.\n" +
                 "· Modele lokalne (pierwszy przyrost sekcji 2): „modele lokalne” (katalog z rolą i notką) · „model karta: qwen2.5:7b” (wagi, KV cache i suma z narzutem, z wypisanym wzorem) · „model dopasuj: 8” i „model audyt” (co wejdzie w Twoją pamięć) · „model rola: kod|wizja|embeddingi…” · „kwantyzacje” · „presety modelu” · „prompt szablony” (10 gotowych promptów) · „model kv” · „model pamiec” · „model porownaj” · „model kolejka” (jedna ścieżka, limit 180 s, model zapasowy) · „model polityka” · „model offline”. Wszystko offline i zawsze jako szacunek z podanym wzorem — nic nie pobieram.\n" +
                 "· Analiza danych (sekcja 15): statystyki opisowe, kwartyle i percentyle, korelacja Pearsona i Spearmana, regresja liniowa z prognozą, histogram, normalizacja, odległości, macierz pomyłek z F1 i MCC, entropia, Gini, outliery IQR, wygładzanie wykładnicze, rangi, przedział ufności i test t (bez zmyślania p-wartości).\n" +
                 "· Zdrowie i komunikacja (sekcje 17 i 14): BMR i TDEE z wzoru Mifflin-St Jeor, makro z procentów, strefy tętna, WHtR/WHR, szacunek 1RM, tempo, kroki, woda, cykle snu, plan wagi — wszystko jako arytmetyka z jawnym „to nie porada medyczna”. Do tego limity SMS i wpisu, szkice maila, agendy i protokołu, skracanie do limitu, ocena tonu i czytelności.\n" +
@@ -903,6 +915,103 @@ public sealed class CommandRouter
         return null;
     }
 
+    /// <summary>0.97 · SEKCJA 2 (drugi przyrost): odczyty modeli od razu, pobieranie i usuwanie za zgodą
+    /// dwuetapową. Zwraca null, gdy tekst nie jest poleceniem zarządzania modelami. Wyjątek HttpRequestException
+    /// łapię per polecenie i zamieniam na uczciwy komunikat offline, żeby brak Ollamy nie wyglądał na awarię.</summary>
+    private async Task<string?> TryHandleModelManagementAsync(string command, string text, CancellationToken cancellationToken, Action<string>? onDelta)
+    {
+        if (text is "model status pobierania" or "status pobierania modelu")
+            return localAi.LastPullProgress;
+        if (text is "model pobierz" or "pobierz model")
+            return "Podaj nazwę: „model pobierz: qwen3:1.7b”. Najpierw pokażę plan (rozmiar, źródło), a pobranie zacznie dopiero „… potwierdzam”.";
+        if (text is "model usun")
+            return "Podaj nazwę: „model usun: qwen3:1.7b”. Najpierw pokażę plan z ostrzeżeniem, a usunięcie zacznie dopiero „… potwierdzam”.";
+        if (text is "model info")
+            return "Podaj nazwę: „model info: qwen2.5:7b”. Co masz zainstalowane: „modele ai”.";
+        if (text is "model kopiuj")
+            return "Użycie: „model kopiuj: qwen2.5:7b do moja-kopia”. Nazwy bez spacji i ukośników.";
+        if (text is "model uruchomione" or "model procesy" or "co zaladowane w ollamie")
+        {
+            try { return await localAi.GetRunningModelsAsync(cancellationToken); }
+            catch (System.Net.Http.HttpRequestException) { return OllamaOfflineMessage; }
+        }
+        var info = Regex.Match(command, @"^model info[:\s]+(.+)$", RegexOptions.IgnoreCase);
+        if (info.Success)
+        {
+            string? name = LocalAiService.NormalizePullModelName(info.Groups[1].Value);
+            if (name == null) return "Podaj nazwę modelu, np. „model info: qwen2.5:7b”.";
+            try { return await localAi.GetModelDetailsAsync(name, cancellationToken); }
+            catch (System.Net.Http.HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+            { return "Model „" + name + "” nie ma w lokalnej bibliotece. Co jest zainstalowane: „modele ai”. Pobranie z zgodą: „model pobierz: " + name + "”."; }
+            catch (System.Net.Http.HttpRequestException) { return OllamaOfflineMessage; }
+        }
+        var pull = Regex.Match(command, @"^(?:model pobierz|pobierz model)[:\s]+(.+?)(?:\s+potwierdzam)?$", RegexOptions.IgnoreCase);
+        if (pull.Success)
+        {
+            string? name = LocalAiService.NormalizePullModelName(pull.Groups[1].Value);
+            if (name == null) return "Niepoprawna nazwa modelu (małe litery, opcjonalnie jeden „:tag”, bez spacji i ukośników). Przykład: „model pobierz: qwen3:1.7b”.";
+            if (pull.Groups[2].Success)
+            {
+                if (pendingPull is not { } consent || consent.Model != name || DateTime.UtcNow - consent.When > ConsentTimeToLive)
+                    return "Zgoda nieaktualna albo dotyczy innej nazwy. Najpierw plan: „model pobierz: " + name + "”, potem dokładnie „model pobierz: " + name + " potwierdzam” (zgoda działa 10 minut i jest jednorazowa).";
+                pendingPull = null;
+                try { return await localAi.PullModelAsync(name, cancellationToken, onDelta); }
+                catch (System.Net.Http.HttpRequestException) { return OllamaOfflineMessage; }
+                catch (InvalidOperationException failed) { return failed.Message; }
+            }
+            pendingPull = (name, DateTime.UtcNow);
+            return PullPlan(name);
+        }
+        var delete = Regex.Match(command, @"^model usun[:\s]+(.+?)(?:\s+potwierdzam)?$", RegexOptions.IgnoreCase);
+        if (delete.Success)
+        {
+            string? name = LocalAiService.NormalizePullModelName(delete.Groups[1].Value);
+            if (name == null) return "Niepoprawna nazwa modelu. Przykład: „model usun: qwen3:1.7b”.";
+            if (string.Equals(localAi.PreferredModel, name, StringComparison.OrdinalIgnoreCase))
+                return "„" + name + "” to aktualnie ustawiony model — najpierw wybierz inny („model ai <nazwa>”), potem go usuń.";
+            if (localAi.PullInProgress) return "Trwa pobieranie modelu — poczekaj na koniec albo przerwij, zanim zechcesz coś usuwać.";
+            if (delete.Groups[2].Success)
+            {
+                if (pendingDelete is not { } consent || consent.Model != name || DateTime.UtcNow - consent.When > ConsentTimeToLive)
+                    return "Zgoda nieaktualna albo dotyczy innej nazwy. Najpierw plan: „model usun: " + name + "”, potem dokładnie „model usun: " + name + " potwierdzam”.";
+                pendingDelete = null;
+                try { return await localAi.DeleteModelAsync(name, cancellationToken); }
+                catch (System.Net.Http.HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+                { return "Model „" + name + "” i tak nie ma w lokalnej bibliotece. Lista: „modele ai”."; }
+                catch (System.Net.Http.HttpRequestException) { return OllamaOfflineMessage; }
+            }
+            pendingDelete = (name, DateTime.UtcNow);
+            return DeletePlan(name);
+        }
+        var copy = Regex.Match(command, @"^model kopiuj[:\s]+(\S+)\s+do\s+(\S+)$", RegexOptions.IgnoreCase);
+        if (copy.Success)
+        {
+            string? from = LocalAiService.NormalizePullModelName(copy.Groups[1].Value);
+            string? to = LocalAiService.NormalizePullModelName(copy.Groups[2].Value);
+            if (from == null || to == null) return "Użycie: „model kopiuj: qwen2.5:7b do moja-kopia”. Nazwy bez spacji i ukośników.";
+            try { return await localAi.CopyModelAsync(from, to, cancellationToken); }
+            catch (System.Net.Http.HttpRequestException) { return OllamaOfflineMessage; }
+        }
+        return null;
+    }
+
+    private static string PullPlan(string name)
+    {
+        string? estimate = ModelToolbox.DownloadEstimate(name);
+        return "PLAN POBIERANIA (jeszcze nic nie pobieram):" + Environment.NewLine +
+            "· model: " + name + (estimate is null
+                ? " · rozmiaru nie znam — model poza katalogiem; dokładny postęp pokaże Ollama"
+                : " · " + estimate) + Environment.NewLine +
+            "· pobieranie idzie przez lokalną Ollamę do internetu; w żądaniu nie ma żadnych danych z tego komputera" + Environment.NewLine +
+            "· żeby zacząć, napisz dokładnie: „model pobierz: " + name + " potwierdzam”" + Environment.NewLine +
+            "· zgoda jest jednorazowa, dotyczy tej samej nazwy i wygasa po 10 minutach; w trakcie: „model status pobierania”, przerwanie: „anuluj”";
+    }
+
+    private static string DeletePlan(string name) =>
+        "PLAN USUWANIA (jeszcze nic nie usuwam): model „" + name + "” zniknie z lokalnej biblioteki Ollamy bez kosza — to nieodwracalne." + Environment.NewLine +
+        "· najpierw sprawdź: „model info: " + name + "” · operację da się odwrócić tylko ponownym pobraniem: „model pobierz: " + name + "”" + Environment.NewLine +
+        "· żeby usunąć, napisz dokładnie: „model usun: " + name + " potwierdzam” (jednorazowo, ta sama nazwa, 10 minut)";
+
     private const string Help = """
         SENTINEL X — CO UMIEM (wszystko działa lokalnie)
 
@@ -935,7 +1044,7 @@ public sealed class CommandRouter
         Analiza danych 0.97: statystyki liczb: 3 4 4 5 9 12 · kwartyle: … · odchylenie: … · korelacja: 1 2 3 | 2 4 6 · regresja: 1 2 3 | 2 4 6 · prognoza: 10 12 14 · trend: … · histogram: 1 2 2 3 5 | 4 · normalizuj: 2 4 6 · odleglosc: 1 2 3 | 4 6 8 · macierz pomylek: 50 10 5 35 · entropia: 8 1 1 · gini: 2 3 5 · outliery: 3 4 5 100 · wygladzanie: 10 14 12 | 0,5 · rangi: 30 10 20 · percentyl: 1 2 3 4 5 | 90 · test t: 1 2 3 4 | 2 4 6 8 · przedzial ufnosci: …
         Zdrowie i komunikacja 0.97: bmr: 80 180 30 m · tdee: 80 180 30 k 1,55 · makro: 2400 30 25 45 · hrmax: 35 · whtr: 80 180 · whr: 80 95 · 1rm: 80 5 · tempo: 42 10 · kroki: 8000 175 · woda: 80 · sen: 23:30 · deficyt: 90 80 0,5 · sms: … · post: … · mail: temat · agenda: temat · protokol: punkt | punkt · follow up: kontekst · skroc do: 120 | tekst · ton: tekst · czytelnosc: tekst (arytmetyka, nie porada medyczna)
         Prywatność 0.97: prywatnosc · gdzie sa moje dane · duze pliki danych: 5 · retencja: 90 (podgląd, nic nie usuwa) · wiek danych · szyfrowanie · uprawnienia · co wysylam · eksport danych · minimalizacja
-        Modele lokalne 0.97: modele lokalne · model karta: qwen2.5:7b · model dopasuj: 8 · model audyt (Twój RAM) · model rola: kod|rozmowa|szybkie|wizja|embeddingi|rozumowanie · kwantyzacje · kwantyzacja: q4_K_M · presety modelu · preset modelu: szybki · prompt szablony · prompt szablon: kod · model kv: qwen2.5:7b 8192 · model pamiec: 8192 · model porownaj: qwen2.5:7b vs qwen2.5:14b · model kolejka · model polityka · model offline (wszystko lokalnie, nic nie pobieram)
+        Modele lokalne 0.97: modele lokalne · model karta: qwen2.5:7b · model dopasuj: 8 · model audyt (Twój RAM) · model do zadania: pisanie kodu | streszczanie | zdjęcia | embeddingi | rozumowanie · model licencje · model rola: kod|rozmowa|szybkie|wizja|embeddingi|rozumowanie · kwantyzacje · kwantyzacja: q4_K_M · presety modelu · preset modelu: szybki · prompt szablony · prompt szablon: kod · model kv: qwen2.5:7b 8192 · model pamiec: 8192 · model porownaj: qwen2.5:7b vs qwen2.5:14b · model kolejka · model polityka · model offline · model info: qwen2.5:7b · model uruchomione · model status pobierania · model pobierz: <nazwa> + „… potwierdzam” (zgoda dwuetapowa, 10 minut) · model usun: <nazwa> + „… potwierdzam” · model kopiuj: <nazwa> do <kopia> (wszystko lokalnie; pobieranie tylko za jawną zgodą)
         Kolejka zadań: kolejka · kolejka dodaj: log: info treść · kolejka przetworz · zwroty · zwrot ponow: T0001 · kolejka anuluj: T0001
         Harmonogram i flagi: cron opis: */15 * * * * · cron nastepne: 0 8 * * 1-5 · flagi · ustaw flage: eksperyment on|off|30
         Kopie i integralność: kopie danych · kopia danych · weryfikuj kopie: nazwa · integralnosc zbuduj: katalog · integralnosc sprawdz: katalog · integralnosc

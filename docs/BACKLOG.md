@@ -301,6 +301,21 @@ Stan na 2026-09-27 (0.97). Zasada: każda pojedyncza pozycja znika z listy dopie
 - **Zostaje w UI**: wykresy (histogram i trend jako obraz, nie znaki), eksport wyniku do pliku jednym
   kliknięciem, ulubione polecenia użytkownika i skróty klawiszowe per kategoria.
 
+## Sekcja 2 — drugi przyrost: zarządzanie modelami (gotowe w 0.97)
+
+- **Dobór do zadania**: „model do zadania: pisanie kodu | streszczanie | zdjęcia | embeddingi |
+  rozumowanie | długi dokument | słaby sprzęt” — rekomendacja z katalogu z powodem, pamięcią,
+  alternatywami i jawnym „to podpowiedź, nie benchmark”.
+- **Licencje**: „model licencje” — rodziny pod Apache 2.0 / MIT / Llama Community / Gemma Terms,
+  z „sprawdź u źródła; Sentinel nie jest prawnikiem”.
+- **Pobieranie i usuwanie za zgodą dwuetapową**: plan („model pobierz: qwen3:1.7b”) → „… potwierdzam”;
+  zgoda jednorazowa, związana z nazwą, wygasa po 10 minutach; usuwanie odmawia przy modelu ustawionym
+  i w trakcie pobierania; kopiowanie po ścisłej walidacji nazw. Kanał: wyłącznie 127.0.0.1:11434.
+- **Odczyty**: „model info: …” (karta zainstalowanej wersji z /api/show), „model uruchomione” (/api/ps),
+  „model status pobierania” (bez sieci). Regresja: `tests/ModelManagementRegression.cs` (martwa sieć,
+  więc nigdy nic nie pobiera naprawdę) — razem 22 zestawy.
+- **Nadal brak w sekcji 2**: indeks embeddingów, benchmark na sprzęcie, panel modeli w GUI.
+
 ## Audyt listy 1550 (stan na 0.97)
 
 - Pełny, liczbowy werdykt per sekcja: **[docs/AUDYT-1550.md](AUDYT-1550.md)** — co jest w kodzie,

@@ -8,6 +8,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Globalization;
 
 namespace SentinelX;
 
@@ -38,6 +39,11 @@ public sealed class LocalAiService : IDisposable
     public bool IsStreaming { get; private set; }
     /// <summary>Text produced so far when a generation was stopped halfway — shown, never silently dropped.</summary>
     public string LastPartialAnswer { get; private set; } = "";
+    /// <summary>0.97 · SEKCJA 2: postęp ostatniego/trwającego pobierania modelu — widoczny przez
+    /// „model status pobierania” bez żadnego zapytania sieciowego.</summary>
+    public string LastPullProgress { get; private set; } = "Nie trwa żadne pobieranie.";
+    /// <summary>True tylko między startem a końcem (też błędem) prawdziwego pobierania.</summary>
+    public bool PullInProgress { get; private set; }
 
     public LocalAiService(GamingModeService gamingMode, HttpMessageHandler? handler = null, string? settingsDirectory = null, SystemMonitor? systemMonitor = null,
         Func<AiSettings>? aiSettingsProvider = null, TimeSpan? requestTimeout = null)
@@ -268,6 +274,161 @@ public sealed class LocalAiService : IDisposable
         }
         catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException or ObjectDisposedException)
         { throw new InvalidOperationException("Nie udało się zwolnić modelu w Ollama.", ex); }
+    }
+
+    // ————— 0.97 · SEKCJA 2 (drugi przyrost): zarządzanie modelami. Wszystko idzie wyłącznie do
+    // loopbackowej Ollamy; czysta logika (nazwy, postęp, formaty) jest internal static, więc regresja
+    // sprawdza ją bez sieci, a ścieżki sieciowe na CI kończą się jawnym komunikatem o braku Ollamy. —————
+
+    /// <summary>Ścisła nazwa do pull/delete/copy: małe litery, opcjonalny jeden :tag, bez spacji i
+    /// ukośników — nic, co mogłoby przejść jako ścieżka albo zapytanie gdzie indziej niż do Ollamy.</summary>
+    internal static string? NormalizePullModelName(string input)
+    {
+        string candidate = (input ?? "").Trim().ToLowerInvariant();
+        if (candidate.Length is < 2 or > 80) return null;
+        return Regex.IsMatch(candidate, @"^[a-z0-9](?:[a-z0-9._-]{0,60})(?::[a-z0-9._-]{1,30})?$") ? candidate : null;
+    }
+
+    /// <summary>Jedna linia NDJSON z /api/pull: sam status, postęp w bajtach albo błąd.
+    /// Null, gdy linia nie jest rozpoznawalnym obiektem JSON (cisza zamiast wyjatku).</summary>
+    internal static (string? Status, long Completed, long Total, string? Error)? ParsePullProgressLine(string json)
+    {
+        try
+        {
+            using JsonDocument document = JsonDocument.Parse(json);
+            if (document.RootElement.ValueKind != JsonValueKind.Object) return null;
+            string? error = document.RootElement.TryGetProperty("error", out var err) && err.ValueKind == JsonValueKind.String ? err.GetString() : null;
+            string? status = document.RootElement.TryGetProperty("status", out var st) && st.ValueKind == JsonValueKind.String ? st.GetString() : null;
+            long completed = document.RootElement.TryGetProperty("completed", out var done) && done.TryGetInt64(out long c) ? c : 0;
+            long total = document.RootElement.TryGetProperty("total", out var tot) && tot.TryGetInt64(out long t) ? t : 0;
+            return (status, completed, total, error);
+        }
+        catch (JsonException) { return null; }
+    }
+
+    /// <summary>Rozmiar po ludzku: „4,7 GB” dla gigabajtów, „750 MB” poniżej — polski przecinek.</summary>
+    internal static string FormatBytes(long bytes)
+    {
+        CultureInfo pl = CultureInfo.GetCultureInfo("pl-PL");
+        if (bytes >= 1_000_000_000) return (bytes / 1_000_000_000.0).ToString("0.#", pl) + " GB";
+        return (bytes / 1_000_000.0).ToString("0", pl) + " MB";
+    }
+
+    internal static string FormatPullProgress(string model, long completed, long total)
+    {
+        if (total <= 0) return "Pobieranie " + model + ": trwa (rozmiar jeszcze nieznany).";
+        CultureInfo pl = CultureInfo.GetCultureInfo("pl-PL");
+        return "Pobieranie " + model + ": " + (100.0 * completed / total).ToString("0.0", pl) + "% (" +
+            FormatBytes(completed) + " z " + FormatBytes(total) + ").";
+    }
+
+    /// <summary>Pobiera model przez /api/pull (stream=true), raportuje postęp przez onDelta i zostawia
+    /// go w LastPullProgress. HttpRequestException (brak Ollamy) i OperationCanceledException idą do
+    /// wywołującego; błąd z linii Ollamy to InvalidOperationException z treścią błędu.</summary>
+    public async Task<string> PullModelAsync(string model, CancellationToken cancellationToken = default, Action<string>? onDelta = null)
+    {
+        string name = NormalizePullModelName(model) ?? throw new ArgumentException("Niepoprawna nazwa modelu: „" + (model ?? "") + "”. Przykład: qwen3:1.7b");
+        PullInProgress = true;
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Post, "/api/pull");
+            request.Content = new StringContent(JsonSerializer.Serialize(new { model = name, stream = true }), Encoding.UTF8, "application/json");
+            using HttpResponseMessage response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+            response.EnsureSuccessStatusCode();
+            await using Stream stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+            using var reader = new StreamReader(stream);
+            string? lastStatus = null;
+            while (await reader.ReadLineAsync() is { } line)
+            {
+                if (string.IsNullOrWhiteSpace(line)) continue;
+                var parsed = ParsePullProgressLine(line);
+                if (parsed == null) continue;
+                if (parsed.Value.Error is not null)
+                    throw new InvalidOperationException("Ollama zgłosiła błąd pobierania: " + parsed.Value.Error);
+                if (parsed.Value.Completed > 0 && parsed.Value.Total > 0)
+                {
+                    LastPullProgress = FormatPullProgress(name, parsed.Value.Completed, parsed.Value.Total);
+                    onDelta?.Invoke(LastPullProgress);
+                }
+                if (parsed.Value.Status is not null) lastStatus = parsed.Value.Status;
+            }
+            LastPullProgress = "Model " + name + " pobrany (ostatni status Ollamy: " + (lastStatus ?? "bez opisu") + ").";
+            return LastPullProgress + Environment.NewLine +
+                "· Co siedzi teraz w pamięci: „model uruchomione” · ustawienie: „model ai " + name + "”.";
+        }
+        finally { PullInProgress = false; }
+    }
+
+    /// <summary>Usuwa model z lokalnej biblioteki (/api/delete). Nieodwracalne — bramka zgody siedzi w routerze.</summary>
+    public async Task<string> DeleteModelAsync(string model, CancellationToken cancellationToken = default)
+    {
+        string name = NormalizePullModelName(model) ?? throw new ArgumentException("Niepoprawna nazwa modelu: „" + (model ?? "") + "”.");
+        using var request = new HttpRequestMessage(HttpMethod.Delete, "/api/delete");
+        request.Content = new StringContent(JsonSerializer.Serialize(new { model = name }), Encoding.UTF8, "application/json");
+        using HttpResponseMessage response = await httpClient.SendAsync(request, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        return "Usunięto model " + name + " z lokalnej biblioteki Ollamy. Co zostało: „modele ai”. (Ponowne pobranie: „model pobierz: " + name + "”.)";
+    }
+
+    /// <summary>Kopia modelu (/api/copy) — dodatnia operacja, współdzieli wagi, nie dubluje pamięci.</summary>
+    public async Task<string> CopyModelAsync(string source, string target, CancellationToken cancellationToken = default)
+    {
+        string from = NormalizePullModelName(source) ?? throw new ArgumentException("Niepoprawna nazwa źródła: „" + (source ?? "") + "”.");
+        string to = NormalizePullModelName(target) ?? throw new ArgumentException("Niepoprawna nazwa kopii: „" + (target ?? "") + "”.");
+        using var content = new StringContent(JsonSerializer.Serialize(new { source = from, destination = to }), Encoding.UTF8, "application/json");
+        using HttpResponseMessage response = await httpClient.PostAsync("/api/copy", content, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        return "Utworzono kopię: " + from + " → " + to + ". Kopia współdzieli wagi, więc nie zajmuje podwójnie miejsca na dysku.";
+    }
+
+    /// <summary>Lista załadowanych modeli (/api/ps) — tylko to, co widzi lokalna Ollama.</summary>
+    public async Task<string> GetRunningModelsAsync(CancellationToken cancellationToken = default)
+    {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(TimeSpan.FromSeconds(5));
+        using HttpResponseMessage response = await httpClient.GetAsync("/api/ps", timeout.Token);
+        response.EnsureSuccessStatusCode();
+        using JsonDocument document = JsonDocument.Parse(await response.Content.ReadAsStringAsync(timeout.Token));
+        if (!document.RootElement.TryGetProperty("models", out var models) || models.ValueKind != JsonValueKind.Array)
+            throw new JsonException("Ollama nie zwróciła listy załadowanych modeli.");
+        var lines = new List<string>();
+        foreach (var entry in models.EnumerateArray())
+        {
+            if (!entry.TryGetProperty("name", out var nameEl) || nameEl.ValueKind != JsonValueKind.String) continue;
+            string name = nameEl.GetString()!;
+            string vram = entry.TryGetProperty("size_vram", out var sizeEl) && sizeEl.TryGetInt64(out long size) ? FormatBytes(size) : "rozmiar nieznany";
+            lines.Add("· " + name + " — " + vram + " w pamięci");
+        }
+        if (lines.Count == 0)
+            return "Żaden model nie jest teraz załadowany w Ollamie. Ollama ładuje model przy pierwszym pytaniu i zwalnia po czasie bezczynności.";
+        return "Załadowane modele (widok lokalnej Ollamy, nic nie idzie w sieć):" + Environment.NewLine + string.Join(Environment.NewLine, lines);
+    }
+
+    /// <summary>Karta modelu z samej Ollamy (/api/show): rodzina, parametry, kwantyzacja, kontekst.
+    /// Uzupełnia katalogowy szacunek „model karta: …” danymi zainstalowanej wersji.</summary>
+    public async Task<string> GetModelDetailsAsync(string model, CancellationToken cancellationToken = default)
+    {
+        string name = NormalizePullModelName(model) ?? throw new ArgumentException("Niepoprawna nazwa modelu: „" + (model ?? "") + "”.");
+        using var content = new StringContent(JsonSerializer.Serialize(new { model = name }), Encoding.UTF8, "application/json");
+        using HttpResponseMessage response = await httpClient.PostAsync("/api/show", content, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        using JsonDocument document = JsonDocument.Parse(await response.Content.ReadAsStringAsync(cancellationToken));
+        CultureInfo pl = CultureInfo.GetCultureInfo("pl-PL");
+        string family = "", parameters = "", quantization = "";
+        long context = 0;
+        if (document.RootElement.TryGetProperty("details", out var details) && details.ValueKind == JsonValueKind.Object)
+        {
+            family = details.TryGetProperty("family", out var f) && f.ValueKind == JsonValueKind.String ? f.GetString() ?? "" : "";
+            parameters = details.TryGetProperty("parameter_size", out var p) && p.ValueKind == JsonValueKind.String ? p.GetString() ?? "" : "";
+            quantization = details.TryGetProperty("quantization_level", out var q) && q.ValueKind == JsonValueKind.String ? q.GetString() ?? "" : "";
+        }
+        if (document.RootElement.TryGetProperty("model_info", out var info) && info.ValueKind == JsonValueKind.Object &&
+            info.TryGetProperty("general.context_length", out var ctx) && ctx.TryGetInt64(out long cl)) context = cl;
+        return "Karta z Ollamy (zainstalowana wersja): " + name + Environment.NewLine +
+            "· rodzina: " + (family == "" ? "niepodana" : family) + " · parametry: " + (parameters == "" ? "niepodane" : parameters) +
+            " · kwantyzacja: " + (quantization == "" ? "niepodana" : quantization) + Environment.NewLine +
+            "· kontekst: " + (context > 0 ? context.ToString("N0", pl) + " tokenów" : "niepodany") + Environment.NewLine +
+            "· Szacunek pamięci z katalogu: „model karta: " + name + "” · załadowane teraz: „model uruchomione”.";
     }
 
     internal static bool IsLocalModelName(string name) =>

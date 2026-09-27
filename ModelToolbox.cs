@@ -109,8 +109,74 @@ public static class ModelToolbox
         var compare = Regex.Match(text, @"^model porownaj[:\s]+(.+)$");
         if (compare.Success) return Compare(Payload(raw, "model porownaj"));
         if (text is "model offline" or "tryb bez modelu" or "bez modelu") return Offline();
+        // 0.97 · SEKCJA 2 (drugi przyrost): dobór modelu do opisu zadania i licencje — dalej bez sieci.
+        if (text is "model licencje" or "licencje modeli" or "model licencja") return Licenses();
+        var recommend = Regex.Match(text, @"^(?:model do zadania|dobierz model)[:\s]+(.+)$");
+        if (recommend.Success) return RecommendTask(Payload(raw, "model do zadania", "dobierz model"));
         return null;
     }
+
+    /// <summary>Szacunek pobierania dla znanych modeli (domyślna kwantyzacja q4_K_M); null poza katalogiem —
+    /// wtedy plan zgody mówi wprost, że rozmiaru nie znam. Używa go bramka „model pobierz”.</summary>
+    public static string? DownloadEstimate(string model)
+    {
+        string tag = (model ?? "").Trim().ToLowerInvariant();
+        Entry? found = CatalogModels.FirstOrDefault(x => x.Tag == tag);
+        if (found is null) return null;
+        double gb = WeightsGb(found.ParamsB, "q4_K_M");
+        return found.Tag + ": szacowane pobieranie ~" + gb.ToString("0.0", Pl) + " GB wag w q4_K_M (dokładny postęp pokaże Ollama; rola: " + found.Role + ")";
+    }
+
+    /// <summary>„model do zadania: …” — rekomendacja z katalogu po słowach kluczowych opisu.
+    /// To podpowiedź z danych katalogowych, nie benchmark na sprzęcie użytkownika.</summary>
+    private static string RecommendTask(string description)
+    {
+        string what = (description ?? "").Trim();
+        if (what.Length == 0)
+            return "Opisz zadanie, np. „model do zadania: pisanie kodu w C#” albo „model do zadania: streszczanie dokumentów”. Znam też: wizję/obrazy, embeddingi, rozumowanie, długi kontekst, słabszy sprzęt.";
+        string lower = what.ToLowerInvariant();
+        (string Tag, string Why) pick;
+        string[] alternatives;
+        if (lower.Contains("kod") || lower.Contains("programow") || lower.Contains("refaktor") || lower.Contains("bug") || lower.Contains("testy"))
+        { pick = ("qwen2.5-coder:7b", "wytrenowany na kodzie — refaktor, wyjaśnianie i testy wychodzą z niego lepiej niż z modelu ogólnego"); alternatives = ["qwen2.5:7b", "qwen3:4b-instruct"]; }
+        else if (lower.Contains("obraz") || lower.Contains("zdjec") || lower.Contains("wizja") || lower.Contains("ocr") || lower.Contains("fotograf"))
+        { pick = ("llava:7b", "rozumie obraz + tekst; enkoder wizji dochodzi do wag, więc pamięci potrzebuje więcej niż sugeruje sam rozmiar"); alternatives = ["qwen2.5:7b (bez obrazów)", "llama3.2:3b (bez obrazów, lżejszy)"]; }
+        else if (lower.Contains("wektor") || lower.Contains("embedding") || lower.Contains("semantyczn") || lower.Contains("wyszukiwan") && lower.Contains("dokument"))
+        { pick = ("nomic-embed-text", "embeddingi do wyszukiwania semantycznego — to nie model rozmowy i nie próbuj nim gadać"); alternatives = ["qwen3:1.7b (rozmowa obok indeksu)"]; }
+        else if (lower.Contains("rozumowan") || lower.Contains("logika") || lower.Contains("matematyk") || lower.Contains("dowod"))
+        { pick = ("deepseek-r1:8b", "myśli krok po kroku na głos; wolniejszy, ale dokładniejszy w logice"); alternatives = ["qwen3:4b-instruct", "phi4:14b (potrzebuje 12+ GB)"]; }
+        else if (lower.Contains("dlugi kontekst") || lower.Contains("dlugiego dokumentu") || lower.Contains("dlugi dokument") || lower.Contains("stron") || lower.Contains("pdf"))
+        { pick = ("llama3.2:3b", "kontekst 128k w małym rozmiarze — całe dokumenty naraz"); alternatives = ["qwen3:4b-instruct (32k)", "llama3.1:8b"]; }
+        else if (lower.Contains("szybko") || lower.Contains("slabym") || lower.Contains("laptop") || lower.Contains("stary komputer") || lower.Contains("malutko"))
+        { pick = ("qwen3:1.7b", "najlżejszy model rozmowy — start na słabym sprzęcie, odpowiedzi natychmiastowe"); alternatives = ["qwen2.5:0.5b (minimum minimum)", "gemma3:1b"]; }
+        else
+        { pick = ("qwen3:4b-instruct", "brak mocnych sygnałów w opisie — domyślny model rozmowy; doprecyzuj zadanie, jeśli chodziło o coś innego"); alternatives = ["gemma3:4b", "mistral:7b"]; }
+        double gb = WeightsGb(FindParams(pick.Tag), "q4_K_M");
+        return "REKOMENDACJA DLA ZADANIA: „" + what + "”" + Environment.NewLine +
+            "· wybór: " + pick.Tag + " — " + pick.Why + Environment.NewLine +
+            "· pamięć: wagi w q4_K_M ~" + gb.ToString("0.0", Pl) + " GB + KV cache (zależny od kontekstu); dokładniej: „model karta: " + pick.Tag + "”" + Environment.NewLine +
+            "· pasuje do Twojej maszyny? „model audyt” — liczę na podanym RAM, nie zgaduję" + Environment.NewLine +
+            "· alternatywy: " + string.Join(" · ", alternatives) + Environment.NewLine +
+            "· nie masz go zainstalowanego? Pobieranie wymaga zgody dwuetapowej: „model pobierz: " + pick.Tag + "”, potem dokładnie „… potwierdzam” · licencje: „model licencje”" + Environment.NewLine +
+            "· to podpowiedź z katalogu, nie benchmark na Twoim sprzęcie";
+    }
+
+    private static double FindParams(string tag)
+    {
+        Entry? found = CatalogModels.FirstOrDefault(x => x.Tag == tag);
+        return found?.ParamsB ?? 4.0;
+    }
+
+    /// <summary>„model licencje” — rodziny z katalogu i licencje, pod którymi znaleźły się w moich danych.
+    /// Uczciwie: stan może się zmieniać, a Sentinel nie jest prawnikiem i nie ściąga niczego z sieci.</summary>
+    private static string Licenses() =>
+        "LICENCJE MODELI Z KATALOGU (stan, który znam — licencje zmieniają się między wersjami):" + Environment.NewLine +
+        "· Apache 2.0 (użycie komercyjne swobodne): qwen3, qwen2.5 (też qwen2.5-coder), mistral, llava, nomic-embed-text" + Environment.NewLine +
+        "· MIT: deepseek-r1, phi4" + Environment.NewLine +
+        "· Llama Community License (dodatkowe warunki): llama3.1, llama3.2" + Environment.NewLine +
+        "· Gemma Terms of Use (ograniczenia własne Google): gemma3 (1b i 4b)" + Environment.NewLine +
+        "· Przed użyciem komercyjnym sprawdź kartę licencji u źródła: Sentinel niczego nie ściąga z sieci i nie jest prawnikiem." + Environment.NewLine +
+        "· Karta konkretnego modelu: „model karta: <nazwa>” · co masz zainstalowane: „modele ai”.";
 
     private static string Payload(string raw, params string[] prefixes)
     {

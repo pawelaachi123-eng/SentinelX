@@ -31,7 +31,7 @@ zrobię mapowanie pozycja-po-pozycji z odhaczeniem każdej.
 | Sekcja | Pozycje | Status | Co realnie jest w kodzie | Czego nie ma |
 |---|---|---|---|---|
 | **1. Rdzeń** | 1–45 | **ZROBIONE** | `Core/Runtime/` 18 modułów (event bus, kolejka+retry+anulowanie, bezpieczniki, cache LRU/LFU, cron, maszyna stanów, graf workflow, flagi, health, metryki p50/p95, dziennik JSONL, manifest SHA-256, kopie ZIP, sejf AES-256-GCM, serializator SXB1) + `RuntimeCommands` **86 wyzwalaczy** | — |
-| **2. Modele lokalne** | 46–120 | **CZĘŚCIOWO (~40%)** | `ModelToolbox` **29 wyzwalaczy**: katalog 17 modeli, karta modelu, dobór do pamięci, role, kwantyzacje (8), presety, 10 szablonów promptów, KV cache, `model kv`, `model pamiec`, `model porownaj`, `model kolejka`, `model polityka`, `model offline` | pobieranie/usuwanie modeli i pasek postępu (wymaga sieci), panel modeli w GUI, benchmark tokenów na sprzęcie, automatyczny dobór modelu do zadania, licencje modeli, indeks embeddingów |
+| **2. Modele lokalne** | 46–120 | **CZĘŚCIOWO (~55%)** | `ModelToolbox` **33 wyzwalacze** (drugi przyrost): katalog 17 modeli, karta, dobór do pamięci, role, kwantyzacje (8), presety, 10 szablonów promptów, KV cache, `model do zadania` (dobór pod opis), `model licencje`, `model kv/pamiec/porownaj/kolejka/polityka/offline` + zarządzanie przez router: `model pobierz: …` i `model usun: …` **ze zgodą dwuetapową** (plan → „potwierdzam”, zgoda jednorazowa, wygasa po 10 min), `model info`, `model uruchomione`, `model status pobierania`, `model kopiuj`; kanał wyłącznie 127.0.0.1:11434 | indeks embeddingów i wyszukiwanie wektorowe, benchmark tokenów na sprzęcie, panel modeli w GUI, auto-pobieranie bez pytania (świadomie nie — zgoda jest zawsze jawna) |
 | **3. Prywatność** | 121–185 | **CZĘŚCIOWO (dużo)** | `PrivacyToolbox` **33 wyzwalacze**: mapa danych, duże pliki, wiek danych, **podgląd** retencji, szyfrowanie (co jest AES-256-GCM, a co nie), uprawnienia, `co wysylam`, plan eksportu, minimalizacja; w rdzeniu: sejf, manifest integralności, dziennik zdarzeń | automatyczne kasowanie z potwierdzeniem, menedżer zgód (per uprawnienie), szyfrowanie historii rozmów, menedżer sesji/urządzeń, audyt dostępu mikrofon/kamera |
 | **4. Kodowanie** | 186–340 | **CZĘŚCIOWO (~50%)** | `DeveloperToolbox` **53 wyzwalacze** (diff, regex, semver, IP/podsieci, JWT, UUID7/ULID, generatory JSON/SQL/mock, kodowania base32/58, skróty, kody znaków, CSV, szablony, tokeny, kontekst) + `CodeInsightsService` **20** (skan, statystyki, zależności/cykle, audyt wzorców, duplikaty, licencje, funkcje) + `UtilityToolbox` **179** (tekst, liczby, hasła, kodowania, data/czas) | generatory całych projektów, integracja z Gitem, profiler, transpilacja, generowanie testów, refaktoryzacje |
 | **5. Architektura** | 341–420 | **BRAK** | tylko graf workflow i `dag:` w rdzeniu (planowanie kolejności) | diagramy architektury, ADR-y, analiza długu technicznego, wykrywanie cykli zależności między modułami, macierze zależności |
@@ -73,7 +73,8 @@ zrobię mapowanie pozycja-po-pozycji z odhaczeniem każdej.
 
 ## Co dalej (kolejność, jeśli nie wskażesz inaczej)
 
-1. Dokończyć §2 (pobieranie/usuwanie modeli, panel modeli, dobór do zadania) — bez tego sekcja jest w połowie.
+1. ~~Dokończyć §2 (pobieranie/usuwanie modeli, dobór do zadania)~~ — **zrobione (drugi przyrost)**;
+   z sekcji 2 zostały: indeks embeddingów, benchmark na sprzęcie i panel modeli w GUI.
 2. §5 architektura i §20 agentic (planowanie celów, budżety, wycofywanie zmian).
 3. §8 pamięć/wiedza (embeddingi lokalne, import dokumentów) i §13 produktywność (kalendarz, Pomodoro).
 4. §19 UI: wykresy jako obraz, eksport wyniku do pliku, ulubione polecenia w Studiu.

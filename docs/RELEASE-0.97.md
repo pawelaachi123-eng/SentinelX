@@ -202,9 +202,9 @@ Regresja: `tests/ModelToolboxRegression.cs` (18. zestaw w `--ui-smoke`) sprawdza
 absurdalna pamięć) oraz to, że **zwykłe zdanie o modelach nie jest przechwytywane** — ta sama
 pułapka, która wcześniej zabierała pytania zaczynające się od „czy”.
 
-Czego w sekcji 2 **nadal nie ma** (żeby nie było wątpliwości): pobierania i usuwania modeli,
-podglądu pobierania, indeksu embeddingów i wyszukiwania wektorowego, benchmarku tokenów na
-Twoim sprzęcie, automatycznego doboru modelu do zadania i licencji modeli.
+Czego w sekcji 2 **nadal nie ma** (żeby nie było wątpliwości): indeksu embeddingów i wyszukiwania
+wektorowego, benchmarku tokenów na Twoim sprzęcie i panelu zarządzania modelami w GUI (pobieranie,
+usuwanie, dobór do zadania i licencje doszły w drugim przyroście — sekcja 15).
 
 ## 11. Analiza danych — `AnalysisToolbox.cs` (sekcja 15)
 
@@ -303,7 +303,31 @@ Twoim sprzęcie, automatycznego doboru modelu do zadania i licencji modeli.
   kategorii, staging polecenia, realne uruchomienie BMR („1780 kcal”) i statystyk („mediana: 4,5”),
   historia, kopiowanie (schowek może odmówić w sesji CI — VM ma to obsłużyć) i czyszczenie.
 
-## 15. Zestawy regresji po tym przyroście
+## 15. Modele lokalne — zarządzanie (drugi przyrost sekcji 2)
 
-`--ui-smoke` uruchamia teraz **21 zestawów**: dotychczasowe 18 plus `analysis`, `life` i `privacy`.
+- **Co dochodzi**: dobór modelu do opisu zadania („model do zadania: pisanie kodu” → `qwen2.5-coder:7b`,
+  ze względu, szacunkiem pamięci, alternatywami i wskazaniem, że to podpowiedź z katalogu, nie benchmark),
+  licencje rodzin z katalogu („model licencje” — Apache 2.0 / MIT / Llama Community / Gemma Terms,
+  z jawnym „Sprawdź u źródła; Sentinel nie jest prawnikiem”), karta zainstalowanej wersji z Ollamy
+  („model info: qwen2.5:7b” — rodzina, parametry, kwantyzacja, kontekst), lista załadowanych modeli
+  („model uruchomione” z rozmiarem w pamięci) i status pobierania („model status pobierania” — bez sieci).
+- **Pobieranie i usuwanie tylko za zgodą dwuetapową**: „model pobierz: qwen3:1.7b” pokazuje **plan**
+  (szacunek rozmiaru z katalogu albo uczciwe „nie znam”, źródło pobierania, dokładną formę potwierdzenia),
+  a dopiero „model pobierz: qwen3:1.7b potwierdzam” startuje. Zgoda jest jednorazowa, związana z nazwą
+  i wygasa po 10 minutach. Usuwanie („model usun: …”) dodatkowo odmówi, gdy model jest aktualnie
+  ustawiony albo gdy trwa pobieranie, a plan mówi wprost, że operacja jest nieodwracalna. Kopiowanie
+  („model kopiuj: a do b”) jest dodatnie, więc idzie od razu — ale po ścisłej walidacji nazw.
+- **Bezpieczeństwo kanału**: wszystkie operacje idą wyłącznie do loopbackowej Ollamy (127.0.0.1:11434).
+  Nazwy modeli przechodzą ścisłą normalizację (małe litery, opcjonalnie jeden „:tag”, zero spacji
+  i ukośników — ścieżka nie przejdzie jako nazwa). Bez Ollamy każda operacja kończy się jawnym
+  komunikatem z adresem, nie wyciszoną awarią. Postęp pobierania jest parsowany linia po linii (NDJSON),
+  a śmieciowa linia strumienia jest ignorowana, nie przerywa pobierania.
+- **Testy bez sieci**: `tests/ModelManagementRegression.cs` symuluje martwą sieć (własny handler),
+  więc regresja deterministycznie przechodzi też na maszynie z uruchomioną Ollamą — **niczego naprawdę
+  nie pobiera i niczego nie usuwa**. Łącznie 22 zestawy w `--ui-smoke`.
+
+## 16. Zestawy regresji po tym przyroście
+
+`--ui-smoke` uruchamia teraz **22 zestawy**: dotychczasowe 21 plus `model-management`
+(zgoda dwuetapowa na pobieranie/usuwanie, symulacja martwej sieci).
 Zestawy działają na jawnych danych i nie zależą od sieci ani od modelu.
