@@ -13,7 +13,7 @@ wyzwalacze poleceń (`Starts`, `text is`, `case`, `StartsWith`) oraz wzorce `Reg
 | 4. Kodowanie (tekst, hasła, liczby) | 186–340 | `UtilityToolbox.cs` | 92 | 87 |
 | 13. Produktywność i finanse | 941–1020 | `ProductivityToolbox.cs` | 9 | 12 |
 | 14. Komunikacja + zdrowie | 1021–1070, 1201–1250 | `LifeToolbox.cs` | 30 | 1 |
-| 15. Analiza danych | 1071–1140 | `AnalysisToolbox.cs` | 48 | 0 |
+| 15. Analiza danych | 1071–1140 | `AnalysisToolbox.cs` | 48 | 1 |
 | 19. Sterowanie systemem (0.96) | 1301–1400 (część) | `JarvisToolkit.cs` | 110 | 4 |
 | 11. Automatyzacja (rutyny) | 801–880 (część) | `RoutineCommands.cs` | 0 | 4 |
 | 5. Architektura | 341–420 | `ArchitectureToolbox.cs` | 14 | 0 |
@@ -24,9 +24,10 @@ wyzwalacze poleceń (`Starts`, `text is`, `case`, `StartsWith`) oraz wzorce `Reg
 | 20. Agentic (cele i ryzyko) | 1401–1500 | `GoalToolbox.cs` | 8 | 0 |
 | 9-10. Głos i wizja (media) | 671–800 | `MediaVisionToolbox.cs` | 8 | 0 |
 | 8. Indeks plików tekstowych (RAM) | 591–670 (dopełnienie) | `KnowledgeIndexService.cs` | 6 | 2 |
+| 8. RAG (wektory z lokalnej Ollamy) | 591–670 (dopełnienie) | `KnowledgeRagService.cs` | 6 | 1 |
 | 20. Agentic (reszta: planowanie przez model, autonomia z budżetem) | 1401–1500 | — | 0 (GoalToolbox pokrywa szablony; modelowe planowanie celów nadal nie istnieje) | 0 |
 
-**Suma wyzwalaczy w modułach obsługi:** 705 · **paleta `//`:** 86 wpisów · **rozumienie języka:** 593 fraz
+**Suma wyzwalaczy w modułach obsługi:** 713 · **paleta `//`:** 88 wpisów · **rozumienie języka:** 599 fraz
 
 Werdykt (ludzki, z listą braków per sekcja): [AUDYT-1550.md](AUDYT-1550.md).
 
