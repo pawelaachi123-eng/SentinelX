@@ -66,3 +66,22 @@ moduł, polecenia i testy — raport per sekcja: `docs/AUDYT-1550.md`, skan masz
 Piszesz, że podasz najważniejszą funkcję — **podaję się do dyspozycji**: napisz, która to ma być,
 a zbuduję ją najpóźniej w całości (kalkulator, integracja, strona UI — co wskazesz), z regresją
 i zielonym CI, dalej bez budowania EXE dopóki nie napiszesz inaczej.
+
+## 6. Dokładka po Twoim „DODAJ DALEJ” (zielone CI: 36344866190 + 36344866314 @ a118d3a)
+
+- **Wykres jako obraz (§19)**: „wykres: 3 5 8 4 | Sty Lut Mar Kwi” renderuje słupkowy **PNG**
+  i zapisuje w danych aplikacji — w odpowiedzi ścieżka pliku, min/maks/średnia. To już nie znaki
+  w konsoli, tylko plik do wklejenia w dokument.
+- **Indeks plików tekstowych (§8)**: „indeks zbuduj: folder” skanuje .txt/.md (do 200 plików)
+  do indeksu słów **tylko w RAM**; „indeks szukaj: fraza” wskazuje pliki z trafieniami; nic na dysk.
+- **Plan tygodnia (§13)**: „plan tygodnia: pn=raport; wt=testy” → siatka Pn…Nd z uczciwym liczeniem
+  wpisów o nieznanym dniu.
+- **NAJWAŻNIEJSZE — naprawiona ukryta dziura**: po inkydencie z force-pushe moduły architektury,
+  researchu, wiedzy, celów, full-stacku, smart home i mediów **nie były podpięte w routerze**
+  (testy wywoływały je wprost, więc CI było zielone, ale z czatu nie działały). Teraz dispatch
+  jest w routerze i **ma własną regresję przez realny CommandRouter** (`ModelManagementRegression`
+  przechodzi routerem przez `moduly:`, `cytuj apa:`, `indeks zbuduj`, `wykres:`) — dziura nie wróci.
+- Liczniki po dokładce: **705 wyzwalaczy · 593 frazy · 86 wpisów palety · 32 zestawy** regresji.
+- Uwaga techniczna: w trakcie dokładki trzy edycje zniknęły przy zapisie plików (środowisko wycofywało
+  robocze kopie) — każda została przywrócona i zweryfikowana greppem w pliku, o czym świadczą
+  commity b70a56c, b7df2a2, a118d3a.
