@@ -396,7 +396,13 @@ public static class DeveloperToolbox
     private static bool TryIpv4(string text, out uint value)
     {
         value = 0;
-        if (!IPAddress.TryParse((text ?? "").Trim(), out var parsed)) return false;
+        string clean = (text ?? "").Trim();
+        // 0.97 · Wymagam pełnego zapisu kropkowanego (cztery oktety). IPAddress.TryParse przyjmuje
+        // też skróty w stylu „1.2.3” i „0x7f.1”, co dla polecenia „ip: …” jest mylące: użytkownik
+        // wpisał niepełny adres, a dostawał opis innego adresu (1.2.3 → 1.2.0.3).
+        string[] octets = clean.Split('.');
+        if (octets.Length != 4 || octets.Any(part => part.Length == 0 || part.Length > 3 || !part.All(char.IsAsciiDigit))) return false;
+        if (!IPAddress.TryParse(clean, out var parsed)) return false;
         byte[] bytes = parsed.GetAddressBytes();
         if (bytes.Length != 4) return false;
         value = ((uint)bytes[0] << 24) | ((uint)bytes[1] << 16) | ((uint)bytes[2] << 8) | bytes[3];
