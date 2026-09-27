@@ -94,6 +94,11 @@ public static class CommandUnderstanding
         string normalized = ConversationMemoryService.Normalize(input ?? "").TrimEnd('?', '!', '.', ' ');
         if (normalized.Length == 0 || normalized.Contains('\n')) return CommandRepair.None;
 
+        // 0.97 · twarda bariera: wejścia z czasownikiem niszczącym nie naprawiam wcale. Bez tego
+        // „usun wszystko” potrafiło trafić w podobną frazę bezpieczną (np. „minimalizuj wszystko”)
+        // i wrócić jako gotowe polecenie. Literówka nie może zamienić destrukcji w cokolwiek.
+        if (DestructiveStems.Any(stem => normalized.Contains(stem, StringComparison.Ordinal))) return CommandRepair.None;
+
         // Documented abbreviations win: deterministic, listed by „skróty”. They are short by design.
         if (IntentCatalog.Abbreviations.TryGetValue(normalized, out string? expanded))
             return new CommandRepair(true, expanded, expanded, "skrót „" + normalized + "” → „" + expanded + "”", 1.0);
