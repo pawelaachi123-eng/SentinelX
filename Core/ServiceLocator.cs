@@ -34,6 +34,8 @@ public static class ServiceLocator
         services.AddSingleton<ActionHistoryService>(_ => new());
         services.AddSingleton<ProjectService>(_ => new ProjectService());
         services.AddSingleton<TaskService>(_ => new TaskService());
+        // 0.96: user-defined routines ("scenes") — own store next to tasks and projects.
+        services.AddSingleton<RoutineService>(_ => new RoutineService());
         services.AddSingleton<ConversationMemoryService>(sp => new ConversationMemoryService
         {
             PrivacyProvider = () => MapPrivacy(sp.GetRequiredService<ISettingsService>().Current.Memory),

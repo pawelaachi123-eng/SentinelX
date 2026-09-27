@@ -40,6 +40,7 @@ public static class UiSmokeTestRunner
             await Tests.AiStreamRegression.RunAsync(Path.Combine(output, "ai-stream"));
             await Tests.UnderstandingRegression.RunAsync(Path.Combine(output, "understanding"));
             await Tests.UtilityRegression.RunAsync(Path.Combine(output, "utility"));
+            await Tests.JarvisRegression.RunAsync(Path.Combine(output, "jarvis"));
             await Tests.FileCleanupRegression.RunAsync(Path.Combine(output, "file-cleanup"));
             await Tests.MemoryArchiveRegression.RunAsync(Path.Combine(output, "archives"));
             var vm = services.GetRequiredService<MainViewModel>();
@@ -236,6 +237,33 @@ public static class UiSmokeTestRunner
                 (await memoryEngine.ExecuteAsync("stoper")).Text + (await memoryEngine.ExecuteAsync("stoper stop")).Text;
             if (!stopwatchReply.Contains("Stoper wystartował") || !stopwatchReply.Contains("Stoper zatrzymany"))
                 throw new InvalidOperationException("The stopwatch must start, report and stop: " + stopwatchReply);
+            // 0.96: JARVIS over the desktop, routines and the daily briefing — all local, all honest.
+            string windowsReply = (await memoryEngine.ExecuteAsync("okna")).Text;
+            if (!windowsReply.Contains("Otwarte okna") && !windowsReply.Contains("Nie widzę"))
+                throw new InvalidOperationException("The window list must be answered or refused honestly: " + windowsReply);
+            string routinesReply = (await memoryEngine.ExecuteAsync("rutyny")).Text;
+            if (!routinesReply.Contains("Rutyny") || !routinesReply.Contains("poranek"))
+                throw new InvalidOperationException("Starter routines must be listed: " + routinesReply);
+            string routineRun = (await memoryEngine.ExecuteAsync("uruchom rutynę: poranek")).Text;
+            if (!routineRun.Contains("Rutyna") || !routineRun.Contains("Koniec rutyny"))
+                throw new InvalidOperationException("A routine must run its steps and report them: " + routineRun);
+            string routineRefusal = (await memoryEngine.ExecuteAsync("dodaj rutynę: zla = usuń wszystkie wspomnienia")).Text;
+            if (!routineRefusal.Contains("niszczących"))
+                throw new InvalidOperationException("A destructive routine step must be refused: " + routineRefusal);
+            string briefing = (await memoryEngine.ExecuteAsync("dzień dobry")).Text;
+            if (!briefing.Contains("Dzień dobry") || !briefing.Contains("KOMPUTER"))
+                throw new InvalidOperationException("The morning briefing must read local facts: " + briefing);
+            string pomodoro = (await memoryEngine.ExecuteAsync("pomodoro 45")).Text;
+            if (!pomodoro.Contains("Pomodoro") || !pomodoro.Contains("przypomn"))
+                throw new InvalidOperationException("Pomodoro must arm an honest countdown: " + pomodoro);
+            string clipboardHistory = (await memoryEngine.ExecuteAsync("historia schowka")).Text;
+            if (!clipboardHistory.Contains("Historia schowka"))
+                throw new InvalidOperationException("The clipboard history must answer: " + clipboardHistory);
+            string findFile = (await memoryEngine.ExecuteAsync("znajdź plik: sentinel-smoke-0.96")).Text;
+            if (!findFile.Contains("znajd") && !findFile.Contains("Znalazłem") && !findFile.Contains("Nie znalazłem"))
+                throw new InvalidOperationException("File search must answer: " + findFile);
+            if (SentinelX.Core.SlashCatalog.TryResolve("rutyny")?.Target != "rutyny")
+                throw new InvalidOperationException("//rutyny must map to the routines command.");
             // 0.91: „//” shortcuts resolve through the catalogue without touching the AI.
             string slashHelp = (await memoryEngine.ExecuteAsync("//pomoc")).Text;
             if (!slashHelp.Contains("CO UMIEM"))

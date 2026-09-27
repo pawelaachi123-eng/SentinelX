@@ -22,16 +22,18 @@ public sealed class IntentRouter : IIntentRouter
     private readonly Services.Files.FileCleanupService? cleanup;
     private readonly SessionFactBook? facts;
     private readonly Core.LearnedPatterns? learned;
+    private readonly RoutineService? routines;
     private string? pendingSuggestion;
     private string? pendingSuggestionFrom;
     private string? currentInput;
 
     public IntentRouter(SentinelToolboxService toolbox, Services.Files.IFileService files,
         CommandRouter router, Services.Monitoring.ReadOnlyCommandService reads, UnderstandingJournal? journal = null,
-        Services.Files.FileCleanupService? cleanup = null, SessionFactBook? facts = null, Core.LearnedPatterns? learned = null)
+        Services.Files.FileCleanupService? cleanup = null, SessionFactBook? facts = null, Core.LearnedPatterns? learned = null,
+        RoutineService? routines = null)
     {
         this.toolbox = toolbox; this.files = files; this.router = router; this.reads = reads; this.journal = journal;
-        this.cleanup = cleanup; this.facts = facts; this.learned = learned;
+        this.cleanup = cleanup; this.facts = facts; this.learned = learned; this.routines = routines;
         // The router raises this exactly when it would otherwise hand the input to the AI model.
         router.SuggestionPending += suggestion => { pendingSuggestion = suggestion; pendingSuggestionFrom = currentInput; };
     }
@@ -109,6 +111,19 @@ public sealed class IntentRouter : IIntentRouter
                 if (understanding.Summary.Contains("→", StringComparison.Ordinal))
                     learned?.Record(input, understanding.Text);
             }
+        }
+
+        // 0.96 · JARVIS: okna, multimedia, ekran i zasilanie, schowek i pliki. Przed toolboxem,
+        // bo „zamknij komputer” musi trafić do zasilania, a nie do zamykania aplikacji o nazwie „komputer”.
+        string? jarvis = JarvisToolkit.TryHandle(effective);
+        if (jarvis != null) { pendingSuggestion = null; return note + jarvis; }
+
+        // 0.96 · rutyny (sceny): „uruchom rutynę: poranek” wykonuje kroki pełnym stosem komend.
+        if (routines != null)
+        {
+            string? routine = await RoutineCommands.TryHandleAsync(effective, CommandText.Normalize(effective), routines,
+                (step, stepToken) => ProcessAsync(step, stepToken), token);
+            if (routine != null) { pendingSuggestion = null; return note + routine; }
         }
 
         string? read = reads.Process(effective, token);

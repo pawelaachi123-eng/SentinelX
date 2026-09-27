@@ -11,6 +11,25 @@ public static class SlashCatalog
 {
     public static IReadOnlyList<SlashEntry> Entries { get; } =
     [
+        // 0.96 · JARVIS: desktop, media, power, routines (all local, all reversible in time)
+        new("okna", "Otwarte okna", "lista widocznych okien · tylko odczyt", SlashKind.Command, "okna"),
+        new("minimalizuj", "Minimalizuj wszystko", "powrót na pulpit · Windows+D", SlashKind.Command, "minimalizuj wszystko"),
+        new("przelacz", "Przełącz okno", "Alt+Tab", SlashKind.Command, "przełącz okno"),
+        new("pauza", "Play / pauza", "klawisz multimediów", SlashKind.Command, "pauza"),
+        new("nastepny", "Następny utwór", "klawisz multimediów", SlashKind.Command, "następny utwór"),
+        new("glosniej", "Głośniej", "+10% głośności", SlashKind.Command, "głośniej"),
+        new("ciszej", "Ciszej", "-10% głośności", SlashKind.Command, "ciszej"),
+        new("zablokuj", "Zablokuj ekran", "Windows+L · odwracalne", SlashKind.Command, "zablokuj ekran"),
+        new("wygasz", "Wygasz ekran", "monitor w stan spoczynku", SlashKind.Command, "wygasz ekran"),
+        new("restart", "Restart komputera", "60 s na odwołanie", SlashKind.Command, "restart komputera"),
+        new("anulujzamkniecie", "Anuluj zamknięcie", "odwołuje odliczanie", SlashKind.Command, "anuluj zamknięcie"),
+        new("rutyny", "Rutyny", "Twoje sekwencje kroków", SlashKind.Command, "rutyny"),
+        new("poranek", "Rutyna poranek", "uruchamia startową rutynę", SlashKind.Command, "uruchom rutynę: poranek"),
+        new("rano", "Dzień dobry", "briefing dnia i komputera", SlashKind.Command, "dzień dobry"),
+        new("dobranoc", "Dobranoc", "podsumowanie dnia", SlashKind.Command, "dobranoc"),
+        new("pomodoro", "Pomodoro 25", "licznik pracy z przypomnieniem", SlashKind.Command, "pomodoro 25"),
+        new("schowek", "Historia schowka", "ostatnie kopie tej sesji", SlashKind.Command, "historia schowka"),
+        new("plik", "Znajdź plik", "szukanie po nazwie · tylko odczyt", SlashKind.Command, "znajdź plik: "),
         // system facts (read-only, with evidence)
         new("diag", "Diagnostyka komputera", "pełny raport tylko do odczytu", SlashKind.Command, "diagnostyka komputera"),
         new("diagnostyka", "Diagnostyka komputera", "alias: to samo co //diag", SlashKind.Command, "diagnostyka komputera"),

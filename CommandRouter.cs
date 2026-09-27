@@ -60,6 +60,8 @@ public sealed class CommandRouter
         if (utilityResponse != null) return utilityResponse;
         string? metaResponse = TryHandleMetaCommand(text);
         if (metaResponse != null) return metaResponse;
+        string? jarvisResponse = TryHandleJarvisCommand(command.Trim(), text);
+        if (jarvisResponse != null) return jarvisResponse;
         string? workspaceResponse = TryHandleWorkspaceCommand(command.Trim(), text);
         if (workspaceResponse != null) return workspaceResponse;
         string? memoryResponse = TryHandleMemoryCommand(command.Trim(), text);
@@ -188,7 +190,16 @@ public sealed class CommandRouter
                   string.Join("\n", snapshot.Select(x => "· [" + x.Time + "] " + x.Label + ": " + x.Value));
         }
         if (text is "co nowego" or "lista zmian" or "changelog" or "co sie zmienilo")
-            return "CO NOWEGO W 0.95 · JARVIS\n" +
+            return "CO NOWEGO W 0.96 · JARVIS: PULPIT, MULTIMEDIA, ZASILANIE\n" +
+                "· Steruję oknami: „okna” (lista), „minimalizuj wszystko” (Windows+D), „minimalizuj/maksymalizuj/zamknij okno”, „przełącz okno” (Alt+Tab), „przełącz na: chrome”, „okno w lewo/prawo”, „pełny ekran”. Zamykam przez WM_CLOSE — dokładnie jak kliknięcie „X”, więc program może zapytać o zapis.\n" +
+                "· Multimedia: „pauza”, „wznów odtwarzanie”, „następny utwór”, „poprzedni utwór”, „zatrzymaj odtwarzanie”, „głośniej”, „ciszej”. Działa na tym odtwarzaczu, który system uznaje za aktywny — gdy system odrzuci klawisz, mówię o tym wprost.\n" +
+                "· Zasilanie bez drugiego pytania: „zablokuj ekran”, „wygasz ekran”, „uspij komputer”, „zamknij komputer”, „restart komputera”. Polecenie jest zgodą (nie pytam drugi raz), ale zamykanie, restart i uśpienie mają okno do odwołania: „anuluj zamknięcie”.\n" +
+                "· „dzień dobry” i „dobranoc”: briefing z lokalnych odczytów — zadania na dziś, przeterminowane, przypomnienia, CPU/RAM/dyski/bateria i przypięte notatki. Bez modelu i bez sieci.\n" +
+                "· Rutyny (sceny): „rutyny”, „uruchom rutynę: poranek”, „dodaj rutynę: poranek = która godzina | plan dnia”, „usuń rutynę: poranek”. Trzy rutyny startowe (poranek, praca, koniec dnia) są tylko do odczytu. Rutyna nie przyjmie polecenia niszczącego dane, bo wykonuje się bez pytania.\n" +
+                "· „pomodoro 25” i „przerwa 5” — licznik pracy jako zwykłe przypomnienie z konkretną godziną.\n" +
+                "· Schowek: „kopiuj: tekst” trafia też do historii sesji — „historia schowka”, „schowek 2” wkleja wybrany wpis z powrotem. Nic nie zapisuję na dysk.\n" +
+                "· Pliki: „znajdź plik: raport” szuka po fragmencie nazwy w Pulpicie, Dokumentach i Pobranych — tylko odczyt, z limitami głębokości, czasu i wyników.\n" +
+                "\nCO NOWEGO W 0.95 · JARVIS\n" +
                 "· Timer, budzik i stoper: „timer 5 minut herbata”, „budzik 7:00”, „stoper start/stop” — powiadomienie ⏰ tym samym kanałem co przypomnienia.\n" +
                 "· Głośność i dźwięk: „głośność”, „głośność 40”, „wycisz”, „przywróć dźwięk”. Zrzut ekranu: „zrzut ekranu” zapisuje PNG w folderze danych.\n" +
                 "· Schowek: „kopiuj: tekst” i „co w schowku”.\n" +
@@ -227,6 +238,7 @@ public sealed class CommandRouter
             return insights?.Suggestions() ?? "Propozycje nie są dostępne w tym trybie.";
 
         // 0.95 · self-repair, self-improve, stoper — warstwa Jarvisa. Bez samomodyfikacji kodu.
+    // 0.95 · self-repair, self-improve, stoper — warstwa Jarvisa. Bez samomodyfikacji kodu.
         if (text is "napraw sie" or "napraw się" or "self repair" or "napraw dane" or "napraw pamiec" or "napraw pamięć" or "napraw pliki" or "naprawa")
         {
             var repairLines = new List<string>
@@ -285,6 +297,87 @@ public sealed class CommandRouter
             }
         }
         return null;
+    }
+
+    /// <summary>0.96 · „dzień dobry” / „dobranoc” — raport z lokalnych odczytów: co dziś, co przegapione,
+    /// w jakim stanie jest komputer. Bez modelu, bez sieci. Briefing tylko czyta i niczego nie wykonuje.</summary>
+    private string? TryHandleJarvisCommand(string command, string text)
+    {
+        if (text is "dzien dobry" or "briefing" or "raport poranny" or "poranny raport" or "co dzisiaj" or "co na dzis")
+            return Core.JarvisBriefing.Morning(BuildBriefing());
+        if (text is "dobranoc" or "raport wieczorny" or "wieczorny raport" or "koniec dnia" or "podsumowanie dnia")
+            return Core.JarvisBriefing.Evening(BuildBriefing());
+
+        var pomodoro = Regex.Match(command, @"^(?:pomodoro|skupienie|sesja pracy)(?:\s+(\d{1,3}))?$", RegexOptions.IgnoreCase);
+        if (pomodoro.Success) return StartFocusTimer(pomodoro.Groups[1].Value, breakMode: false);
+        var breakTimer = Regex.Match(command, @"^(?:przerwa|przerwa w pracy|break)(?:\s+(\d{1,3}))?$", RegexOptions.IgnoreCase);
+        if (breakTimer.Success) return StartFocusTimer(breakTimer.Groups[1].Value, breakMode: true);
+        return null;
+    }
+
+    /// <summary>Pomodoro i przerwa to po prostu uczciwy licznik: przypomnienie z konkretną godziną,
+    /// działające tak jak wszystkie moje przypomnienia (czyli gdy aplikacja jest uruchomiona).</summary>
+    private string StartFocusTimer(string minutesText, bool breakMode)
+    {
+        int minutes = breakMode ? 5 : 25;
+        if (minutesText.Length > 0 && (!int.TryParse(minutesText, out minutes) || minutes is < 1 or > 180))
+            return "Czas podaj w minutach od 1 do 180, np. „pomodoro 25” albo „przerwa 5”.";
+        if (tasks == null) return "Przypomnienia nie są dostępne w tym trybie — licznik potrzebuje magazynu zadań.";
+        DateTime when = DateTime.Now.AddMinutes(minutes);
+        string label = breakMode
+            ? "☕ Przerwa — koniec (" + minutes + " min). Wracamy do pracy."
+            : "🍅 Pomodoro — koniec sesji (" + minutes + " min). Zrób 5 minut przerwy: „przerwa 5”.";
+        var created = tasks.AddReminder(label, when, "");
+        return created != null
+            ? (breakMode ? "☕ Przerwa" : "🍅 Pomodoro") + ": " + minutes + " minut — przypomnę o " + created.RemindAt.ToString("HH:mm") +
+              ". Działa, gdy aplikacja jest uruchomiona (jak każde moje przypomnienie)." +
+              (breakMode ? "" : " Po sesji wpisz „przerwa 5”.")
+            : tasks.LastStorageError ?? "Nie udało się ustawić licznika.";
+    }
+
+    /// <summary>Zbiera dane briefingu: zadania, przypomnienia, odczyty systemu, przypięte notatki.
+    /// Wyłącznie odczyt — briefing niczego nie zapisuje i niczego nie zmienia.</summary>
+    private Core.BriefingData BuildBriefing()
+    {
+        DateTime now = DateTime.Now;
+        var overdue = new List<string>();
+        var today = new List<string>();
+        var reminders = new List<string>();
+        var done = new List<string>();
+        if (tasks != null)
+        {
+            foreach (var task in tasks.GetTasks(includeDone: true))
+            {
+                if (task.Status == TaskRecord.StatusDone)
+                {
+                    if (task.DoneAt?.Date == now.Date) done.Add(task.Title);
+                    continue;
+                }
+                if (task.DueAt == null) continue;
+                string line = task.Title + "  (" + task.DueAt.Value.ToString("dd.MM HH:mm") + ")";
+                if (task.DueAt.Value < now) overdue.Add(line);
+                else if (task.DueAt.Value.Date == now.Date) today.Add(line);
+            }
+            foreach (var reminder in tasks.GetReminders().Where(x => x.NotifiedAt == null && x.RemindAt.Date == now.Date).Take(8))
+                reminders.Add(reminder.Text + "  —  " + reminder.RemindAt.ToString("HH:mm"));
+        }
+        var facts = new List<string>
+        {
+            "CPU: " + Number(systemMonitor.GetCpuUsage(), "%") + " · RAM: " + Number(systemMonitor.GetUsedRamGB(), "GB", 1) +
+                " z " + Number(systemMonitor.GetTotalRamGB(), "GB", 1) + " (" + Number(systemMonitor.GetRamUsagePercent(), "%") + ")",
+            "Czas pracy komputera: " + systemInfo.GetUptime(),
+            "Dyski: " + FirstLine(systemInfo.GetDiskInfo()),
+        };
+        string battery = UtilityToolbox.BatteryStatus();
+        if (!battery.StartsWith("Ten komputer nie ma baterii", StringComparison.Ordinal)) facts.Add(battery);
+        string[] pinned = memory.GetNotes().Where(x => x.Pinned && x.SupersededAt == null).Take(5).Select(x => x.Text).ToArray();
+        return new Core.BriefingData(now, memory.UserName, overdue, today, reminders, done, facts, pinned);
+    }
+
+    private static string FirstLine(string text)
+    {
+        string[] lines = (text ?? "").Split('\n');
+        return lines.Length == 0 || lines[0].Trim().Length == 0 ? "odczyt niedostępny" : lines[0].Trim();
     }
 
     private string? TryHandleProjectCommand(string command, string text)
@@ -781,7 +874,12 @@ public sealed class CommandRouter
         Projekty: nowy projekt: nazwa · projekty · użyj projektu N · aktywny projekt
         Zadania: dodaj zadanie: treść · dodaj zadanie: pilne treść (priorytet z tekstu) · zrob zadanie: treść · zadania · zadanie N zrobione · zadanie N priorytet wysoki|niski|normalny · szukaj w zadaniach: fraza · przypomnienia · przypomnij mi jutro o 18 o …
         Sentinel: samokontrola · napraw sie (naprawa danych) · ulepsz sie (co się nauczyłem) · propozycje · lekcje · wersja · co nowego · zrozum: zdanie (pokazuję rozumienie, nic nie wykonuję) · fakty · co wiesz o mnie · podsumuj rozmowę
-        Jarvis: timer 5 minut · budzik 7:00 · stoper start/stop · głośność / głośność 40 · wycisz · przywróć dźwięk · zrzut ekranu · kopiuj: tekst · co w schowku
+        Jarvis · czas: timer 5 minut · budzik 7:00 · stoper start/stop · pomodoro 25 · przerwa 5 · zrzut ekranu
+        Jarvis · pulpitem: okna · minimalizuj wszystko (Windows+D) · minimalizuj okno · maksymalizuj okno · przywróć okno · zamknij okno · przełącz okno (Alt+Tab) · przełącz na: chrome · okno w lewo · okno w prawo · pełny ekran
+        Jarvis · dźwięk i multimedia: głośność / głośność 40 · głośniej · ciszej · wycisz · przywróć dźwięk · pauza · wznów odtwarzanie · następny utwór · poprzedni utwór · zatrzymaj odtwarzanie
+        Jarvis · zasilanie: zablokuj ekran · wygasz ekran · uspij komputer · zamknij komputer · restart komputera · anuluj zamknięcie (polecenie jest zgodą; zamykanie, restart i uśpienie mają okno do odwołania)
+        Jarvis · rytuały: dzień dobry · dobranoc · rutyny · uruchom rutynę: poranek · dodaj rutynę: poranek = która godzina | plan dnia · usuń rutynę: poranek
+        Jarvis · schowek i pliki: kopiuj: tekst · co w schowku · historia schowka · schowek 2 · znajdź plik: raport
         Matematyka: policz 12,5*4 · pierwiastek 144 · silnia 10 · nwd 12 8 · nww 4 6 · czy pierwsza 97 · dzielniki 12 · fibonacci 10 · srednia: 2, 4, 6 · mediana: … · suma: … · min: … · max: … · srednia wazona: 4 2, 5 1 · zaokraglij 3,14159 do 2 · zmiana z 50 do 80 · procent 15 z 240 · ile to procent 30 z 240 · logarytm 1000 10 · potega 2 10 · modulo 10 3 · abs -5 · sin 30 · cos 60 · tan 45 · rownanie 1 -3 2
         Finanse i zakupy: vat 23 100 · vat 8 100 brutto · vat 5 250 · znizka 200 30 · napiwek 150 10 · raty 100000 7 25 (kwota, %, lata) · odsetki 1000 5 3 · procent skladany 1000 5 10
         Konwersje: przelicz 5 km na mile · rgb 31 162 195 · kolor 1fa2c3 · rzymskie 2026 · z rzymskich XIV · base64: tekst · dekoduj base64: … · morse: sos · dekoduj morse: … · binarnie: A · dekoduj binarnie: … · hex: Ala · dekoduj hex: …

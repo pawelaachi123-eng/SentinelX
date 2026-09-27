@@ -312,7 +312,9 @@ public sealed class WorkspaceInsightsService
     {
         memory.StoragePath, tasks.StoragePath, projects.StoragePath, snapshots.StoragePath,
         Path.Combine(AppPaths.SettingsDirectory, "settings.json"),
-        Path.Combine(AppPaths.MemoryDirectory, "LearnedPatterns.json")
+        Path.Combine(AppPaths.MemoryDirectory, "LearnedPatterns.json"),
+        // 0.96: rutyny (sceny) — własny magazyn obok pamięci, zadań i projektów.
+        Path.Combine(AppPaths.MemoryDirectory, "routines.json")
     }.Distinct(StringComparer.OrdinalIgnoreCase);
 
     private static long DirectoryBytes(string root)

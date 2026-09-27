@@ -106,7 +106,18 @@ public static class IntentCatalog
             // 0.95 · Jarvis: timer/stoper/budzik, głośność, schowek, zrzuty, self-repair/self-improve
             "timer", "budzik", "stoper", "stoper start", "stoper stop",
             "glosnosc", "wycisz", "przywroc dzwiek", "co w schowku", "kopiuj",
-            "zrzut ekranu", "screenshot", "napraw sie", "ulepsz sie"
+            "zrzut ekranu", "screenshot", "napraw sie", "ulepsz sie",
+            // 0.96 · JARVIS: okna, multimedia, zasilanie, rutyny, briefing, schowek, pliki
+            "okna", "lista okien", "minimalizuj wszystko", "minimalizuj okno", "maksymalizuj okno",
+            "przywroc okno", "zamknij okno", "przelacz okno", "okno w lewo", "okno w prawo",
+            "pelny ekran", "przelacz na",
+            "pauza", "wstrzymaj", "wznow odtwarzanie", "nastepny utwor", "poprzedni utwor",
+            "zatrzymaj odtwarzanie", "glosniej", "ciszej",
+            "zablokuj ekran", "wygasz ekran", "uspij komputer", "zamknij komputer",
+            "restart komputera", "anuluj zamkniecie",
+            "rutyny", "dodaj rutyne", "uruchom rutyne", "usun rutyne",
+            "dzien dobry", "briefing", "dobranoc", "pomodoro", "przerwa", "skupienie",
+            "historia schowka", "znajdz plik", "szukaj pliku"
         ];
         foreach (string phrase in extra) phrases.Add(phrase);
         return phrases.OrderBy(x => x, StringComparer.Ordinal).ToArray();

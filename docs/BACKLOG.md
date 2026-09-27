@@ -1,6 +1,6 @@
 # Trwały backlog rozwoju SentinelX
 
-Stan na 2026-09-26 (0.95). Zasada: każda pojedyncza pozycja znika z listy dopiero, gdy jest **zbudowana i przetestowana na Windows (CI)**, nie „gdy wygląda na zrobioną".
+Stan na 2026-09-27 (0.96). Zasada: każda pojedyncza pozycja znika z listy dopiero, gdy jest **zbudowana i przetestowana na Windows (CI)**, nie „gdy wygląda na zrobioną".
 
 ## Gotowe i zweryfikowane (0.85 i wcześniejsze)
 
@@ -140,10 +140,32 @@ Stan na 2026-09-26 (0.95). Zasada: każda pojedyncza pozycja znika z listy dopie
 - **Self-check** rozszerzony o magazyn nauczonych wzorców; `tests/SelfMaintenanceRegression.cs`
   + asercje w `--ui-smoke` (SELF-REPAIR, timer, stoper).
 
+## Gotowe w 0.96 (ten przyrost — patrz git)
+
+- **Sterowanie pulpitem**: `okna` (lista z tytułami), `minimalizuj wszystko` (Windows+D),
+  `minimalizuj/maksymalizuj/przywróć/zamknij okno`, `przełącz okno` (Alt+Tab),
+  `przełącz na: fragment`, `okno w lewo/prawo`, `pełny ekran` — `Core/WindowManager.cs`
+  + `Core/InputSender.cs` (user32, bez WinForms i bez nowych pakietów).
+- **Multimedia**: `pauza`, `wznów odtwarzanie`, `następny/poprzedni utwór`,
+  `zatrzymaj odtwarzanie`, `głośniej`, `ciszej` (±10%).
+- **Ekran i zasilanie**: `zablokuj ekran`, `wygasz ekran`, `uspij komputer`, `zamknij komputer`,
+  `restart komputera`, `anuluj zamknięcie`. Polecenie jest zgodą (decyzja użytkownika), a akcje
+  nieodwracalne mają okno do odwołania (`Core/PowerManager.cs`, systemowy `shutdown.exe`).
+- **Briefing**: `dzień dobry` i `dobranoc` — czysta funkcja `Core/JarvisBriefing.cs` nad danymi
+  z lokalnych odczytów (zadania, przypomnienia, CPU/RAM/dyski/bateria, przypięte notatki).
+- **Rutyny (sceny)** — domknięcie części P0 „sekwencje działań” w wariancie bezpiecznym:
+  `rutyny` / `uruchom rutynę: X` / `dodaj rutynę: X = krok | krok` / `usuń rutynę: X`,
+  magazyn `Memory/routines.json` (zapis atomowy, kopia uszkodzonego pliku, odczyt zwrotny
+  SHA-256, wpięty w `samokontrola`), odrzucanie kroków niszczących dane, limit zagnieżdżenia 3.
+- **`pomodoro N` / `przerwa N`**, **historia schowka** (pierścień sesji, bez zapisu na dysk),
+  **`znajdź plik: fragment`** (Pulpit/Dokumenty/Pobrane, tylko odczyt, twarde limity).
+- `tests/JarvisRegression.cs` + asercje w `--ui-smoke` (okna, rutyny, odmowa kroku niszczącego,
+  briefing, pomodoro, historia schowka, `//rutyny`).
+
 ## Priorytet P0 — kolejny przyrost
 
 1. **Pliki — DOMKNIĘTE w 0.92/0.93**: duplikaty po treści (SHA-256), raport porządkowy, usuwanie pojedynczych plików do Kosza z potwierdzeniem, usuwanie duplikatów (`usuń duplikaty:`) z pozostawieniem 1 kopii na grupę, sprzątanie pustych plików (`usuń puste pliki:`), zbiorcze zmiany nazw z podglądem (`zmien nazwy: … zamien … na …`). Ewentualne rozszerzenia (filtry rozmiaru, podfoldery w zmianach nazw) to P1.
-2. **Sekwencje działań**: nazwane kroki, plan z podglądem, statusy kroków, zatrzymanie na błędzie, wznowienie tam, gdzie to sensowne.
+2. **Sekwencje działań — CZĘŚCIOWO w 0.96**: rutyny (`rutyna X`) dają nazwane kroki, wykonanie po kolei z wynikiem każdego kroku i zatrzymanie przy przerwaniu. Zostaje: plan z podglądem przed uruchomieniem, statusy kroków w historii akcji i wznowienie od kroku, który nie zdążył się wykonać.
 3. **Panel archiwum w UI**: strona/panel z listą archiwów (miesiąc, rozmowy, wypowiedzi, rozmiar, hash), podglądem Markdowna i usuwaniem — dziś archiwum działa z czatu i z ustawień, ale nie ma własnego widoku.
 4. **Podpisywanie buildów**: certyfikat (płatny) albo jawnie opisana ścieżka bez podpisu z instrukcją odblokowania SmartScreen; dziś pliki są niepodpisane i tak jest opisane.
 5. **Integracje odłożone z 0.91** (decyzja użytkownika): GitHub i Gmail — dopiero jako osobny przyrost, wyłącznie za jawną zgodą i z lokalnym przechowywaniem poświadczeń stockowym crypto Windows.
@@ -153,7 +175,7 @@ Stan na 2026-09-26 (0.95). Zasada: każda pojedyncza pozycja znika z listy dopie
 
 - Pliki — rozszerzenia poza P0: podgląd diff przed zmianą treści, filtrowanie duplikatów po rozmiarze przed hashowaniem.
 - Tryb gry: zawieszanie indeksowania/ciężkich zadań, profil modeli z histerezą przełączania (progi + opóźnienie), zwalnianie modelu opcjonalne.
-- Sekwencje działań: nazwane kroki, plan z podglądem, statusy kroków, stop na błędzie, wznowienie tam gdzie sensowne.
+- Sekwencje działań (po 0.96): plan z podglądem, statusy kroków w historii akcji, wznowienie od niewykonanego kroku.
 - Rozmowa: edycja wypowiedzi i ponowne wysłanie z oznaczeniem alternatywy; zakładanie odgałęzień rozmowy.
 - Narzędzia: przelicznik walut (wymaga kursu — offline nieuczciwe), przywracanie archiwum do nowej rozmowy, skróty konfigurowalne przez użytkownika.
 - Rozbicie `CommandRouter` (~700 linii po 0.94) na osobne moduły: pamięć, projekty/zadania, snapshoty, narzędzia, meta — dopiero przy zielonym CI.
@@ -174,7 +196,11 @@ Stan na 2026-09-26 (0.95). Zasada: każda pojedyncza pozycja znika z listy dopie
 - Ollama, mikrofon i gry wymagają testów na komputerze docelowym; CI nie ma mikrofonu ani gier.
 - Wyszukiwanie **treści** (wspomnienia, rozmowa, `szukaj wszystkiego`) jest tekstowe z tolerancją odmiany i jednej literówki (≥5 znaków: wspólny ogier albo edycja ≤1) — bez semantyki; dalej może nie trafić na synonimy.
 - Naprawa poleceń działa na katalogu ~310 fraz (0.94) z ogierkami odmiany: nie rozumie pełnej polszczyzny ani kontekstu, a przy niejednoznaczności celowo nic nie poprawia.
-- `przelicz` nie przelicza walut (wymaga kursu — offline nieuczciwe). Zrzuty ekranu i sterowanie głośnością są od 0.95.
+- `przelicz` nie przelicza walut (wymaga kursu — offline nieuczciwe). Zrzuty ekranu i sterowanie
+  głośnością są od 0.95.
+- Sterowanie oknami i multimediami (0.96) używa syntetycznych klawiszy: system może je odrzucić,
+  gdy aktywne okno ma wyższe uprawnienia (UIPI) — wtedy pada uczciwe „nie udało się”.
+- Rutyny (0.96) nie mają podglądu planu przed uruchomieniem ani statusów kroków w historii akcji.
 - VAT liczy stawki 23/8/5/0% (wybór w poleceniu, domyślnie 23%); inne stawki są odrzucane z wyjaśnieniem.
 - Archiwum rozmów jest kopią do odczytu: nie ma przywracania do aktywnej rozmowy.
 - Limit magazynu artefaktów GitHub Actions został osiągnięty 2026-09-24: przebieg `36049020743` miał **13/13 kroków merytorycznych `success`**, a czerwony znacznik pochodzi wyłącznie z `upload-artifact` („Artifact storage quota has been hit”). Retencja artefaktów skrócona do 2 dni; trwałą dystrybucją są assety wydania. Gdyby limit dalej blokował, kolejne kroki: `retention-days: 1` albo rezygnacja z uploadu binariów w buildzie gałęzi.

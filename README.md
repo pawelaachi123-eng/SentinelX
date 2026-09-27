@@ -1,6 +1,18 @@
-# SENTINEL X 0.95 · JARVIS — Windows / MVVM
+# SENTINEL X 0.96 · JARVIS — Windows / MVVM
 
 Lokalny asystent Windows 10/11, C# 13, .NET 9, WPF. Nowe GUI jest domyślnym interfejsem. Poprzedni interfejs i jego funkcje nadal są dostępne przez `--legacy`.
+
+## Nowe w 0.96 — JARVIS: pulpit, multimedia, zasilanie i rutyny
+
+- **Steruję oknami jak każdy Jarvis**: `okna` (lista z tytułami), `minimalizuj wszystko` (Windows+D), `minimalizuj okno`, `maksymalizuj okno`, `przywróć okno`, `zamknij okno` (WM_CLOSE, czyli to samo co „X” — program może zapytać o zapis), `przełącz okno` (Alt+Tab), `przełącz na: chrome`, `okno w lewo` / `okno w prawo`, `pełny ekran`. „zamknij okno” **nie zamknie Sentinela** — sprawdzam, czy aktywne okno nie należy do mnie.
+- **Multimedia**: `pauza` (play/pauza), `wznów odtwarzanie`, `następny utwór`, `poprzedni utwór`, `zatrzymaj odtwarzanie`, `głośniej`, `ciszej` (±10%). Gdy system odrzuci klawisz (okno o wyższych uprawnieniach), mówię o tym wprost.
+- **Zasilanie bez drugiego pytania**: `zablokuj ekran`, `wygasz ekran`, `uspij komputer`, `zamknij komputer`, `restart komputera` — **polecenie jest zgodą**, ale zamykanie, restart i uśpienie mają okno do odwołania (`anuluj zamknięcie`, 60 s / 20 s). Zamknięcie idzie przez systemowy `shutdown.exe`, więc Windows nadal może zapytać o niezapisane dane.
+- **`dzień dobry` i `dobranoc`**: briefing z lokalnych odczytów — zadania na dziś i przeterminowane, przypomnienia, CPU/RAM/dyski/bateria, przypięte notatki. Bez modelu, bez sieci, bez wykonywania czegokolwiek.
+- **Rutyny (sceny)**: `rutyny`, `uruchom rutynę: poranek`, `dodaj rutynę: poranek = która godzina | plan dnia | bateria`, `usuń rutynę: poranek`. Trzy rutyny startowe (poranek, praca, koniec dnia) są tylko do odczytu; **rutyna nie przyjmie polecenia niszczącego dane**, bo wykonuje się bez pytania o zgodę. Magazyn `Memory/routines.json` z zapisem atomowym i odczytem zwrotnym SHA-256 (jak pamięć i projekty).
+- **`pomodoro 25` · `przerwa 5`** — licznik pracy jako zwykłe przypomnienie z konkretną godziną.
+- **Historia schowka**: `kopiuj: tekst` trafia też do historii sesji — `historia schowka`, `schowek 2` wkleja wpis z powrotem. Tylko pamięć sesji: nic nie zapisuję na dysk.
+- **`znajdź plik: raport`** — szukanie po fragmencie nazwy w Pulpicie, Dokumentach i Pobranych. Tylko odczyt, z limitami głębokości (4), katalogów (3000), wyników (20) i czasu (8 s); każde ograniczenie jest wypisane w odpowiedzi.
+- Szczegóły: [docs/RELEASE-0.96.md](docs/RELEASE-0.96.md).
 
 ## Nowe w 0.95 — JARVIS: timer/głośność/zrzuty/schowek + self-repair i self-improve
 

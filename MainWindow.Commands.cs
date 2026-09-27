@@ -58,6 +58,12 @@ public partial class MainWindow
     }
     private async Task<string?> BuiltInAsync(string command, string text, CancellationToken token)
     {
+        // 0.96 · JARVIS: okna, multimedia, zasilanie, schowek i pliki — przed narzędziami,
+        // bo „zamknij komputer” ma trafić do zasilania, a nie do zamykania aplikacji „komputer”.
+        string? jarvisResponse = JarvisToolkit.TryHandle(command);
+        if (jarvisResponse != null) return jarvisResponse;
+        string? routineResponse = await RoutineCommands.TryHandleAsync(command, text, routines, RouteAsync, token);
+        if (routineResponse != null) return routineResponse;
         var build = Regex.Match(text, @"^(?:zbuduj|stworz|utworz) (?:mi )?program (notatnik|kalkulator|pomodoro)$");
         if (build.Success)
         {

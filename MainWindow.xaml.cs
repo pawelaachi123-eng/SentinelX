@@ -24,6 +24,7 @@ public partial class MainWindow : Window
     private readonly VoiceRecognitionService voice;
     private readonly ResourceGuardService resourceGuard = new();
     private readonly FileWorkspaceService files;
+    private readonly RoutineService routines = new();
     private readonly ProgramBuilderService programBuilder = new();
     private SettingsEditorView? settingsEditor;
     private bool applyingSettings;

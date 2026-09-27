@@ -340,7 +340,8 @@ public static class UtilityToolbox
         {
             string payload = Argument(raw, "kopiuj do schowka", "skopiuj do schowka", "kopiuj", "skopiuj");
             if (payload.Length == 0) return "Podaj tekst do skopiowania, np. „kopiuj: spotkanie o 15:00”.";
-            try { System.Windows.Clipboard.SetText(payload); return "Skopiowane do schowka (" + payload.Length + " znaków)."; }
+            // 0.96: to, co sam skopiowałem, ląduje w historii schowka (pamięć sesji, nigdy dysk).
+            try { System.Windows.Clipboard.SetText(payload); Core.ClipboardHistory.Record(payload); return "Skopiowane do schowka (" + payload.Length + " znaków). „historia schowka” pokazuje ostatnie wpisy tej sesji."; }
             catch (Exception ex) when (ex is System.Runtime.InteropServices.ExternalException or InvalidOperationException)
             { return "Schowek jest niedostępny w tej sesji — spróbuj ponownie."; }
         }
