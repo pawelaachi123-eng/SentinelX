@@ -364,6 +364,14 @@ usuwanie, dobór do zadania i licencje doszły w drugim przyroście — sekcja 1
   aplikacji (ścieżka i statystyki w odpowiedzi); „indeks zbuduj: folder” / „indeks szukaj: fraza” /
   „indeks status” (`KnowledgeIndexService.cs`) skanują .txt/.md do mapy słów **tylko w RAM** (200 plików,
   głębokość 3, 2 MB/plik — nic na dysk); „plan tygodnia: pn=…; wt=…” daje siatkę tygodnia.
+- **RAG bez chmury (sekcja 8, `KnowledgeRagService.cs` + `LocalAiService.GetEmbeddingAsync`)**:
+  „rag zbuduj: folder” (fragmenty ≤ 800 znaków z zakładką 120, wektory z nomic-embed-text przez
+  loopback, limit 200 plików / 400 fragmentów), „rag szukaj: fraza” (kosinus, top 5 z procentem
+  i nazwą pliku), „rag prompt: pytanie” (gotowiec z obowiązkowymi źródłami), „rag model/status/reset”.
+  Baza tylko w RAM; bez Ollamy jawny komunikat; nieudana budowa nie czyści bazy. Regresja:
+  `tests/RagRegression.cs` na deterministycznych fejkowych wektorach (worki słów, 16 kubełków),
+  przejście przez realny router — 33 zestawy. Dla maszyny użytkownika: `scripts/setup-rag.ps1`
+  (jedno polecenie: sprawdza dotnet/ollama, pociąga modele, NIE buduje EXE) i `docs/START-RAG.md`.
 - **Router ma teraz jawną regresję dispatchu**: `ModelManagementRegression` przechodzi przez realny
   `CommandRouter` także dla architektury, researchu, indeksu i wykresu — dziura w dispatchu (moduły bez
   wpięcia po inkydencie z force-pushe) nie może się już powtórzyć niezauważona.

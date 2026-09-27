@@ -431,6 +431,39 @@ public sealed class LocalAiService : IDisposable
             "· Szacunek pamięci z katalogu: „model karta: " + name + "” · załadowane teraz: „model uruchomione”.";
     }
 
+    // ————— 0.97 · SEKCJA 8 (RAG): embeddingi przez loopbackową Ollamę (/api/embeddings) —————
+
+    /// <summary>Czysty parser odpowiedzi {"embedding":[…]} — testowany bez sieci.</summary>
+    internal static double[]? ParseEmbedding(string json)
+    {
+        try
+        {
+            using JsonDocument document = JsonDocument.Parse(json);
+            if (document.RootElement.ValueKind == JsonValueKind.Object &&
+                document.RootElement.TryGetProperty("embedding", out var e) && e.ValueKind == JsonValueKind.Array)
+            {
+                var values = new List<double>();
+                foreach (var item in e.EnumerateArray())
+                    if (item.ValueKind == JsonValueKind.Number && item.TryGetDouble(out double v)) values.Add(v);
+                return values.Count > 0 ? values.ToArray() : null;
+            }
+            return null;
+        }
+        catch (JsonException) { return null; }
+    }
+
+    /// <summary>Wektor tekstu z lokalnej Ollamy. HttpRequestException idzie do wywołującego (brak Ollamy),
+    /// pusty/nieznany format to InvalidOperationException z jawnym komunikatem.</summary>
+    public async Task<double[]> GetEmbeddingAsync(string model, string text, CancellationToken cancellationToken = default)
+    {
+        string name = NormalizePullModelName(model) ?? throw new ArgumentException("Niepoprawna nazwa modelu embeddingowego: „" + (model ?? "") + "”.");
+        using var content = new StringContent(JsonSerializer.Serialize(new { model = name, prompt = text ?? "" }), Encoding.UTF8, "application/json");
+        using HttpResponseMessage response = await httpClient.PostAsync("/api/embeddings", content, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        return ParseEmbedding(await response.Content.ReadAsStringAsync(cancellationToken))
+            ?? throw new InvalidOperationException("Ollama nie zwróciła wektora embeddingu (puste albo nieznany format).");
+    }
+
     internal static bool IsLocalModelName(string name) =>
         !string.IsNullOrWhiteSpace(name) && name.Length <= 200 &&
         Regex.IsMatch(name, @"^[a-zA-Z0-9][a-zA-Z0-9._:/-]*$") &&

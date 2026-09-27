@@ -44,6 +44,7 @@ MODULES = [
     ("GoalToolbox.cs", "20", "Agentic (cele i ryzyko)", "1401–1500"),
     ("MediaVisionToolbox.cs", "9-10", "Głos i wizja (media)", "671–800"),
     ("KnowledgeIndexService.cs", "8", "Indeks plików tekstowych (RAM)", "591–670 (dopełnienie)"),
+    ("KnowledgeRagService.cs", "8", "RAG (wektory z lokalnej Ollamy)", "591–670 (dopełnienie)"),
 ]
 
 # Sekcje bez modułu obsługi poleceń — z jawnym powodem, żeby brak był widoczny.

@@ -136,6 +136,18 @@ public static class KnowledgeIndexService
         }
     }
 
+    /// <summary>Wspólna, limitowana enumeracja plików tekstowych (używa też RAG).</summary>
+    internal static IEnumerable<string> CollectTextFiles(string directory, int max)
+    {
+        var files = new List<string>();
+        foreach (string file in Enumerate(directory, 0))
+        {
+            files.Add(file);
+            if (files.Count >= max) break;
+        }
+        return files;
+    }
+
     private static IEnumerable<string> Enumerate(string directory, int depth)
     {
         foreach (string file in Directory.EnumerateFiles(directory))

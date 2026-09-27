@@ -57,6 +57,7 @@ public static class UiSmokeTestRunner
             await Tests.EverydayRegression.RunAsync(Path.Combine(output, "everyday"));
             await Tests.ChartRegression.RunAsync(Path.Combine(output, "charts"));
             await Tests.KnowledgeIndexRegression.RunAsync(Path.Combine(output, "knowledge-index"));
+            await Tests.RagRegression.RunAsync(Path.Combine(output, "rag"));
             await Tests.AnalysisToolboxRegression.RunAsync(Path.Combine(output, "analysis"));
             await Tests.LifeToolboxRegression.RunAsync(Path.Combine(output, "life"));
             await Tests.PrivacyToolboxRegression.RunAsync(Path.Combine(output, "privacy"));
@@ -470,7 +471,7 @@ public static class UiSmokeTestRunner
             string errors = buffer.ToString();
             File.WriteAllText(Path.Combine(output, "bindings.log"), errors);
             if (errors.Length != 0) throw new InvalidOperationException("WPF binding errors: " + errors);
-            File.WriteAllText(Path.Combine(output, "ui-smoke.txt"), "PASS\nPages: " + string.Join(", ", visited) + "\nCentrum tabs, // palette and voice default verified\nDark/DeepDark/System themes rendered\nSTOP/Resume/voice approval passed\nPalette, readiness, draft preservation and execution-scoped evidence passed\nTypo repair, grey-zone questions, lessons, self-check, offline tools, archives, insights and unified search passed\nAnalysis (section 15), health and communication (sections 17 and 14), privacy (section 3) and local models (section 2) passed\nModel management (section 2, increment 2): naming, pull/delete consent gates and offline honesty passed\nRemaining sections (5, 6, 8, 12, 18, 20 + extras 7, 9-11, 13): architecture, research, knowledge, goals, fullstack, smarthome, media and everyday passed\nCharts as image (section 19), RAM knowledge file index (section 8) and week plan passed\nStudio 0.97: catalogue, staging, real runs, history and clearing passed\n");
+            File.WriteAllText(Path.Combine(output, "ui-smoke.txt"), "PASS\nPages: " + string.Join(", ", visited) + "\nCentrum tabs, // palette and voice default verified\nDark/DeepDark/System themes rendered\nSTOP/Resume/voice approval passed\nPalette, readiness, draft preservation and execution-scoped evidence passed\nTypo repair, grey-zone questions, lessons, self-check, offline tools, archives, insights and unified search passed\nAnalysis (section 15), health and communication (sections 17 and 14), privacy (section 3) and local models (section 2) passed\nModel management (section 2, increment 2): naming, pull/delete consent gates and offline honesty passed\nRemaining sections (5, 6, 8, 12, 18, 20 + extras 7, 9-11, 13): architecture, research, knowledge, goals, fullstack, smarthome, media and everyday passed\nCharts as image (section 19), RAM knowledge file index (section 8) and week plan passed\nRAG on fake embeddings (section 8): chunking, cosine ranking, prompt, offline honesty passed\nStudio 0.97: catalogue, staging, real runs, history and clearing passed\n");
         }
         finally { PresentationTraceSources.DataBindingSource.Listeners.Remove(listener); }
     }

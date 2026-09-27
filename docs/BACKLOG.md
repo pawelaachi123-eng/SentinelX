@@ -334,6 +334,9 @@ Stan na 2026-09-27 (0.97). Zasada: każda pojedyncza pozycja znika z listy dopie
 - **§9–10 Media** (`MediaVisionToolbox.cs`): kontrast WCAG, PPI, proporcje, bitrate, audio, tempo, dB.
 - **§7/§11/§13 dokładki** (w `ProductivityToolbox.cs`): jezyk, i18n, webhook, token bucket, retry plan,
   sesje, koszt spotkania, godziny pracy.
+- **RAG (sekcja 8)**: pliki → fragmenty → wektory lokalną Ollamą → szukanie kosinusem → gotowy
+  prompt ze źródłami; baza tylko w RAM; fejkowe wektory w regresji (bez sieci); skrypt
+  `scripts/setup-rag.ps1` + instrukcja `docs/START-RAG.md` (jedno polecenie na maszynie użytkownika).
 - **Dokładki po green-CI**: wykres słupkowy jako PNG (`wykres: …`), indeks plików .txt/.md w RAM
   („indeks zbuduj/szukaj/status”), plan tygodnia; regresja dispatchu przez realny router.
 - **Nadal uczciwie nie istnieje**:
