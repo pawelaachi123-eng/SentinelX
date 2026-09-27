@@ -202,7 +202,18 @@ public sealed class CommandRouter
                   string.Join("\n", snapshot.Select(x => "· [" + x.Time + "] " + x.Label + ": " + x.Value));
         }
         if (text is "co nowego" or "lista zmian" or "changelog" or "co sie zmienilo")
-            return "CO NOWEGO W 0.96 · JARVIS: PULPIT, MULTIMEDIA, ZASILANIE\n" +
+            return "CO NOWEGO W " + Core.AppConstants.Version + "\n" +
+                "· RDZEŃ (nowe w 0.97) — kolejka zadań z ponowieniami i kolejką zwrotów: „kolejka”, „kolejka dodaj: …”, „kolejka przetworz”, „zwroty”, „zwrot ponow: …”.\n" +
+                "· Harmonogram cron bez czekania: „cron */15 * * * *” pokazuje najbliższe terminy i uczciwie mówi, gdy termin nie istnieje (np. 31 lutego).\n" +
+                "· Bezpieczniki (circuit breaker): „bezpieczniki” — zamknięty przepuszcza, otwarty odrzuca do podanego czasu, półotwarty sprawdza ostrożnie.\n" +
+                "· Sejf na sekrety: AES-256-GCM + PBKDF2 (210 tys. iteracji) — „sejf utworz …”, „sejf dodaj: nazwa = hasło”, „sejf pokaz: nazwa = hasło”, „sejf zablokuj”. Hasło nie jest nigdzie zapisywane.\n" +
+                "· Kopie zapasowe z manifestem SHA-256 i odczytem zwrotnym: „kopia danych”, „kopie danych”, „weryfikuj kopie: nazwa”. Ścieżki w manifeście są zawsze z ukośnikiem, więc porównanie nie zgłasza fałszywych różnic.\n" +
+                "· Integralność, flagi i dziennik: „integralnosc zbuduj: folder”, „integralnosc sprawdz: folder”, „flagi”, „flaga …”, „dziennik json”, „zdarzenia”, „metryki”, „zdrowie”, „maszyna”, „workflow: a > b > c” (analiza grafu, nic nie uruchamiam).\n" +
+                "· Narzędzia deweloperskie: diff, wyrażenia regularne, semver, adresy IP i podsieci (tylko pełny zapis kropkowany), JWT, UUID/NanoID, generator zapytań SQL i INSERT-ów, konwencja commitów, Base32/Base58, CRC32 i inne.\n" +
+                "· Analiza kodu — wyłącznie odczyt: złożoność, dług techniczny, martwy kod, sekrety w plikach, zależności, TODO. Zawsze podaję limit, którego nie przekraczam, i mówię wprost, że to podpowiedź, a nie wyrok.\n" +
+                "· Finanse, tekst i produktywność: kwota słownie, ROI, budżet 50/30/20, statystyki tekstu, generator slajdów, karta produktu.\n" +
+                "· Rozumienie bez podmian: polecenie, które jest już znane („snapshoty”), zostaje sobą — naprawa literówek nie zamienia go na inne polecenie.\n" +
+                "\nCO NOWEGO W 0.96 · JARVIS: PULPIT, MULTIMEDIA, ZASILANIE\n" +
                 "· Steruję oknami: „okna” (lista), „minimalizuj wszystko” (Windows+D), „minimalizuj/maksymalizuj/zamknij okno”, „przełącz okno” (Alt+Tab), „przełącz na: chrome”, „okno w lewo/prawo”, „pełny ekran”. Zamykam przez WM_CLOSE — dokładnie jak kliknięcie „X”, więc program może zapytać o zapis.\n" +
                 "· Multimedia: „pauza”, „wznów odtwarzanie”, „następny utwór”, „poprzedni utwór”, „zatrzymaj odtwarzanie”, „głośniej”, „ciszej”. Działa na tym odtwarzaczu, który system uznaje za aktywny — gdy system odrzuci klawisz, mówię o tym wprost.\n" +
                 "· Zasilanie bez drugiego pytania: „zablokuj ekran”, „wygasz ekran”, „uspij komputer”, „zamknij komputer”, „restart komputera”. Polecenie jest zgodą (nie pytam drugi raz), ale zamykanie, restart i uśpienie mają okno do odwołania: „anuluj zamknięcie”.\n" +
