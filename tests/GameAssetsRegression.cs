@@ -147,5 +147,6 @@ internal static class GameAssetsRegression
             "Rojo JSON OK · tagi OK · ProcessReceipt idempotentny OK · UpdateAsync+BindToClose OK · " +
             "rate limiter OK · anty-skip OK · anty-cheat OK · 7 animacji · rig R6 · propy OK\n";
         File.WriteAllText(Path.Combine(directory, "game-assets.txt"), report);
+        return Task.CompletedTask;
     }
 }
