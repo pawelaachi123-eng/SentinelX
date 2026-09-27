@@ -20,7 +20,7 @@ public static class PowerManager
 {
     private const uint WM_SYSCOMMAND = 0x0112;
     private const int SC_MONITORPOWER = 0xF170;
-    private const int MonitorOff = 2;
+    private const int MonitorPowerOff = 2;
     private static readonly IntPtr Broadcast = new(0xFFFF);
 
     private static readonly object Gate = new();
@@ -50,7 +50,7 @@ public static class PowerManager
     /// <summary>Wygasza monitor. Dowolny ruch myszy lub klawisz przywraca obraz.</summary>
     public static bool MonitorOff()
     {
-        try { SendMessageW(Broadcast, WM_SYSCOMMAND, new IntPtr(SC_MONITORPOWER), new IntPtr(MonitorOff)); return true; }
+        try { SendMessageW(Broadcast, WM_SYSCOMMAND, new IntPtr(SC_MONITORPOWER), new IntPtr(MonitorPowerOff)); return true; }
         catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException) { return false; }
     }
 
