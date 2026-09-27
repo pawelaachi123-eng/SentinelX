@@ -146,6 +146,23 @@ public static class IntentCatalog
             "model pobierz", "pobierz model", "model kopiuj",
             // Uwaga: „model usun” celowo poza katalogiem — kontrakt bezpieczeństwa (destructive verbs
             // nigdy nie są kandydatami naprawy). Polecenie obsługuje regex w CommandRouter.
+            // 0.97 · POZOSTAŁE SEKCJE — architektura (5), full-stack (6), wiedza (8), research (12),
+            // smart home (18), cele (20), media (9–10), język/automatyzacja (7, 11, 13)
+            "moduly", "cykle", "sprzezenie", "warstwy", "dlug techniczny", "adr", "styl", "c4", "kapacyt",
+            "pojemnosc kolejki", "latencja", "migracja bazy", "wdrozenie kanary", "karta modulu",
+            "api szkielet", "openapi", "encja ts", "encja csharp", "migracja sql", "sql indeks", "compose",
+            "cors", "env", "dostep", "status http", "rest tabela", "walidacja", "relacja", "paginacja",
+            "fiszki", "anki", "powtorki", "slownik pojec", "podobienstwo", "wspolne tematy", "mapa wiedzy",
+            "indeks pojec", "pytania kontrolne",
+            "energia", "koszt urzadzen", "termostat", "scena dom", "yaml automatyzacji", "mqtt", "prad",
+            "luminy", "czujnik baterii", "tarif",
+            "kontrast", "ppi", "proporcje", "bitrate wideo", "audio czas", "audio rozmiar", "tempo mowy", "db",
+            "cytuj", "bibliografia", "wiarygodnosc", "plan badan", "slowa kluczowe", "zapytanie",
+            "macierz porownania", "podsumuj notatki", "fakt zapisz", "pytania badawcze",
+            "cel rozloz", "plan krokow", "czas na zadanie", "plan wycofania", "polityka autonomii",
+            "ryzyko", "samoocena", "definicja sukcesu",
+            "jezyk", "i18n", "webhook szablon", "token bucket", "retry plan", "sesje", "koszt spotkania",
+            "godziny pracy",
             // 0.97 · SEKCJA 15 — analiza danych (nazwy własne, więc mogą stać w katalogu naprawy)
             "statystyki liczb", "analiza liczb", "opis zbioru", "kwartyle", "odchylenie", "wariancja",
             "skosnosc", "kurtoza", "wspolczynnik zmiennosci", "przedzial ufnosci", "korelacja", "regresja",

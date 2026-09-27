@@ -47,6 +47,14 @@ public static class UiSmokeTestRunner
             await Tests.DeveloperToolboxRegression.RunAsync(Path.Combine(output, "developer-tools"));
             await Tests.ModelToolboxRegression.RunAsync(Path.Combine(output, "models"));
             await Tests.ModelManagementRegression.RunAsync(Path.Combine(output, "model-management"));
+            await Tests.ArchitectureToolboxRegression.RunAsync(Path.Combine(output, "architecture"));
+            await Tests.ResearchToolboxRegression.RunAsync(Path.Combine(output, "research"));
+            await Tests.KnowledgeToolboxRegression.RunAsync(Path.Combine(output, "knowledge"));
+            await Tests.GoalToolboxRegression.RunAsync(Path.Combine(output, "goals"));
+            await Tests.FullStackToolboxRegression.RunAsync(Path.Combine(output, "fullstack"));
+            await Tests.SmartHomeToolboxRegression.RunAsync(Path.Combine(output, "smarthome"));
+            await Tests.MediaVisionToolboxRegression.RunAsync(Path.Combine(output, "media-vision"));
+            await Tests.EverydayRegression.RunAsync(Path.Combine(output, "everyday"));
             await Tests.AnalysisToolboxRegression.RunAsync(Path.Combine(output, "analysis"));
             await Tests.LifeToolboxRegression.RunAsync(Path.Combine(output, "life"));
             await Tests.PrivacyToolboxRegression.RunAsync(Path.Combine(output, "privacy"));
@@ -460,7 +468,7 @@ public static class UiSmokeTestRunner
             string errors = buffer.ToString();
             File.WriteAllText(Path.Combine(output, "bindings.log"), errors);
             if (errors.Length != 0) throw new InvalidOperationException("WPF binding errors: " + errors);
-            File.WriteAllText(Path.Combine(output, "ui-smoke.txt"), "PASS\nPages: " + string.Join(", ", visited) + "\nCentrum tabs, // palette and voice default verified\nDark/DeepDark/System themes rendered\nSTOP/Resume/voice approval passed\nPalette, readiness, draft preservation and execution-scoped evidence passed\nTypo repair, grey-zone questions, lessons, self-check, offline tools, archives, insights and unified search passed\nAnalysis (section 15), health and communication (sections 17 and 14), privacy (section 3) and local models (section 2) passed\nModel management (section 2, increment 2): naming, pull/delete consent gates and offline honesty passed\nStudio 0.97: catalogue, staging, real runs, history and clearing passed\n");
+            File.WriteAllText(Path.Combine(output, "ui-smoke.txt"), "PASS\nPages: " + string.Join(", ", visited) + "\nCentrum tabs, // palette and voice default verified\nDark/DeepDark/System themes rendered\nSTOP/Resume/voice approval passed\nPalette, readiness, draft preservation and execution-scoped evidence passed\nTypo repair, grey-zone questions, lessons, self-check, offline tools, archives, insights and unified search passed\nAnalysis (section 15), health and communication (sections 17 and 14), privacy (section 3) and local models (section 2) passed\nModel management (section 2, increment 2): naming, pull/delete consent gates and offline honesty passed\nRemaining sections (5, 6, 8, 12, 18, 20 + extras 7, 9-11, 13): architecture, research, knowledge, goals, fullstack, smarthome, media and everyday passed\nStudio 0.97: catalogue, staging, real runs, history and clearing passed\n");
         }
         finally { PresentationTraceSources.DataBindingSource.Listeners.Remove(listener); }
     }

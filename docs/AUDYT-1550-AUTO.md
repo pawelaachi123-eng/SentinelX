@@ -11,18 +11,21 @@ wyzwalacze poleceń (`Starts`, `text is`, `case`, `StartsWith`) oraz wzorce `Reg
 | 4. Kodowanie | 186–340 | `DeveloperToolbox.cs` | 12 | 39 |
 | 4. Kodowanie (analiza kodu) | 186–340 | `CodeInsightsService.cs` | 3 | 14 |
 | 4. Kodowanie (tekst, hasła, liczby) | 186–340 | `UtilityToolbox.cs` | 92 | 87 |
-| 13. Produktywność i finanse | 941–1020 | `ProductivityToolbox.cs` | 0 | 12 |
+| 13. Produktywność i finanse | 941–1020 | `ProductivityToolbox.cs` | 8 | 12 |
 | 14. Komunikacja + zdrowie | 1021–1070, 1201–1250 | `LifeToolbox.cs` | 30 | 1 |
 | 15. Analiza danych | 1071–1140 | `AnalysisToolbox.cs` | 48 | 0 |
 | 19. Sterowanie systemem (0.96) | 1301–1400 (część) | `JarvisToolkit.cs` | 110 | 4 |
 | 11. Automatyzacja (rutyny) | 801–880 (część) | `RoutineCommands.cs` | 0 | 4 |
-| 5. Architektura | 341–420 | — | 0 (brak modułu — tylko graf workflow/DAG w rdzeniu) | 0 |
-| 6. Full-stack | 421–520 | — | 0 (brak modułu) | 0 |
-| 12. Scraping i research | 881–940 | — | 0 (brak modułu — świadomie bez sieci) | 0 |
-| 18. Smart home | 1251–1300 | — | 0 (brak modułu) | 0 |
-| 20. Agentic | 1401–1500 | — | 0 (częściowo w ActionEngine/permissions — bez własnego modułu poleceń) | 0 |
+| 5. Architektura | 341–420 | `ArchitectureToolbox.cs` | 14 | 0 |
+| 6. Full-stack (generatory offline) | 421–520 | `FullStackToolbox.cs` | 17 | 2 |
+| 8. Wiedza i nauka | 591–670 | `KnowledgeToolbox.cs` | 9 | 0 |
+| 12. Research (offline, bez sieci) | 881–940 | `ResearchToolbox.cs` | 12 | 0 |
+| 18. Smart home (planowanie) | 1251–1300 | `SmartHomeToolbox.cs` | 10 | 1 |
+| 20. Agentic (cele i ryzyko) | 1401–1500 | `GoalToolbox.cs` | 8 | 0 |
+| 9-10. Głos i wizja (media) | 671–800 | `MediaVisionToolbox.cs` | 8 | 0 |
+| 20. Agentic (reszta: planowanie przez model, autonomia z budżetem) | 1401–1500 | — | 0 (GoalToolbox pokrywa szablony; modelowe planowanie celów nadal nie istnieje) | 0 |
 
-**Suma wyzwalaczy w modułach obsługi:** 608 · **paleta `//`:** 76 wpisów · **rozumienie języka:** 503 fraz
+**Suma wyzwalaczy w modułach obsługi:** 697 · **paleta `//`:** 84 wpisów · **rozumienie języka:** 585 fraz
 
 Werdykt (ludzki, z listą braków per sekcja): [AUDYT-1550.md](AUDYT-1550.md).
 

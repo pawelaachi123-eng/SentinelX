@@ -316,6 +316,28 @@ Stan na 2026-09-27 (0.97). Zasada: każda pojedyncza pozycja znika z listy dopie
   więc nigdy nic nie pobiera naprawdę) — razem 22 zestawy.
 - **Nadal brak w sekcji 2**: indeks embeddingów, benchmark na sprzęcie, panel modeli w GUI.
 
+## Pozostałe sekcje — pakiet „naraz” (gotowe w 0.97)
+
+- **§5 Architektura** (`ArchitectureToolbox.cs`): graf modułów z kolejnością budowy i cyklami,
+  sprzężenia, naruszenia warstw, rejestr długu, ADR, karty modułów, pojemność, budżet latencji,
+  plan migracji i wdrożenie kanaryjskie.
+- **§6 Full-stack** (`FullStackToolbox.cs`): szkielety REST/OpenAPI z encji, modele TS/C#, SQL
+  (migracja, indeks, relacje), compose, CORS, .env, macierz dostępów, statusy HTTP, paginacja.
+- **§8 Wiedza** (`KnowledgeToolbox.cs`): fiszki, Anki TSV, rozłożone powtórki z datami, słownik,
+  podobieństwo kosinusowe, łączenie notatek, mapa wiedzy, indeks pojęć, pytania kontrolne.
+- **§12 Research** (`ResearchToolbox.cs`): cytowania APA/IEEE, bibliografia, wiarygodność wg typu
+  źródła, plan badania, słowa kluczowe, warianty zapytań (bez pobierania), macierze, karty faktów.
+- **§18 Smart home** (`SmartHomeToolbox.cs`): energia i koszty, termostat, scena, YAML automatyzacji,
+  konwencje MQTT, prąd, lumeny, bateria czujnika, porównanie taryf.
+- **§20 Agentic** (`GoalToolbox.cs`): rozkład celu, walidacja planu (krok weryfikujący!), budżet czasu,
+  plan wycofania, polityka autonomii, klasyfikacja ryzyka, samoocena, SMART.
+- **§9–10 Media** (`MediaVisionToolbox.cs`): kontrast WCAG, PPI, proporcje, bitrate, audio, tempo, dB.
+- **§7/§11/§13 dokładki** (w `ProductivityToolbox.cs`): jezyk, i18n, webhook, token bucket, retry plan,
+  sesje, koszt spotkania, godziny pracy.
+- **Nadal uczciwie nie istnieje**: pobieranie stron (świadbomie brak sieci), OCR i wake-word,
+  indeks embeddingów, panel modeli w GUI, sterowanie realnym sprzętem smart home, planowanie celów
+  przez model (są szablony i reguły), **EXE** (tylko na wyraźne polecenie).
+
 ## Audyt listy 1550 (stan na 0.97)
 
 - Pełny, liczbowy werdykt per sekcja: **[docs/AUDYT-1550.md](AUDYT-1550.md)** — co jest w kodzie,

@@ -35,6 +35,17 @@ public static class ProductivityToolbox
         var stats = Regex.Match(text, @"^(?:statystyki tekstu|analiza tekstu|statystyki)[:\s]+(.+)$", RegexOptions.Singleline);
         if (stats.Success) return TextStatistics(Payload(raw, "statystyki tekstu", "analiza tekstu", "statystyki"));
 
+        // ————— 0.97 · DOŁĄCZONE: §7 język, §11 reguły automatyzacji, §13 sesje/spotkania/czas pracy —————
+        string en = ExtraFlat(text);
+        if (ExtraIs(en, "jezyk")) return LanguageDetect(Payload(raw, "jezyk"));
+        if (ExtraIs(en, "i18n")) return I18nGaps(Payload(raw, "i18n"));
+        if (ExtraIs(en, "webhook szablon")) return WebhookTemplate(Payload(raw, "webhook szablon"));
+        if (ExtraIs(en, "token bucket")) return TokenBucket(Payload(raw, "token bucket"));
+        if (ExtraIs(en, "retry plan")) return RetryPlan(Payload(raw, "retry plan"));
+        if (ExtraIs(en, "sesje")) return Sessions(Payload(raw, "sesje"));
+        if (ExtraIs(en, "koszt spotkania")) return MeetingCost(Payload(raw, "koszt spotkania"));
+        if (ExtraIs(en, "godziny pracy")) return WorkHours(Payload(raw, "godziny pracy"));
+
         var roi = Regex.Match(text, @"^roi[:\s]+(-?\d+[.,]?\d*)\s+(-?\d+[.,]?\d*)$");
         if (roi.Success) return Roi(roi.Groups[1].Value, roi.Groups[2].Value);
 
@@ -395,5 +406,185 @@ public static class ProductivityToolbox
         return "Zadanie: " + task + Environment.NewLine + "· ćwiartka: " + quadrant +
             (notes.Count > 0 ? Environment.NewLine + "· " + string.Join(Environment.NewLine + "· ", notes) : "") +
             Environment.NewLine + "· Klasyfikacja wynika wyłącznie z Twoich słów — niczego nie zgaduję z treści zadania.";
+    }
+
+    // ————— 0.97 · SEKCJE 7, 11 i 13 (dołączone): język, reguły automatyzacji, sesje i spotkania —————
+
+    private static string LanguageDetect(string input)
+    {
+        var languages = new (string Name, string[] Words)[]
+        {
+            ("polski", new[] { "jest", "sie", "ktory", "ktora", "jak", "ze", "byc", "nie", "cie", "mnie", "tym", "tego", "wiele", "bardzo", "moze", "dobra", "ale", "przez", "kiedy", "wszystko" }),
+            ("angielski", new[] { "the", "and", "is", "you", "that", "with", "have", "this", "from", "they", "will", "would", "there", "their", "about", "which", "been" }),
+            ("niemiecki", new[] { "der", "die", "das", "und", "ist", "nicht", "ein", "eine", "mit", "auf", "fur", "sich", "auch", "aber", "über", "durch" }),
+            ("hiszpański", new[] { "el", "los", "las", "una", "pero", "por", "para", "con", "como", "esta", "son", "muy", "tambien", "porque" }),
+            ("francuski", new[] { "les", "des", "une", "est", "pour", "dans", "avec", "sur", "etre", "cette", "plus", "tout", "mais", "nous" }),
+            ("włoski", new[] { "che", "non", "con", "per", "una", "sono", "come", "questo", "quella", "anche", "piu", "della" }),
+            ("ukraiński", new[] { "що", "це", "для", "або", "його", "її", "тому", "дуже", "тільки", "коли", "також" }),
+        };
+        var tokens = Regex.Matches((input ?? "").ToLowerInvariant(), "[a-ząćęłńóśźżіїё]{2,}").Select(m => m.Value).ToList();
+        if (tokens.Count < 3)
+            return "Użycie: „jezyk: <fragment tekstu>”. Rozpoznaję po słowach funkcyjnych: polski, angielski, niemiecki, hiszpański, francuski, włoski, ukraiński.";
+        var scores = languages.ToDictionary(x => x.Name, x => tokens.Count(t => x.Words.Contains(t)), StringComparer.Ordinal);
+        var best = scores.OrderByDescending(x => x.Value).First();
+        if (best.Value == 0)
+            return "Nie rozpoznaję języka (za mało słów funkcyjnych znanych mi rodzin: polski, angielski, niemiecki, hiszpański, francuski, włoski, ukraiński). Nie zgaduję.";
+        return "JEZYK: " + best.Name + " (trafienia słów funkcyjnych: " + best.Value + " z " + tokens.Count + " słów)" + Environment.NewLine +
+            "· pozostałe: " + string.Join(", ", scores.Where(x => x.Key != best.Key).OrderByDescending(x => x.Value).Take(3).Select(x => x.Key + " " + x.Value)) + Environment.NewLine +
+            "· rozpoznanie po stopwordach — krótkie fragmenty bez słów funkcyjnych mogą być nierozpoznawalne";
+    }
+
+    private static string I18nGaps(string input)
+    {
+        string[] parts = (input ?? "").Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (parts.Length < 2) return "Użycie: „i18n: pl: ok=ok; save=zapisz | en: ok=ok”. Pokażę brakujące klucze między językami.";
+        var locales = new Dictionary<string, Dictionary<string, string>>(StringComparer.Ordinal);
+        foreach (string part in parts)
+        {
+            int colon = part.IndexOf(':');
+            if (colon <= 0) continue;
+            string code = part[..colon].Trim();
+            if (!Regex.IsMatch(code, "^[a-z]{2}(-[A-Z]{2})?$")) continue;
+            var keys = new Dictionary<string, string>(StringComparer.Ordinal);
+            foreach (string entry in part[(colon + 1)..].Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            {
+                int eq = entry.IndexOf('=');
+                if (eq > 0) keys[entry[..eq].Trim()] = entry[(eq + 1)..].Trim();
+            }
+            locales[code] = keys;
+        }
+        if (locales.Count < 2) return "Nie odczytałem dwóch wersji językowych — sprawdź format: „i18n: pl: ok=ok; save=zapisz | en: ok=ok”.";
+        var allKeys = locales.Values.SelectMany(x => x.Keys).Distinct(StringComparer.Ordinal).OrderBy(x => x, StringComparer.Ordinal).ToList();
+        var sb = new StringBuilder("I18N — KLUCZE (").Append(allKeys.Count).Append("):").AppendLine();
+        foreach (var locale in locales)
+        {
+            var missing = allKeys.Where(k => !locale.Value.ContainsKey(k)).ToList();
+            sb.Append("· ").Append(locale.Key).Append(": ").Append(missing.Count == 0 ? "komplet" : "brakuje " + string.Join(", ", missing)).AppendLine();
+        }
+        sb.Append("· klucze nazwane po znaczeniu („error.file.missing”), nie po treści — tłumaczenie nie zepsuje nazw");
+        return sb.ToString();
+    }
+
+    private static string WebhookTemplate(string input)
+    {
+        string what = Flat(input ?? "").Trim();
+        if (what.Length < 3) return "Użycie: „webhook szablon: zamowienie”. Zwrócę szkielet ładunku JSON z podpisem HMAC — do uzupełnienia u siebie.";
+        return "WEBHOOK — ŁADUNEK (zdarzenie: " + what + "):" + Environment.NewLine +
+            "{" + Environment.NewLine +
+            "  \"event\": \"" + what + "\"," + Environment.NewLine +
+            "  \"id\": \"evt_01J... unikalne, do deduplikacji po stronie odbiorcy\"," + Environment.NewLine +
+            "  \"occurred_at\": \"2026-09-27T12:00:00Z\"," + Environment.NewLine +
+            "  \"data\": { \"...\": \"konkretne pola zdarzenia\" }" + Environment.NewLine +
+            "}" + Environment.NewLine +
+            "· nagłówki: X-Signature = HMAC-SHA256(treść, sekret) — odbiorca weryfikuje PRZED parsowaniem" + Environment.NewLine +
+            "· odbiór: odpowiedz 200 szybko, przetwarzaj asynchronicznie; przewiduj ponowienia (idempotencja po event.id)";
+    }
+
+    private static string TokenBucket(string input)
+    {
+        double[] nums = Numbers(input, 2);
+        if (nums.Length < 2 || nums[0] < 1 || nums[1] <= 0)
+            return "Użycie: „token bucket: 100 10” (pojemność wiadra, dopływ tokenów na sekundę). Wyliczę zachowanie limitu.";
+        double capacity = nums[0], refill = nums[1];
+        double burstSeconds = capacity / refill;
+        return "TOKEN BUCKET: pojemność " + N(capacity) + ", dopływ " + N(refill) + "/s" + Environment.NewLine +
+            "· start pełny → przepuści serię " + N(capacity) + " żądań od razu (burst), potem utrzyma średnio " + N(refill) + "/s" + Environment.NewLine +
+            "· pełne wiadro po przerwie odbuduje się w " + N(burstSeconds) + " s" + Environment.NewLine +
+            "· poza 429 wysyłaj Retry-After = 1/dopływ (" + N(1 / refill) + " s) — klient, który szanuje limit, sam się wyhamuje";
+    }
+
+    private static string RetryPlan(string input)
+    {
+        double[] nums = Numbers(input, 2);
+        if (nums.Length < 2 || nums[0] < 1 || nums[0] > 10 || nums[1] <= 0)
+            return "Użycie: „retry plan: 3 30” (liczba ponowień, pierwsza pauza w sekundach). Rozpiszę harmonogram z backoffem.";
+        int attempts = (int)nums[0];
+        double pause = nums[1];
+        var gaps = new List<string>();
+        double total = pause;
+        for (int i = 0; i < attempts; i++)
+        {
+            gaps.Add(N(pause * Math.Pow(2, i), 0) + " s");
+            if (i > 0) total += pause * Math.Pow(2, i);
+        }
+        return "RETRY PLAN: próba początkowa + " + attempts + " ponowienia po " + string.Join(", ", gaps) + " (razem ~" + N(total, 0) + " s oczekiwania)" + Environment.NewLine +
+            "· podwój pauzę przy każdym podejściu (backoff wykładniczy) + jitter ±20%, by klienci nie atakowali falą" + Environment.NewLine +
+            "· ponawiaj tylko błędy przejściowe (sieć, 503, 429); 4xx to błąd żądania — powtórka niczego nie naprawi";
+    }
+
+    private static string Sessions(string input)
+    {
+        double[] nums = Numbers(input, 1);
+        if (nums.Length < 1 || nums[0] < 1 || nums[0] > 10)
+            return "Użycie: „sesje: 4 25 5” (liczba sesji, minuty sesji, minuty przerwy). Rozpiszę plan pracy z długą przerwą na końcu.";
+        int count = (int)nums[0];
+        double work = nums.Length > 1 ? nums[1] : 25;
+        double brk = nums.Length > 2 ? nums[2] : 5;
+        double totalWork = count * work, totalBreaks = (count - 1) * brk + 15;
+        var sb = new StringBuilder("PLAN SESJI (").Append(count).Append(" × ").Append(N(work, 0)).Append(" min):").AppendLine();
+        for (int i = 1; i <= count; i++)
+        {
+            sb.Append("· sesja ").Append(i).Append(": ").Append(N(work, 0)).Append(" min");
+            sb.Append(i < count ? " → przerwa " + N(brk, 0) + " min" : " → DŁUGA przerwa 15 min");
+            sb.AppendLine();
+        }
+        sb.Append("· praca: ").Append(N(totalWork, 0)).Append(" min, przerwy: ").Append(N(totalBreaks, 0)).Append(" min, razem: ").Append(N(totalWork + totalBreaks, 0)).Append(" min");
+        return sb.ToString();
+    }
+
+    private static string MeetingCost(string input)
+    {
+        double[] nums = Numbers(input, 3);
+        if (nums.Length < 3 || nums[0] < 1 || nums[1] <= 0 || nums[2] < 0)
+            return "Użycie: „koszt spotkania: 6 60 120” (osoby, minuty, zł/h). Policzę koszt w godzinach ludzkiej pracy.";
+        double cost = nums[0] * (nums[1] / 60.0) * nums[2];
+        return "KOSZT SPOTKANIA: " + N(nums[0], 0) + " osób × " + N(nums[1], 0) + " min × " + N(nums[2], 0) + " zł/h = " + N(cost, 0) + " zł" + Environment.NewLine +
+            "· to koszt realny: ludzie przestają pracować na rzecz spotkania na tę godzinę" + Environment.NewLine +
+            "· przed wysłaniem zaproszenia: agendę w treści, podsumowanie po — spotkanie bez notatki prawie się nie zdarzyło";
+    }
+
+    private static string WorkHours(string input)
+    {
+        var m = Regex.Match((input ?? "").Trim(), @"(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})(?:\s+(\d{1,3}))?$");
+        if (!m.Success) return "Użycie: „godziny pracy: 8:00-16:30 45” (przyjście-wyjście, przerwa w minutach). Policzę czas netto.";
+        int start = int.Parse(m.Groups[1].Value) * 60 + int.Parse(m.Groups[2].Value);
+        int end = int.Parse(m.Groups[3].Value) * 60 + int.Parse(m.Groups[4].Value);
+        int brk = m.Groups[5].Success ? int.Parse(m.Groups[5].Value) : 0;
+        int net = end - start - brk;
+        if (net <= 0) return "Przerwa zjada cały czas albo godziny są odwrócone — sprawdź zapis (np. „godziny pracy: 8:00-16:30 45”).";
+        return "CZAS PRACY: " + m.Groups[1].Value + ":" + m.Groups[2].Value + " – " + m.Groups[3].Value + ":" + m.Groups[4].Value +
+            " z przerwą " + N(brk, 0) + " min = " + (net / 60) + " h " + (net % 60).ToString("00", Pl) + " netto (" + N(net, 0) + " min)";
+    }
+
+    private static string ExtraFlat(string input)
+    {
+        string s = (input ?? "").ToLowerInvariant();
+        var sb = new StringBuilder(s.Length);
+        foreach (char c in s)
+            sb.Append(c switch { 'ą' => 'a', 'ć' => 'c', 'ę' => 'e', 'ł' => 'l', 'ń' => 'n', 'ó' => 'o', 'ś' => 's', 'ź' => 'z', 'ż' => 'z', _ => c });
+        return Regex.Replace(sb.ToString(), @"\s+", " ").Trim();
+    }
+
+    private static bool ExtraIs(string norm, string trigger) => norm == trigger || norm.StartsWith(trigger + ":");
+
+    private static double[] Numbers(string input, int min)
+    {
+        var result = new List<double>();
+        string normalized = Regex.Replace(input ?? "", @"(?<=\d),(?=\d)", ".");
+        foreach (string token in Regex.Split(normalized, "[\\s;+]+"))
+        {
+            double v = ExtraNum(token);
+            if (double.IsFinite(v)) result.Add(v);
+            if (result.Count >= 8) break;
+        }
+        return result.Count >= min ? result.ToArray() : [];
+    }
+
+    private static string N(double v, int? digits = null) => digits == 0 ? v.ToString("0", Pl) : v.ToString("0.##", Pl);
+
+    private static double ExtraNum(string s)
+    {
+        s = (s ?? "").Trim().Replace(',', '.');
+        return double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out double v) ? v : double.NaN;
     }
 }

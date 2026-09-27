@@ -34,32 +34,31 @@ zrobię mapowanie pozycja-po-pozycji z odhaczeniem każdej.
 | **2. Modele lokalne** | 46–120 | **CZĘŚCIOWO (~55%)** | `ModelToolbox` **33 wyzwalacze** (drugi przyrost): katalog 17 modeli, karta, dobór do pamięci, role, kwantyzacje (8), presety, 10 szablonów promptów, KV cache, `model do zadania` (dobór pod opis), `model licencje`, `model kv/pamiec/porownaj/kolejka/polityka/offline` + zarządzanie przez router: `model pobierz: …` i `model usun: …` **ze zgodą dwuetapową** (plan → „potwierdzam”, zgoda jednorazowa, wygasa po 10 min), `model info`, `model uruchomione`, `model status pobierania`, `model kopiuj`; kanał wyłącznie 127.0.0.1:11434 | indeks embeddingów i wyszukiwanie wektorowe, benchmark tokenów na sprzęcie, panel modeli w GUI, auto-pobieranie bez pytania (świadomie nie — zgoda jest zawsze jawna) |
 | **3. Prywatność** | 121–185 | **CZĘŚCIOWO (dużo)** | `PrivacyToolbox` **33 wyzwalacze**: mapa danych, duże pliki, wiek danych, **podgląd** retencji, szyfrowanie (co jest AES-256-GCM, a co nie), uprawnienia, `co wysylam`, plan eksportu, minimalizacja; w rdzeniu: sejf, manifest integralności, dziennik zdarzeń | automatyczne kasowanie z potwierdzeniem, menedżer zgód (per uprawnienie), szyfrowanie historii rozmów, menedżer sesji/urządzeń, audyt dostępu mikrofon/kamera |
 | **4. Kodowanie** | 186–340 | **CZĘŚCIOWO (~50%)** | `DeveloperToolbox` **53 wyzwalacze** (diff, regex, semver, IP/podsieci, JWT, UUID7/ULID, generatory JSON/SQL/mock, kodowania base32/58, skróty, kody znaków, CSV, szablony, tokeny, kontekst) + `CodeInsightsService` **20** (skan, statystyki, zależności/cykle, audyt wzorców, duplikaty, licencje, funkcje) + `UtilityToolbox` **179** (tekst, liczby, hasła, kodowania, data/czas) | generatory całych projektów, integracja z Gitem, profiler, transpilacja, generowanie testów, refaktoryzacje |
-| **5. Architektura** | 341–420 | **BRAK** | tylko graf workflow i `dag:` w rdzeniu (planowanie kolejności) | diagramy architektury, ADR-y, analiza długu technicznego, wykrywanie cykli zależności między modułami, macierze zależności |
-| **6. Full-stack** | 421–520 | **BRAK** | — | generowanie API/frontendu, ORM-y, migracje, kontenery, auth |
-| **7. Wielojęzyczność** | 521–590 | **CZĘŚCIOWO (mało)** | rozumienie polskich poleceń: `IntentCatalog` **490 fraz**, naprawa literówek, 12–13 kategorii intencji; polskie komunikaty UI | i18n interfejsu (EN/DE/…), tłumaczenie treści lokalnym modelem, wykrywanie języka wejścia |
-| **8. Pamięć i wiedza** | 591–670 | **CZĘŚCIOWO (mało)** | rozmowa + wspomnienia + notatki, `SessionFactBook` (fakty sesji), `LearnedPatterns`, dziennik lekcji, archiwum miesięcy, projekty, izolacja kontekstu | baza wektorowa/embeddingi, RAG z dokumentów, import PDF/DOCX, graf wiedzy, wyszukiwanie semantyczne |
-| **9. Głos** | 671–730 | **CZĘŚCIOWO (pre-0.97)** | Whisper.net (ASR), synteza mowy, VAD, kalibracja mikrofonu, tryb ciągły, `..voice` | wake-word („Sentinel”), streaming ASR, wielojęzyczny TTS, komendy głosowe nowych sekcji (15/17/3) |
-| **10. Wizja** | 731–800 | **CZĘŚCIOWO (mało, pre-0.97)** | Gaming Mode + Watch (FPS, nakładka), odczyt VRAM jako „brak licznika” | OCR ekranu, analiza kamery, YOLO/detekcja obiektów, opis obrazu modelem |
+| **5. Architektura** | 341–420 | **ZROBIONE (offline)** | `ArchitectureToolbox` **14 wyzwalaczy**: graf modułów z kolejnością budowy (Kahn) i cyklami, sprzężenia fan-in/out, naruszenia warstw, rejestr długu, ADR, style, C4, pojemność, kolejka, budżet latencji, migracja, kanarek, karta modułu — bez rysowania diagramów (to tekst) | diagramy jako obraz, odczyt kodu źródłowego projektu |
+| **6. Full-stack** | 421–520 | **CZĘŚCIOWO (generatory)** | `FullStackToolbox` **17 wyzwalaczy**: szkielet REST, OpenAPI, encje TS/C#, migracja SQL, indeks, compose, CORS, env, macierz dostępów, 22 statusy HTTP, tabela REST, walidacja, relacje, paginacja | działający frontend, ORM, realne kontenery, auth z zasobami |
+| **7. Wielojęzyczność** | 521–590 | **CZĘŚCIOWO** | rozumienie polskich poleceń: `IntentCatalog` **585 fraz**; nowe: `jezyk:` (detekcja 7 języków po stopwordach), `i18n:` (braki kluczy), moduły zdejmują diakrytyki przed dopasowaniem | i18n interfejsu, tłumaczenie treści modelem |
+| **8. Pamięć i wiedza** | 591–670 | **CZĘŚCIOWO (dużo)** | rozmowa/wspomnienia/fakty/lekcje/archiwa + nowe `KnowledgeToolbox` **9 wyzwalaczy**: fiszki, Anki, rozłożone powtórki z datami, słownik, podobieństwo kosinusowe, wspólne tematy notatek, mapa wiedzy, indeks pojęć, pytania kontrolne | embeddingi/RAG, import PDF, graf wiedzy (jest szkielet tekstowy) |
+| **9. Głos** | 671–730 | **CZĘŚCIOWO (pre-0.97)** | Whisper.net (ASR), TTS, VAD, kalibracja, tryb ciągły + nowe: `tempo mowy:`, `audio czas/rozmiar:`, `db:` | wake-word, streaming ASR, wielojęzyczny TTS |
+| **10. Wizja** | 731–800 | **CZĘŚCIOWO** | Gaming/Watch (FPS, nakładka) + nowe: `kontrast:` (WCAG), `ppi:`, `proporcje:`, `bitrate wideo:` | OCR ekranu, analiza kamery, YOLO, opis obrazu modelem |
 | **11. Automatyzacja** | 801–880 | **CZĘŚCIOWO** | rutyny („sceny”) z podglądem, kolejka zadań z priorytetami/retry/backoff, cron 5-polowy, flagi z procentem, harmonogramy przypomnień | webhooki i wyzwalacze zdarzeń, makra nagrywania akcji, edytor harmonogramów w GUI, łańcuchy między aplikacjami |
-| **12. Scraping / research** | 881–940 | **BRAK** | — (świadomie: brak sieci; „brak telemetrii” to deklaracja, nie luka) | pobieranie stron, cytowanie źródeł, research wieloetapowy |
-| **13. Produktywność** | 941–1020 | **CZĘŚCIOWO** | `ProductivityToolbox` **13 wyzwalaczy** (kwota słownie, lorem, statystyki tekstu, macierz Eisenhowera, slajdy) + zadania, przypomnienia, projekty, notatki, snapshoty, eksporty | kalendarz z przeciąganiem, Pomodoro, szablony notatek, OCR dokumentów, integracja poczty |
+| **12. Scraping / research** | 881–940 | **CZĘŚCIOWO (offline)** | `ResearchToolbox` **12 wyzwalaczy**: cytowania APA/IEEE, bibliografia, wiarygodność wg typu źródła, plan badania, słowa kluczowe, warianty zapytań do wklejenia, macierze, karty faktów — **pobierania dalej brak (świadomie)** | realne pobieranie stron i research w sieci |
+| **13. Produktywność** | 941–1020 | **CZĘŚCIOWO (dużo)** | `ProductivityToolbox` **20 wyzwalaczy** (stare + `sesje:`, `koszt spotkania:`, `godziny pracy:`, `retry plan:`, `token bucket:`, `webhook szablon:`) + zadania, przypomnienia, projekty, notatki | kalendarz z przeciąganiem, szablony notatek, OCR, poczta |
 | **14. Komunikacja** | 1021–1070 | **CZĘŚCIOWO (dużo)** | `LifeToolbox` **9 wyzwalaczy komunikacyjnych**: SMS (GSM-7/UCS-2), wpis 280, szkic maila, agenda, protokół, follow up, skracanie, ton, czytelność | realne wysyłanie (świadomie nie), integracja z pocztą/kalendarzem, klienty czatu |
 | **15. Analiza danych** | 1071–1140 | **ZROBIONE** | `AnalysisToolbox` **48 wyzwalaczy** (24 rodziny): statystyki, kwartyle/percentyle, wariancja/odchylenie, skośność/kurtoza, CV, przedział ufności, korelacja Pearson+Spearman, regresja+R², prognoza, trend, histogram, normalizacja, odległości, macierz pomyłek (F1/MCC), entropia, Gini, outliery, wygładzanie, rangi, test t | wykresy jako obraz, eksport CSV/JSON wyników |
 | **16. Finanse** | 1141–1200 | **CZĘŚCIOWO** | 8 wyzwalaczy: ROI, break-even, amortyzacja, inflacja, oszczędności, cel, budżet 50/30/20, kwota słownie | kursy walut (sieć), podatki, faktury, kredyty, śledzenie portfela |
 | **17. Zdrowie** | 1201–1250 | **ZROBIONE (arytmetyka)** | `LifeToolbox` **12 wyzwalaczy**: BMR, TDEE, makro, tętno max + strefy, WHtR, WHR, 1RM, tempo, kroki, woda, cykle snu, plan wagi — każde z jawnym „to nie porada medyczna” | dzienniczek posiłków/treningów, integracja z wagą/smartwatchem, wykresy postępów |
-| **18. Smart home** | 1251–1300 | **BRAK** | — | wszystko (MQTT, Home Assistant, sceny domowe) — wymaga sieci i sprzętu |
+| **18. Smart home** | 1251–1300 | **CZĘŚCIOWO (planowanie)** | `SmartHomeToolbox` **10 wyzwalaczy**: energia/koszty, termostat, scena, YAML automatyzacji, konwencje MQTT, prąd, lumeny, bateria czujnika, taryfa — Sentinel niczego nie steruje | realne sterowanie sprzętem (wymaga sieci i urządzeń) |
 | **19. GUI** | 1301–1400 | **CZĘŚCIOWO (dużo)** | motyw 0.93+ (tokeny, jasny/ciemny), **13 stron**, Centrum z 9 zakładkami, paleta `//` (73 wpisy), panel gotowości, nakładka metryk, **Studio 0.97** (6 kategorii, 70 poleceń, wyniki, historia) | wykresy (histogram/trend jako obraz), kreator motywów, edytor układu pulpitu, ulubione polecenia, skróty per kategoria |
-| **20. Agentic** | 1401–1500 | **CZĘŚCIOWO (mniej niż połowa)** | ActionEngine + zgody wg ryzyka + **dowody wykonania** (VERIFIED tylko z dowodem), planowanie grafu zadań, nauka wzorców i lekcji, auto-naprawa literówek, „pytanie w szarej strefie” | planowanie celów wieloetapowych przez model, autonomia z budżetem, samoocena i wycofywanie zmian, orkiestracja wielu narzędzi w jednym zadaniu |
+| **20. Agentic** | 1401–1500 | **CZĘŚCIOWO (dużo)** | ActionEngine + zgody + dowody + graf zadań + nauka + nowe `GoalToolbox` **8 wyzwalaczy**: rozkład celu, walidacja planu, budżet czasu, plan wycofania, polityka autonomii, klasyfikacja ryzyka, samoocena, SMART | planowanie celów przez model, autonomia z budżetem, orkiestracja wielu narzędzi w jednym zadaniu |
 | **Bonus** | 1501–1550 | **CZĘŚCIOWO** | dokumentacja (RELEASE/BACKLOG/MEMORY), **21 zestawów regresji**, bramki CI (architektura, .NET 10, brak WinForms), tryby offline, uczciwe granice i „czego nie robi” | skrypty instalacyjne poza EXE, telemetria jakości (świadomie brak), marketplace dodatków |
 
 ## Liczby z tego audytu
 
-- **Wyzwalacze poleceń w kodzie:** 608 w modułach z tabeli poniżej (ręczny szerszy skan, razem
-  z dispatchem routera: 839; ponad 1000 z rdzeniem, Jarvisem 0.96 i paletą); rozumienie języka:
-  **503 frazy**; paleta: **76 wpisów**; testy: **22 zestawy** (w tym `model-management`).
-- **Sekcje zrobione w całości:** 2 (§1 rdzeń, §15 analiza danych) + §17 zdrowie jako arytmetyka.
+- **Wyzwalacze poleceń w kodzie:** 697 w modułach z tabeli poniżej (ręczny szerszy skan, razem
+  z dispatchem routera ponad 900); rozumienie języka: **585 fraz**; paleta: **84 wpisy**; testy: **30 zestawów**.
+- **Sekcje z modułem i regresją:** wszystkie 20. W całości twarde: §1, §15, §17 (arytmetyka), §5 (analiza offline).
 - **Sekcje częściowe:** 14 (§2, §3, §4, §7, §8, §9, §10, §11, §13, §14, §16, §19, §20, bonus).
-- **Sekcje bez implementacji:** 4 (§5 architektura, §6 full-stack, §12 scraping, §18 smart home).
+- **Sekcje bez implementacji:** 0. **Nadal świadomie nie istnieje:** pobieranie stron z sieci, OCR, wake-word, indeks embeddingów, panel modeli w GUI, sterowanie realnym sprzętem, EXE (tylko na wyraźne polecenie).
 - **Szacunek pokrycia listy:** ~1/3 pozycji.
 
 ## Czego potwierdzenie znalazłem w CI (a nie w deklaracji)
@@ -74,8 +73,9 @@ zrobię mapowanie pozycja-po-pozycji z odhaczeniem każdej.
 
 ## Co dalej (kolejność, jeśli nie wskażesz inaczej)
 
-1. ~~Dokończyć §2 (pobieranie/usuwanie modeli, dobór do zadania)~~ — **zrobione (drugi przyrost)**;
-   z sekcji 2 zostały: indeks embeddingów, benchmark na sprzęcie i panel modeli w GUI.
-2. §5 architektura i §20 agentic (planowanie celów, budżety, wycofywanie zmian).
-3. §8 pamięć/wiedza (embeddingi lokalne, import dokumentów) i §13 produktywność (kalendarz, Pomodoro).
-4. §19 UI: wykresy jako obraz, eksport wyniku do pliku, ulubione polecenia w Studiu.
+1. ~~Dokończyć §2~~ — **zrobione** (drugi przyrost: pobieranie/usuwanie z zgodą, dobór, licencje).
+2. ~~§5 architektura i §20 agentic~~ — **zrobione** (ArchitectureToolbox + GoalToolbox).
+3. ~~§8 wiedza i §12 research~~ — **zrobione** (KnowledgeToolbox + ResearchToolbox, offline).
+4. ~~§6 full-stack, §18 smart home, media §9–10, dokładki §7/§11/§13~~ — **zrobione**.
+5. **Zostaje (uczciwie)**: embeddingi/RAG, OCR, wake-word, panel modeli w GUI, sterowanie sprzętem,
+   sieciowy scraping (świadomie brak), wykresy jako obraz w Studiu, **EXE — tylko na wyraźne polecenie**.

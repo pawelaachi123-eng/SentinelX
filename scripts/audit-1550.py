@@ -36,15 +36,18 @@ MODULES = [
     ("AnalysisToolbox.cs", "15", "Analiza danych", "1071–1140"),
     ("JarvisToolkit.cs", "19", "Sterowanie systemem (0.96)", "1301–1400 (część)"),
     ("RoutineCommands.cs", "11", "Automatyzacja (rutyny)", "801–880 (część)"),
+    ("ArchitectureToolbox.cs", "5", "Architektura", "341–420"),
+    ("FullStackToolbox.cs", "6", "Full-stack (generatory offline)", "421–520"),
+    ("KnowledgeToolbox.cs", "8", "Wiedza i nauka", "591–670"),
+    ("ResearchToolbox.cs", "12", "Research (offline, bez sieci)", "881–940"),
+    ("SmartHomeToolbox.cs", "18", "Smart home (planowanie)", "1251–1300"),
+    ("GoalToolbox.cs", "20", "Agentic (cele i ryzyko)", "1401–1500"),
+    ("MediaVisionToolbox.cs", "9-10", "Głos i wizja (media)", "671–800"),
 ]
 
 # Sekcje bez modułu obsługi poleceń — z jawnym powodem, żeby brak był widoczny.
 MISSING = [
-    ("5", "Architektura", "341–420", "brak modułu — tylko graf workflow/DAG w rdzeniu"),
-    ("6", "Full-stack", "421–520", "brak modułu"),
-    ("12", "Scraping i research", "881–940", "brak modułu — świadomie bez sieci"),
-    ("18", "Smart home", "1251–1300", "brak modułu"),
-    ("20", "Agentic", "1401–1500", "częściowo w ActionEngine/permissions — bez własnego modułu poleceń"),
+    ("20", "Agentic (reszta: planowanie przez model, autonomia z budżetem)", "1401–1500", "GoalToolbox pokrywa szablony; modelowe planowanie celów nadal nie istnieje"),
 ]
 
 TRIGGER_STARTS = re.compile(r"Starts\(\s*(?:text|command)\s*,(.*?)\)\s*[;{]", re.S)
@@ -52,6 +55,7 @@ TRIGGER_IS = re.compile(r'\b(?:text|command)\s+is\s+((?:"[^"]*"(?:\s+or\s+)?)+)'
 TRIGGER_CASE = re.compile(r'case\s+"([^"]{2,40})"\s*:')
 TRIGGER_STARTSWITH = re.compile(r'StartsWith\(\s*"([^"]{2,40})"')
 TRIGGER_REGEX = re.compile(r'@"\^([^"]{4,90})"')
+TRIGGER_IS_HELPER = re.compile(r'\b(?:Extra)?Is\(\s*(?:norm|en|flat|text)\s*,\s*"([^"]{2,40})"\s*\)')
 LITERAL = re.compile(r'"([^"]{2,40})"')
 
 
@@ -66,6 +70,7 @@ def triggers(path: pathlib.Path) -> tuple[set[str], set[str]]:
     literals |= set(TRIGGER_CASE.findall(source))
     literals |= set(TRIGGER_STARTSWITH.findall(source))
     literals = {x for x in literals if not x.startswith(("//", "/*", "`"))}
+    literals |= set(TRIGGER_IS_HELPER.findall(source))
     return literals, set(TRIGGER_REGEX.findall(source))
 
 

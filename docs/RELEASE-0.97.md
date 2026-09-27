@@ -326,8 +326,45 @@ usuwanie, dobór do zadania i licencje doszły w drugim przyroście — sekcja 1
   więc regresja deterministycznie przechodzi też na maszynie z uruchomioną Ollamą — **niczego naprawdę
   nie pobiera i niczego nie usuwa**. Łącznie 22 zestawy w `--ui-smoke`.
 
-## 16. Zestawy regresji po tym przyroście
+## 16. Pozostałe sekcje naraz — architektura, full-stack, wiedza, research, smart home, cele, media
 
-`--ui-smoke` uruchamia teraz **22 zestawy**: dotychczasowe 21 plus `model-management`
-(zgoda dwuetapowa na pobieranie/usuwanie, symulacja martwej sieci).
+- **Architektura (sekcja 5, `ArchitectureToolbox.cs`)**: `moduly:` (kolejność budowy Kahnem, cykle),
+  `sprzezenie:` (fan-in/fan-out), `warstwy:` (przeskoki i wywołania w górę), `dlug techniczny:`
+  (rejestr 0–10 z priorytetem), `adr:`, `styl:`, `c4:`, `kapacyt:` (instancje z rezerwą),
+  `pojemnosc kolejki:`, `latencja:` (budżet z największym kawałkiem), `migracja bazy:`
+  (expand–migrate–contract), `wdrozenie kanary:`, `karta modulu:`. Nic nie uruchamia — analizuje dane z polecenia.
+- **Full-stack (sekcja 6, `FullStackToolbox.cs`)**: szkielet REST z encji, OpenAPI YAML,
+  `encja ts:` / `encja csharp:`, `migracja sql:`, `sql indeks:`, `compose:`, `cors:`, `env:`,
+  `dostep:` (macierz ról), `status http:` (22 kody; nieznany → uczciwe „nie znam”), `rest tabela`,
+  `walidacja:`, `relacja:` (1:n / m:n / 1:1 z SQL), `paginacja:` (offsety, keyset, stabilne sortowanie).
+- **Wiedza (sekcja 8, `KnowledgeToolbox.cs`)**: `fiszki:`, `anki:` (TSV do importu), `powtorki:`
+  (odstawy 1/3/7/16/35 dnia, z datami), `slownik pojec:`, `podobienstwo:` (kosinus na workach słów —
+  czysta arytmetyka, wypisane ograniczenie „to nie ta sama myśl”), `wspolne tematy:`, `mapa wiedzy:`,
+  `indeks pojec:`, `pytania kontrolne:`.
+- **Research (sekcja 12, `ResearchToolbox.cs`)**: `cytuj apa|ieee:`, `bibliografia:`,
+  `wiarygodnosc:` (checklisty wg typu źródła), `plan badan:`, `slowa kluczowe:` (stopwordy PL/EN),
+  `zapytanie:` (4 warianty z operatorami — do wklejenia, **nic nie pobieram**), `macierz porownania:`,
+  `podsumuj notatki:` (wycinkowo, tylko zdania użytkownika), `fakt zapisz:`, `pytania badawcze:`.
+- **Smart home (sekcja 18, `SmartHomeToolbox.cs`)**: `energia:` (kWh i zł, rok), `koszt urzadzen:`,
+  `termostat:` (reguła 5–7% na 1 K, z zastrzeżeniem „sprawdź na liczniku”), `scena dom:`,
+  `yaml automatyzacji:` (do wklejenia; Sentinel niczego nie łączy), `mqtt:` (tematy i symbole),
+  `prad:`, `luminy:`, `czujnik baterii:`, `tarif:`.
+- **Cele agentic (sekcja 20, `GoalToolbox.cs`)**: `cel rozloz:`, `plan krokow:` (wymusza krok
+  weryfikujący), `czas na zadanie:` (+25% bufor), `plan wycofania:`, `polityka autonomii` (trzy poziomy
+  zgód — dokładnie tak, jak działa Sentinel), `ryzyko:` (klasyfikacja po czasownikach),
+  `samoocena:`, `definicja sukcesu:` (SMART).
+- **Media i obraz (sekcje 9–10, `MediaVisionToolbox.cs`)**: `kontrast:` (WCAG z klasyfikacją AA/AAA),
+  `ppi:`, `proporcje:` (GCD), `bitrate wideo:`, `audio czas|rozmiar:`, `tempo mowy:`, `db:`.
+- **Dokładki (sekcje 7, 11, 13)**: `jezyk:` (7 języków po stopwordach; „nie zgaduję” gdy brak trafień),
+  `i18n:` (braki kluczy między wersjami), `webhook szablon:` (HMAC + idempotencja),
+  `token bucket:`, `retry plan:` (backoff ×2 + jitter; 4xx nie ponawiane), `sesje:`, `koszt spotkania:`,
+  `godziny pracy:`.
+- Wszystko offline, bez sieci i bez modelu; każdy moduł ma własny zestaw regresji z liczbami
+  do sprawdzenia na kalkulatorze — łącznie **30 zestawów** w `--ui-smoke`.
+
+## 17. Zestawy regresji po tym przyroście
+
+
+`--ui-smoke` uruchamia teraz **30 zestawów**: dotychczasowe 22 plus `architecture`, `research`,
+`knowledge`, `goals`, `fullstack`, `smarthome`, `media-vision` i `everyday` (pozostałe sekcje naraz).
 Zestawy działają na jawnych danych i nie zależą od sieci ani od modelu.
