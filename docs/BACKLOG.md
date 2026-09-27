@@ -334,6 +334,13 @@ Stan na 2026-09-27 (0.97). Zasada: każda pojedyncza pozycja znika z listy dopie
 - **§9–10 Media** (`MediaVisionToolbox.cs`): kontrast WCAG, PPI, proporcje, bitrate, audio, tempo, dB.
 - **§7/§11/§13 dokładki** (w `ProductivityToolbox.cs`): jezyk, i18n, webhook, token bucket, retry plan,
   sesje, koszt spotkania, godziny pracy.
+- **PEŁNA GRA „MEGA OBBY: Wyspy Przygód” + Blender (0.98)**: 22 pliki — 19 Luau
+  (serwer buduje 120 etapów z seeda; ekonomia/questy/zwierzaki/monetyzacja po
+  stronie serwera; ProcessReceipt idempotentny; DataStore z retry i BindToClose;
+  anty-cheat heurystyczny) + 6 plików Blendera (postać R6 z rigiem, 7 animacji,
+  11 propów, eksport FBX/GLB, skala 1 stud = 0,28 m) + 2 README. Regresja:
+  GameAssetsRegression (integralność aktywów, liczniki linii, klasa błędów
+  komentarzy C/em-dash w Lua).
 - **WiFi 📶 i Game Dev — Roblox (0.98, najważniejsze)**: wyłącznik sieci z tarczą SSRF i ikoną
   w pasku; plan nauki, generatory Luau z najlepszymi praktykami, słownik, projektowanie/modelowanie/
   optymalizacja/checklista, prawdziwa matematyka DevEx i prowizji; za WiFi szukanie najlepszych praktyk
