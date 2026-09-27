@@ -55,6 +55,9 @@ internal static class UnderstandingRegression
         // --- exact commands and free conversation must be left alone ---
         Check(!CommandUnderstanding.Repair("ile mam ramu").Success, "an exact command needs no repair");
         Check(!CommandUnderstanding.Repair("snapshoty").Success, "an exact single-word command needs no repair");
+        Check(!CommandUnderstanding.Understand("snapshoty").Success,
+            "znane polecenie nie może być przepisane na inne (snapshoty ≠ snapshot)");
+        Check(!CommandUnderstanding.Extract("snapshoty").Success, "dokładne polecenie nie jest przepisywane");
         Check(!CommandUnderstanding.Repair("napisz mi wiersz o jesieni").Success, "free conversation must not be turned into a command");
         Check(!CommandUnderstanding.Repair("opowiedz mi cos ciekawego o historii polski").Success, "a long sentence must not be repaired");
         Check(!CommandUnderstanding.Repair("co").Success, "a two-letter word must not be guessed");

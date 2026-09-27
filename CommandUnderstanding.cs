@@ -299,6 +299,10 @@ public static class CommandUnderstanding
     {
         string normalized = ConversationMemoryService.Normalize(input ?? "").TrimEnd('?', '!', '.', ' ');
         if (normalized.Length is < 3 or > 120 || normalized.Contains('\n')) return UnderstandingResult.None;
+        // 0.97 · Wpis, który SAM JEST znanym poleceniem, nie podlega dopasowaniu nieostremu.
+        // Bez tej bariery ogierki polskiej odmiany skracały „snapshoty” do „snapshot” (kandydat
+        // krótszy wygrywał) i użytkownik zamiast listy odczytów zapisywał kolejny odczyt.
+        if (catalogue.Contains(normalized, StringComparer.Ordinal)) return UnderstandingResult.None;
         // A negated or destructive request is never auto-executed by extraction.
         if (PolishTextNormalizer.ContainsNegation(normalized)) return UnderstandingResult.None;
         if (DestructiveStems.Any(stem => normalized.Contains(stem, StringComparison.Ordinal))) return UnderstandingResult.None;
