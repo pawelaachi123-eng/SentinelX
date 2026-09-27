@@ -107,6 +107,11 @@ public static class CommandUnderstanding
         if (catalogue.Contains(normalized, StringComparer.Ordinal)) return CommandRepair.None;
 
         var ranked = catalogue
+            // 0.97 · naprawa to naprawa literówki, nie parafraza: przy tej samej liczbie słów każde
+            // podmienione słowo musi być podobne do wzorca na poziomie progu literówki. Bez tego
+            // zdanie z dodatkową treścią („ile mam ramu dziś”) wchodziło w podobną frazę
+            // („ile mam ramu lacznie”), bo globalny stosunek edycji to maskował.
+            .Where(phrase => LooksLikeTypo(normalized, phrase))
             .Select(phrase => (Phrase: phrase, Score: PhraseSimilarity(normalized, phrase)))
             .OrderByDescending(x => x.Score)
             .Take(2)
@@ -116,6 +121,23 @@ public static class CommandUnderstanding
             return new CommandRepair(true, ranked[0].Phrase, ranked[0].Phrase, Describe(normalized, ranked[0].Phrase), ranked[0].Score);
 
         return RepairWords(normalized, catalogue);
+    }
+
+    /// <summary>0.97 · Czy różnica między wpisem a wzorcem wygląda na literówkę? Przy różnej liczbie
+    /// słów decyduje podobieństwo całego tekstu; przy tej samej liczbie słów każde podmienione słowo
+    /// musi samo przekraczać próg literówki, więc podmiana treści („dziś” → „lacznie”) nie jest naprawą.</summary>
+    private static bool LooksLikeTypo(string input, string phrase)
+    {
+        string[] a = Words(input), b = Words(phrase);
+        if (a.Length == 0 || b.Length == 0 || a.Length != b.Length) return true;
+        for (int i = 0; i < a.Length; i++)
+        {
+            string left = CommandLexicon.CompareForm(a[i]), right = CommandLexicon.CompareForm(b[i]);
+            if (string.Equals(left, right, StringComparison.Ordinal)) continue;
+            if (left.Length < 3 || right.Length < 3) return false;
+            if (Similarity(left, right) < MinWordConfidence) return false;
+        }
+        return true;
     }
 
     /// <summary>Repairs individual mistyped words (also inside commands that take arguments).</summary>

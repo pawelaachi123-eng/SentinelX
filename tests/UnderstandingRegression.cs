@@ -72,6 +72,9 @@ internal static class UnderstandingRegression
         Check(!CommandUnderstanding.Repair("zamknij notatnk").Success, "a mistyped destructive command must stay unhandled");
         Check(!CommandUnderstanding.Repair("usun wszystko").Success, "a destructive command must never be invented by repair");
         Check(!CommandUnderstanding.Repair("potwierdz akcje").Success, "confirmations must never be produced by repair");
+        // 0.97: naprawa nie może zgubić treści zdania — słowo zakresu nie jest literówką.
+        Check(!CommandUnderstanding.Repair("ile mam ramu dzis").Success, "a scope word is content, not a typo");
+        Check(!CommandUnderstanding.Repair("ile mam ramu teraz").Success, "„teraz” must not be repaired away");
 
         // --- 0.91: the grey zone asks instead of guessing ---
         var suggestions = CommandUnderstanding.Suggest("ile mam ramu dzis");
