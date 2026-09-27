@@ -83,7 +83,7 @@ internal static class DeveloperToolboxRegression
         Check(table.Contains("pominięte (brak typu)"), "kolumna bez typu jest jawnie pominięta");
         Check(table.Contains("nieznany typ"), "nieznany typ jest zgłaszany, a nie przemilczany");
         Check(table.Contains("tag TEXT"), "nieznany typ dostaje TEXT z ostrzeżeniem");
-        Check(DeveloperToolbox.SqlTable("zły;drop | id: int").Contains("Tylko litery"), "wstrzyknięcie w nazwie tabeli jest odrzucane");
+        Check(DeveloperToolbox.SqlTable("zły;drop | id: int").Contains("tylko litery"), "wstrzyknięcie w nazwie tabeli jest odrzucane");
         string insert = DeveloperToolbox.SqlFromJson("{\"id\":1,\"name\":\"Ala\",\"ok\":true}", "osoby");
         Check(insert.Contains("INSERT INTO osoby") && insert.Contains("'Ala'"), "INSERT z wartości JSON");
         Check(insert.Contains(") VALUES (1, 'Ala', 1);"), "wartości liczbowe bez cudzysłowów, teksty w apostrofach");

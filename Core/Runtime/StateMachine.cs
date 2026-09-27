@@ -135,8 +135,8 @@ public sealed class StateMachine
         machine.Add("zatrzymany", "startuje", label: "proces wystartował");
         machine.Add("startuje", "gotowy", label: "usługi wczytane");
         machine.Add("startuje", "zatrzymany", label: "błąd startu");
-        machine.Add("gotowy", "zajęty", label: "przyjęto polecenie");
-        machine.Add("zajęty", "gotowy", label: "polecenie zakończone");
+        machine.Add("gotowy", "zajety", label: "przyjęto polecenie");
+        machine.Add("zajety", "gotowy", label: "polecenie zakończone");
         machine.Add("gotowy", "pauza", label: "użytkownik wstrzymał");
         machine.Add("pauza", "gotowy", label: "wznowienie");
         machine.Add("*", "zatrzymywany", label: "zamknięcie");
