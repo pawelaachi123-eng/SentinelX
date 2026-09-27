@@ -236,9 +236,11 @@ public static class UtilityToolbox
         var easter = Regex.Match(text, @"^wielkanoc[:\s]+(\d{4})$");
         if (easter.Success) return Easter(int.Parse(easter.Groups[1].Value));
         // 0.94: „czas w strefie UTC+2” musi wyprzedzić zegary świata („czas w …”).
-        var zoneClock = Regex.Match(text, @"^czas w strefie\s+([+-]?\d{1,2}(?::?\d{2})?|utc[+-]?\d{1,2}(?::?\d{2})?)$");
+        // 0.97 · IgnoreCase: użytkownik pisze „UTC+2” wielkimi literami, a router przekazuje tekst
+        // w oryginale — bez tego polecenie spadało na zegar świata i pytało o miasto „strefie UTC+2”.
+        var zoneClock = Regex.Match(text, @"^czas w strefie\s+([+-]?\d{1,2}(?::?\d{2})?|utc[+-]?\d{1,2}(?::?\d{2})?)$", RegexOptions.IgnoreCase);
         if (zoneClock.Success) return OffsetClock(zoneClock.Groups[1].Value);
-        var clock = Regex.Match(text, @"^czas w[:\s]+(.+)$");
+        var clock = Regex.Match(text, @"^czas w[:\s]+(.+)$", RegexOptions.IgnoreCase);
         if (clock.Success) return WorldClock(text[^clock.Groups[1].Length..].Trim());
 
         // --- 0.94 · math beyond the calculator ---
