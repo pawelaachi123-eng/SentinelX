@@ -30,7 +30,7 @@ internal static class FullStackToolboxRegression
         Check(Handle("http: 404").Contains("Not Found"), "kod 404 opisany");
         string limited = Handle("status http: 429");
         Check(limited.Contains("Too Many Requests") && limited.Contains("Retry-After"), "429 mówi o Retry-After");
-        Check(Handle("status http: 999").Contains("nie zgaduję"), "nieznany kod — uczciwe „nie znam”, nie zmyślenie");
+        Check(Handle("status http: 999").Contains("Nie zgaduję"), "nieznany kod — uczciwe „nie zgaduję”, nie zmyślenie");
 
         string page = Handle("paginacja: 1000 20 5");
         Check(page.Contains("50 stron") && page.Contains("OFFSET 80") && page.Contains("wiersze 81–100"), "matematyka stron: " + page.Split('\n')[0]);
