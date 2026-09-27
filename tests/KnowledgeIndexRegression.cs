@@ -20,7 +20,7 @@ internal static class KnowledgeIndexRegression
         string docs = Path.Combine(directory, "docs");
         Directory.CreateDirectory(docs);
         File.WriteAllText(Path.Combine(docs, "modele.md"), "Lokalne modele chronią prywatność. Dane nie opuszczają komputera. Ollama serwuje modele lokalne.");
-        File.WriteAllText(Path(docs, "kuchnia.txt"), "Przepis na rosół: kurczak, marchew, natka pietruszki i długie gotowanie.");
+        File.WriteAllText(Path.Combine(docs, "kuchnia.txt"), "Przepis na rosół: kurczak, marchew, natka pietruszki i długie gotowanie.");
 
         string build = KnowledgeIndexService.Build(docs);
         Check(build.Contains("INDEKS ZBUDOWANY") && build.Contains("2 plików"), "indeks z 2 plików: " + build.Split('\n')[0]);
