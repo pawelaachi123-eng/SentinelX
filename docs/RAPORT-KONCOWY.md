@@ -47,12 +47,19 @@ moduł, polecenia i testy — raport per sekcja: `docs/AUDYT-1550.md`, skan masz
 - **EXE/instalator: nie budowane** — kroki pakowania w każdym przebiegu = `skipped`
   (bramka `workflow_dispatch` nietknięta). Czekam na Twoje wprost polecenie.
 
-## 4. Dziennik CI tego pakietu
+## 4. Dziennik CI tego pakietu (każda poprawka jawna)
 
-- Wypchnięcie pakietu → build .NET 10 + WPF smoke; poprawki w pętli aż do zieleni
-  (szczegóły w historii commitów na branchu; każdy commit opisuje, co i dlaczego zmienił).
-- Po zieleni: aktualizacja `docs/AUDYT-1550*`, `docs/RELEASE-0.97.md` (sekcja 16, regresje → 17),
-  README, BACKLOG i ten raport.
+- `fc4236c` pakiet → **FAIL**: 2 błędy kompilacji (`ExtraFlat` w webhooku, `best.Name` w detekcji języka).
+- `ca17ae4` + `734b7d1` poprawki kompilacji → build zielony, smoke **FAIL**: kolejność topologiczna.
+- `2ee7904` `ParseGraph` dzielił wpisy także spacją → smoke **FAIL**: treść komunikatu researchu.
+- `5fe8154`, `c512971` synchronizacja 2 asercji z realnymi komunikatami → smoke **FAIL**:
+  zapis `record` C# odwrócony (`Nazwa string` zamiast `string Nazwa`).
+- `3b2332b` kolejność typu w recordzie → smoke **FAIL**: reguła `pole:minN` w walidacji.
+- `f2f4668` walidacja → smoke **FAIL**: symbol ≈ w termostacie.
+- `53d3113` termostat → smoke **FAIL**: mój test ROI założył inny wzór niż istniejący moduł.
+- `870a5fc` test ROI zgodny z modułem → **SUCCES obu przebiegów** (30/30 zestawów).
+- Po zieleni: `docs/AUDYT-1550*`, `docs/RELEASE-0.97.md` (sekcja 16, regresje → 17),
+  README, BACKLOG i ten raport — zaktualizowane liczbami z zielonego przebiegu.
 
 ## 5. Czekam na Twoją „najważniejszą funkcję”
 
