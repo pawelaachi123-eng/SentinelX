@@ -140,7 +140,7 @@ public static class FullStackToolbox
         var (name, fields) = ParseEntity(input);
         if (name.Length == 0)
             return "Użycie: „encja csharp: Produkt | nazwa:text; cena:money”. Typy: text, number, int, money, date, bool.";
-        string args = string.Join(", ", fields.Select(f => CsName(f.Name) + " " + CsType(f.Type)));
+        string args = string.Join(", ", fields.Select(f => CsType(f.Type) + " " + CsName(f.Name)));
         return "record " + name + "(" + args + ");" + Environment.NewLine +
             "· record = niemutowalny model z porównaniem po wartościach; walidację dodaj w konstruktorze/warstwie aplikacji";
     }
