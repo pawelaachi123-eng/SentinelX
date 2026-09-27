@@ -148,7 +148,10 @@ public sealed class CronSchedule
         for (int day = 0; day < 4 * 366; day++)
         {
             var date = start.AddDays(day);
-            if (!MatchesDay(date)) continue;
+            // 0.97 · Miesiąc jest częścią terminu. Bez tego sprawdzenia „0 0 31 2 *” zwracał
+            // 31 stycznia (dzień 31 istnieje w kalendarzu, a miesiąc nie był w ogóle pytany),
+            // czyli harmonogram kłamał i nigdy nie dawał uczciwego „brak terminu”.
+            if (!months.Contains(date.Month) || !MatchesDay(date)) continue;
             foreach (int minuteOfDay in minutesOfDay)
             {
                 var candidate = new DateTimeOffset(date.Year, date.Month, date.Day, minuteOfDay / 60, minuteOfDay % 60, 0, after.Offset);
