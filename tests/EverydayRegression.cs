@@ -39,7 +39,7 @@ internal static class EverydayRegression
         Check(Handle("godziny pracy: 8:00-16:30 45").Contains("7 h 45 netto (465 min)"), "510 min minus 45 przerwy");
 
         // istniejące polecenia produktywności nadal działają (brak regresji po doklejce)
-        Check(Handle("roi: 2000 15000").Contains("650"), "ROI nadal liczone (2000→15000 = +650%)");
+        Check(Handle("roi: 13000 2000").Contains("650"), "ROI nadal liczone (zysk 13000 / koszt 2000 = 650%)");
 
         foreach (string sentence in new[] { "język polski jest trudny", "sesje filmowe uwielbiam", "koszt spotkań rośnie z każdym kwartałem" })
             Check(ProductivityToolbox.TryHandle(sentence, CommandText.Normalize(sentence)) is null,
