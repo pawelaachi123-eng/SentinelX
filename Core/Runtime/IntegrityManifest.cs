@@ -55,9 +55,13 @@ public static class IntegrityManifest
     {
         string full = System.IO.Path.GetFullPath(path);
         string rootFull = System.IO.Path.GetFullPath(root);
-        return full.StartsWith(rootFull, StringComparison.OrdinalIgnoreCase)
+        string relative = full.StartsWith(rootFull, StringComparison.OrdinalIgnoreCase)
             ? full[rootFull.Length..].TrimStart(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar)
             : full;
+        // 0.97 · Ścieżki w manifeście są ZAWSZE z ukośnikiem „/”, niezależnie od systemu — inaczej
+        // ten sam plik raz był zapisany jako „podkatalog\notatka.md” (Windows), a raz
+        // „podkatalog/notatka.md”, i porównanie kopii zapasowej pokazywało fałszywe różnice.
+        return relative.Replace('\\', '/');
     }
 
     public static string Serialize(IReadOnlyList<ManifestEntry> entries) => JsonSerializer.Serialize(entries, Json);
