@@ -429,7 +429,7 @@ public static class ProductivityToolbox
         var best = scores.OrderByDescending(x => x.Value).First();
         if (best.Value == 0)
             return "Nie rozpoznaję języka (za mało słów funkcyjnych znanych mi rodzin: polski, angielski, niemiecki, hiszpański, francuski, włoski, ukraiński). Nie zgaduję.";
-        return "JEZYK: " + best.Name + " (trafienia słów funkcyjnych: " + best.Value + " z " + tokens.Count + " słów)" + Environment.NewLine +
+        return "JEZYK: " + best.Key + " (trafienia słów funkcyjnych: " + best.Value + " z " + tokens.Count + " słów)" + Environment.NewLine +
             "· pozostałe: " + string.Join(", ", scores.Where(x => x.Key != best.Key).OrderByDescending(x => x.Value).Take(3).Select(x => x.Key + " " + x.Value)) + Environment.NewLine +
             "· rozpoznanie po stopwordach — krótkie fragmenty bez słów funkcyjnych mogą być nierozpoznawalne";
     }
