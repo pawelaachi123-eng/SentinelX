@@ -363,11 +363,14 @@ public static class GameDevToolbox
         if (name.Length < 2)
             return "Użycie: „roblox szkic: Moja Gra” — dostaniesz szkielet projektu do wypełnienia.";
         string flat = Flat(name);
-        string genre = flat.Contains("obby") || flat.Contains("parkour") ? "OBBY (parkour)" :
-            flat.Contains("symulator") || flat.Contains("simulator") ? "SYMULATOR (klikaj → zarabiaj → rośnij)" :
-            flat.Contains("tycoon") ? "TYCOON (buduj fabrykę)" :
-            flat.Contains("horror") ? "HORROR (zwiedzaj, uciekaj, przetrwaj)" :
-            flat.Contains("fps") || flat.Contains("strzel") ? "SHOOTER (PvP/PvE)" : "RODZAJ DO WYBORU";
+        // gatunki hybrydowe są realne („horrorowy obby”) — wykrywam wszystkie pasujące, nie tylko pierwszy
+        var genres = new List<string>();
+        if (flat.Contains("obby") || flat.Contains("parkour")) genres.Add("OBBY (parkour)");
+        if (flat.Contains("symulator") || flat.Contains("simulator")) genres.Add("SYMULATOR (klikaj → zarabiaj → rośnij)");
+        if (flat.Contains("tycoon")) genres.Add("TYCOON (buduj fabrykę)");
+        if (flat.Contains("horror")) genres.Add("HORROR (zwiedzaj, uciekaj, przetrwaj)");
+        if (flat.Contains("fps") || flat.Contains("strzel")) genres.Add("SHOOTER (PvP/PvE)");
+        string genre = genres.Count > 0 ? string.Join(" + ", genres) : "RODZAJ DO WYBORU";
         return "SZKIC GDD: „" + name + "” (" + genre + ")" + Environment.NewLine +
             "· CORE LOOP (jedno zdanie!): gracz __________ → dostaje __________ → odblokowuje __________" + Environment.NewLine +
             "· PIERWSZE 60 SEKUND: co nowy gracz robi, czuje i dostaje w pierwszej minucie?" + Environment.NewLine +
