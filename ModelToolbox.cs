@@ -129,12 +129,18 @@ public static class ModelToolbox
 
     /// <summary>„model do zadania: …” — rekomendacja z katalogu po słowach kluczowych opisu.
     /// To podpowiedź z danych katalogowych, nie benchmark na sprzęcie użytkownika.</summary>
+    /// <summary>Do słów-kluczy: polskie znaki zdejmuję sam (Normalize nie gwarantuje ich utraty),
+    /// więc „zdjęć” i „zdjec” to to samo polecenie. Echo opisu wraca oryginalne.</summary>
+    private static string StripDiacritics(string input) => input
+        .Replace("ą", "a").Replace("ć", "c").Replace("ę", "e").Replace("ł", "l")
+        .Replace("ń", "n").Replace("ó", "o").Replace("ś", "s").Replace("ź", "z").Replace("ż", "z");
+
     private static string RecommendTask(string description)
     {
         string what = (description ?? "").Trim();
         if (what.Length == 0)
             return "Opisz zadanie, np. „model do zadania: pisanie kodu w C#” albo „model do zadania: streszczanie dokumentów”. Znam też: wizję/obrazy, embeddingi, rozumowanie, długi kontekst, słabszy sprzęt.";
-        string lower = what.ToLowerInvariant();
+        string lower = StripDiacritics(what.ToLowerInvariant());
         (string Tag, string Why) pick;
         string[] alternatives;
         if (lower.Contains("kod") || lower.Contains("programow") || lower.Contains("refaktor") || lower.Contains("bug") || lower.Contains("testy"))
