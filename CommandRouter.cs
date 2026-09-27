@@ -945,7 +945,7 @@ public sealed class CommandRouter
             { return "Model „" + name + "” nie ma w lokalnej bibliotece. Co jest zainstalowane: „modele ai”. Pobranie z zgodą: „model pobierz: " + name + "”."; }
             catch (System.Net.Http.HttpRequestException) { return OllamaOfflineMessage; }
         }
-        var pull = Regex.Match(command, @"^(?:model pobierz|pobierz model)[:\s]+(.+?)(?:\s+potwierdzam)?$", RegexOptions.IgnoreCase);
+        var pull = Regex.Match(command, @"^(?:model pobierz|pobierz model)[:\s]+(.+?)(\s+potwierdzam)?$", RegexOptions.IgnoreCase);
         if (pull.Success)
         {
             string? name = LocalAiService.NormalizePullModelName(pull.Groups[1].Value);
@@ -962,7 +962,7 @@ public sealed class CommandRouter
             pendingPull = (name, DateTime.UtcNow);
             return PullPlan(name);
         }
-        var delete = Regex.Match(command, @"^model usun[:\s]+(.+?)(?:\s+potwierdzam)?$", RegexOptions.IgnoreCase);
+        var delete = Regex.Match(command, @"^model usun[:\s]+(.+?)(\s+potwierdzam)?$", RegexOptions.IgnoreCase);
         if (delete.Success)
         {
             string? name = LocalAiService.NormalizePullModelName(delete.Groups[1].Value);
