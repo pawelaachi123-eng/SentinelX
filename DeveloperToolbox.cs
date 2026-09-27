@@ -132,7 +132,13 @@ public static class DeveloperToolbox
         if (toc.Success) return MarkdownToc(Payload(raw, "spis tresci", "markdown spis", "toc"));
 
         // ---------------- walidatory ----------------
-        var check = Regex.Match(text, @"^(?:czy|sprawdz czy|waliduj)[:\s]+(.+)$", RegexOptions.Singleline);
+        // 0.97 · Walidator wymaga dwukropka: „waliduj: 10.0.0.1” albo jawnej etykiety rodzaju
+        // („czy email: ala@example.com”). Bez tego KAŻDE pytanie zaczynające się od „czy”
+        // (np. „czy moje użycie CPU i RAM wygląda dobrze do grania?”) wpadało do walidatora
+        // i nigdy nie docierało do modelu — użytkownik dostawał „nie rozpoznaję tego”.
+        var check = Regex.Match(text, @"^(?:czy|sprawdz czy|waliduj)\s*:\s*(.+)$", RegexOptions.Singleline);
+        if (!check.Success)
+            check = Regex.Match(text, @"^(?:czy|sprawdz czy|waliduj)\s+(?:e-?mail|mail|url|adres|ip|uuid|guid|semver|wersja|pesel|nip)\s*:\s*(.+)$", RegexOptions.Singleline);
         if (check.Success) return Validate(Payload(raw, "sprawdz czy", "waliduj", "czy"));
 
         // ---------------- konwencje nazw ----------------
@@ -1077,7 +1083,11 @@ public static class DeveloperToolbox
     public static string Validate(string payload)
     {
         string text = (payload ?? "").Trim().Trim('"');
-        if (text.Length == 0) return "Użyj: „czy email: ala@example.com”, „czy url: https://…”, „czy ip: 10.0.0.1”, „czy uuid: …”, „czy semver: 1.2.3”.";
+        // Etykieta rodzaju na początku („email: ala@example.com”) jest wygodna, a jednocześnie
+        // pozwala odróżnić walidację od pytania — zdejmuję ją, zanim rozpoznam treść.
+        var label = Regex.Match(text, @"^(?:e-?mail|mail|url|adres|ip|uuid|guid|semver|wersja|pesel|nip)[:\s]+(.+)$", RegexOptions.IgnoreCase);
+        if (label.Success) text = label.Groups[1].Value.Trim();
+        if (text.Length == 0) return "Użyj: „waliduj: ala@example.com”, „waliduj: https://…”, „czy email: ala@example.com”, „czy ip: 10.0.0.1”, „waliduj: 1.2.3”.";
         if (Regex.IsMatch(text, @"^[^@\s]+@[^@\s.]+(\.[^@\s.]+)+$"))
         {
             string[] parts = text.Split('@');

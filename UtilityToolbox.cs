@@ -137,7 +137,10 @@ public static class UtilityToolbox
         if (choose.Success) return Choose(Argument(raw, "wybierz losowo"));
 
         // --- identifiers and codes ---
-        if (text is "haslo" or "haslo 16" || text.StartsWith("haslo ", StringComparison.Ordinal) || text.StartsWith("generuj haslo", StringComparison.Ordinal))
+        // 0.97 · Długość musi być podana wprost („haslo 20”). Wcześniej każde zdanie zaczynające się
+        // od „haslo …” (np. „hasło do wifi jest długie”) generowało hasło zamiast dotrzeć do modelu.
+        if (text is "haslo" or "haslo 16" or "generuj haslo" or "generuj haslo 16" ||
+            Regex.IsMatch(text, @"^(?:generuj )?haslo \d{1,3}$"))
             return Password(text);
         if (text is "uuid" or "guid" or "generuj uuid" or "generuj guid")
             return "UUID: " + Guid.NewGuid().ToString();

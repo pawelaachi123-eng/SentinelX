@@ -18,6 +18,11 @@ internal static class UtilityRegression
         Check(UtilityToolbox.Calculate("12,5*4") == "12,5*4 = 50", "a Polish decimal comma must be accepted");
         Check(UtilityToolbox.Calculate("-5+2") == "-5+2 = -3", "unary minus must work");
         Check(UtilityToolbox.Calculate("10/0").Contains("dzielenie przez zero"), "division by zero must be refused politely");
+        // 0.97: generator hasła działa tylko z podaną długością — zdanie o haśle nie może
+        // zwrócić wygenerowanego hasła zamiast trafić do modelu.
+        Check(UtilityToolbox.Password("haslo 20").Contains("20 znaków"), "hasło z długością działa");
+        Check(UtilityToolbox.Process("hasło do wifi jest długie", ConversationMemoryService.Normalize("hasło do wifi jest długie")) is null,
+            "zdanie o haśle nie generuje hasła");
         Check(UtilityToolbox.Calculate("abc").StartsWith("Nie policzę tego"), "junk must be rejected: " + UtilityToolbox.Calculate("abc"));
         Check(UtilityToolbox.Calculate("2+").Contains("urwane"), "an unfinished expression must be reported");
         Check(UtilityToolbox.Calculate("Process.Start(\"calc\")").StartsWith("Nie policzę tego"), "no code may be interpreted as math");

@@ -191,6 +191,20 @@ internal static class DeveloperToolboxRegression
         Check(DeveloperToolbox.TryHandle("zwykłe pytanie do modelu", CommandText.Normalize("zwykłe pytanie do modelu")) is null,
             "obcy tekst nie jest przechwytywany przez narzędzia");
 
+        // ---------------- walidator nie zabiera pytań ----------------
+        // 0.97: pytanie zaczynające się od „czy” nie może wpaść do walidatora i zamilknąć
+        // w odpowiedzi „nie rozpoznaję tego” — musi dojść do modelu.
+        const string question = "Czy moje obecne użycie CPU i RAM wygląda dobrze do grania?";
+        Check(DeveloperToolbox.TryHandle(question, CommandText.Normalize(question)) is null,
+            "pytanie „czy…” nie jest walidacją");
+        string plain = Require(DeveloperToolbox.TryHandle("waliduj: 10.0.0.1", CommandText.Normalize("waliduj: 10.0.0.1")), "waliduj: ip");
+        Check(plain.Contains("Adres 10.0.0.1"), "jawny walidator nadal działa: " + plain.Replace(Environment.NewLine, " | "));
+        string labelled = Require(DeveloperToolbox.TryHandle("czy email: ala@example.com", CommandText.Normalize("czy email: ala@example.com")), "czy email");
+        Check(labelled.Contains("wygląda poprawnie składniowo"), "etykieta rodzaju działa: " + labelled);
+        foreach (string nonsense in new[] { "czy moje uzycie cpu jest ok", "sprawdz czy zdazylem", "waliduj to wszystko" })
+            Check(DeveloperToolbox.TryHandle(nonsense, CommandText.Normalize(nonsense)) is null,
+                "walidator nie odpowiada na zdanie: " + nonsense);
+
         return Task.CompletedTask;
     }
 
