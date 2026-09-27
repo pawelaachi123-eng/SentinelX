@@ -36,6 +36,9 @@ public static class ServiceLocator
         services.AddSingleton<TaskService>(_ => new TaskService());
         // 0.96: user-defined routines ("scenes") — own store next to tasks and projects.
         services.AddSingleton<RoutineService>(_ => new RoutineService());
+        // 0.97: cron inside the app (#007) and folder watchdog (#008) — own stores, same guarantees.
+        services.AddSingleton<SchedulerService>(_ => new SchedulerService());
+        services.AddSingleton<WatchdogService>(_ => new WatchdogService());
         services.AddSingleton<ConversationMemoryService>(sp => new ConversationMemoryService
         {
             PrivacyProvider = () => MapPrivacy(sp.GetRequiredService<ISettingsService>().Current.Memory),

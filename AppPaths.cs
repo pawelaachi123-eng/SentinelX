@@ -18,12 +18,61 @@ public static class AppPaths
         return !string.IsNullOrWhiteSpace(custom) && Path.IsPathFullyQualified(custom) ? Path.GetFullPath(custom) : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SentinelX");
     }
 }
+/// <summary>Dziennik zdarzeń Sentinela. 0.97: każdy wpis trafia też do strukturyzowanego
+/// dziennika JSON (Core/JsonLog) z rotacją, a sam plik errors.log rotuje przez 3 starsze kopie
+/// zamiast jednej. Nic nie jest wysyłane — to lokalne pliki obok danych aplikacji.</summary>
 public static class AppLog
 {
     private static readonly object Gate = new();
+    private const long MaxBytes = 1024 * 1024;
+    private const int KeepRotated = 3;
+
     public static void Write(Exception exception)
     {
-        try { lock (Gate) { string directory = Path.Combine(AppPaths.Root, "Logs"); Directory.CreateDirectory(directory); string path = Path.Combine(directory, "errors.log"); if (File.Exists(path) && new FileInfo(path).Length > 1024 * 1024) File.Move(path, path + ".previous", true); File.AppendAllText(path, $"{DateTimeOffset.Now:O} {exception}\n"); } } catch { }
+        WriteLine("error", exception.ToString());
+        JsonLog.Append("error", exception.Message, exception.GetType().Name);
+    }
+
+    /// <summary>Wpis z kategorią (np. „harmonogram”, „schowek”) — czytelny w dzienniku JSON.</summary>
+    public static void Write(string category, string message)
+    {
+        WriteLine(category, message);
+        JsonLog.Append(category, message, null);
+    }
+
+    private static void WriteLine(string category, string message)
+    {
+        try
+        {
+            lock (Gate)
+            {
+                string directory = Path.Combine(AppPaths.Root, "Logs");
+                Directory.CreateDirectory(directory);
+                string path = Path.Combine(directory, "errors.log");
+                if (File.Exists(path) && new FileInfo(path).Length > MaxBytes) Rotate(path);
+                File.AppendAllText(path, $"{DateTimeOffset.Now:O} [{category}] {message}\n");
+            }
+        }
+        catch { }
+    }
+
+    /// <summary>Rotacja: errors.log → .1 → .2 → .3 (najstarsza znika). Pliki są lokalne i małe.</summary>
+    private static void Rotate(string path)
+    {
+        for (int index = KeepRotated; index >= 1; index--)
+        {
+            string from = index == 1 ? path : path + "." + (index - 1);
+            string to = path + "." + index;
+            try
+            {
+                if (File.Exists(from)) File.Copy(from, to, true);
+            }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
+        }
+        try { File.WriteAllText(path, ""); }
+        catch (IOException) { }
+        catch (UnauthorizedAccessException) { }
     }
 }
 public static class LocalFileService

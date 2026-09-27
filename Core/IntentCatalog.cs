@@ -117,7 +117,17 @@ public static class IntentCatalog
             "restart komputera", "anuluj zamkniecie",
             "rutyny", "dodaj rutyne", "uruchom rutyne", "usun rutyne",
             "dzien dobry", "briefing", "dobranoc", "pomodoro", "przerwa", "skupienie",
-            "historia schowka", "znajdz plik", "szukaj pliku"
+            "historia schowka", "znajdz plik", "szukaj pliku",
+            // 0.97 · automatyzacja i narzędzia: harmonogram, watchdog, kopie, dane, finanse, zdrowie
+            "zaplanuj", "zaplanowane", "harmonogram", "usun zaplanowane",
+            "obserwuj", "obserwowane", "co nowego w folderze", "przestan obserwowac",
+            "kopie zapasowe", "kopie", "spojnosc danych", "dziennik", "dziennik zdarzen",
+            "nowy pulpit", "pulpit w lewo", "pulpit w prawo", "zamknij pulpit", "pulpity",
+            "sila hasla", "analizuj csv", "przeszukaj pliki", "porownaj pliki", "porownaj tekst",
+            "eksportuj kalendarz", "kalendarz", "schowek auto", "wyczysc schowek", "bezpieczny schowek",
+            "mapa funkcji", "mapa 1550",
+            "inflacja", "cel oszczedzania", "splata dlugu", "roi", "prog rentownosci", "deprecjacja", "amortyzacja",
+            "bmr", "tdee", "makro", "woda", "nawodnienie", "tetno", "puls", "cykle snu"
         ];
         foreach (string phrase in extra) phrases.Add(phrase);
         return phrases.OrderBy(x => x, StringComparer.Ordinal).ToArray();

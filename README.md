@@ -1,4 +1,4 @@
-# SENTINEL X 0.96 · JARVIS — Windows / MVVM
+# SENTINEL X 0.97 · JARVIS — Windows / MVVM
 
 Lokalny asystent Windows 10/11, C# 13, .NET 9, WPF. Nowe GUI jest domyślnym interfejsem. Poprzedni interfejs i jego funkcje nadal są dostępne przez `--legacy`.
 
@@ -13,6 +13,21 @@ Lokalny asystent Windows 10/11, C# 13, .NET 9, WPF. Nowe GUI jest domyślnym int
 - **Historia schowka**: `kopiuj: tekst` trafia też do historii sesji — `historia schowka`, `schowek 2` wkleja wpis z powrotem. Tylko pamięć sesji: nic nie zapisuję na dysk.
 - **`znajdź plik: raport`** — szukanie po fragmencie nazwy w Pulpicie, Dokumentach i Pobranych. Tylko odczyt, z limitami głębokości (4), katalogów (3000), wyników (20) i czasu (8 s); każde ograniczenie jest wypisane w odpowiedzi.
 - Szczegóły: [docs/RELEASE-0.96.md](docs/RELEASE-0.96.md).
+
+## Nowe w 0.97 — automatyzacja i narzędzia z listy 1550
+
+Dostałem listę „1550 toolsów prywatnego Jarvisa”. Zrobiłem to, co da się zrobić lokalnie, po polsku
+i z testami; każdy blok, którego nie ma, ma uczciwy powód w [docs/FEATURE-MAP-1550.md](docs/FEATURE-MAP-1550.md)
+(skrót w aplikacji: `mapa funkcji`).
+
+- **Harmonogram (#007)**: `zaplanuj: 7:30 dzień dobry`, `zaplanuj w dni robocze 8:00 zadania`, `zaplanowane`, `usuń zaplanowane 1`. Działa, gdy aplikacja jest uruchomiona — **nic nie rejestruję w harmonogramie zadań Windows**. Odrzuca z góry polecenia niszczące dane i zasilanie, bo wykonuje się bez pytania o zgodę.
+- **Watchdog folderów (#008)**: `obserwuj: ścieżka`, `co nowego w folderze`, `przestań obserwować 1`. Tylko podgląd — nic nie przenoszę, nie kasuję i nie uruchamiam akcji po wykryciu zmiany.
+- **Spójność danych (#022)** `spójność danych` (SHA-256 każdego pliku, bez samonaprawy), **dziennik zdarzeń (#010)** `dziennik` (JSON z rotacją) i **kopie z kompresją i rotacją (#020)** `kopie zapasowe` (ZIP + trzymanie 5 archiwów i 3 folderów).
+- **Pulpity wirtualne (#804)**: `nowy pulpit`, `pulpit w lewo/prawo`, `zamknij pulpit`, `pulpity`. **Wyciszanie tła (#696)**: gdy czytam odpowiedź, ściszam system i przywracam głośność po skończeniu.
+- **Bezpieczny schowek (#145)**: `schowek auto 30` — to, co sam skopiuję, znika po 30 s. **Siła hasła (#143)**: `siła hasła: …` (entropia, słownik, ciągi; hasło nie jest nigdzie zapisywane).
+- **Dane i pliki**: `przeszukaj pliki: fraza` (#811, tylko odczyt), `analizuj csv: plik` (#1075, profil kolumn i braków), `porównaj pliki: A | B` (#1020, różnice linia po linii), `eksportuj kalendarz` (#1002, plik .ics z terminów i przypomnień).
+- **Kalkulatory**: `inflacja: 1000 5 3`, `cel oszczędzania: 20000 1500 4`, `spłata długu: 5000 200 12` (kula śnieżna vs lawina), `roi: 5000 7500`, `próg rentowności: 40 15 3000`, `deprecjacja: 12000 5`, `bmr: 80 180 30 m`, `tdee: 80 180 30 m 3`, `makro: 2400`, `woda: 80`, `tetno: 30`, `cykle snu: 23:00`. Każda odpowiedź podaje wzór i założenia.
+- Szczegóły: [docs/RELEASE-0.97.md](docs/RELEASE-0.97.md).
 
 ## Nowe w 0.95 — JARVIS: timer/głośność/zrzuty/schowek + self-repair i self-improve
 

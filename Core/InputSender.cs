@@ -18,10 +18,12 @@ public static class InputSender
 
     public const byte Tab = 0x09;
     public const byte Menu = 0x12;          // Alt
+    public const byte Control = 0x11;       // Ctrl
     public const byte Left = 0x25;
     public const byte Right = 0x27;
     public const byte KeyD = 0x44;
     public const byte F11 = 0x7A;
+    public const byte F4 = 0x73;
     public const byte LeftWindows = 0x5B;
     public const byte VolumeMute = 0xAD;
     public const byte VolumeDown = 0xAE;
@@ -70,6 +72,36 @@ public static class InputSender
             return false;
         }
     }
+
+    /// <summary>Akord z dwoma modyfikatorami (Ctrl+Windows+D). Kolejność: modyfikatory w dół, klawisz, modyfikatory w górę.</summary>
+    public static bool Chord(byte firstModifier, byte secondModifier, byte virtualKey)
+    {
+        try
+        {
+            keybd_event(firstModifier, 0, KeyDown, UIntPtr.Zero);
+            Thread.Sleep(20);
+            keybd_event(secondModifier, 0, KeyDown, UIntPtr.Zero);
+            Thread.Sleep(20);
+            keybd_event(virtualKey, 0, KeyDown, UIntPtr.Zero);
+            Thread.Sleep(20);
+            keybd_event(virtualKey, 0, KeyUp, UIntPtr.Zero);
+            Thread.Sleep(20);
+            keybd_event(secondModifier, 0, KeyUp | ExtendedKey, UIntPtr.Zero);
+            Thread.Sleep(20);
+            keybd_event(firstModifier, 0, KeyUp, UIntPtr.Zero);
+            return true;
+        }
+        catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException)
+        {
+            return false;
+        }
+    }
+
+    // 0.97 (#804) · pulpity wirtualne — skróty systemowe Windows 10/11.
+    public static bool DesktopLeft() => Chord(Control, LeftWindows, Left);
+    public static bool DesktopRight() => Chord(Control, LeftWindows, Right);
+    public static bool NewDesktop() => Chord(Control, LeftWindows, KeyD);
+    public static bool CloseDesktop() => Chord(Control, LeftWindows, F4);
 
     /// <summary>Alt+Tab: Alt zostaje wciśnięty do samego końca — inaczej system nie pokazuje przełącznika.</summary>
     public static bool AltTab()

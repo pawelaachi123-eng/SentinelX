@@ -26,6 +26,10 @@ public static class UtilityToolbox
         var words = Regex.Match(text, @"^(?:ile slow|policz slowa|ile wyrazow)[:\s]+(.+)$");
         if (words.Success) return CountWords(Argument(raw, "ile slow", "policz slowa", "ile wyrazow"));
 
+        // --- 0.97 · narzędzia z listy 1550: hasła, pliki, dane, finanse i zdrowie (lokalnie, offline) ---
+        string? toolkit = TryHandleToolkit(raw, text);
+        if (toolkit != null) return toolkit;
+
         // --- percentages and VAT ("ile to procent X z Y" is a share, so it is checked first) ---
         var shareOf = Regex.Match(text, @"^ile to procent[:\s]+(\d+[.,]?\d*)\s+z\s+(\d+[.,]?\d*)$");
         if (shareOf.Success)
@@ -341,9 +345,13 @@ public static class UtilityToolbox
             string payload = Argument(raw, "kopiuj do schowka", "skopiuj do schowka", "kopiuj", "skopiuj");
             if (payload.Length == 0) return "Podaj tekst do skopiowania, np. „kopiuj: spotkanie o 15:00”.";
             // 0.96: to, co sam skopiowałem, ląduje w historii schowka (pamięć sesji, nigdy dysk).
-            try { System.Windows.Clipboard.SetText(payload); Core.ClipboardHistory.Record(payload); return "Skopiowane do schowka (" + payload.Length + " znaków). „historia schowka” pokazuje ostatnie wpisy tej sesji."; }
-            catch (Exception ex) when (ex is System.Runtime.InteropServices.ExternalException or InvalidOperationException)
-            { return "Schowek jest niedostępny w tej sesji — spróbuj ponownie."; }
+            // 0.97: „kopiuj:” idzie przez bezpieczny schowek — gdy włączysz „schowek auto 30”,
+            // skopiowana treść zniknie sama po 30 s (hasła i tokeny nie zostają w schowku na zawsze).
+            if (!SecureClipboard.Set(payload, SecureClipboard.AutoClearSeconds))
+                return "Schowek jest niedostępny w tej sesji — spróbuj ponownie.";
+            Core.ClipboardHistory.Record(payload);
+            return "Skopiowane do schowka (" + payload.Length + " znaków). „historia schowka” pokazuje ostatnie wpisy tej sesji." +
+                (SecureClipboard.AutoClearSeconds > 0 ? " Wyczyszczę schowek za " + SecureClipboard.AutoClearSeconds + " s („wyczyść schowek” zrobi to od razu)." : "");
         }
         if (text is "co w schowku" or "schowek" or "pokaz schowek" or "zawartosc schowka" or "zawartość schowka")
         {
@@ -1710,4 +1718,150 @@ public static class UtilityToolbox
         return "Karta: " + ranks[RandomNumberGenerator.GetInt32(ranks.Length)] + " " +
             suits[RandomNumberGenerator.GetInt32(suits.Length)] + " · losowanie lokalne.";
     }
+    /// <summary>0.97 · narzędzia z listy 1550, które da się zrobić uczciwie w C# na Windows:
+    /// siła hasła (#143), porównanie plików (#1020), treść plików (#811), profil CSV (#1075),
+    /// kalkulatory finansowe (#1141–1200) i zdrowotne (#1201–1250) oraz mapa całej listy.</summary>
+    private static string? TryHandleToolkit(string raw, string text)
+    {
+        if (text is "mapa funkcji" or "mapa 1550" or "lista 1550" or "co z listy 1550" or "1550")
+            return Core.FeatureMap.Describe();
+
+        var strength = Regex.Match(raw, @"^(?:sila hasla|sila hasel|ocen haslo|jak silne haslo|sprawdz haslo)\s*[:]?\s*(?<value>.+)$", RegexOptions.IgnoreCase);
+        if (strength.Success) return Core.PasswordStrength.Describe(strength.Groups["value"].Value.Trim());
+
+        var fileDiff = Regex.Match(raw, @"^porownaj pliki\s*[:]?\s*(?<left>.+?)\s*(?:\||;)\s*(?<right>.+)$", RegexOptions.IgnoreCase);
+        if (fileDiff.Success)
+        {
+            string left = fileDiff.Groups["left"].Value.Trim().Trim('"'), right = fileDiff.Groups["right"].Value.Trim().Trim('"');
+            if (!File.Exists(left) || !File.Exists(right))
+                return "Nie znalazłem obu plików. Podaj pełne ścieżki rozdzielone „|”, np. „porównaj pliki: C:\\dane\\a.txt | C:\\dane\\b.txt”.";
+            try
+            {
+                string a = ReadTextFile(left), b = ReadTextFile(right);
+                return Core.TextDiff.Describe(a, b, Path.GetFileName(left), Path.GetFileName(right));
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            { return "Nie udało się odczytać plików do porównania: " + ex.Message; }
+        }
+
+        var textDiff = Regex.Match(raw, @"^porownaj tekst\s*[:]?\s*(?<left>.+?)\s*(?:\||;)\s*(?<right>.+)$", RegexOptions.IgnoreCase);
+        if (textDiff.Success)
+            return Core.TextDiff.Describe(textDiff.Groups["left"].Value, textDiff.Groups["right"].Value, "pierwszy", "drugi");
+
+        var csv = Regex.Match(raw, @"^(?:analizuj csv|profil csv|analizuj dane)\s*[:]?\s*(?<path>.+)$", RegexOptions.IgnoreCase);
+        if (csv.Success)
+        {
+            string path = csv.Groups["path"].Value.Trim().Trim('"');
+            try { return Core.CsvAnalyzer.Describe(Core.CsvAnalyzer.AnalyzePath(path)); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException or ArgumentException)
+            { return "Nie udało się przeanalizować pliku: " + ex.Message; }
+        }
+
+        var content = Regex.Match(raw, @"^(?:przeszukaj pliki|przeszukaj w plikach|grep)\s*[:]?\s*(?<phrase>.+)$", RegexOptions.IgnoreCase);
+        if (content.Success)
+        {
+            string phrase = content.Groups["phrase"].Value.Trim();
+            if (phrase.Length < 3) return "Fraza musi mieć co najmniej 3 znaki — krótsze dałyby setki trafień.";
+            return Core.FileSearch.Describe(Core.FileFinder.DefaultRoots(), phrase);
+        }
+
+        // --- finanse (#1141–1200) ---
+        var inflation = Regex.Match(text, @"^inflacja\s*[:]?\s*(?<a>\d+[.,]?\d*)\s+(?<b>\d+[.,]?\d*)\s+(?<c>\d{1,2})$");
+        if (inflation.Success && TryNumber(inflation.Groups["a"].Value, out double amount) && TryNumber(inflation.Groups["b"].Value, out double rate)
+            && int.TryParse(inflation.Groups["c"].Value, out int years))
+            return Core.PlCalculators.Inflacja(amount, rate, years);
+
+        var goal = Regex.Match(text, @"^cel oszczedzania\s*[:]?\s*(?<a>\d+[.,]?\d*)\s+(?<b>\d+[.,]?\d*)(?:\s+(?<c>\d+[.,]?\d*))?$");
+        if (goal.Success && TryNumber(goal.Groups["a"].Value, out double target) && TryNumber(goal.Groups["b"].Value, out double monthly))
+        {
+            double percent = goal.Groups["c"].Success && TryNumber(goal.Groups["c"].Value, out double parsed) ? parsed : 0;
+            return Core.PlCalculators.CelOszczedzania(target, monthly, percent);
+        }
+
+        var roi = Regex.Match(text, @"^roi\s*[:]?\s*(?<a>\d+[.,]?\d*)\s+(?<b>\d+[.,]?\d*)$");
+        if (roi.Success && TryNumber(roi.Groups["a"].Value, out double invested) && TryNumber(roi.Groups["b"].Value, out double returned))
+            return Core.PlCalculators.Roi(invested, returned);
+
+        var breakEven = Regex.Match(text, @"^(?:prog rentownosci|próg rentownosci|break even)\s*[:]?\s*(?<a>\d+[.,]?\d*)\s+(?<b>\d+[.,]?\d*)\s+(?<c>\d+[.,]?\d*)$");
+        if (breakEven.Success && TryNumber(breakEven.Groups["a"].Value, out double price) && TryNumber(breakEven.Groups["b"].Value, out double variable)
+            && TryNumber(breakEven.Groups["c"].Value, out double fixedCost))
+            return Core.PlCalculators.ProgRentownosci(price, variable, fixedCost);
+
+        var depreciation = Regex.Match(text, @"^(?:deprecjacja|amortyzacja|depreciation)\s*[:]?\s*(?<a>\d+[.,]?\d*)\s+(?<b>\d{1,2})(?:\s+(?<c>\d{1,2}))?$");
+        if (depreciation.Success && TryNumber(depreciation.Groups["a"].Value, out double value) && int.TryParse(depreciation.Groups["b"].Value, out int span))
+        {
+            double residual = depreciation.Groups["c"].Success && TryNumber(depreciation.Groups["c"].Value, out double rest) ? rest : 0;
+            return Core.PlCalculators.Deprecjacja(value, span, residual);
+        }
+
+        var debts = Regex.Match(raw, @"^(?:splata dlugu|splata dlugow|dlug)\s*[:]?\s*(?<body>.+)$", RegexOptions.IgnoreCase);
+        if (debts.Success)
+        {
+            var list = new List<(string Name, double Balance, double Payment, double RatePercent)>();
+            bool ok = true;
+            foreach (string part in debts.Groups["body"].Value.Split('|', StringSplitOptions.RemoveEmptyEntries))
+            {
+                string[] numbers = part.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                if (numbers.Length < 2 || numbers.Length > 3) { ok = false; break; }
+                double rate = numbers.Length == 3 && Core.PlCalculators.TryNumber(numbers[2], out double parsedRate) ? parsedRate : 0;
+                if (!Core.PlCalculators.TryNumber(numbers[0], out double balance) || !Core.PlCalculators.TryNumber(numbers[1], out double payment)) { ok = false; break; }
+                list.Add(("dług " + (list.Count + 1), balance, payment, rate));
+            }
+            if (!ok || list.Count == 0)
+                return "Podaj długi jako „kwota rata oprocentowanie”, kilka rozdziel „|”, np. „spłata długu: 5000 200 12 | 12000 300 8”.";
+            return Core.PlCalculators.SplataDlugu(list);
+        }
+
+        // --- zdrowie (#1201–1250) ---
+        var bmr = Regex.Match(text, @"^bmr\s*[:]?\s*(?<w>\d{2,3}(?:[.,]\d+)?)\s+(?<h>\d{2,3}(?:[.,]\d+)?)\s+(?<a>\d{1,2})\s*(?<sex>[mk])$");
+        if (bmr.Success && TryNumber(bmr.Groups["w"].Value, out double waga) && TryNumber(bmr.Groups["h"].Value, out double wzrost) && int.TryParse(bmr.Groups["a"].Value, out int wiek))
+            return Core.PlCalculators.Bmr(waga, wzrost, wiek, bmr.Groups["sex"].Value == "m");
+
+        var tdee = Regex.Match(text, @"^tdee\s*[:]?\s*(?<w>\d{2,3}(?:[.,]\d+)?)\s+(?<h>\d{2,3}(?:[.,]\d+)?)\s+(?<a>\d{1,2})\s*(?<sex>[mk])\s+(?<l>[1-5])$");
+        if (tdee.Success && TryNumber(tdee.Groups["w"].Value, out double waga2) && TryNumber(tdee.Groups["h"].Value, out double wzrost2)
+            && int.TryParse(tdee.Groups["a"].Value, out int wiek2) && int.TryParse(tdee.Groups["l"].Value, out int level))
+            return Core.PlCalculators.Tdee(waga2, wzrost2, wiek2, tdee.Groups["sex"].Value == "m", level);
+
+        var makro = Regex.Match(text, @"^makro\s*[:]?\s*(?<kcal>\d{3,4}(?:[.,]\d+)?)(?:\s+(?<w>\d{2,3}(?:[.,]\d+)?))?$");
+        if (makro.Success && TryNumber(makro.Groups["kcal"].Value, out double kcal))
+        {
+            double bodyWeight = makro.Groups["w"].Success && TryNumber(makro.Groups["w"].Value, out double parsedWeight) ? parsedWeight : 0;
+            return Core.PlCalculators.Makro(kcal, bodyWeight);
+        }
+
+        var water = Regex.Match(text, @"^(?:woda|nawodnienie|ile wody)\s*[:]?\s*(?<w>\d{2,3}(?:[.,]\d+)?)$");
+        if (water.Success && TryNumber(water.Groups["w"].Value, out double weight)) return Core.PlCalculators.Woda(weight);
+
+        var pulse = Regex.Match(text, @"^(?:tetno|puls|tetno max|strefy tetna)\s*[:]?\s*(?<a>\d{1,2})$");
+        if (pulse.Success && int.TryParse(pulse.Groups["a"].Value, out int age)) return Core.PlCalculators.Tetno(age);
+
+        var sleep = Regex.Match(raw, @"^cykle snu\s*[:]?\s*(?<a>\d{1,2}[:.h]\d{2})(?:\s+(?<b>\d{1,2}[:.h]\d{2}))?$", RegexOptions.IgnoreCase);
+        if (sleep.Success && TryClock(sleep.Groups["a"].Value, out TimeSpan bedtime))
+        {
+            TimeSpan? wake = sleep.Groups["b"].Success && TryClock(sleep.Groups["b"].Value, out TimeSpan parsedWake) ? parsedWake : null;
+            return Core.PlCalculators.CykleSnu(bedtime, wake);
+        }
+
+        return null;
+    }
+
+    private static string ReadTextFile(string path)
+    {
+        const long limit = 2L * 1024 * 1024;
+        if (new FileInfo(path).Length > limit) throw new IOException("Plik ma ponad 2 MB — porównuję tylko mniejsze pliki tekstowe.");
+        return File.ReadAllText(path);
+    }
+
+    /// <summary>Godzina w formacie 7:30, 07:30 albo 7h30.</summary>
+    private static bool TryClock(string value, out TimeSpan result)
+    {
+        result = TimeSpan.Zero;
+        string[] parts = (value ?? "").Replace('h', ':').Split(':');
+        if (parts.Length != 2) return false;
+        if (!int.TryParse(parts[0], out int hour) || !int.TryParse(parts[1], out int minute)) return false;
+        if (hour is < 0 or > 23 || minute is < 0 or > 59) return false;
+        result = new TimeSpan(hour, minute, 0);
+        return true;
+    }
+
 }

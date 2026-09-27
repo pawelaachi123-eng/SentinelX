@@ -205,7 +205,7 @@ public sealed class WorkspaceInsightsService
         {
             Directory.CreateDirectory(directory);
             var manifest = new Dictionary<string, string>(StringComparer.Ordinal);
-            foreach (string source in StoreFiles())
+            foreach (string source in StoreFilePaths())
             {
                 if (!File.Exists(source)) continue;
                 string target = Path.Combine(directory, Path.GetFileName(source));
@@ -218,13 +218,81 @@ public sealed class WorkspaceInsightsService
             if (manifest.Count == 0) return Failure("Nie ma jeszcze żadnych plików danych do skopiowania.", out backupPath);
             string manifestPath = Path.Combine(directory, "manifest.json");
             File.WriteAllText(manifestPath, JsonSerializer.Serialize(manifest, new JsonSerializerOptions { WriteIndented = true }), new UTF8Encoding(false));
+
+            // 0.97 (#020): kompresja i rotacja — jedna paczka ZIP do przeniesienia i ograniczone miejsce na dysku.
+            string zipPath = "";
+            long zipBytes = 0;
+            try
+            {
+                zipPath = Path.Combine(AppPaths.BackupsDirectory, "sentinel-" + now.ToString("yyyyMMdd-HHmmss") + ".zip");
+                if (File.Exists(zipPath)) File.Delete(zipPath);
+                System.IO.Compression.ZipFile.CreateFromDirectory(directory, zipPath, System.IO.Compression.CompressionLevel.Optimal, includeBaseDirectory: true);
+                zipBytes = new FileInfo(zipPath).Length;
+            }
+            catch (Exception zipEx) when (zipEx is IOException or UnauthorizedAccessException or NotSupportedException)
+            {
+                AppLog.Write("Backup", "Nie udało się spakować kopii zapasowej do ZIP: " + zipEx.Message);
+                zipPath = "";
+            }
+            int rotated = RotateBackups();
+
             backupPath = directory;
-            return "Kopia zapasowa zapisana lokalnie (" + manifest.Count + " plików) i sprawdzona odczytem zwrotnym:\n" + directory +
-                "\n" + string.Join("\n", manifest.Select(x => "· " + x.Key + " SHA-256 " + x.Value[..16] + "…")) +
-                "\nKopia zawiera dane prywatne. Nic nie zostało wysłane do internetu.";
+            var report = new StringBuilder();
+            report.AppendLine("Kopia zapasowa zapisana lokalnie (" + manifest.Count + " plików) i sprawdzona odczytem zwrotnym:");
+            report.AppendLine(directory);
+            report.AppendLine(string.Join("\n", manifest.Select(x => "· " + x.Key + " SHA-256 " + x.Value[..16] + "…")));
+            report.AppendLine(zipPath.Length > 0
+                ? "Archiwum ZIP (" + (zipBytes / 1024.0).ToString("0.0", CultureInfo.InvariantCulture) + " KB): " + zipPath + " — jedna paczka do przeniesienia na pendrive."
+                : "Nie udało się spakować kopii do ZIP — folder z kopią jest kompletny i zweryfikowany.");
+            report.AppendLine("Rotacja: " + (rotated > 0 ? "usunąłem " + rotated + " starszych kopii (trzymam " + KeepZipBackups + " archiwów ZIP i " + KeepFolderBackups + " folderów)."
+                : "nic do usunięcia (jestem w limicie kopii)."));
+            report.AppendLine("Kopia zawiera dane prywatne. Nic nie zostało wysłane do internetu. Sprawdzenie spójności: „spójność danych”.");
+            return report.ToString().TrimEnd();
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         { return Failure("Nie udało się zapisać kopii: " + ex.Message, out backupPath); }
+    }
+
+    /// <summary>Ile kopii trzymać: archiwa ZIP i foldery z odczytem zwrotnym.</summary>
+    public const int KeepZipBackups = 5;
+    public const int KeepFolderBackups = 3;
+
+    /// <summary>Usuwa najstarsze kopie poza limitem. Zwraca liczbę usuniętych pozycji.
+    /// Usuwa tylko własne kopie z folderu Backups — nigdy Twoich plików roboczych.</summary>
+    private static int RotateBackups()
+    {
+        int removed = 0;
+        try
+        {
+            if (!Directory.Exists(AppPaths.BackupsDirectory)) return 0;
+            foreach (string zip in Directory.EnumerateFiles(AppPaths.BackupsDirectory, "sentinel-*.zip")
+                         .OrderByDescending(x => x, StringComparer.Ordinal).Skip(KeepZipBackups))
+            {
+                try { File.Delete(zip); removed++; }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+            }
+            foreach (string folder in Directory.EnumerateDirectories(AppPaths.BackupsDirectory)
+                         .OrderByDescending(x => x, StringComparer.Ordinal).Skip(KeepFolderBackups))
+            {
+                try { Directory.Delete(folder, true); removed++; }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            AppLog.Write("Backup", "Nie udało się wykonać rotacji kopii: " + ex.Message);
+        }
+        return removed;
+    }
+
+    /// <summary>0.97 (#022) · spójność danych: SHA-256 każdego pliku danych. Tylko odczyt —
+    /// Sentinel niczego nie naprawia automagicznie, bo nie wie, która wersja jest prawdziwa.</summary>
+    public string IntegrityReport()
+    {
+        string[] files = StoreFilePaths().Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+        var entries = IntegrityChecker.Check(files);
+        JsonLog.Write("integrity", "Sprawdzono spójność plików danych.", entries.Count.ToString());
+        return IntegrityChecker.Describe(entries);
     }
 
     private string Failure(string message, out string path) { path = ""; LastError = message; return message; }
@@ -308,13 +376,16 @@ public sealed class WorkspaceInsightsService
         return builder.ToString().TrimEnd();
     }
 
-    private IEnumerable<string> StoreFiles() => new[]
+    /// <summary>Pliki danych Sentinela — do kontroli spójności (SHA-256) i kopii zapasowych.</summary>
+    public IEnumerable<string> StoreFilePaths() => new[]
     {
         memory.StoragePath, tasks.StoragePath, projects.StoragePath, snapshots.StoragePath,
         Path.Combine(AppPaths.SettingsDirectory, "settings.json"),
         Path.Combine(AppPaths.MemoryDirectory, "LearnedPatterns.json"),
         // 0.96: rutyny (sceny) — własny magazyn obok pamięci, zadań i projektów.
-        Path.Combine(AppPaths.MemoryDirectory, "routines.json")
+        Path.Combine(AppPaths.MemoryDirectory, "routines.json"),
+        // 0.97: harmonogram — wchodzi w skład kopii zapasowej i kontroli spójności.
+        Path.Combine(AppPaths.MemoryDirectory, "schedules.json")
     }.Distinct(StringComparer.OrdinalIgnoreCase);
 
     private static long DirectoryBytes(string root)

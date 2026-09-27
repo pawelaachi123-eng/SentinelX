@@ -1,6 +1,6 @@
 # Trwały backlog rozwoju SentinelX
 
-Stan na 2026-09-27 (0.96). Zasada: każda pojedyncza pozycja znika z listy dopiero, gdy jest **zbudowana i przetestowana na Windows (CI)**, nie „gdy wygląda na zrobioną".
+Stan na 2026-09-27 (0.97). Zasada: każda pojedyncza pozycja znika z listy dopiero, gdy jest **zbudowana i przetestowana na Windows (CI)**, nie „gdy wygląda na zrobioną".
 
 ## Gotowe i zweryfikowane (0.85 i wcześniejsze)
 
@@ -162,6 +162,33 @@ Stan na 2026-09-27 (0.96). Zasada: każda pojedyncza pozycja znika z listy dopie
 - `tests/JarvisRegression.cs` + asercje w `--ui-smoke` (okna, rutyny, odmowa kroku niszczącego,
   briefing, pomodoro, historia schowka, `//rutyny`).
 
+## Gotowe w 0.97 (ten przyrost — patrz git)
+
+Na wejście: lista „1550 toolsów prywatnego Jarvisa”. Zasadę przyjąłem taką: biorę to, co da się
+zrobić **lokalnie, po polsku i z testami**, a reszta dostaje uczciwy powód
+(`docs/FEATURE-MAP-1550.md`, w aplikacji `mapa funkcji`).
+
+- **Harmonogram (#007)**: `zaplanuj: 7:30 …` / `zaplanuj w dni robocze …` / `zaplanowane` /
+  `usuń zaplanowane N` — `SchedulerService.cs` + `Memory/schedules.json` (zapis atomowy, kopia
+  uszkodzonego pliku, odczyt zwrotny SHA-256). Tik co 20 s przez `AutomationPoller.cs`,
+  wpięty w Centrum Sterowania i w klasyczne okno. Odrzuca polecenia niszczące i zasilanie.
+- **Watchdog folderów (#008)**: `obserwuj: …` / `co nowego w folderze` / `przestań obserwować …` —
+  `WatchdogService.cs`, tylko podgląd (bez akcji po wykryciu zmiany), zdarzenia w sesji.
+- **Kopie (#020)** z kompresją ZIP i rotacją (5 ZIP-ów / 3 foldery) + `kopie zapasowe`;
+  **spójność danych (#022)** SHA-256; **dziennik zdarzeń (#010)** JSONL z rotacją i kategoriami
+  w `AppLog` (errors.log rotuje przez 3 kopie).
+- **Pulpity wirtualne (#804)** przez skróty Ctrl+Win+… (`Core/InputSender.cs`) i **wyciszanie
+  tła (#696)** przy czytaniu odpowiedzi (`SpeechOutputService.cs`).
+- **Bezpieczny schowek (#145)** z auto-czyszczeniem (`SecureClipboard.cs`) i **siła hasła (#143)**
+  (`Core/PasswordStrength.cs`).
+- **Narzędzia danych**: szukanie w treści (#811, `Core/FileSearch.cs`, komenda „przeszukaj pliki: …”, bo „szukaj ” otwiera wyszukiwarkę), profil CSV/TSV (#1075,
+  `Core/CsvAnalyzer.cs`), porównanie plików (#1020, `Core/TextDiff.cs`), eksport .ics (#1002,
+  `Core/CalendarExport.cs`).
+- **Kalkulatory** finansowe i zdrowotne (#1141–1250, `Core/PlCalculators.cs`): inflacja, cel
+  oszczędzania, spłata długu (kula śnieżna vs lawina), ROI, próg rentowności, amortyzacja, BMR,
+  TDEE, makro, nawodnienie, strefy tętna, cykle snu — każdy ze wzorem i założeniami.
+- `tests/SystemAutomationRegression.cs` + rejestracja w `--ui-smoke`.
+
 ## Priorytet P0 — kolejny przyrost
 
 1. **Pliki — DOMKNIĘTE w 0.92/0.93**: duplikaty po treści (SHA-256), raport porządkowy, usuwanie pojedynczych plików do Kosza z potwierdzeniem, usuwanie duplikatów (`usuń duplikaty:`) z pozostawieniem 1 kopii na grupę, sprzątanie pustych plików (`usuń puste pliki:`), zbiorcze zmiany nazw z podglądem (`zmien nazwy: … zamien … na …`). Ewentualne rozszerzenia (filtry rozmiaru, podfoldery w zmianach nazw) to P1.
@@ -201,6 +228,11 @@ Stan na 2026-09-27 (0.96). Zasada: każda pojedyncza pozycja znika z listy dopie
 - Sterowanie oknami i multimediami (0.96) używa syntetycznych klawiszy: system może je odrzucić,
   gdy aktywne okno ma wyższe uprawnienia (UIPI) — wtedy pada uczciwe „nie udało się”.
 - Rutyny (0.96) nie mają podglądu planu przed uruchomieniem ani statusów kroków w historii akcji.
+- Harmonogram i watchdog (0.97) działają **tylko przy uruchomionej aplikacji**: to świadoma
+  rezygnacja z rejestrowania czegokolwiek w systemie (harmonogram zadań Windows, autostart).
+- Pulpity wirtualne (0.97) obsługuję skrótami: nie potrafię policzyć, ile pulpitów masz otwartych
+  (brak publicznego API Microsoftu) — mówię o tym zamiast zgadywać.
+- Profil CSV (0.97) nie czyta xlsx ani plików powyżej 4 MB.
 - VAT liczy stawki 23/8/5/0% (wybór w poleceniu, domyślnie 23%); inne stawki są odrzucane z wyjaśnieniem.
 - Archiwum rozmów jest kopią do odczytu: nie ma przywracania do aktywnej rozmowy.
 - Limit magazynu artefaktów GitHub Actions został osiągnięty 2026-09-24: przebieg `36049020743` miał **13/13 kroków merytorycznych `success`**, a czerwony znacznik pochodzi wyłącznie z `upload-artifact` („Artifact storage quota has been hit”). Retencja artefaktów skrócona do 2 dni; trwałą dystrybucją są assety wydania. Gdyby limit dalej blokował, kolejne kroki: `retention-days: 1` albo rezygnacja z uploadu binariów w buildzie gałęzi.

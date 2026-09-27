@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Text;
+using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SentinelX.Core;
@@ -49,6 +50,10 @@ public partial class CommandCenterViewModel : ObservableObject, IDisposable
     private readonly object streamGate = new();
     private bool streamPending;
     private string lastUserInput = "";
+    /// <summary>0.97 · jeden tik dla harmonogramu, watchdoga i bezpiecznego schowka (co 15 s sprawdzam,
+    /// czy nadeszła pora). Działa tylko przy uruchomionej aplikacji — nic nie rejestruję w systemie.</summary>
+    private readonly AutomationPoller? poller;
+    private readonly DispatcherTimer? pollerTimer;
 
     /// <summary>Centrum tabs: chat plus every panel that used to be a top-level page. Icons only.</summary>
     public IReadOnlyList<CenterTab> Sections { get; }
@@ -71,7 +76,7 @@ public partial class CommandCenterViewModel : ObservableObject, IDisposable
         SystemViewModel system, VoiceViewModel voiceViewModel, IHistoryService history, ConversationMemoryService memory, TaskService tasks,
         TaskViewModel taskPage, HistoryViewModel historyPage, GamingViewModel gamingPage, AiViewModel aiPage,
         ActionsViewModel actionsPage, DiagnosticViewModel diagnosticsPage,
-        MemoryArchiveService? archives = null)
+        MemoryArchiveService? archives = null, SchedulerService? scheduler = null, WatchdogService? watchdog = null)
     {
         this.engine = engine; this.voice = voice; this.dispatcher = dispatcher; this.history = history; this.memory = memory; this.tasks = tasks; System = system; Voice = voiceViewModel;
         Sections =
@@ -97,6 +102,11 @@ public partial class CommandCenterViewModel : ObservableObject, IDisposable
         tasks.ReminderFired += ReminderFired;
         foreach (var archived in archives?.ArchiveDue() ?? [])
             Messages.Add(new("assistant", $"📦 Rozmowy z {archived.Month} przeniesione do archiwum ({archived.Conversations} rozmów, {archived.Turns} wypowiedzi) i usunięte z aktywnego magazynu. Folder: {archived.JsonPath}. Wspomnienia są nietknięte. Polecenie „archiwa” pokazuje listę.", DateTime.Now));
+        // 0.97: automation tick — schedules, folder watchdog and the secure clipboard.
+        poller = new AutomationPoller(scheduler, watchdog, RunScheduledCommand, Report, () => engine.IsBusy);
+        pollerTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(15) };
+        pollerTimer.Tick += (_, _) => poller.Tick();
+        pollerTimer.Start();
         var missed = tasks.CheckDue(atStartup: true);
         if (missed.Count > 0)
             Messages.Add(new("assistant", missed.Count == 1
@@ -259,8 +269,36 @@ public partial class CommandCenterViewModel : ObservableObject, IDisposable
         Status = result.Action?.StorageWarning is { Length: > 0 } warning ? warning : history.StorageError ?? (engine.IsStopped ? "STOP awaryjny · nowe akcje zablokowane" : "Gotowe · wyniki akcji znajdziesz w Historii");
         if (fromVoice) voice.Speak(result.Text);
     }
+    /// <summary>Wpis z harmonogramu uruchamia się przez ten sam silnik, co wpisane polecenie:
+    /// z historią akcji, oknem zgody i audytem. Bez skrótów i bez uprawnień ponad człowieka.</summary>
+    private async Task RunScheduledCommand(string command, CancellationToken token)
+    {
+        try
+        {
+            var result = await engine.ExecuteAsync(command, token, fromVoice: false);
+            string first = result.Text.Replace("\r", " ").Split('\n').FirstOrDefault(x => x.Trim().Length > 0) ?? "";
+            if (first.Length > 160) first = first[..159] + "…";
+            if (first.Length > 0) Report("↳ " + first);
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception ex)
+        {
+            Report("Zaplanowane polecenie nie powiodło się: " + ex.Message);
+            AppLog.Write("Harmonogram", "Błąd zaplanowanego polecenia: " + command + " · " + ex.Message);
+        }
+    }
+
+    /// <summary>Komunikat z tika automatyzacji (harmonogram, watchdog, schowek) trafia do czatu,
+    /// żebyś widział, że Sentinel coś zrobił sam — nigdy po cichu.</summary>
+    private void Report(string line) => dispatcher.Post(() =>
+    {
+        Messages.Add(new("sentinel", line, DateTime.Now));
+        while (Messages.Count > 300) Messages.RemoveAt(0);
+    });
+
     public void Dispose()
     {
+        pollerTimer?.Stop();
         engine.Changed -= Sync; voice.CommandRecognized -= Recognized;
         memory.Changed -= MemorySync; memory.SessionChanged -= SessionSync;
         tasks.ReminderFired -= ReminderFired;

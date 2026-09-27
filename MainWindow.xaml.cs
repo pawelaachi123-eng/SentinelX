@@ -25,6 +25,11 @@ public partial class MainWindow : Window
     private readonly ResourceGuardService resourceGuard = new();
     private readonly FileWorkspaceService files;
     private readonly RoutineService routines = new();
+    // 0.97: harmonogram (#007), obserwacja folderów (#008) i bezpieczny schowek (#145).
+    private readonly SchedulerService scheduler = new();
+    private readonly WatchdogService watchdog = new();
+    private AutomationPoller? poller;
+    private DateTime lastAutomationPoll;
     private readonly ProgramBuilderService programBuilder = new();
     private SettingsEditorView? settingsEditor;
     private bool applyingSettings;
@@ -67,10 +72,14 @@ public partial class MainWindow : Window
         speech.Completed += () => OnUi(SpeechCompleted);
         speech.Failed += s => OnUi(() => { SpeechStatusText.Text = s; SpeechCompleted(); });
         timer.Tick += (_, _) => Tick();
+        poller = new AutomationPoller(scheduler, watchdog, (command, token) => ExecuteAsync(command), Report, () => busy);
         Loaded += LoadedAsync; Closing += ClosingWindow; PreviewKeyDown += WindowKeyDown;
         StateChanged += (_, _) => { if (ready && WindowState == WindowState.Minimized && settings.Settings.MinimizeToTray) HideToTray(); };
         ShowPage(smokeMode ? "Chat" : settings.Settings.Ui.SelectedPage);
     }
+    /// <summary>Komunikaty z tika automatyzacji trafiają do czatu — nic nie dzieje się po cichu.</summary>
+    private void Report(string line) => OnUi(() => AddMessage("SENTINEL", line));
+
     private void OnUi(Action action)
     {
         if (exiting || Dispatcher.HasShutdownStarted) return;
@@ -154,6 +163,12 @@ public partial class MainWindow : Window
         double interval = gaming.IsGaming() ? settings.Settings.Resources.GamingMonitorIntervalSeconds : settings.Settings.Resources.MonitorIntervalSeconds;
         if (DateTime.Now - lastTick < TimeSpan.FromSeconds(interval)) return;
         lastTick = DateTime.Now;
+        // 0.97 · jeden tik automatyzacji: harmonogram, watchdog folderów i czyszczenie schowka.
+        if (DateTime.Now - lastAutomationPoll > TimeSpan.FromSeconds(15))
+        {
+            lastAutomationPoll = DateTime.Now;
+            poller?.Tick();
+        }
         float cpu = monitor.GetCpuUsage(); double ram = monitor.GetRamUsagePercent();
         float gpu = monitor.GetGpuUsagePercent();
         MiniCpuText.Text = "CPU " + Format(cpu, "%"); MiniRamText.Text = "RAM " + Format(ram, "%"); MiniGpuText.Text = "GPU " + Format(gpu, "%");

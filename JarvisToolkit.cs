@@ -74,6 +74,25 @@ public static class JarvisToolkit
                 : "Nie znalazłem widocznego okna z „" + fragment + "” w tytule. „okna” pokazuje, co jest otwarte.";
         }
 
+        // ============================ PULPITY WIRTUALNE (#804) ============================
+        if (text is "pulpity" or "pulpity wirtualne" or "wirtualne pulpity" or "lista pulpitow")
+            return "Pulpity wirtualne obsługuję skrótami systemowymi Windows (Ctrl+Windows+…), bo Microsoft nie daje " +
+                   "publicznego API do ich liczenia: nie potrafię uczciwie powiedzieć, ile ich masz otwartych.\n" +
+                   "· „nowy pulpit” — Ctrl+Win+D\n· „pulpit w lewo” / „pulpit w prawo” — Ctrl+Win+← / →\n" +
+                   "· „zamknij pulpit” — Ctrl+Win+F4 (zamyka bieżący pulpit, okna przechodzą na sąsiedni)";
+        if (text is "nowy pulpit" or "nowy pulpit wirtualny" or "dodaj pulpit" or "utworz pulpit")
+            return Simple("Nowy pulpit wirtualny (Ctrl+Win+D) — otwarte okna zostają na poprzednim.",
+                "Nie udało się utworzyć pulpitu wirtualnego — system nie przyjął skrótu.", Core.InputSender.NewDesktop());
+        if (text is "pulpit w lewo" or "poprzedni pulpit" or "pulpit wirtualny w lewo")
+            return Simple("Przełączam na pulpit po lewej (Ctrl+Win+←).",
+                "Nie udało się przełączyć pulpitu — system nie przyjął skrótu.", Core.InputSender.DesktopLeft());
+        if (text is "pulpit w prawo" or "nastepny pulpit" or "pulpit wirtualny w prawo")
+            return Simple("Przełączam na pulpit po prawej (Ctrl+Win+→).",
+                "Nie udało się przełączyć pulpitu — system nie przyjął skrótu.", Core.InputSender.DesktopRight());
+        if (text is "zamknij pulpit" or "zamknij pulpit wirtualny" or "usun pulpit")
+            return Simple("Zamykam bieżący pulpit wirtualny (Ctrl+Win+F4) — okna przechodzą na sąsiedni pulpit, nic nie tracisz.",
+                "Nie udało się zamknąć pulpitu — system nie przyjął skrótu (albo jest to jedyny pulpit).", Core.InputSender.CloseDesktop());
+
         // ============================ MULTIMEDIA ============================
         if (text is "pauza" or "wstrzymaj" or "wznow" or "wznow odtwarzanie" or "odtworz" or "play" or "play pause" or "graj" or "pauzuj")
             return Simple("Play/pauza — wysłałem klawisz multimediów (działa na aktywnym odtwarzaczu systemu).",

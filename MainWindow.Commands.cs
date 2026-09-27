@@ -64,6 +64,21 @@ public partial class MainWindow
         if (jarvisResponse != null) return jarvisResponse;
         string? routineResponse = await RoutineCommands.TryHandleAsync(command, text, routines, RouteAsync, token);
         if (routineResponse != null) return routineResponse;
+        // 0.97 · automatyzacja: harmonogram, watchdog folderów, dziennik, kopie, spójność danych, bezpieczny schowek.
+        string? automationResponse = AutomationCommands.TryHandle(command, text, new AutomationContext
+        {
+            Scheduler = scheduler,
+            Watchdog = watchdog,
+            Tasks = null, // klasyczne okno nie ma magazynu zadań — eksport kalendarza działa w Centrum
+            StoreFiles = () => new[]
+            {
+                memory.StoragePath, routines.StoragePath,
+                System.IO.Path.Combine(AppPaths.SettingsDirectory, "settings.json"),
+                System.IO.Path.Combine(AppPaths.MemoryDirectory, "routines.json"),
+                System.IO.Path.Combine(AppPaths.MemoryDirectory, "schedules.json")
+            }
+        });
+        if (automationResponse != null) return automationResponse;
         var build = Regex.Match(text, @"^(?:zbuduj|stworz|utworz) (?:mi )?program (notatnik|kalkulator|pomodoro)$");
         if (build.Success)
         {

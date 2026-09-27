@@ -41,6 +41,7 @@ public static class UiSmokeTestRunner
             await Tests.UnderstandingRegression.RunAsync(Path.Combine(output, "understanding"));
             await Tests.UtilityRegression.RunAsync(Path.Combine(output, "utility"));
             await Tests.JarvisRegression.RunAsync(Path.Combine(output, "jarvis"));
+            await Tests.SystemAutomationRegression.RunAsync(Path.Combine(output, "automation"));
             await Tests.FileCleanupRegression.RunAsync(Path.Combine(output, "file-cleanup"));
             await Tests.MemoryArchiveRegression.RunAsync(Path.Combine(output, "archives"));
             var vm = services.GetRequiredService<MainViewModel>();
@@ -259,9 +260,39 @@ public static class UiSmokeTestRunner
             string clipboardHistory = (await memoryEngine.ExecuteAsync("historia schowka")).Text;
             if (!clipboardHistory.Contains("Historia schowka"))
                 throw new InvalidOperationException("The clipboard history must answer: " + clipboardHistory);
-            string findFile = (await memoryEngine.ExecuteAsync("znajdź plik: sentinel-smoke-0.96")).Text;
+            string findFile = (await memoryEngine.ExecuteAsync("znajdź plik: sentinel-smoke-0.97")).Text;
             if (!findFile.Contains("znajd") && !findFile.Contains("Znalazłem") && !findFile.Contains("Nie znalazłem"))
                 throw new InvalidOperationException("File search must answer: " + findFile);
+            // 0.97: automation and the honest 1550 map — schedules refuse power commands, nothing registers in Windows.
+            string scheduleRefusal = (await memoryEngine.ExecuteAsync("zaplanuj: 8:00 zamknij komputer")).Text;
+            if (!scheduleRefusal.Contains("zgody"))
+                throw new InvalidOperationException("A scheduled shutdown must be refused: " + scheduleRefusal);
+            string scheduleList = (await memoryEngine.ExecuteAsync("zaplanowane")).Text;
+            if (!scheduleList.Contains("HARMONOGRAM") && !scheduleList.Contains("Harmonogram jest pusty"))
+                throw new InvalidOperationException("The schedule list must answer: " + scheduleList);
+            string watchdog = (await memoryEngine.ExecuteAsync("obserwowane")).Text;
+            if (!watchdog.Contains("obserwuj"))
+                throw new InvalidOperationException("The watchdog list must explain how to watch a folder: " + watchdog);
+            string featureMap = (await memoryEngine.ExecuteAsync("mapa funkcji")).Text;
+            if (!featureMap.Contains("MAPA LISTY 1550") || !featureMap.Contains("ZASADA"))
+                throw new InvalidOperationException("The 1550 map must be honest about what is out of scope: " + featureMap);
+            string strength = (await memoryEngine.ExecuteAsync("siła hasła: test1234")).Text;
+            if (!strength.Contains("SIŁA HASŁA"))
+                throw new InvalidOperationException("The password analyser must answer: " + strength);
+            string journal = (await memoryEngine.ExecuteAsync("dziennik")).Text;
+            if (!journal.Contains("DZIENNIK ZDARZEŃ"))
+                throw new InvalidOperationException("The event journal must answer: " + journal);
+            string integrity = (await memoryEngine.ExecuteAsync("spójność danych")).Text;
+            if (!integrity.Contains("SPÓJNOŚĆ DANYCH"))
+                throw new InvalidOperationException("The integrity check must answer: " + integrity);
+            string backups = (await memoryEngine.ExecuteAsync("kopie zapasowe")).Text;
+            if (!backups.Contains("KOPIE ZAPASOWE"))
+                throw new InvalidOperationException("The backup list must answer: " + backups);
+            string sleepCycles = (await memoryEngine.ExecuteAsync("cykle snu: 23:00")).Text;
+            if (!sleepCycles.Contains("CYKLE SNU"))
+                throw new InvalidOperationException("Sleep cycles must answer: " + sleepCycles);
+            if (SentinelX.Core.SlashCatalog.TryResolve("zaplanuj")?.Target != "zaplanuj: 7:30 ")
+                throw new InvalidOperationException("//zaplanuj must map to the schedule command.");
             if (SentinelX.Core.SlashCatalog.TryResolve("rutyny")?.Target != "rutyny")
                 throw new InvalidOperationException("//rutyny must map to the routines command.");
             // 0.91: „//” shortcuts resolve through the catalogue without touching the AI.

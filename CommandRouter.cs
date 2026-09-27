@@ -22,6 +22,9 @@ public sealed class CommandRouter
     private readonly UnderstandingJournal? journal;
     private readonly SessionFactBook? facts;
     private readonly Core.LearnedPatterns? learned;
+    // 0.97: harmonogram (#007) i obserwacja folderów (#008).
+    private readonly SchedulerService? scheduler;
+    private readonly WatchdogService? watchdog;
     private string lastTopic = "";
     private DateTime lastTopicTime;
     private (string Text, DateTime When, string Description, DateTime Expires)? pendingReminder;
@@ -42,11 +45,14 @@ public sealed class CommandRouter
     public CommandRouter(SystemMonitor systemMonitor, SystemInfoService systemInfo, LocalAiService localAi, ConversationMemoryService memory,
         ProjectService? projects = null, TaskService? tasks = null, DiagnosticSnapshotService? snapshots = null,
         MemoryArchiveService? archives = null, WorkspaceInsightsService? insights = null, UnderstandingJournal? journal = null,
-        SessionFactBook? facts = null, Core.LearnedPatterns? learned = null)
+        SessionFactBook? facts = null, Core.LearnedPatterns? learned = null,
+        // 0.97: harmonogram (#007) i obserwacja folderów (#008) — osobne magazyny obok zadań i rutyn.
+        SchedulerService? scheduler = null, WatchdogService? watchdog = null)
     {
         this.systemMonitor = systemMonitor; this.systemInfo = systemInfo; this.localAi = localAi; this.memory = memory;
         this.projects = projects; this.tasks = tasks; this.snapshots = snapshots; this.archives = archives; this.insights = insights;
         this.journal = journal; this.facts = facts; this.learned = learned;
+        this.scheduler = scheduler; this.watchdog = watchdog;
     }
 
     public async Task<string> ProcessAsync(string command, CancellationToken cancellationToken = default, Action<string>? onDelta = null)
@@ -62,6 +68,8 @@ public sealed class CommandRouter
         if (metaResponse != null) return metaResponse;
         string? jarvisResponse = TryHandleJarvisCommand(command.Trim(), text);
         if (jarvisResponse != null) return jarvisResponse;
+        string? automationResponse = TryHandleAutomationCommand(command.Trim(), text);
+        if (automationResponse != null) return automationResponse;
         string? workspaceResponse = TryHandleWorkspaceCommand(command.Trim(), text);
         if (workspaceResponse != null) return workspaceResponse;
         string? memoryResponse = TryHandleMemoryCommand(command.Trim(), text);
@@ -190,7 +198,19 @@ public sealed class CommandRouter
                   string.Join("\n", snapshot.Select(x => "· [" + x.Time + "] " + x.Label + ": " + x.Value));
         }
         if (text is "co nowego" or "lista zmian" or "changelog" or "co sie zmienilo")
-            return "CO NOWEGO W 0.96 · JARVIS: PULPIT, MULTIMEDIA, ZASILANIE\n" +
+            return "CO NOWEGO W 0.97 · AUTOMATYZACJA I NARZĘDZIA Z LISTY 1550\n" +
+                "· Harmonogram (#007): „zaplanuj: 7:30 dzień dobry”, „zaplanuj w dni robocze 8:00 zadania”, „zaplanowane”, „usuń zaplanowane 1”. Działa, gdy aplikacja jest uruchomiona — nie rejestruję nic w harmonogramie zadań Windows, więc nic nie uruchomi Ci się bez otwartego Sentinela. Poleceń niszczących i zasilania harmonogram nie przyjmie z góry.\n" +
+                "· Watchdog folderów (#008): „obserwuj: ścieżka”, „co nowego w folderze”, „przestań obserwować 1”. Tylko podgląd: nic nie przenoszę, nie kasuję i nie uruchamiam akcji po wykryciu zmiany.\n" +
+                "· Kopie z kompresją i rotacją (#020): każda kopia to też jeden plik ZIP; trzymam 5 archiwów i 3 foldery, starsze usuwa rotacja. Lista: „kopie zapasowe”.\n" +
+                "· Spójność danych (#022): „spójność danych” liczy SHA-256 każdego pliku Sentinela i niczego nie naprawia sama — pokazuje tylko stan.\n" +
+                "· Dziennik zdarzeń (#010): strukturalny JSON z rotacją obok errors.log; „dziennik” pokazuje ostatnie zdarzenia.\n" +
+                "· Pulpity wirtualne (#804): „nowy pulpit”, „pulpit w lewo/prawo”, „zamknij pulpit”, „pulpity”.\n" +
+                "· Bezpieczny schowek (#145): „schowek auto 30” — to, co sam skopiuję, znika po 30 s; „wyczyść schowek” robi to od razu.\n" +
+                "· Narzędzia: „siła hasła: …” (#143), „przeszukaj pliki: fraza” (#811), „analizuj csv: plik” (#1075), „porównaj pliki: A | B” (#1020), „eksportuj kalendarz” (.ics, #1002).\n" +
+                "· Kalkulatory: „inflacja: 1000 5 3”, „cel oszczędzania: 20000 1500 4”, „spłata długu: 5000 200 12 | 12000 300 8” (kula śnieżna vs lawina), „roi: 5000 7500”, „próg rentowności: 40 15 3000”, „deprecjacja: 12000 5” oraz „bmr”, „tdee”, „makro”, „woda”, „tetno”, „cykle snu”.\n" +
+                "· Wyciszanie tła (#696): gdy czytam odpowiedź, ściszam system i przywracam głośność po skończeniu.\n" +
+                "· „mapa funkcji” — uczciwa mapa całej listy 1550: co z tego mam, czego nie i dlaczego (pełna tabela w docs/FEATURE-MAP-1550.md).\n" +
+                "\nCO NOWEGO W 0.96 · JARVIS: PULPIT, MULTIMEDIA, ZASILANIE\n" +
                 "· Steruję oknami: „okna” (lista), „minimalizuj wszystko” (Windows+D), „minimalizuj/maksymalizuj/zamknij okno”, „przełącz okno” (Alt+Tab), „przełącz na: chrome”, „okno w lewo/prawo”, „pełny ekran”. Zamykam przez WM_CLOSE — dokładnie jak kliknięcie „X”, więc program może zapytać o zapis.\n" +
                 "· Multimedia: „pauza”, „wznów odtwarzanie”, „następny utwór”, „poprzedni utwór”, „zatrzymaj odtwarzanie”, „głośniej”, „ciszej”. Działa na tym odtwarzaczu, który system uznaje za aktywny — gdy system odrzuci klawisz, mówię o tym wprost.\n" +
                 "· Zasilanie bez drugiego pytania: „zablokuj ekran”, „wygasz ekran”, „uspij komputer”, „zamknij komputer”, „restart komputera”. Polecenie jest zgodą (nie pytam drugi raz), ale zamykanie, restart i uśpienie mają okno do odwołania: „anuluj zamknięcie”.\n" +
@@ -301,6 +321,21 @@ public sealed class CommandRouter
 
     /// <summary>0.96 · „dzień dobry” / „dobranoc” — raport z lokalnych odczytów: co dziś, co przegapione,
     /// w jakim stanie jest komputer. Bez modelu, bez sieci. Briefing tylko czyta i niczego nie wykonuje.</summary>
+    /// <summary>0.97 · automatyzacja i narzędzia systemowe z listy 1550: harmonogram (#007),
+    /// watchdog folderów (#008), dziennik zdarzeń (#010), kopie zapasowe z rotacją (#020),
+    /// spójność danych SHA-256 (#022), eksport kalendarza (#1002) i bezpieczny schowek (#145).</summary>
+    private string? TryHandleAutomationCommand(string command, string text)
+    {
+        var context = new AutomationContext
+        {
+            Scheduler = scheduler,
+            Watchdog = watchdog,
+            Tasks = tasks,
+            StoreFiles = insights == null ? null : insights.StoreFilePaths
+        };
+        return AutomationCommands.TryHandle(command, text, context);
+    }
+
     private string? TryHandleJarvisCommand(string command, string text)
     {
         if (text is "dzien dobry" or "briefing" or "raport poranny" or "poranny raport" or "co dzisiaj" or "co na dzis")
@@ -880,6 +915,10 @@ public sealed class CommandRouter
         Jarvis · zasilanie: zablokuj ekran · wygasz ekran · uspij komputer · zamknij komputer · restart komputera · anuluj zamknięcie (polecenie jest zgodą; zamykanie, restart i uśpienie mają okno do odwołania)
         Jarvis · rytuały: dzień dobry · dobranoc · rutyny · uruchom rutynę: poranek · dodaj rutynę: poranek = która godzina | plan dnia · usuń rutynę: poranek
         Jarvis · schowek i pliki: kopiuj: tekst · co w schowku · historia schowka · schowek 2 · znajdź plik: raport
+        Automatyzacja (0.97): zaplanuj: 7:30 dzień dobry · zaplanowane · usuń zaplanowane 1 · obserwuj: folder · co nowego w folderze · przestań obserwować 1 · kopie zapasowe · spójność danych · dziennik · eksportuj kalendarz · schowek auto 30 · wyczyść schowek · mapa funkcji
+        Pulpity (0.97): nowy pulpit · pulpit w lewo · pulpit w prawo · zamknij pulpit · pulpity
+        Dane i bezpieczeństwo (0.97): siła hasła: … · przeszukaj pliki: fraza · analizuj csv: plik · porównaj pliki: A | B
+        Finanse i zdrowie (0.97): inflacja: 1000 5 3 · cel oszczędzania: 20000 1500 4 · spłata długu: 5000 200 12 · roi: 5000 7500 · próg rentowności: 40 15 3000 · deprecjacja: 12000 5 · bmr: 80 180 30 m · tdee: 80 180 30 m 3 · makro: 2400 · woda: 80 · tetno: 30 · cykle snu: 23:00
         Matematyka: policz 12,5*4 · pierwiastek 144 · silnia 10 · nwd 12 8 · nww 4 6 · czy pierwsza 97 · dzielniki 12 · fibonacci 10 · srednia: 2, 4, 6 · mediana: … · suma: … · min: … · max: … · srednia wazona: 4 2, 5 1 · zaokraglij 3,14159 do 2 · zmiana z 50 do 80 · procent 15 z 240 · ile to procent 30 z 240 · logarytm 1000 10 · potega 2 10 · modulo 10 3 · abs -5 · sin 30 · cos 60 · tan 45 · rownanie 1 -3 2
         Finanse i zakupy: vat 23 100 · vat 8 100 brutto · vat 5 250 · znizka 200 30 · napiwek 150 10 · raty 100000 7 25 (kwota, %, lata) · odsetki 1000 5 3 · procent skladany 1000 5 10
         Konwersje: przelicz 5 km na mile · rgb 31 162 195 · kolor 1fa2c3 · rzymskie 2026 · z rzymskich XIV · base64: tekst · dekoduj base64: … · morse: sos · dekoduj morse: … · binarnie: A · dekoduj binarnie: … · hex: Ala · dekoduj hex: …
