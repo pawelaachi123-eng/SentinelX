@@ -139,7 +139,18 @@ public static class IntentCatalog
             "kwantyzacje", "kwantyzacja", "presety modelu", "preset modelu", "parametry modelu",
             "prompt szablony", "prompt szablon", "szablony promptow",
             "model kolejka", "model limity", "model polityka",
-            "model kv", "model pamiec", "model porownaj", "model offline", "tryb bez modelu"
+            "model kv", "model pamiec", "model porownaj", "model offline", "tryb bez modelu",
+            // 0.97 · SEKCJA 15 — analiza danych (nazwy własne, więc mogą stać w katalogu naprawy)
+            "statystyki liczb", "analiza liczb", "opis zbioru", "kwartyle", "odchylenie", "wariancja",
+            "skosnosc", "kurtoza", "wspolczynnik zmiennosci", "przedzial ufnosci", "korelacja", "regresja",
+            "prognoza", "histogram", "normalizuj", "standaryzuj", "odleglosc", "macierz pomylek",
+            "dokladnosc klasyfikacji", "outliery", "wygladzanie", "rangi", "percentyl", "test t",
+            // 0.97 · SEKCJE 17 i 14 — zdrowie i komunikacja
+            "bmr", "tdee", "makro", "hrmax", "tetno maksymalne", "whtr", "whr", "max powtorzen",
+            "deficyt", "agenda", "protokol", "notatka ze spotkania", "follow up", "skroc do", "czytelnosc",
+            // 0.97 · SEKCJA 3 — prywatność
+            "prywatnosc", "audyt danych", "gdzie sa moje dane", "duze pliki danych", "retencja",
+            "wiek danych", "szyfrowanie", "uprawnienia", "co wysylam", "eksport danych", "minimalizacja"
         ];
         foreach (string phrase in extra) phrases.Add(phrase);
         return phrases.OrderBy(x => x, StringComparer.Ordinal).ToArray();

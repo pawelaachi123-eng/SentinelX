@@ -46,6 +46,9 @@ public static class UiSmokeTestRunner
             await Tests.CoreRuntimeRegression.RunAsync(Path.Combine(output, "core"));
             await Tests.DeveloperToolboxRegression.RunAsync(Path.Combine(output, "developer-tools"));
             await Tests.ModelToolboxRegression.RunAsync(Path.Combine(output, "models"));
+            await Tests.AnalysisToolboxRegression.RunAsync(Path.Combine(output, "analysis"));
+            await Tests.LifeToolboxRegression.RunAsync(Path.Combine(output, "life"));
+            await Tests.PrivacyToolboxRegression.RunAsync(Path.Combine(output, "privacy"));
             var vm = services.GetRequiredService<MainViewModel>();
             vm.Readiness.IsOpen = false;
             if (vm.InitializeCommand.IsRunning) await vm.InitializeCommand.ExecutionTask!;
@@ -427,7 +430,7 @@ public static class UiSmokeTestRunner
             string errors = buffer.ToString();
             File.WriteAllText(Path.Combine(output, "bindings.log"), errors);
             if (errors.Length != 0) throw new InvalidOperationException("WPF binding errors: " + errors);
-            File.WriteAllText(Path.Combine(output, "ui-smoke.txt"), "PASS\nPages: " + string.Join(", ", visited) + "\nCentrum tabs, // palette and voice default verified\nDark/DeepDark/System themes rendered\nSTOP/Resume/voice approval passed\nPalette, readiness, draft preservation and execution-scoped evidence passed\nTypo repair, grey-zone questions, lessons, self-check, offline tools, archives, insights and unified search passed\n");
+            File.WriteAllText(Path.Combine(output, "ui-smoke.txt"), "PASS\nPages: " + string.Join(", ", visited) + "\nCentrum tabs, // palette and voice default verified\nDark/DeepDark/System themes rendered\nSTOP/Resume/voice approval passed\nPalette, readiness, draft preservation and execution-scoped evidence passed\nTypo repair, grey-zone questions, lessons, self-check, offline tools, archives, insights and unified search passed\nAnalysis (section 15), health and communication (sections 17 and 14), privacy (section 3) and local models (section 2) passed\n");
         }
         finally { PresentationTraceSources.DataBindingSource.Listeners.Remove(listener); }
     }

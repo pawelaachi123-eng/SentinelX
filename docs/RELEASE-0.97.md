@@ -206,3 +206,80 @@ Czego w sekcji 2 **nadal nie ma** (żeby nie było wątpliwości): pobierania i 
 podglądu pobierania, indeksu embeddingów i wyszukiwania wektorowego, benchmarku tokenów na
 Twoim sprzęcie, automatycznego doboru modelu do zadania i licencji modeli.
 
+## 11. Analiza danych — `AnalysisToolbox.cs` (sekcja 15)
+
+- **Wejście liczbowe**: jedna konwencja dla wszystkich poleceń — liczby rozdzielone spacjami albo
+  średnikami, przecinek jest częścią ułamka (`3 4; 4 5,5 -2`), a `|` dzieli dwie serie.
+  Nic nie jest zgadywane: gdy danych brakuje, odpowiedź podaje gotową składnię.
+- **Statystyki opisowe**: `statystyki liczb:` (suma, min/maks, rozstęp, średnia, mediana, dominanta,
+  kwartyle, IQR, wariancja próby, odchylenie, odstające poza płotkami 1,5 × IQR) ·
+  `kwartyle:` (interpolacja liniowa jak `PERCENTILE.INC`, płotki Tukeya, percentyle 5/95) ·
+  `odchylenie:` / `wariancja:` (próba i populacja, zakres średnia ± 1 SD) ·
+  `skosnosc:` / `kurtoza:` · `wspolczynnik zmiennosci:` (z progiem jednorodności) ·
+  `przedzial ufnosci:` (90/95/99% i jawne „nie mam tablic t-Studenta”) ·
+  `percentyl: … | 90` · `rangi:` (remisy uśredniane).
+- **Związki**: `korelacja:` (Pearson + kowariancja + Spearman na rangach, ocena siły i jawny brak
+  wnioskowania o przyczynie) · `regresja:` (y = a·x + b, R², przykład predykcji) ·
+  `prognoza:` (3 kolejne wartości) · `trend:` (rosnący/malejący/płaski).
+- **Kształt i przygotowanie danych**: `histogram: … | 4` (2–20 przedziałów, słupki z `#`) ·
+  `normalizuj:` (min–max 0…1 oraz z-score) · `odleglosc:` (euklides, manhattan, Czebyszew,
+  podobieństwo kosinusowe) · `wygladzanie: … | 0,5` (wykładnicze, alpha ∈ (0, 1>) ·
+  `outliery:` (płotki IQR, pozycje, jawny komunikat „brak odstających”).
+- **Klasyfikacja i nieporządek**: `macierz pomylek: TP FP FN TN` (dokładność, zbalansowana
+  dokładność, precyzja, czułość, swoistość, F1, MCC + ostrzeżenie o niezbalansowanych klasach) ·
+  `entropia:` (Shannona w bitach, ile z maksimum) · `gini:` (nieczystość klasyfikacyjna **i**
+  współczynnik nierównomierności — dwie różne miary, wyraźnie rozdzielone) ·
+  `test t:` (Welcha; **bez p-wartości** — nie mam tablic rozkładu t i mówię to wprost).
+- **Regresja**: `tests/AnalysisToolboxRegression.cs` — liczby ręcznie policzone (mediana 4,5;
+  Q1 4, IQR 4; percentyl 0,25 z 1–10 = 3,25; percentyl 90 z 1–5 = 4,6; Pearson ±1; y = 2x → R² = 1;
+  √50 = 7,071; macierz 50/10/5/35 → 85%, 83,33%, 90,91%, F1 0,87; entropia 8/1/1 = 0,922 bita;
+  Gini 2/3/5 = 0,62) oraz dziewięć zdań, które **nie mogą** wpadać do narzędzia.
+
+## 12. Zdrowie i komunikacja — `LifeToolbox.cs` (sekcje 17 i 14)
+
+- **Zdrowie — arytmetyka, nie porada**: `bmr:` (Mifflin-St Jeor: 10·waga + 6,25·wzrost − 5·wiek
+  ± 5/−161) · `tdee:` (współczynnik 1,2–1,9) · `makro:` (procenty → gramy z kontrolą bilansu) ·
+  `hrmax:` / `tetno maksymalne:` (220 − wiek i Tanaka 208 − 0,7 · wiek, 5 stref) ·
+  `whtr:` (próg 0,5) · `whr:` (WHO 0,90/0,85; bez płci pokazuje oba progi) ·
+  `1rm:` (Epley, Brzycki, Lombardi, zakres + limit sensowności powtórzeń) · `tempo:` (min/km,
+  km/h, czas na 5 km i półmaraton) · `kroki:` (krok = 0,415 × wzrost, dystans i orientacyjny
+  wydatek na 70 kg) · `woda:` (30 i 35 ml/kg) · `sen:` (cykle 90 min + 15 min na zaśnięcie,
+  pobudki od 3 do 6 cykli) · `deficyt:` (7700 kcal/kg, tempo 0,2–1 kg/tydzień).
+  Każda odpowiedź kończy się jawnym zastrzeżeniem, że to nie porada medyczna.
+- **Komunikacja — limity i szkice**: `sms:` (GSM-7 160/153 znaki vs UCS-2 70/67 przy polskich
+  znakach lub emoji) · `post:` (limit 280, pozostałe znaki, linki liczone po 23) ·
+  `skroc do: 120 | tekst` (cięcie na granicy słowa + wielokropek, bez cichego kasowania) ·
+  `ton:` (wykrzykniki, słowa WERSALIKAMI, słowa nacisku → neutralny / lekko naciskający /
+  nagląco) · `czytelnosc:` (długość zdań, trudne słowa, bez angielskich wskaźników dla polskiego) ·
+  `mail:` (szkielet wiadomości) · `follow up:` (przypomnienie w trzech zdaniach) ·
+  `agenda:` (bloki 30 minut) · `protokol:` (punkty rozdzielone `|`, znacznik czasu).
+  Nic nie jest wysyłane: narzędzia tylko liczą i piszą szkic na ekranie.
+- **Regresja**: `tests/LifeToolboxRegression.cs` — BMR 1780/1614 kcal, makro 2400 kcal → 180/67/270 g
+  z bilansem, Tanaka 183,5 dla 35 lat, WHtR 0,444, 1RM 93,3 kg, tempo 4:12 i 14,29 km/h,
+  kroki 5,81 km, woda 2,4 l, sen 07:15 przy 5 cyklach, deficyt 20 tygodni, SMS GSM-7 vs UCS-2,
+  skrót „Ala ma kota…”, ton naglący vs neutralny, agenda 0:26–0:30 — plus dziesięć zdań,
+  które pozostają rozmową („sen o 23 był dobry”, „tempo życia mnie zaskakuje”).
+
+## 13. Prywatność — `PrivacyToolbox.cs` (sekcja 3)
+
+- **Odczyty, nie deklaracje**: `prywatnosc` (raport stanu: brak telemetrii, brak konta, brak chmury,
+  gdzie leżą dane, co jest zapisywane, a co nie) · `gdzie sa moje dane` / `mapa danych`
+  (per podkatalog: rozmiar, liczba plików, razem — prawdziwy odczyt z dysku) ·
+  `duze pliki danych: 5` (próg w MB, 15 największych, **bez czytania treści**) ·
+  `wiek danych` (najstarszy i najnowszy plik w każdym katalogu).
+- **Retencja to podgląd**: `retencja: 90` pokazuje, co byłoby starsze niż 90 dni — i **nic nie usuwa**
+  (test sprawdza, że plik nadal istnieje); `retencja` opisuje realne limity aplikacji.
+- **Szyfrowanie i uprawnienia bez upiększania**: `szyfrowanie` mówi wprost, że AES-256-GCM ma tylko
+  sejf, a rozmowa, wspomnienia i ZIP-y **nie są** zaszyfrowane · `uprawnienia` wylicza użyte
+  uprawnienia (pliki w katalogu danych, klucz autostartu HKCU, WM_CLOSE, lokalne API) ·
+  `co wysylam` (nic nie wychodzi; jedyne możliwe połączenie to 127.0.0.1:11434) ·
+  `eksport danych` (realne polecenia eksportu i kopia danych) · `minimalizacja` (co wyłączyć,
+  żeby zapisywać mniej).
+- **Regresja**: `tests/PrivacyToolboxRegression.cs` pracuje na własnym katalogu tymczasowym:
+  tworzy pliki, sprawdza rozmiary, wiek, próg dużych plików, podgląd retencji (łącznie z tym,
+  że **plik nadal istnieje**), treść deklaracji i siedem zdań, które nie są poleceniami.
+
+## 14. Zestawy regresji po tym przyroście
+
+`--ui-smoke` uruchamia teraz **21 zestawów**: dotychczasowe 18 plus `analysis`, `life` i `privacy`.
+Zestawy działają na jawnych danych i nie zależą od sieci ani od modelu.

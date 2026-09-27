@@ -70,6 +70,15 @@ public sealed class CommandRouter
             return ModelToolbox.FitForMachine(systemMonitor.GetTotalRamGB());
         string? modelResponse = ModelToolbox.TryHandle(command.Trim(), text);
         if (modelResponse != null) return modelResponse;
+        // 0.97 · SEKCJA 15: analiza danych (statystyki, korelacja, regresja, metryki klasyfikacji).
+        string? analysisResponse = AnalysisToolbox.TryHandle(command.Trim(), text);
+        if (analysisResponse != null) return analysisResponse;
+        // 0.97 · SEKCJE 17 i 14: zdrowie (arytmetyka, nie porada) oraz komunikacja (limity, szkice, ton).
+        string? lifeResponse = LifeToolbox.TryHandle(command.Trim(), text);
+        if (lifeResponse != null) return lifeResponse;
+        // 0.97 · SEKCJA 3: prywatność — mapa danych, podgląd retencji, szyfrowanie, uprawnienia.
+        string? privacyResponse = PrivacyToolbox.TryHandle(command.Trim(), text);
+        if (privacyResponse != null) return privacyResponse;
         // 0.97 · finanse, tekst i produktywność (kwota słownie, statystyki tekstu, ROI, budżet, slajdy).
         string? productivityResponse = ProductivityToolbox.TryHandle(command.Trim(), text);
         if (productivityResponse != null) return productivityResponse;
@@ -219,6 +228,9 @@ public sealed class CommandRouter
                 "· Analiza kodu — wyłącznie odczyt: złożoność, dług techniczny, martwy kod, sekrety w plikach, zależności, TODO. Zawsze podaję limit, którego nie przekraczam, i mówię wprost, że to podpowiedź, a nie wyrok.\n" +
                 "· Finanse, tekst i produktywność: kwota słownie, ROI, budżet 50/30/20, statystyki tekstu, generator slajdów, karta produktu.\n" +
                 "· Modele lokalne (pierwszy przyrost sekcji 2): „modele lokalne” (katalog z rolą i notką) · „model karta: qwen2.5:7b” (wagi, KV cache i suma z narzutem, z wypisanym wzorem) · „model dopasuj: 8” i „model audyt” (co wejdzie w Twoją pamięć) · „model rola: kod|wizja|embeddingi…” · „kwantyzacje” · „presety modelu” · „prompt szablony” (10 gotowych promptów) · „model kv” · „model pamiec” · „model porownaj” · „model kolejka” (jedna ścieżka, limit 180 s, model zapasowy) · „model polityka” · „model offline”. Wszystko offline i zawsze jako szacunek z podanym wzorem — nic nie pobieram.\n" +
+                "· Analiza danych (sekcja 15): statystyki opisowe, kwartyle i percentyle, korelacja Pearsona i Spearmana, regresja liniowa z prognozą, histogram, normalizacja, odległości, macierz pomyłek z F1 i MCC, entropia, Gini, outliery IQR, wygładzanie wykładnicze, rangi, przedział ufności i test t (bez zmyślania p-wartości).\n" +
+                "· Zdrowie i komunikacja (sekcje 17 i 14): BMR i TDEE z wzoru Mifflin-St Jeor, makro z procentów, strefy tętna, WHtR/WHR, szacunek 1RM, tempo, kroki, woda, cykle snu, plan wagi — wszystko jako arytmetyka z jawnym „to nie porada medyczna”. Do tego limity SMS i wpisu, szkice maila, agendy i protokołu, skracanie do limitu, ocena tonu i czytelności.\n" +
+                "· Prywatność (sekcja 3): mapa katalogu danych z rozmiarami, największe pliki, wiek danych, podgląd retencji (nic nie usuwa), co jest zaszyfrowane, a co nie, używane uprawnienia, deklaracja braku telemetrii i plan eksportu.\n" +
                 "· Rozumienie bez podmian: polecenie, które jest już znane („snapshoty”), zostaje sobą — naprawa literówek nie zamienia go na inne polecenie.\n" +
                 "\nCO NOWEGO W 0.96 · JARVIS: PULPIT, MULTIMEDIA, ZASILANIE\n" +
                 "· Steruję oknami: „okna” (lista), „minimalizuj wszystko” (Windows+D), „minimalizuj/maksymalizuj/zamknij okno”, „przełącz okno” (Alt+Tab), „przełącz na: chrome”, „okno w lewo/prawo”, „pełny ekran”. Zamykam przez WM_CLOSE — dokładnie jak kliknięcie „X”, więc program może zapytać o zapis.\n" +
@@ -920,6 +932,9 @@ public sealed class CommandRouter
         Losowe: losuj 1-100 · rzuc kostka · kostka 2d6 · wylosuj karte · rzut moneta · lotto · pin 6 · haslo 20 · uuid · wybierz losowo: a, b · bmi 80 180 · cytat
         Podsumowania: plan dnia · szukaj wszystkiego: fraza · statystyki · backup
         Rdzeń 0.97: rdzen · zdrowie · metryki · bezpieczniki · zdarzenia · dziennik json · maszyna · workflow: a > b > c (analiza, nic nie uruchamiam)
+        Analiza danych 0.97: statystyki liczb: 3 4 4 5 9 12 · kwartyle: … · odchylenie: … · korelacja: 1 2 3 | 2 4 6 · regresja: 1 2 3 | 2 4 6 · prognoza: 10 12 14 · trend: … · histogram: 1 2 2 3 5 | 4 · normalizuj: 2 4 6 · odleglosc: 1 2 3 | 4 6 8 · macierz pomylek: 50 10 5 35 · entropia: 8 1 1 · gini: 2 3 5 · outliery: 3 4 5 100 · wygladzanie: 10 14 12 | 0,5 · rangi: 30 10 20 · percentyl: 1 2 3 4 5 | 90 · test t: 1 2 3 4 | 2 4 6 8 · przedzial ufnosci: …
+        Zdrowie i komunikacja 0.97: bmr: 80 180 30 m · tdee: 80 180 30 k 1,55 · makro: 2400 30 25 45 · hrmax: 35 · whtr: 80 180 · whr: 80 95 · 1rm: 80 5 · tempo: 42 10 · kroki: 8000 175 · woda: 80 · sen: 23:30 · deficyt: 90 80 0,5 · sms: … · post: … · mail: temat · agenda: temat · protokol: punkt | punkt · follow up: kontekst · skroc do: 120 | tekst · ton: tekst · czytelnosc: tekst (arytmetyka, nie porada medyczna)
+        Prywatność 0.97: prywatnosc · gdzie sa moje dane · duze pliki danych: 5 · retencja: 90 (podgląd, nic nie usuwa) · wiek danych · szyfrowanie · uprawnienia · co wysylam · eksport danych · minimalizacja
         Modele lokalne 0.97: modele lokalne · model karta: qwen2.5:7b · model dopasuj: 8 · model audyt (Twój RAM) · model rola: kod|rozmowa|szybkie|wizja|embeddingi|rozumowanie · kwantyzacje · kwantyzacja: q4_K_M · presety modelu · preset modelu: szybki · prompt szablony · prompt szablon: kod · model kv: qwen2.5:7b 8192 · model pamiec: 8192 · model porownaj: qwen2.5:7b vs qwen2.5:14b · model kolejka · model polityka · model offline (wszystko lokalnie, nic nie pobieram)
         Kolejka zadań: kolejka · kolejka dodaj: log: info treść · kolejka przetworz · zwroty · zwrot ponow: T0001 · kolejka anuluj: T0001
         Harmonogram i flagi: cron opis: */15 * * * * · cron nastepne: 0 8 * * 1-5 · flagi · ustaw flage: eksperyment on|off|30

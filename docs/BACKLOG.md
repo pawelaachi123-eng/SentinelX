@@ -260,3 +260,30 @@ Stan na 2026-09-27 (0.97). Zasada: każda pojedyncza pozycja znika z listy dopie
   ręcznym uruchomieniu workflow, a `release.yml` bez zmian tylko na tagach.
 - Z listy 1550 pozycji zrealizowano dotąd: rdzeń (sekcja 1) oraz sekcje 4–7, 13 i 16; pozycje
   z sekcji 2, 3, 8–12, 14, 15 i 17–20 są nadal otwarte (kolejne przyrosty, nie „prawie gotowe”).
+
+## Gotowe w 0.97 — sekcje 15, 17, 14 i 3 (analiza danych, zdrowie, komunikacja, prywatność)
+
+- **`AnalysisToolbox.cs` (sekcja 15)**: statystyki opisowe, kwartyle/percentyle (PERCENTILE.INC,
+  płotki Tukeya), wariancja i odchylenie (próba i populacja), skośność i kurtoza, współczynnik
+  zmienności, przedział ufności (90/95/99% z jawnym brakiem tablic t), korelacja Pearsona +
+  kowariancja + Spearman, regresja `y = a·x + b` z R², prognoza trzech kroków, trend, histogram,
+  normalizacja min–max i z-score, cztery metryki odległości, macierz pomyłek (accuracy,
+  zbalansowana dokładność, precyzja, czułość, swoistość, F1, MCC), entropia Shannona, Gini
+  (nieczystość i nierównomierność), outliery IQR, wygładzanie wykładnicze, rangi i test t Welcha
+  **bez p-wartości**.
+- **`LifeToolbox.cs` (sekcje 17 i 14)**: BMR (Mifflin-St Jeor), TDEE, makro z procentów,
+  tętno maksymalne (220 − wiek i Tanaka) z pięcioma strefami, WHtR, WHR, 1RM (Epley, Brzycki,
+  Lombardi), tempo, kroki, woda, cykle snu, plan zmiany wagi; SMS (GSM-7 vs UCS-2), wpis (limit
+  280), szkic maila, agenda, protokół, follow up, skracanie do limitu, ocena tonu i czytelności.
+  Wszystko jako arytmetyka z jawnym zastrzeżeniem „to nie porada medyczna”; nic nie wysyła i nic
+  nie kasuje.
+- **`PrivacyToolbox.cs` (sekcja 3)**: mapa katalogu danych (rozmiar i liczba plików per podkatalog),
+  największe pliki wg progu, wiek danych, **podgląd** retencji (nic nie usuwa), stan szyfrowania
+  (sejf AES-256-GCM vs jawne JSON-y), realnie używane uprawnienia, deklaracja braku telemetrii,
+  plan eksportu, minimalizacja zapisu.
+- **Regresje**: `tests/AnalysisToolboxRegression.cs`, `tests/LifeToolboxRegression.cs`,
+  `tests/PrivacyToolboxRegression.cs` — 21. zestawy `--ui-smoke` (liczby policzone ręcznie,
+  odrzucanie śmieci, brak przechwytywania zwykłych zdań, podgląd retencji sprawdzony na plikach).
+- **Zostaje w tych sekcjach**: wykresy i eksport danych do CSV/JSON, rozpoznawanie intencji
+  pomiarów z naturalnych pytań, integracja kalendarza/poczty (świadomie brak — wymaga sieci i konta),
+  WIZJA i YOLO (sekcja 10), smart home (18), GUI zaawansowane (19), agentic (20).
