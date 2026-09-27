@@ -119,6 +119,12 @@ danych), `duplikaty kodu:` (bloki 6 znaczących linii), `licencje:` (LICENSE/COP
 
 ## 8. Czego 0.97 nie robi (świadomie)
 
+- **EXE i instalator nie są budowane przy zwykłym pushu** (polecenie użytkownika: „nie buduj mi EXE jeszcze”).
+  Workflow `windows-build.yml` nadal robi restore, build, `--ui-smoke` i `--self-test` (to jest dowód
+  kompilacji i testów), ale kroki publikacji paczki portable, instalatora Inno i artefaktów binarnych
+  mają teraz bramkę `if: github.event_name == 'workflow_dispatch'` — czyli uruchamiają się wyłącznie
+  po ręcznym wywołaniu workflow (albo w `release.yml` na tagu), nigdy przy pushu gałęzi.
+
 - Analiza kodu nie jest kompilatorem ani analizą semantyczną — mówi to każda odpowiedź.
 - `workflow:` planuje graf; nie ma jeszcze wykonania kroków przez rdzeń (kolejka zadań wykonuje
   tylko zadania tekstowe `log:`/`cache:`/`metryka:`/`flaga:`).

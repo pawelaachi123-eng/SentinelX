@@ -239,5 +239,8 @@ Stan na 2026-09-27 (0.97). Zasada: każda pojedyncza pozycja znika z listy dopie
   `workflow:` tylko planuje graf — wykonanie kroków to kolejny przyrost.
 - Analiza kodu (0.97) jest tekstowa: bez drzewa składni i bez analizy przepływu danych; trafienia
   SAST wymagają obejrzenia, a brak trafień niczego nie gwarantuje.
+- Pakowanie (EXE/instalator) jest w 0.97 wyłączone na zwykłym pushu — decyzja użytkownika
+  („nie buduj mi EXE jeszcze”); kroki publikacji w `windows-build.yml` działają tylko przy
+  ręcznym uruchomieniu workflow, a `release.yml` bez zmian tylko na tagach.
 - Z listy 1550 pozycji zrealizowano dotąd: rdzeń (sekcja 1) oraz sekcje 4–7, 13 i 16; pozycje
   z sekcji 2, 3, 8–12, 14, 15 i 17–20 są nadal otwarte (kolejne przyrosty, nie „prawie gotowe”).

@@ -1537,12 +1537,18 @@ public static class UtilityToolbox
     }
 
     // ============================== 0.94 · tekst ==============================
-    private static readonly string[] PolishPhonetic =
-    [
-        "Ala", "Barbara", "Cezary", "Dorota", "Ewa", "Franciszek", "Georg", "Henryk", "Irena", "Jan",
-        "Karolina", "Ludwik", "Marek", "Nina", "Ola", "Piotr", "Ryszard", "Stefan", "Tadeusz", "Urszula",
-        "Wanda", "Xawery", "Ypsilon", "Zbigniew"
-    ];
+    /// <summary>Alfabet fonetyczny: litera → nazwa. Polska alfabet nie ma Q ani V, ale użytkownik
+    /// może je wpisać („Q”, „V”) — wtedy zostaje sama litera. Wcześniej indeks liczono jako
+    /// „litera − A” na 24-elementowej tablicy, więc od R wzwyż wszystko było przesunięte
+    /// (R jak Stefan, T jak Urszula).</summary>
+    private static readonly IReadOnlyDictionary<char, string> PolishPhonetic = new Dictionary<char, string>
+    {
+        ['A'] = "Ala", ['B'] = "Barbara", ['C'] = "Cezary", ['D'] = "Dorota", ['E'] = "Ewa",
+        ['F'] = "Franciszek", ['G'] = "Georg", ['H'] = "Henryk", ['I'] = "Irena", ['J'] = "Jan",
+        ['K'] = "Karolina", ['L'] = "Ludwik", ['M'] = "Marek", ['N'] = "Nina", ['O'] = "Ola",
+        ['P'] = "Piotr", ['R'] = "Ryszard", ['S'] = "Stefan", ['T'] = "Tadeusz", ['U'] = "Urszula",
+        ['W'] = "Wanda", ['X'] = "Xawery", ['Y'] = "Ypsilon", ['Z'] = "Zbigniew"
+    };
 
     public static string SpellOut(string text)
     {
@@ -1555,9 +1561,7 @@ public static class UtilityToolbox
                 char upper = char.ToUpperInvariant(c);
                 string plainText = PolishTextNormalizer.StripDiacritics(upper.ToString()).Replace('Ł', 'L');
                 char plain = plainText.Length > 0 ? plainText[0] : upper;
-                int index = plain - 'A';
-                if (index >= 0 && index < PolishPhonetic.Length) parts.Add(upper + " jak " + PolishPhonetic[index]);
-                else parts.Add(upper.ToString());
+                parts.Add(PolishPhonetic.TryGetValue(plain, out string? name) ? upper + " jak " + name : upper.ToString());
             }
             else if (char.IsDigit(c)) parts.Add(c + " jak " + c);
         }

@@ -212,6 +212,11 @@ internal static class UtilityRegression
         // 0.97: alfabet fonetyczny to nazwy (Karolina, Ola, Tadeusz) — dokładnie tak, jak w implementacji.
         Check(spelled.Contains("Literowanie") && spelled.Contains("K jak Karolina") && spelled.Contains("T jak Tadeusz"),
             "spelling out letters: " + spelled);
+        string alphabet = Require(UtilityToolbox.Process("literuj rstu", "literuj rstu"), "spell alphabet");
+        Check(alphabet.Contains("R jak Ryszard") && alphabet.Contains("S jak Stefan") && alphabet.Contains("U jak Urszula"),
+            "the phonetic table must not shift after M: " + alphabet);
+        Check(Require(UtilityToolbox.Process("literuj qv", "literuj qv"), "spell qv").Contains("Q"),
+            "letters outside the Polish alphabet keep their own name");
         Check(Require(UtilityToolbox.Process("czestotliwosc slow kot kot pies", "czestotliwosc slow kot kot pies"), "freq").Contains("4 słów, 2 różnych"), "word frequency counts");
         Check(Require(UtilityToolbox.Process("skrable kot", "skrable kot"), "scrabble").Contains("5 pkt"), "kot is worth 5 scrabble points");
         Check(Require(UtilityToolbox.Process("posortuj slowa: c a b", "posortuj slowa: c a b"), "sort").Contains("a b c"), "words get sorted");
