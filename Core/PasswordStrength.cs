@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Text;
 
-namespace SentinelX;
+namespace SentinelX.Core;
 
 /// <summary>0.97 · offline password strength estimate (#143). Nothing leaves the machine; the password is never stored.</summary>
 public static class PasswordStrength

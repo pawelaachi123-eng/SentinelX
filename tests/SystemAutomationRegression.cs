@@ -100,15 +100,15 @@ internal static class SystemAutomationRegression
         var reports = new List<string>();
         var ran = new List<string>();
         var poller = new AutomationPoller(pollerScheduler, null, (command, _) => { ran.Add(command); return Task.CompletedTask; }, line => reports.Add(line));
-        DateTime before = new(2026, 9, 28, 8, 59, 30);
-        poller.Tick(before);
+        DateTime tickStart = new(2026, 9, 28, 8, 59, 30);
+        poller.Tick(tickStart);
         Check(ran.Count == 0, "a tick before the agreed hour does nothing");
-        poller.Tick(before.AddSeconds(15));
+        poller.Tick(tickStart.AddSeconds(15));
         Check(ran.Count == 0, "a tick inside the 20 s interval does nothing (no hammering)");
-        poller.Tick(before.AddSeconds(40)); // 9:00:10 — the schedule came due
+        poller.Tick(tickStart.AddSeconds(40)); // 9:00:10 — the schedule came due
         Check(ran.Count == 1 && ran[0] == "raport", "the scheduled command runs once the hour passes");
         Check(reports.Any(x => x.Contains("Harmonogram")), "the report says what ran");
-        poller.Tick(before.AddSeconds(70));
+        poller.Tick(tickStart.AddSeconds(70));
         Check(ran.Count == 1, "a schedule does not run twice the same day");
 
         // ============================ bezpieczny schowek (#145) ============================

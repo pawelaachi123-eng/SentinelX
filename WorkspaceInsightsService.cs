@@ -290,9 +290,9 @@ public sealed class WorkspaceInsightsService
     public string IntegrityReport()
     {
         string[] files = StoreFilePaths().Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
-        var entries = IntegrityChecker.Check(files);
+        var entries = Core.IntegrityChecker.Check(files);
         JsonLog.Write("integrity", "Sprawdzono spójność plików danych.", entries.Count.ToString());
-        return IntegrityChecker.Describe(entries);
+        return Core.IntegrityChecker.Describe(entries);
     }
 
     private string Failure(string message, out string path) { path = ""; LastError = message; return message; }

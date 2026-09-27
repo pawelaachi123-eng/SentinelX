@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace SentinelX;
+namespace SentinelX.Core;
 
 /// <summary>0.97 · line diff on an LCS table (#1019 text diff / #1020 file diff). Pure, deterministic, bounded.</summary>
 public static class TextDiff

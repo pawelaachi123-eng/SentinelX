@@ -1,7 +1,7 @@
 using System.Text;
 using System.IO;
 
-namespace SentinelX;
+namespace SentinelX.Core;
 
 /// <summary>0.97 · content search inside text files (#811 file content search). Read-only, bounded, honest about limits.</summary>
 public static class FileSearch

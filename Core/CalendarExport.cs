@@ -2,7 +2,7 @@ using System.Globalization;
 using System.Text;
 using System.IO;
 
-namespace SentinelX;
+namespace SentinelX.Core;
 
 /// <summary>0.97 · local .ics export (#1002 event creator, #1003 recurring events). Writes a file the user can open anywhere.</summary>
 public static class CalendarExport

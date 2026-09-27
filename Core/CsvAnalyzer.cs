@@ -2,7 +2,7 @@ using System.Globalization;
 using System.Text;
 using System.IO;
 
-namespace SentinelX;
+namespace SentinelX.Core;
 
 /// <summary>0.97 · read-only CSV/TSV profiler (#1071 reader, #1075 data profiler). Never rewrites the file it reads.</summary>
 public static class CsvAnalyzer

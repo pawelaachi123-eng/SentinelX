@@ -155,26 +155,26 @@ public static class AutomationCommands
         IEnumerable<string> files = context.StoreFiles?.Invoke() ?? [];
         var list = files.ToList();
         if (list.Count == 0) return "Nie mam dostępu do listy plików danych w tym oknie — sprawdź spójność w Centrum Sterowania.";
-        return IntegrityChecker.Describe(IntegrityChecker.Check(list));
+        return Core.IntegrityChecker.Describe(Core.IntegrityChecker.Check(list));
     }
 
     private static string ExportCalendar(AutomationContext context)
     {
         if (context.Tasks == null) return "Eksport kalendarza potrzebuje magazynu zadań — w tym oknie nie jest dostępny.";
-        var entries = new List<CalendarExport.Entry>();
+        var entries = new List<Core.CalendarExport.Entry>();
         foreach (var task in context.Tasks.GetTasks(includeDone: false))
             if (task.DueAt.HasValue)
-                entries.Add(new CalendarExport.Entry("Zadanie: " + task.Title, task.DueAt.Value, TimeSpan.FromMinutes(30),
+                entries.Add(new Core.CalendarExport.Entry("Zadanie: " + task.Title, task.DueAt.Value, TimeSpan.FromMinutes(30),
                     "Z SentinelX — priorytet: " + task.Priority));
         foreach (var reminder in context.Tasks.GetReminders().Where(x => x.NotifiedAt == null))
-            entries.Add(new CalendarExport.Entry("Przypomnienie: " + reminder.Text, reminder.RemindAt, TimeSpan.FromMinutes(10), "Z SentinelX"));
+            entries.Add(new Core.CalendarExport.Entry("Przypomnienie: " + reminder.Text, reminder.RemindAt, TimeSpan.FromMinutes(10), "Z SentinelX"));
         if (entries.Count == 0)
             return "Nie mam żadnego terminu ani przypomnienia do wyeksportowania. Dodaj zadanie z datą („zrób raport jutro 18:00”) albo przypomnienie.";
         string desktop;
         try { desktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException) { desktop = AppPaths.Root; }
         string path = Path.Combine(desktop.Length > 0 ? desktop : AppPaths.Root, "sentinel-kalendarz.ics");
-        string message = CalendarExport.Save(Path.GetDirectoryName(path)!, entries, Path.GetFileName(path), out string saved, out int count);
+        string message = Core.CalendarExport.Save(Path.GetDirectoryName(path)!, entries, Path.GetFileName(path), out string saved, out int count);
         return count == 0 ? message : message + "\nTerminów: " + count + " (zadania z datą + przypomnienia).";
     }
 

@@ -3,7 +3,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.IO;
 
-namespace SentinelX;
+namespace SentinelX.Core;
 
 /// <summary>0.97 · SHA-256 integrity check over Sentinel's own data files (#022). Read-only: it never repairs anything by itself.</summary>
 public static class IntegrityChecker

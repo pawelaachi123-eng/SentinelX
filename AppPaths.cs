@@ -19,7 +19,7 @@ public static class AppPaths
     }
 }
 /// <summary>Dziennik zdarzeń Sentinela. 0.97: każdy wpis trafia też do strukturyzowanego
-/// dziennika JSON (Core/JsonLog) z rotacją, a sam plik errors.log rotuje przez 3 starsze kopie
+/// dziennika JSON (JsonLog.cs) z rotacją, a sam plik errors.log rotuje przez 3 starsze kopie
 /// zamiast jednej. Nic nie jest wysyłane — to lokalne pliki obok danych aplikacji.</summary>
 public static class AppLog
 {
