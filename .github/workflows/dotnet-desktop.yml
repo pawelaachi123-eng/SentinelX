@@ -1,0 +1,77 @@
+name: Build Windows app (.NET 10)
+
+# Szybka bramka kompilacji. Ten workflow powstał z pliku dodanego ręcznie na GitHubie
+# („dodałem teraz net 10 do githuba”), ale był niekompletny: budował projekt bez bramek
+# architektury i bez ustalonej wersji SDK, więc .NET 10 pojawiał się tylko w nazwie kroku.
+# Teraz:
+#   1) SDK jest przypięty (10.0.x) i sprawdzany wprost,
+#   2) najpierw działają darmowe bramki architektury (python, bez .NET),
+#   3) projekt musi deklarować net10.0-windows i C# 14 — inaczej krok pada z komunikatem,
+#   4) build jest w trybie Release bez uruchamiania aplikacji (pełny smoke robi „Windows build and WPF smoke”).
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dotnet-desktop-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Show .NET SDK version
+        run: dotnet --version
+
+      - name: Architecture checks (no .NET needed)
+        run: python scripts/check-architecture.py
+
+      - name: Target framework must be .NET 10 / C# 14
+        shell: pwsh
+        run: |
+          [xml]$project = Get-Content 'SENTINEL-X.csproj'
+          $target = $project.Project.PropertyGroup.TargetFramework
+          $lang = $project.Project.PropertyGroup.LangVersion
+          if ($target -ne 'net10.0-windows') { throw "TargetFramework is '$target', expected 'net10.0-windows'" }
+          if ($lang -ne '14.0') { throw "LangVersion is '$lang', expected '14.0'" }
+          Write-Output "Target: $target · LangVersion: $lang"
+
+      - name: Restore and build
+        shell: pwsh
+        run: |
+          $solution = Get-ChildItem -Path . -File -Filter *.sln | Select-Object -First 1
+
+          if ($solution) {
+            $target = $solution.FullName
+          } else {
+            $projects = @(Get-ChildItem -Path . -File -Filter *.csproj)
+
+            if ($projects.Count -ne 1) {
+              throw "Nie znaleziono jednej solucji .sln ani jednego projektu .csproj w głównym katalogu repozytorium."
+            }
+
+            $target = $projects[0].FullName
+          }
+
+          dotnet restore $target
+          dotnet build $target --configuration Release --no-restore /warnaserror:false
+
+      - name: Build output
+        shell: pwsh
+        run: |
+          $exe = Resolve-Path 'bin/Release/net10.0-windows/SentinelX.exe'
+          Get-Item $exe | Select-Object FullName, Length | Format-List

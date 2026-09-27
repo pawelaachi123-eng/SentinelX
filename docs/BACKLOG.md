@@ -1,6 +1,6 @@
 # Trwały backlog rozwoju SentinelX
 
-Stan na 2026-09-27 (0.96). Zasada: każda pojedyncza pozycja znika z listy dopiero, gdy jest **zbudowana i przetestowana na Windows (CI)**, nie „gdy wygląda na zrobioną".
+Stan na 2026-09-27 (0.97). Zasada: każda pojedyncza pozycja znika z listy dopiero, gdy jest **zbudowana i przetestowana na Windows (CI)**, nie „gdy wygląda na zrobioną".
 
 ## Gotowe i zweryfikowane (0.85 i wcześniejsze)
 
@@ -162,6 +162,32 @@ Stan na 2026-09-27 (0.96). Zasada: każda pojedyncza pozycja znika z listy dopie
 - `tests/JarvisRegression.cs` + asercje w `--ui-smoke` (okna, rutyny, odmowa kroku niszczącego,
   briefing, pomodoro, historia schowka, `//rutyny`).
 
+## Gotowe w 0.97 (ten przyrost — patrz git)
+
+- **.NET 10 (GA) + C# 14**: `net10.0-windows`, `LangVersion 14.0`, pakiety Microsoft/System 10.0.0,
+  SDK 10.0.x w workflow, bramka `check-architecture.py` pilnuje wersji (cofnięcie zapala CI).
+- **Rdzeń `Core/Runtime/` (18 modułów)**: event bus, kolejka zadań (priorytety, ponowienia,
+  kolejka zwrotów, anulowanie), bezpieczniki obwodu, cache LRU/LFU z TTL, cron 5-polowy,
+  maszyna stanów cyklu życia, graf workflow (Kahn + pomijanie zależności po błędzie), flagi
+  funkcji (FNV-1a), sprawdzenia zdrowia, metryki p50/p95, dziennik JSONL z rotacją, manifest
+  integralności SHA-256, kopie ZIP z manifestem i weryfikacją, sejf AES-256-GCM (PBKDF2 210k),
+  serializator binarny SXB1, wykonawca zadań, warstwa poleceń, `SentinelRuntime`.
+- **Polecenia rdzenia** (patrz `docs/RELEASE-0.97.md`, sekcja 3): m.in. `kolejka …`, `cron …`,
+  `flagi`/`ustaw flage:`, `cache …`, `integralnosc …`, `kopia danych`, `sejf …`, `serializuj:`,
+  `workflow:` (plan), `maszyna:`. Hasło sejfu nie przechodzi przez czat.
+- **Narzędzia deweloperskie** (`DeveloperToolbox.cs`): diff LCS, regex z limitem 1 s, semver,
+  IP/podsieci, JWT (bez weryfikacji podpisu — jawnie), UUID v7/ULID, generatory C#/SQL/mock,
+  Base32/Base58, skróty (MD5/SHA-1/SHA-512/CRC32), CSV/JSON/Markdown, walidatory, konwencje nazw,
+  konwencja commitów, 13 szablonów plików, budżet kontekstu.
+- **Produktywność i finanse** (`ProductivityToolbox.cs`): kwota słownie, lorem, statystyki tekstu,
+  ROI, próg rentowności, amortyzacja, inflacja, plan oszczędzania, cel, budżet 50/30/20,
+  macierz Eisenhowera, generator slajdów.
+- **Analiza kodu źródłowego** (`CodeInsightsService.cs`, poz. 186–220): skan, statystyki,
+  zależności z cyklami, heurystyczny SAST (10 wzorców), duplikaty, licencje, funkcje/złożoność,
+  drzewo — tylko odczyt, z limitami i jawnym zastrzeżeniem „to nie kompilator”.
+- **Regresje**: `tests/CoreRuntimeRegression.cs` i `tests/DeveloperToolboxRegression.cs`
+  wpięte w `--ui-smoke`; paleta `//` i `pomoc` rozszerzone o nowe rodziny poleceń.
+
 ## Priorytet P0 — kolejny przyrost
 
 1. **Pliki — DOMKNIĘTE w 0.92/0.93**: duplikaty po treści (SHA-256), raport porządkowy, usuwanie pojedynczych plików do Kosza z potwierdzeniem, usuwanie duplikatów (`usuń duplikaty:`) z pozostawieniem 1 kopii na grupę, sprzątanie pustych plików (`usuń puste pliki:`), zbiorcze zmiany nazw z podglądem (`zmien nazwy: … zamien … na …`). Ewentualne rozszerzenia (filtry rozmiaru, podfoldery w zmianach nazw) to P1.
@@ -195,7 +221,7 @@ Stan na 2026-09-27 (0.96). Zasada: każda pojedyncza pozycja znika z listy dopie
 - Build niepodpisany: SmartScreen może ostrzegać (zgodnie z README; nie wyłączamy zabezpieczeń).
 - Ollama, mikrofon i gry wymagają testów na komputerze docelowym; CI nie ma mikrofonu ani gier.
 - Wyszukiwanie **treści** (wspomnienia, rozmowa, `szukaj wszystkiego`) jest tekstowe z tolerancją odmiany i jednej literówki (≥5 znaków: wspólny ogier albo edycja ≤1) — bez semantyki; dalej może nie trafić na synonimy.
-- Naprawa poleceń działa na katalogu ~310 fraz (0.94) z ogierkami odmiany: nie rozumie pełnej polszczyzny ani kontekstu, a przy niejednoznaczności celowo nic nie poprawia.
+- Naprawa poleceń działa na katalogu ~371 fraz (0.97) z ogierkami odmiany: nie rozumie pełnej polszczyzny ani kontekstu, a przy niejednoznaczności celowo nic nie poprawia.
 - `przelicz` nie przelicza walut (wymaga kursu — offline nieuczciwe). Zrzuty ekranu i sterowanie
   głośnością są od 0.95.
 - Sterowanie oknami i multimediami (0.96) używa syntetycznych klawiszy: system może je odrzucić,
@@ -209,3 +235,9 @@ Stan na 2026-09-27 (0.96). Zasada: każda pojedyncza pozycja znika z listy dopie
 - Kontrola kontrastu w generatorze obejmuje zdefiniowane pary tokenów (tekst/tło, biały na końcach gradientów, tekst stanu na jego tle), nie każdą kombinację użytą w XAML; gradienty pod etykietami mają celowo przyciemnione końce.
 - Animacje pętlące (aurora, shimmer, pasy postępu, puls) są bramkowane ustawieniem Windows i ustawieniem „Animacje”, ale ich realny koszt GPU/CPU na słabszych maszynach nie został zmierzony — gdyby okazał się zauważalny, pierwszym krokiem jest wyłączenie aurory (`Motion.Aurora`) na stronie Centrum.
 - Panel „Motywy” nie ma podglądu motywu na żywo przed zapisem (zmiana działa natychmiast, ale nie ma miniatur).
+- Rdzeń 0.97 nie ma jeszcze panelu UI (sejf, kolejka, flagi, kopie działają z czatu i hosta);
+  `workflow:` tylko planuje graf — wykonanie kroków to kolejny przyrost.
+- Analiza kodu (0.97) jest tekstowa: bez drzewa składni i bez analizy przepływu danych; trafienia
+  SAST wymagają obejrzenia, a brak trafień niczego nie gwarantuje.
+- Z listy 1550 pozycji zrealizowano dotąd: rdzeń (sekcja 1) oraz sekcje 4–7, 13 i 16; pozycje
+  z sekcji 2, 3, 8–12, 14, 15 i 17–20 są nadal otwarte (kolejne przyrosty, nie „prawie gotowe”).

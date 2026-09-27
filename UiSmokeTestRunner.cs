@@ -43,6 +43,8 @@ public static class UiSmokeTestRunner
             await Tests.JarvisRegression.RunAsync(Path.Combine(output, "jarvis"));
             await Tests.FileCleanupRegression.RunAsync(Path.Combine(output, "file-cleanup"));
             await Tests.MemoryArchiveRegression.RunAsync(Path.Combine(output, "archives"));
+            await Tests.CoreRuntimeRegression.RunAsync(Path.Combine(output, "core"));
+            await Tests.DeveloperToolboxRegression.RunAsync(Path.Combine(output, "developer-tools"));
             var vm = services.GetRequiredService<MainViewModel>();
             vm.Readiness.IsOpen = false;
             if (vm.InitializeCommand.IsRunning) await vm.InitializeCommand.ExecutionTask!;

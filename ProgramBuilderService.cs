@@ -54,7 +54,7 @@ public sealed class ProgramBuilderService
         return (process.ExitCode, await stdout + "\n" + await stderr);
     }
     private const string Project = """
-        <Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>WinExe</OutputType><TargetFramework>net9.0-windows</TargetFramework><UseWPF>true</UseWPF><Nullable>enable</Nullable><AssemblyName>SentinelProgram</AssemblyName></PropertyGroup></Project>
+        <Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>WinExe</OutputType><TargetFramework>net10.0-windows</TargetFramework><UseWPF>true</UseWPF><Nullable>enable</Nullable><AssemblyName>SentinelProgram</AssemblyName></PropertyGroup></Project>
         """;
     private static string GenerateSource(string template) => Source.Replace("__TEMPLATE__", template);
     private const string Source = """"

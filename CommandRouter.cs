@@ -58,6 +58,18 @@ public sealed class CommandRouter
         if (snapshotResponse != null) return snapshotResponse;
         string? utilityResponse = UtilityToolbox.Process(command.Trim(), text);
         if (utilityResponse != null) return utilityResponse;
+        // 0.97 · RDZEŃ: kolejka zadań, cron, flagi, bezpieczniki, sejf, kopie, integralność, dziennik JSONL.
+        string? runtimeResponse = Core.Runtime.RuntimeCommands.TryHandle(command.Trim(), text);
+        if (runtimeResponse != null) return runtimeResponse;
+        // 0.97 · narzędzia deweloperskie: diff, regex, semver, IP/podsieci, JWT, generatory kodu, kodowania.
+        string? developerResponse = DeveloperToolbox.TryHandle(command.Trim(), text);
+        if (developerResponse != null) return developerResponse;
+        // 0.97 · finanse, tekst i produktywność (kwota słownie, statystyki tekstu, ROI, budżet, slajdy).
+        string? productivityResponse = ProductivityToolbox.TryHandle(command.Trim(), text);
+        if (productivityResponse != null) return productivityResponse;
+        // 0.97 · analiza kodu źródłowego: tylko odczyt, z limitami i jawną informacją o ograniczeniach.
+        string? codeResponse = CodeInsightsService.TryHandle(command.Trim(), text);
+        if (codeResponse != null) return codeResponse;
         string? metaResponse = TryHandleMetaCommand(text);
         if (metaResponse != null) return metaResponse;
         string? jarvisResponse = TryHandleJarvisCommand(command.Trim(), text);
@@ -889,6 +901,15 @@ public sealed class CommandRouter
         Komputer: nazwa uzytkownika · nazwa komputera · ile rdzeni · architektura · rozdzielczosc ekranu · bateria · strefa czasu · moje ip
         Losowe: losuj 1-100 · rzuc kostka · kostka 2d6 · wylosuj karte · rzut moneta · lotto · pin 6 · haslo 20 · uuid · wybierz losowo: a, b · bmi 80 180 · cytat
         Podsumowania: plan dnia · szukaj wszystkiego: fraza · statystyki · backup
+        Rdzeń 0.97: rdzen · zdrowie · metryki · bezpieczniki · zdarzenia · dziennik json · maszyna · workflow: a > b > c (analiza, nic nie uruchamiam)
+        Kolejka zadań: kolejka · kolejka dodaj: log: info treść · kolejka przetworz · zwroty · zwrot ponow: T0001 · kolejka anuluj: T0001
+        Harmonogram i flagi: cron opis: */15 * * * * · cron nastepne: 0 8 * * 1-5 · flagi · ustaw flage: eksperyment on|off|30
+        Kopie i integralność: kopie danych · kopia danych · weryfikuj kopie: nazwa · integralnosc zbuduj: katalog · integralnosc sprawdz: katalog · integralnosc
+        Sejf: sejf · sejf pokaz: nazwa · sejf dodaj: nazwa = wartość · sejf odblokuj · sejf zablokuj (hasło wyłącznie z panelu — nigdy z czatu)
+        Cache i serializacja: cache · cache zapisz: klucz = wartość · cache pokaz: klucz · serializuj: tekst · deserializuj: hex
+        Narzędzia deweloperskie: diff: A | B · regex: wzorzec | tekst · semver: 1.2.3 vs 1.3.0 · semver podbij minor: 1.2.3 · ip: 192.168.1.10/24 · podsiec: 10.0.0.0/24 na 4 · jwt: eyJ… · uuid7 · ulid · json csharp: {…} · sql tabela: users | id: int pk, name: text · sql z json: {…} · mock json: {name:text, age:int} · base32 · base58 · md5/sha1/sha512/crc32: tekst · kody znakow: tekst · z ascii: 5A 61 · csv markdown: … · csv json: … · json csv: {…} · spis tresci: … · commit: opis · szablon: dockerfile-dotnet · szablony · tokeny: tekst · kontekst: 8192 | tekst
+        Finanse i produktywność: liczba slownie: 1234,56 · lorem 40 · statystyki tekstu: … · roi: 2000 15000 · break even: 100 40 12000 · amortyzacja: 12000 4 · inflacja: 1000 5 10 · oszczednosci: 500 6 10 1000 · cel: 20000 800 · budzet: 6000 · macierz: wazne pilne zadanie · slajdy: # Tytuł
+        Analiza kodu (tylko odczyt, twarde limity): skan kodu: C:\projekt · statystyki kodu: … · zaleznosci kodu: … · bezpieczenstwo kodu: … · todo: … · duplikaty kodu: … · funkcje kodu: … · licencje: … · drzewo kodu: …
         Czat: ponów (przycisk „Ponów”) · zatrzymaj generowanie (przycisk widoczny zawsze)
 
         Rozumienie: rozumiem całe zdania („sprawdź proszę ile mam ramu”), synonimy („odpal” = „włącz”) i polecenia ukryte w zdaniu — zawsze pokazuję „Zrozumiałem jako: …”. Literówki i skróty są poprawiane jawnie. Gdy nie jestem pewien — pytam zamiast zgadywać („Czy chodziło Ci o…”). „zrozum: zdanie” pokazuje kroki rozumienia bez wykonania. Nie zgaduję poleceń niszczących — usuwanie wymaga świadomego kliknięcia lub osobnej zgody.

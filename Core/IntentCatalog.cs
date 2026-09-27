@@ -109,15 +109,30 @@ public static class IntentCatalog
             "zrzut ekranu", "screenshot", "napraw sie", "ulepsz sie",
             // 0.96 · JARVIS: okna, multimedia, zasilanie, rutyny, briefing, schowek, pliki
             "okna", "lista okien", "minimalizuj wszystko", "minimalizuj okno", "maksymalizuj okno",
-            "przywroc okno", "zamknij okno", "przelacz okno", "okno w lewo", "okno w prawo",
+            "przywroc okno", "przelacz okno", "okno w lewo", "okno w prawo",
             "pelny ekran", "przelacz na",
             "pauza", "wstrzymaj", "wznow odtwarzanie", "nastepny utwor", "poprzedni utwor",
-            "zatrzymaj odtwarzanie", "glosniej", "ciszej",
-            "zablokuj ekran", "wygasz ekran", "uspij komputer", "zamknij komputer",
+            "glosniej", "ciszej",
+            "zablokuj ekran", "wygasz ekran", "uspij komputer",
             "restart komputera", "anuluj zamkniecie",
-            "rutyny", "dodaj rutyne", "uruchom rutyne", "usun rutyne",
+            "rutyny", "dodaj rutyne", "uruchom rutyne", 
             "dzien dobry", "briefing", "dobranoc", "pomodoro", "przerwa", "skupienie",
-            "historia schowka", "znajdz plik", "szukaj pliku"
+            "historia schowka", "znajdz plik", "szukaj pliku",
+            // 0.97 · RDZEŃ + narzędzia deweloperskie, analiza kodu, finanse i produktywność
+            "stan rdzenia", "kolejka zadan", "kolejka przetworz", "kolejka zwrotow", "zwroty",
+            "cron opis", "cron nastepne", "flagi funkcji", "ustaw flage",
+            "zdrowie systemu", "metryki rdzenia", "dziennik json", "bezpieczniki", "cykl zycia", "maszyna stanow",
+            "workflow", "dag", "cache zapisz", "cache pokaz", "integralnosc plikow", "integralnosc zbuduj",
+            "kopia danych", "kopie danych", "weryfikuj kopie", "sejf", "sejf pokaz", "sejf dodaj",
+            "sejf odblokuj", "sejf zablokuj", "serializuj", "deserializuj",
+            "diff", "regex", "semver", "podsiec", "jwt", "uuid7", "ulid",
+            "json csharp", "sql tabela", "sql z json", "mock json", "base32", "base58", "crc32",
+            "kody znakow", "z ascii", "csv markdown", "csv json", "spis tresci", "commit",
+            "szablon", "szablony", "tokeny", "kontekst",
+            "liczba slownie", "lorem", "statystyki tekstu", "roi", "break even", "amortyzacja",
+            "inflacja", "oszczednosci", "macierz", "slajdy",
+            "skan kodu", "statystyki kodu", "zaleznosci kodu", "bezpieczenstwo kodu",
+            "duplikaty kodu", "licencje", "funkcje kodu", "drzewo kodu"
         ];
         foreach (string phrase in extra) phrases.Add(phrase);
         return phrases.OrderBy(x => x, StringComparer.Ordinal).ToArray();

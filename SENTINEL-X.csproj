@@ -3,11 +3,14 @@
 	<PropertyGroup>
 		<OutputType>WinExe</OutputType>
 
-		<TargetFramework>net9.0-windows</TargetFramework>
+		<!-- 0.97 · .NET 10 (GA) + C# 14. WPF nadal buduje się na Windows i na Linuksie w CI
+		     dzięki EnableWindowsTargeting (bez tego .NET 10 SDK odmawia budowy projektu WPF
+		     poza Windows — a nasze bramki architektury działają na runnerze Windows). -->
+		<TargetFramework>net10.0-windows</TargetFramework>
 
 		<UseWPF>true</UseWPF>
         <EnableWindowsTargeting>true</EnableWindowsTargeting>
-        <LangVersion>13.0</LangVersion>
+        <LangVersion>14.0</LangVersion>
         <ApplicationManifest>app.manifest</ApplicationManifest>
         <ApplicationIcon>Assets/sentinel.ico</ApplicationIcon>
         <NoWarn>$(NoWarn);WPF0001</NoWarn>
@@ -20,34 +23,36 @@
 
 		<PlatformTarget>x64</PlatformTarget>
 		<Prefer32Bit>false</Prefer32Bit>
-		<Version>0.96.0</Version>
-		<Description>Lokalny asystent i diagnostyka Windows</Description>
+		<Version>0.97.0</Version>
+		<Description>Lokalny asystent i diagnostyka Windows · .NET 10</Description>
 	</PropertyGroup>
 
 	<ItemGroup>
         <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
-        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.0" />
+        <!-- Microsoft.Extensions.* 10.x jest zbudowane dla .NET 10; 9.x nadal działałoby,
+             ale zostawiamy jedną rodzinę z runtime (mniej niespodzianek w DI i logach). -->
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" />
         <PackageReference Include="OllamaSharp" Version="5.4.18" />
         <!-- 5.x uses the stable IChatClient ABI required by existing Whisper.net 1.9.1. -->
-		<PackageReference Include="System.Speech" Version="9.0.0" />
+		<PackageReference Include="System.Speech" Version="10.0.0" />
 
 		<PackageReference Include="NAudio"
-						  Version="2.2.1" />
+							  Version="2.2.1" />
 
 		<PackageReference Include="Whisper.net"
-						  Version="1.9.1" />
+							  Version="1.9.1" />
 
 		<PackageReference Include="Whisper.net.Runtime"
-						  Version="1.9.1" />
+							  Version="1.9.1" />
 
 		<PackageReference Include="org.k2fsa.sherpa.onnx"
-						  Version="1.13.5" />
+							  Version="1.13.5" />
 
 		<PackageReference Include="SharpCompress"
-						  Version="0.50.4" />
+							  Version="0.50.4" />
 
 		<PackageReference Include="System.Diagnostics.PerformanceCounter"
-						  Version="9.0.0" />
+							  Version="10.0.0" />
 
 	</ItemGroup>
 
@@ -55,4 +60,3 @@
         <Resource Include="Assets/sentinel.ico" />
     </ItemGroup>
 </Project>
-

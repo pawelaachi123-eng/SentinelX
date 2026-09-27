@@ -231,7 +231,8 @@ for key in sorted(code_boards & set(shapes)):
     assert all(index < 2 for index, _ in shapes[key]), f"{key} is played from code but needs a transform Motion does not build"
 
 project = ET.parse(ROOT / "SENTINEL-X.csproj")
-assert project.findtext(".//TargetFramework") == "net9.0-windows"
+assert project.findtext(".//TargetFramework") == "net10.0-windows", "TargetFramework must stay on .NET 10"
+assert (project.findtext(".//LangVersion") or "") == "14.0", "LangVersion must stay on C# 14"
 assert project.findtext(".//UseWindowsForms") != "true"
 assert len(list((ROOT / "Views/Pages").glob("*Page.xaml"))) == 12
-print("PASS: XML, resources, resource order, animation paths, 12 views, thin code-behind, VM boundaries, target framework, no WinForms flag, XAML pitfalls")
+print("PASS: XML, resources, resource order, animation paths, 12 views, thin code-behind, VM boundaries, .NET 10 + C# 14 target, no WinForms flag, XAML pitfalls")
