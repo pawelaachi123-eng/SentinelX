@@ -54,8 +54,9 @@ zrobię mapowanie pozycja-po-pozycji z odhaczeniem każdej.
 
 ## Liczby z tego audytu
 
-- **Wyzwalacze poleceń w kodzie:** 839 w samych modułach obsługi (ponad 1000 razem z rdzeniem,
-  Jarvisem 0.96 i paletą); rozumienie języka: **490 fraz**; paleta: **73 wpisy**; testy: **21 zestawów**.
+- **Wyzwalacze poleceń w kodzie:** 608 w modułach z tabeli poniżej (ręczny szerszy skan, razem
+  z dispatchem routera: 839; ponad 1000 z rdzeniem, Jarvisem 0.96 i paletą); rozumienie języka:
+  **503 frazy**; paleta: **76 wpisów**; testy: **22 zestawy** (w tym `model-management`).
 - **Sekcje zrobione w całości:** 2 (§1 rdzeń, §15 analiza danych) + §17 zdrowie jako arytmetyka.
 - **Sekcje częściowe:** 14 (§2, §3, §4, §7, §8, §9, §10, §11, §13, §14, §16, §19, §20, bonus).
 - **Sekcje bez implementacji:** 4 (§5 architektura, §6 full-stack, §12 scraping, §18 smart home).

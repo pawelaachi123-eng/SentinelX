@@ -22,7 +22,7 @@ wyzwalacze poleceń (`Starts`, `text is`, `case`, `StartsWith`) oraz wzorce `Reg
 | 18. Smart home | 1251–1300 | — | 0 (brak modułu) | 0 |
 | 20. Agentic | 1401–1500 | — | 0 (częściowo w ActionEngine/permissions — bez własnego modułu poleceń) | 0 |
 
-**Suma wyzwalaczy w modułach obsługi:** 608 · **paleta `//`:** 76 wpisów · **rozumienie języka:** 504 fraz
+**Suma wyzwalaczy w modułach obsługi:** 608 · **paleta `//`:** 76 wpisów · **rozumienie języka:** 503 fraz
 
 Werdykt (ludzki, z listą braków per sekcja): [AUDYT-1550.md](AUDYT-1550.md).
 
