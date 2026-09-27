@@ -118,8 +118,9 @@ public static class UiSmokeTestRunner
             var captured = await memoryEngine.ExecuteAsync("snapshot");
             if (!captured.Text.Contains("Zapisano odczyt"))
                 throw new InvalidOperationException("Chat snapshot command did not store a reading: " + captured.Text);
-            if (!(await memoryEngine.ExecuteAsync("snapshoty")).Text.Contains("Zapisane odczyty"))
-                throw new InvalidOperationException("Chat snapshot list is not wired.");
+            string snapshotList = (await memoryEngine.ExecuteAsync("snapshoty")).Text;
+            if (!snapshotList.Contains("Zapisane odczyty"))
+                throw new InvalidOperationException("Chat snapshot list is not wired. Odpowiedź: " + snapshotList.Replace(Environment.NewLine, " | "));
             await snapshotService.CaptureAsync("smoke porównanie B");
             diagnosticVm.RefreshCommand.Execute(null);
             if (diagnosticVm.Items.Count < 2)
