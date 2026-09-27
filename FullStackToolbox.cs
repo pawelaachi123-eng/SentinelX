@@ -265,7 +265,7 @@ public static class FullStackToolbox
         {
             if (Flat(rule).Contains("email"))
                 sb.Append("· ").Append(rule).Append(" → format: [^@\\s]+@[^@\\s]+\\.[^@\\s]+ (pełnej zgodności z RFC nikt nie wymaga regexem)").AppendLine();
-            else if (Flat(rule).StartsWith("min"))
+            else if (Regex.IsMatch(Flat(rule), "(^|:)min\\d+$"))
                 sb.Append("· ").Append(rule).Append(" → minimalna długość; komunikat: „za krótko, wymagane N znaków”").AppendLine();
             else if (rule.Contains('-'))
                 sb.Append("· ").Append(rule).Append(" → zakres liczbowy; komunikat z granicami").AppendLine();
