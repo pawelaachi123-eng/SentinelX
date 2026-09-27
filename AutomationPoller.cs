@@ -1,3 +1,5 @@
+using System.IO;
+
 namespace SentinelX;
 
 /// <summary>0.97 · jeden tik dla całej automatyzacji: harmonogram (#007), watchdog folderów (#008)

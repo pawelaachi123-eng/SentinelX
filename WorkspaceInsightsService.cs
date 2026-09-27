@@ -55,7 +55,7 @@ public sealed class WorkspaceInsightsService
         builder.AppendLine("Historia akcji: " + history.GetRecentEntries(1000).Count + " ostatnich stanów");
         builder.AppendLine();
         builder.AppendLine("PLIKI (rozmiar na dysku)");
-        foreach (var file in StoreFiles())
+        foreach (var file in StoreFilePaths())
             builder.AppendLine("· " + Path.GetFileName(file) + ": " + (File.Exists(file) ? Size(new FileInfo(file).Length) : "brak"));
         builder.AppendLine("Folder danych: " + AppPaths.Root + " (" + Size(DirectoryBytes(AppPaths.Root)) + ")");
         builder.AppendLine("To są ilości zapisanych danych, nie miara jakości pamięci ani stanu komputera.");
@@ -84,7 +84,7 @@ public sealed class WorkspaceInsightsService
             { problems++; builder.AppendLine("· ⚠ " + name + " — problem: " + ex.GetType().Name.Replace("Exception", "").ToLower(PlCulture)); }
         }
 
-        foreach (string file in StoreFiles()) CheckFile(file, json: true);
+        foreach (string file in StoreFilePaths()) CheckFile(file, json: true);
 
         string lessons = Path.Combine(AppPaths.MemoryDirectory, UnderstandingJournal.FileName);
         if (File.Exists(lessons))
@@ -140,7 +140,7 @@ public sealed class WorkspaceInsightsService
     {
         var builder = new StringBuilder();
         int fixedCount = 0;
-        foreach (string file in StoreFiles())
+        foreach (string file in StoreFilePaths())
         {
             fixedCount += Core.SelfRepair.RepairJsonStore(file, out string line);
             builder.AppendLine(line);
