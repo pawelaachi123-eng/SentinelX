@@ -2,6 +2,8 @@
 
 Stan na 2026-09-27 (0.97). Zasada: każda pojedyncza pozycja znika z listy dopiero, gdy jest **zbudowana i przetestowana na Windows (CI)**, nie „gdy wygląda na zrobioną".
 
+**Bramki CI są zielone (2026-09-27):** `Windows build and WPF smoke` — success (restore, build, `--ui-smoke` z 17 zestawami regresji, `--self-test`), `Build Windows app` — success. Kroki publikacji EXE/instalatora nadal uruchamiają się wyłącznie przy `workflow_dispatch` (sekcja 8 `docs/RELEASE-0.97.md`). Kolejny przyrost pracuje na zielonej bazie.
+
 ## Gotowe i zweryfikowane (0.85 i wcześniejsze)
 
 - MVVM shell + 8 stron, DI z walidacją, legacy UI za `--legacy`.

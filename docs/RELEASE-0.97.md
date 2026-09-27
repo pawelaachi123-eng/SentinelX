@@ -133,3 +133,42 @@ danych), `duplikaty kodu:` (bloki 6 znaczących linii), `licencje:` (LICENSE/COP
   w `docs/BACKLOG.md`, nie „prawie zrobione”.
 - Nic z 0.97 nie sięga do sieci i nic nie zmienia kodu aplikacji (samomodyfikacja pozostaje
   odrzucona).
+
+## 9. Domknięcie bramki jakości (0.97, pierwsze zielone CI)
+
+Pierwsze pełne uruchomienie 0.97 na Windows odsłoniło defekty, które nie mogły ujawnić się
+wcześniej — dopóki poprzednia asercja nie przeszła, następna nigdy się nie wykonywała. Każda
+poprawka poniżej ma regresję w `tests/` albo w `--ui-smoke`, żeby nie wróciła:
+
+- **Rozumienie nie podmienia znanego polecenia.** `CommandUnderstanding.Extract` nie przepisuje
+  wpisu, który sam jest znaną frazą. Wcześniej odmiana przez ogierki skracała „snapshoty” do
+  „snapshot” (krótszy kandydat wygrywał kolejność) i użytkownik zapisywał nowy odczyt zamiast
+  dostać listę odczytów. Regresja: `tests/UnderstandingRegression.cs`.
+- **Walidator i generator hasła nie zabierają zwykłych pytań.** „czy” + dowolny tekst wpadało do
+  walidatora, a „hasło …” do generatora, więc pytania nigdy nie docierały do modelu. Teraz
+  walidacja wymaga dwukropka (`waliduj: 10.0.0.1`, `czy email: ala@example.com`), a hasło —
+  podanej długości (`haslo 20`). Regresje: `tests/DeveloperToolboxRegression.cs`,
+  `tests/UtilityRegression.cs`.
+- **Cron liczy miesiąc.** „0 0 31 2 *” zwracał 31 stycznia, bo miesiąc nie był sprawdzany przy
+  szukaniu terminu; teraz uczciwie odpowiada „brak terminu”.
+- **Manifest integralności normalizuje ścieżki do „/”.** Ten sam plik bywał raz zapisany jako
+  `podkatalog\notatka.md`, a raz `podkatalog/notatka.md`, co dawało fałszywe „zmienione”
+  w weryfikacji kopii.
+- **„ip:” wymaga pełnego zapisu kropkowanego.** `IPAddress.TryParse` przyjmuje skróty („1.2.3”,
+  „0x7f.1”) i opisywał inny adres, niż wpisał użytkownik.
+- **Weryfikacja magazynu rutyn** patrzy na awarię zapisu (`storageFault`), a nie na komunikaty
+  walidacji — „Nie mam rutyny o nazwie …” nie jest już traktowane jako problem z plikiem.
+- **Wersja ma jedno źródło.** `Core.AppConstants.Version` zasila „wersja”, nagłówek „co nowego”
+  i asercje testów, więc dziennik zmian nie zostaje w tyle za wydaniem (był jeszcze na 0.93).
+- **Budżet kontekstu** — asercja sprawdza dokładne brzmienie komunikatu („…się NIE zmieści…”).
+
+Stan bramek po tych poprawkach (gałąź `arena/01a0e28e-sentinelx`):
+
+| Bieg | Wynik |
+| --- | --- |
+| `windows-build.yml` → „Windows build and WPF smoke” | **success** (build, `--ui-smoke`, `--self-test`) |
+| `dotnet-desktop.yml` → „Build Windows app” | **success** |
+
+Kroki publikacji EXE/instalatora i wysyłki artefaktów pozostają wyłączone przy pushu
+(sekcja 8) — zielone CI nie oznacza, że powstał instalator.
+
