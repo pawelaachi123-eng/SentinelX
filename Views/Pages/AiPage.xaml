@@ -51,27 +51,6 @@
                     </StackPanel>
                 </Border>
 
-                <Border Style="{StaticResource SxCard}" Margin="0,0,0,16">
-                    <StackPanel>
-                        <TextBlock Text="Zarządzanie modelami" Style="{StaticResource SxSectionTitle}"/>
-                        <TextBlock Text="Nazwa modelu" Style="{StaticResource SxCaption}"/>
-                        <TextBox Text="{Binding ManagementModel, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Nazwa modelu do zarządzania" Margin="0,6,0,12"/>
-                        <WrapPanel>
-                            <Button Content="Szczegóły" Command="{Binding ManageCommand}" CommandParameter="info" Margin="0,0,8,8"/>
-                            <Button Content="Plan pobrania" Command="{Binding ManageCommand}" CommandParameter="pull" Margin="0,0,8,8"/>
-                            <Button Content="Plan usunięcia" Command="{Binding ManageCommand}" CommandParameter="delete" Margin="0,0,8,8"/>
-                            <Button Content="Uruchomione modele" Command="{Binding ManageCommand}" CommandParameter="running" Margin="0,0,8,8"/>
-                            <Button Content="Stan pobierania" Command="{Binding ManageCommand}" CommandParameter="progress" Margin="0,0,8,8"/>
-                            <Button Content="Przerwij operację" Command="{Binding ManageCancelCommand}" Margin="0,0,8,8"/>
-                        </WrapPanel>
-                        <TextBox Text="{Binding ManagementResult, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" AcceptsReturn="True" MaxHeight="260" VerticalScrollBarVisibility="Auto" AutomationProperties.Name="Plan i wynik operacji modelu" Margin="0,0,0,12"/>
-                        <TextBlock Text="Po przeczytaniu planu wpisz poniższe polecenie. Zgoda jest jednorazowa i ważna 10 minut." Style="{StaticResource SxCaption}"/>
-                        <TextBlock Text="{Binding ExpectedConfirmation}" TextWrapping="Wrap" Margin="0,6,0,6"/>
-                        <TextBox Text="{Binding Confirmation, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Dokładne potwierdzenie operacji modelu" Margin="0,0,0,8"/>
-                        <Button Content="Wykonaj potwierdzony plan" Command="{Binding ManageCommand}" CommandParameter="confirm" HorizontalAlignment="Left"/>
-                    </StackPanel>
-                </Border>
-
                 <Border Style="{StaticResource SxAccentCard}" Margin="0,0,0,16">
                     <StackPanel>
                         <TextBlock Text="ZASADA DZIAŁANIA" Style="{StaticResource SxEyebrow}" Foreground="{DynamicResource SxAccentTeal}"/>

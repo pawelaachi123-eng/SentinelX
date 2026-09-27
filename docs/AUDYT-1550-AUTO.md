@@ -25,9 +25,11 @@ wyzwalacze poleceń (`Starts`, `text is`, `case`, `StartsWith`) oraz wzorce `Reg
 | 9-10. Głos i wizja (media) | 671–800 | `MediaVisionToolbox.cs` | 8 | 0 |
 | 8. Indeks plików tekstowych (RAM) | 591–670 (dopełnienie) | `KnowledgeIndexService.cs` | 6 | 2 |
 | 8. RAG (wektory z lokalnej Ollamy) | 591–670 (dopełnienie) | `KnowledgeRagService.cs` | 6 | 1 |
+| 12. WiFi i szukanie w sieci | 881–940 (dopełnienie) | `WebAccessService.cs` | 5 | 0 |
+| —. Game Dev (Roblox) — nowy obszar | poza 20 sekcjami listy | `GameDevToolbox.cs` | 12 | 6 |
 | 20. Agentic (reszta: planowanie przez model, autonomia z budżetem) | 1401–1500 | — | 0 (GoalToolbox pokrywa szablony; modelowe planowanie celów nadal nie istnieje) | 0 |
 
-**Suma wyzwalaczy w modułach obsługi:** 713 · **paleta `//`:** 90 wpisów · **rozumienie języka:** 601 fraz
+**Suma wyzwalaczy w modułach obsługi:** 736 · **paleta `//`:** 90 wpisów · **rozumienie języka:** 625 fraz
 
 Werdykt (ludzki, z listą braków per sekcja): [AUDYT-1550.md](AUDYT-1550.md).
 

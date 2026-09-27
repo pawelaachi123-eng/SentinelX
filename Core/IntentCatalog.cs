@@ -165,7 +165,13 @@ public static class IntentCatalog
             "godziny pracy", "plan tygodnia",
             // 0.97 · dokładki po green-CI: wykres jako obraz (19), indeks plików w RAM (8)
             "wykres", "indeks zbuduj", "indeks buduj", "indeks szukaj", "indeks znajdz", "indeks status", "status indeksu",
-            "rag pytaj", "rag archiwa", "rag zbuduj", "rag szukaj", "rag status", "rag reset", "rag prompt", "rag model",
+            "rag zbuduj", "rag szukaj", "rag status", "rag reset", "rag prompt", "rag model",
+            // 0.98 · WiFi i Game Dev (Roblox)
+            "wifi", "wifi on", "wifi off", "wifi status", "szukaj w sieci", "strona",
+            "roblox nauka", "roblox plan nauki", "roblox struktura", "roblox projektowanie", "roblox modelowanie",
+            "roblox budowanie", "roblox optymalizacja", "roblox wydajnosc", "roblox checklist", "roblox checklista",
+            "roblox monetyzacja", "roblox skrypt", "roblox pojecie", "roblox szkic", "roblox gdd",
+            "roblox najlepsze", "roblox szukaj", "roblox przyklad", "roblox nowosci", "roblox najnowsze",
             // 0.97 · SEKCJA 15 — analiza danych (nazwy własne, więc mogą stać w katalogu naprawy)
             "statystyki liczb", "analiza liczb", "opis zbioru", "kwartyle", "odchylenie", "wariancja",
             "skosnosc", "kurtoza", "wspolczynnik zmiennosci", "przedzial ufnosci", "korelacja", "regresja",

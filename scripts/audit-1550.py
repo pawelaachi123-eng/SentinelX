@@ -45,6 +45,8 @@ MODULES = [
     ("MediaVisionToolbox.cs", "9-10", "Głos i wizja (media)", "671–800"),
     ("KnowledgeIndexService.cs", "8", "Indeks plików tekstowych (RAM)", "591–670 (dopełnienie)"),
     ("KnowledgeRagService.cs", "8", "RAG (wektory z lokalnej Ollamy)", "591–670 (dopełnienie)"),
+    ("WebAccessService.cs", "12", "WiFi i szukanie w sieci", "881–940 (dopełnienie)"),
+    ("GameDevToolbox.cs", "—", "Game Dev (Roblox) — nowy obszar", "poza 20 sekcjami listy"),
 ]
 
 # Sekcje bez modułu obsługi poleceń — z jawnym powodem, żeby brak był widoczny.

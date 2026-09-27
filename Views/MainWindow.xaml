@@ -71,6 +71,12 @@
                             <TextBlock Text="⌕  Szukaj i polecenia" Style="{StaticResource SxBadgeText}" Foreground="{DynamicResource SxTextSecondary}" VerticalAlignment="Center"/>
                         </DockPanel>
                     </Button>
+                    <Button Command="{Binding ToggleWifiCommand}" Style="{StaticResource SxPillButton}" HorizontalContentAlignment="Left" Margin="0,0,0,14" AutomationProperties.Name="Wyłącznik WiFi — dostęp do internetu" ToolTip="Niebieska ikona 📶 = WiFi włączone (szukanie w sieci działa). Przygaszona = wszystko zostaje na tym komputerze. Polecenia: wifi on / wifi off.">
+                        <DockPanel>
+                            <TextBlock DockPanel.Dock="Right" Text="📶" FontSize="15" VerticalAlignment="Center" Foreground="{Binding WifiBrush}"/>
+                            <TextBlock Text="{Binding WifiLabel}" Style="{StaticResource SxBadgeText}" Foreground="{DynamicResource SxTextSecondary}" VerticalAlignment="Center"/>
+                        </DockPanel>
+                    </Button>
                     <TextBlock Text="LOKALNA INTELIGENCJA" Style="{StaticResource SxEyebrow}" Foreground="{DynamicResource SxAccentCyan}"/>
                     <Border Style="{StaticResource SxDividerAccent}" Margin="0,6,0,14"/>
                 </StackPanel>

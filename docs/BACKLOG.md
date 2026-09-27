@@ -1,21 +1,8 @@
 # Trwały backlog rozwoju SentinelX
 
-## Przyrost RAG i panelu modeli — 2026-09-27
-
-Kod `845f4b6`: [Windows build and WPF smoke](https://github.com/pawelaachi123-eng/SentinelX/actions/runs/36347938885) oraz [Build Windows app (.NET 10)](https://github.com/pawelaachi123-eng/SentinelX/actions/runs/36347938810) — **success**.
-
-- **Sekcja 8, archiwa:** `rag zapisz: nazwa` i `rag wczytaj: nazwa` pokazują plan. Dopiero to samo polecenie z ` potwierdzam` wykonuje operację. Zgoda jest jednorazowa, związana z nazwą, operacją i wersją bazy RAM; wygasa po 10 minutach. `rag archiwa` listuje kopie.
-- **Szyfrowanie:** Windows DPAPI dla bieżącego konta. Pliki `.sxrag` w `RagArchives` pod katalogiem danych aplikacji zawierają zaszyfrowane fragmenty, wektory i metadane. Brak automatycznego zapisu/wczytania; zapis zabroniony w trybie prywatnym. Istniejących kopii nie nadpisujemy. Błąd odczytu, uszkodzenie lub niepoprawne wymiary wektorów nie zmieniają bazy RAM.
-- **Sekcja 8, odpowiedzi:** `rag pytaj: pytanie` wybiera do 3 fragmentów i pyta lokalny model. Odsyłacze muszą wskazywać dostarczone fragmenty; brak odsyłaczy albo numer spoza zakresu daje jawną odmowę. Wynik zawiera literalne cytaty i ścieżki względne plików. Kontrola numerów nie dowodzi prawdziwości każdego twierdzenia modelu.
-- **Sekcja 2/19, GUI:** istniejąca strona AI ma szczegóły modelu, uruchomione modele, plany pobrania/usunięcia, postęp i anulowanie. Dokładne potwierdzenie wpisuje użytkownik. Polecenia przechodzą przez `IActionEngine` i istniejący `CommandRouter`.
-- **Regresje:** 3 nowe zestawy (`RagArchiveRegression`, `RagAnswerRegression`, `ModelPanelRegression`), razem **36 zestawów** w `UiSmokeTestRunner.RunAsync`; nadal **13 stron**. Testy korzystają z podstawionego transportu, bez rzeczywistej Ollamy i bez pobierania modeli.
-- **Liczniki skryptu:** **713 wyzwalaczy**, **601 fraz**, **90 wpisów palety**. Cztery nowe rodziny poleceń RAG są w centralnym routerze, którego skrypt nie wlicza do 713. To licznik wzorców, nie liczba ukończonych funkcji z listy 1550.
-- **Pozostaje:** import PDF/DOCX, OCR, wake-word, streaming ASR, test jakości odpowiedzi z rzeczywistym modelem, przenośne archiwa między kontami/komputerami, benchmark modeli i sterowanie urządzeniami smart home.
-- **Dystrybucja:** nie uruchamiano `workflow_dispatch`, nie pakowano EXE/instalatora. Istniejące CI kompiluje aplikację i uruchamia testy; bramki pakowania pozostały niezmienione.
-
 Stan na 2026-09-27 (0.97). Zasada: każda pojedyncza pozycja znika z listy dopiero, gdy jest **zbudowana i przetestowana na Windows (CI)**, nie „gdy wygląda na zrobioną".
 
-**Bieżący dowód CI i liczniki są w sekcji powyżej.** Starsze sekcje poniżej opisują wcześniejsze przyrosty.
+**Bramki CI są zielone (2026-09-27):** `Windows build and WPF smoke` — success (restore, build, `--ui-smoke` z 17 zestawami regresji, `--self-test`), `Build Windows app` — success. Kroki publikacji EXE/instalatora nadal uruchamiają się wyłącznie przy `workflow_dispatch` (sekcja 8 `docs/RELEASE-0.97.md`). Kolejny przyrost pracuje na zielonej bazie.
 
 ## Gotowe i zweryfikowane (0.85 i wcześniejsze)
 
@@ -213,7 +200,9 @@ Stan na 2026-09-27 (0.97). Zasada: każda pojedyncza pozycja znika z listy dopie
   zastrzeżeniem, że to szacunek.
 - **Regresja**: `tests/ModelToolboxRegression.cs` jako 18. zestaw `--ui-smoke` (liczby, odrzucanie
   śmieci, brak przechwytywania zwykłych zdań o modelach).
-- **Zostaje w sekcji 2**: benchmark tokenów i jakości na rzeczywistym sprzęcie użytkownika. Późniejsze przyrosty dodały zarządzanie modelami, RAG i panel AI (opis na początku dokumentu).
+- **Zostaje w sekcji 2**: pobieranie/usuwanie modeli i podgląd postępu, indeks embeddingów
+  i wyszukiwanie wektorowe, benchmark tokenów na sprzęcie użytkownika, automatyczny dobór modelu
+  do zadania, licencje modeli, panel UI do modeli.
 
 ## Priorytet P0 — kolejny przyrost
 
@@ -325,7 +314,7 @@ Stan na 2026-09-27 (0.97). Zasada: każda pojedyncza pozycja znika z listy dopie
 - **Odczyty**: „model info: …” (karta zainstalowanej wersji z /api/show), „model uruchomione” (/api/ps),
   „model status pobierania” (bez sieci). Regresja: `tests/ModelManagementRegression.cs` (martwa sieć,
   więc nigdy nic nie pobiera naprawdę) — razem 22 zestawy.
-- **Nadal brak w sekcji 2**: benchmark na rzeczywistym sprzęcie i porównanie jakości modeli. RAG oraz panel modeli są opisane w aktualizacji na początku pliku.
+- **Nadal brak w sekcji 2**: indeks embeddingów, benchmark na sprzęcie, panel modeli w GUI.
 
 ## Pozostałe sekcje — pakiet „naraz” (gotowe w 0.97)
 
@@ -345,14 +334,18 @@ Stan na 2026-09-27 (0.97). Zasada: każda pojedyncza pozycja znika z listy dopie
 - **§9–10 Media** (`MediaVisionToolbox.cs`): kontrast WCAG, PPI, proporcje, bitrate, audio, tempo, dB.
 - **§7/§11/§13 dokładki** (w `ProductivityToolbox.cs`): jezyk, i18n, webhook, token bucket, retry plan,
   sesje, koszt spotkania, godziny pracy.
+- **WiFi 📶 i Game Dev — Roblox (0.98, najważniejsze)**: wyłącznik sieci z tarczą SSRF i ikoną
+  w pasku; plan nauki, generatory Luau z najlepszymi praktykami, słownik, projektowanie/modelowanie/
+  optymalizacja/checklista, prawdziwa matematyka DevEx i prowizji; za WiFi szukanie najlepszych praktyk
+  w create.roblox.com i DevForum. Regresje: WebAccessRegression, GameDevRegression (38 zestawów).
 - **RAG (sekcja 8)**: pliki → fragmenty → wektory lokalną Ollamą → szukanie kosinusem → gotowy
-  prompt ze źródłami; baza robocza w RAM, archiwa DPAPI zapisywane osobno; fejkowe wektory w regresji (bez sieci); skrypt
+  prompt ze źródłami; baza tylko w RAM; fejkowe wektory w regresji (bez sieci); skrypt
   `scripts/setup-rag.ps1` + instrukcja `docs/START-RAG.md` (jedno polecenie na maszynie użytkownika).
 - **Dokładki po green-CI**: wykres słupkowy jako PNG (`wykres: …`), indeks plików .txt/.md w RAM
   („indeks zbuduj/szukaj/status”), plan tygodnia; regresja dispatchu przez realny router.
 - **Nadal uczciwie nie istnieje**:
  pobieranie stron (świadbomie brak sieci), OCR i wake-word,
-  import PDF/DOCX i benchmark jakości modeli, sterowanie realnym sprzętem smart home, planowanie celów
+  indeks embeddingów, panel modeli w GUI, sterowanie realnym sprzętem smart home, planowanie celów
   przez model (są szablony i reguły), **EXE** (tylko na wyraźne polecenie).
 
 ## Audyt listy 1550 (stan na 0.97)
@@ -360,7 +353,8 @@ Stan na 2026-09-27 (0.97). Zasada: każda pojedyncza pozycja znika z listy dopie
 - Pełny, liczbowy werdykt per sekcja: **[docs/AUDYT-1550.md](AUDYT-1550.md)** — co jest w kodzie,
   ile wyzwalaczy poleceń, czego brakuje i czego audyt nie może sprawdzić (lista 1550 nie leży w repo,
   więc mapowanie pozycja-po-pozycji jest możliwe dopiero po wrzuceniu jej jako plik).
-- Aktualne liczby i braki per sekcja są w `docs/AUDYT-1550.md`. Bez pełnej listy nie określamy procentu pokrycia 1550 pozycji.
+- Skrót: sekcje 1, 15 i 17 zrobione; 14 sekcji częściowych; 4 bez implementacji (5, 6, 12, 18);
+  pokrycie listy ~1/3.
 - Powtarzalne sprawdzenie: `python3 scripts/audit-1550.py` (liczy wyzwalacze poleceń w kodzie,
   zapisuje `docs/AUDYT-1550-AUTO.md`); przy `docs/LISTA-1550.md` generuje listę kontrolną
   `docs/AUDYT-1550-POZYCJE.md` pozycja po pozycji.

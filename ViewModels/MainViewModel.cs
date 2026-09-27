@@ -20,6 +20,12 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty] private object? currentPage;
     [ObservableProperty] private bool isStopped;
     [ObservableProperty] private string desktopStatus = "";
+    private readonly WebAccessService web = WebAccessService.Shared;
+    public bool WifiEnabled => web.Enabled;
+    public string WifiLabel => web.Enabled ? "WiFi: wł. — szukanie w sieci działa" : "WiFi: wył. — wszystko lokalnie";
+    public System.Windows.Media.Brush WifiBrush => (System.Windows.Media.Brush?)System.Windows.Application.Current?.TryFindResource(web.Enabled ? "SxAccentCyan" : "SxTextSecondary") ?? System.Windows.Media.Brushes.Gray;
+    [RelayCommand] private void ToggleWifi() => web.Toggle(!web.Enabled);
+    private void OnWebChanged() { OnPropertyChanged(nameof(WifiEnabled)); OnPropertyChanged(nameof(WifiLabel)); OnPropertyChanged(nameof(WifiBrush)); }
 
     /// <summary>0.91 · CENTRUM: every former top-level page key now lives as an icon tab inside Centrum.
     /// Palette entries, readiness cards and legacy navigation keep working through this map.</summary>
@@ -36,7 +42,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         DiagnosticViewModel diagnostics, StudioViewModel studio)
     {
         this.engine = engine; this.desktop = desktop; this.dispatcher = dispatcher; Voice = voice; Palette = palette; Readiness = readiness; commandCenter = command;
-        Palette.Chosen += PaletteChosen; Readiness.OpenSectionRequested += Navigate; commandCenter.NavigationRequested += Navigate;
+        Palette.Chosen += PaletteChosen; Readiness.OpenSectionRequested += Navigate; commandCenter.NavigationRequested += Navigate; web.StateChanged += OnWebChanged;
         NavItems =
         [
             new NavItem("command", "⌘", "Centrum", command),
@@ -85,5 +91,5 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [RelayCommand] private void EmergencyStop() => engine.EmergencyStop();
     [RelayCommand] private void Resume() => engine.Resume();
     [RelayCommand] private void Exit() => desktop.Exit();
-    public void Dispose() { engine.Changed -= Sync; desktop.StatusChanged -= DesktopChanged; Palette.Chosen -= PaletteChosen; Readiness.OpenSectionRequested -= Navigate; commandCenter.NavigationRequested -= Navigate; Readiness.RefreshCommand.Cancel(); }
+    public void Dispose() { engine.Changed -= Sync; desktop.StatusChanged -= DesktopChanged; Palette.Chosen -= PaletteChosen; Readiness.OpenSectionRequested -= Navigate; commandCenter.NavigationRequested -= Navigate; Readiness.RefreshCommand.Cancel(); web.StateChanged -= OnWebChanged; }
 }

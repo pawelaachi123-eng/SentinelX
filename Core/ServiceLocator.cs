@@ -16,6 +16,7 @@ public static class ServiceLocator
     {
         var services = new ServiceCollection();
         services.AddSingleton<IUiDispatcher>(new UiDispatcher(dispatcher));
+        services.AddSingleton(WebAccessService.Shared);
         services.AddSingleton<AppSettingsService>(_ => new());
         services.AddSingleton<ISettingsService, SettingsService>();
         services.AddSingleton<SystemMonitor>();
