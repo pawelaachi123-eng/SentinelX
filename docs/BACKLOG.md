@@ -300,3 +300,11 @@ Stan na 2026-09-27 (0.97). Zasada: każda pojedyncza pozycja znika z listy dopie
   wybór kategorii, staging, realne uruchomienie BMR i statystyk, historia, kopiowanie, czyszczenie.
 - **Zostaje w UI**: wykresy (histogram i trend jako obraz, nie znaki), eksport wyniku do pliku jednym
   kliknięciem, ulubione polecenia użytkownika i skróty klawiszowe per kategoria.
+
+## Audyt listy 1550 (stan na 0.97)
+
+- Pełny, liczbowy werdykt per sekcja: **[docs/AUDYT-1550.md](AUDYT-1550.md)** — co jest w kodzie,
+  ile wyzwalaczy poleceń, czego brakuje i czego audyt nie może sprawdzić (lista 1550 nie leży w repo,
+  więc mapowanie pozycja-po-pozycji jest możliwe dopiero po wrzuceniu jej jako plik).
+- Skrót: sekcje 1, 15 i 17 zrobione; 14 sekcji częściowych; 4 bez implementacji (5, 6, 12, 18);
+  pokrycie listy ~1/3.
