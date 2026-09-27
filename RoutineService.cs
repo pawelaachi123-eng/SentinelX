@@ -55,6 +55,12 @@ public sealed class RoutineService
     private RoutineState state = new();
 
     public string? LastStorageError { get; private set; }
+
+    /// <summary>0.97 · Prawdziwa awaria magazynu (odczyt/zapis pliku), a nie komunikat walidacji.
+    /// Wcześniej <see cref="VerifyPersistedState"/> przerywał weryfikację, gdy tylko
+    /// <see cref="LastStorageError"/> było niepuste — a tam trafiają też zwykłe komunikaty
+    /// („Nie mam rutyny o nazwie…”), więc udane zapisy nie mogły się zweryfikować.</summary>
+    private string? storageFault;
     public string StoragePath => storePath;
     public event Action? Changed;
 
@@ -170,7 +176,7 @@ public sealed class RoutineService
         {
             try
             {
-                if (LastStorageError != null) { evidence = LastStorageError; return false; }
+                if (storageFault != null) { evidence = storageFault; return false; }
                 string expected = JsonSerializer.Serialize(state, jsonOptions);
                 if (File.ReadAllText(storePath, Encoding.UTF8) != expected) { evidence = "Zapis rutyn nie odpowiada bieżącemu stanowi."; return false; }
                 evidence = "Odczyt zwrotny: " + storePath + "; SHA-256: " + Convert.ToHexString(
@@ -215,11 +221,13 @@ public sealed class RoutineService
                     if (routine.Name.Length == 0) routine.Name = "rutyna";
                 }
                 LastStorageError = null;
+                storageFault = null;
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
             {
                 state = new();
                 LastStorageError = "Nie udało się wczytać rutyn: " + ex.Message;
+                storageFault = LastStorageError;
                 try { if (File.Exists(storePath)) File.Copy(storePath, storePath + ".damaged-" + DateTime.Now.ToString("yyyyMMddHHmmss"), false); }
                 catch (Exception copyEx) when (copyEx is IOException or UnauthorizedAccessException) { LastStorageError += " Nie udało się utworzyć kopii."; }
             }
@@ -235,10 +243,12 @@ public sealed class RoutineService
             File.WriteAllText(temporary, JsonSerializer.Serialize(state, jsonOptions), Encoding.UTF8);
             File.Move(temporary, storePath, true);
             LastStorageError = null;
+            storageFault = null;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             LastStorageError = "Zmiany rutyn działają tylko do zamknięcia aplikacji. Błąd zapisu: " + ex.Message;
+            storageFault = LastStorageError;
         }
     }
 
