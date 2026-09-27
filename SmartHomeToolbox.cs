@@ -84,7 +84,7 @@ public static class SmartHomeToolbox
             return "Podwyższanie temperatury nie oszczędza — ale wygoda też się liczy: jedna stała temperatura zwykle wypada lepiej niż huśtawka.";
         double percent = diff * 6.0;
         return "TERMOSTAT: " + N(nums[0]) + "°C → " + N(nums[1]) + "°C (obniżenie o " + N(diff) + " K)" + Environment.NewLine +
-            "· reguła kciukowa: każdy 1 K niższej temperatury ≈ 5–7% mniejsze zużycie energii grzewczej → tu ~" + N(percent) + "%" + Environment.NewLine +
+            "· reguła kciukowa: każdy 1 K niższej temperatury ≈ 5–7% mniejsze zużycie energii grzewczej → tu ≈" + N(percent) + "%" + Environment.NewLine +
             "· to oszacowanie dla typowego domu; twoje ściany i okna mają własne zdanie — sprawdź na liczniku przez tydzień" + Environment.NewLine +
             "· schodzenie w nocy o 3–4 K zwykle się opłaca; głębsze wychładzanie już nie zawsze (ogrzewanie z powrotem kosztuje)";
     }
