@@ -217,7 +217,9 @@ internal static class UtilityRegression
             "the phonetic table must not shift after M: " + alphabet);
         Check(Require(UtilityToolbox.Process("literuj qv", "literuj qv"), "spell qv").Contains("Q"),
             "letters outside the Polish alphabet keep their own name");
-        Check(Require(UtilityToolbox.Process("czestotliwosc slow kot kot pies", "czestotliwosc slow kot kot pies"), "freq").Contains("4 słów, 2 różnych"), "word frequency counts");
+        // 0.97: argument to „kot kot pies” (3 słowa, 2 różne) — wcześniejsza asercja oczekiwała
+        // liczb z całego polecenia, czego implementacja nigdy nie robiła.
+        Check(Require(UtilityToolbox.Process("czestotliwosc slow kot kot pies", "czestotliwosc slow kot kot pies"), "freq").Contains("3 słów, 2 różnych"), "word frequency counts");
         Check(Require(UtilityToolbox.Process("skrable kot", "skrable kot"), "scrabble").Contains("5 pkt"), "kot is worth 5 scrabble points");
         Check(Require(UtilityToolbox.Process("posortuj slowa: c a b", "posortuj slowa: c a b"), "sort").Contains("a b c"), "words get sorted");
         Check(Require(UtilityToolbox.Process("bez powtorzen: ala ma kota ala", "bez powtorzen: ala ma kota ala"), "distinct").Contains("ala ma kota"), "duplicates are removed");
