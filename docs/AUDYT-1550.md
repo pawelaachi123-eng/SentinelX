@@ -2,6 +2,17 @@
 
 **Data audytu:** 2026-09-27 · **commit:** `88b7478` (branch `arena/01a0e28e-sentinelx`) · **CI:** run `36322692492` i `36322692531` = SUCCESS
 
+## Sprawdź to sam (jedno polecenie)
+
+```bash
+python3 scripts/audit-1550.py     # tabela + docs/AUDYT-1550-AUTO.md
+python3 scripts/check-architecture.py   # bramki projektu (PASS = zielono)
+```
+
+Skrypt liczy wyzwalacze poleceń w kodzie i nie przyjmuje żadnej deklaracji na wiarę.
+Jeśli wrzucisz master listę do repo jako `docs/LISTA-1550.md`, ten sam skrypt zrobi
+`docs/AUDYT-1550-POZYCJE.md` — listę kontrolną pozycja po pozycji z dopasowaniem.
+
 ## Jak liczyłem (żeby to nie była deklaracja)
 
 1. Przeszedłem **kod** i policzyłem realne wyzwalacze poleceń: `Starts(text, …)`, `text is "…"`,

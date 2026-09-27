@@ -308,3 +308,6 @@ Stan na 2026-09-27 (0.97). Zasada: każda pojedyncza pozycja znika z listy dopie
   więc mapowanie pozycja-po-pozycji jest możliwe dopiero po wrzuceniu jej jako plik).
 - Skrót: sekcje 1, 15 i 17 zrobione; 14 sekcji częściowych; 4 bez implementacji (5, 6, 12, 18);
   pokrycie listy ~1/3.
+- Powtarzalne sprawdzenie: `python3 scripts/audit-1550.py` (liczy wyzwalacze poleceń w kodzie,
+  zapisuje `docs/AUDYT-1550-AUTO.md`); przy `docs/LISTA-1550.md` generuje listę kontrolną
+  `docs/AUDYT-1550-POZYCJE.md` pozycja po pozycji.
