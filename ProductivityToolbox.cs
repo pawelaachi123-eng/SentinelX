@@ -467,7 +467,7 @@ public static class ProductivityToolbox
 
     private static string WebhookTemplate(string input)
     {
-        string what = Flat(input ?? "").Trim();
+        string what = ExtraFlat(input ?? "").Trim();
         if (what.Length < 3) return "Użycie: „webhook szablon: zamowienie”. Zwrócę szkielet ładunku JSON z podpisem HMAC — do uzupełnienia u siebie.";
         return "WEBHOOK — ŁADUNEK (zdarzenie: " + what + "):" + Environment.NewLine +
             "{" + Environment.NewLine +
