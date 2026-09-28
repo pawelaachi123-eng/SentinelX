@@ -150,6 +150,94 @@ local function refreshButtons()
 			offerRow(refs.List, offsetY, "Ten tryb nie ma własnego sklepu",
 				"kupuj ślady i przepustki na pozostałych zakładkach", "—", Color3.fromRGB(70, 78, 95), function() end)
 		end
+	elseif activeTab == "offers" then
+		-- oferty limitowane: REALNY licznik z serwera (znikają na zawsze)
+		for _, offer in ipairs(snapshot.Offers or {}) do
+			local hours = math.floor(offer.ExpiresIn / 3600)
+			local minutes = math.floor((offer.ExpiresIn % 3600) / 60)
+			offerRow(refs.List, offsetY, offer.Name .. "  ·  " .. (offer.Label or ""),
+				(offer.Description or "") .. "  ·  ZNIKA ZA " .. hours .. " h " .. minutes .. " min",
+				(offer.RobuxProductId or 0) > 0 and "KUP ZA ROBUX" or "⚠ twórca podpiąć ID",
+				Color3.fromRGB(255, 170, 60), function()
+					if (offer.RobuxProductId or 0) > 0 then
+						MarketplaceService:PromptProductPurchase(player, offer.RobuxProductId)
+					elseif hud then
+						hud.Notify("error", "Twórca gry musi podpiąć ID zestawu (README-MONEY.md).")
+					end
+				end)
+			offsetY += 60
+		end
+		if #(snapshot.Offers or {}) == 0 then
+			offerRow(refs.List, offsetY, "Brak aktywnych ofert", "zaglądaj tu czasem — zestawy się pojawiają", "—", Color3.fromRGB(70, 78, 95), function() end)
+		end
+	elseif activeTab == "spin" then
+		-- koło fortuny: darmowy dzienny spin + JAWNE szanse + extra za Robux
+		local spin = snapshot.Spins or {}
+		local canSpin = (spin.Available or 0) > 0
+		offerRow(refs.List, offsetY, "🎡 KOŁO FORTUNY", "darmowy spin co dzień · szanse widoczne poniżej",
+			canSpin and "ZAKRĘĆ (darmowy)" or "WRÓĆ JUTRO", Color3.fromRGB(255, 200, 90), function()
+				task.spawn(function()
+					local ok, message = net:Invoke("Spin")
+					if hud and message ~= "" then
+						hud.Notify(ok and "success" or "error", message)
+					end
+				end)
+			end)
+		offsetY += 60
+		for _, reward in ipairs(spin.Rewards or {}) do
+			offerRow(refs.List, offsetY, reward.Label or "?", "szansa: " .. (reward.Percent or 0) .. "%", "—", Color3.fromRGB(70, 78, 95), function() end)
+			offsetY += 60
+		end
+		offerRow(refs.List, offsetY, "Extra spin", "dokup spin za Robux — do użycia od razu",
+			(spin.PaidProductId or 0) > 0 and "KUP ZA ROBUX" or "⚠ twórca podpiąć ID", Color3.fromRGB(120, 130, 150), function()
+				if (spin.PaidProductId or 0) > 0 then
+					MarketplaceService:PromptProductPurchase(player, spin.PaidProductId)
+				elseif hud then
+					hud.Notify("error", "Twórca gry musi podpiąć ID produktu (README-MONEY.md).")
+				end
+			end)
+		offsetY += 60
+	elseif activeTab == "pass" then
+		-- SEZON: darmowy tor + premium; pokazuję okno poziomów wokół aktualnego
+		local pass = snapshot.Pass or { Tier = 1, Tiers = 30, XpPerTier = 250, Premium = false, Xp = 0 }
+		offerRow(refs.List, offsetY, "🎟️ SEZON — poziom " .. (pass.Tier or 1) .. "/" .. (pass.Tiers or 30),
+			"XP: " .. (pass.Xp or 0) .. "/" .. (pass.XpPerTier or 250) .. " na kolejny poziom · XP leci samo za granie",
+			pass.Premium and "PREMIUM ✔" or "PREMIUM: KUP", Color3.fromRGB(190, 90, 255), function()
+				if hud then
+					hud.Notify("info", "SEZON PREMIUM kupisz w zakładce PRZEPUSTKI albo MONETY (produkt battlepass_premium).")
+				end
+			end)
+		offsetY += 60
+		local startTier = math.max(1, (pass.Tier or 1) - 1)
+		local endTier = math.min(pass.Tiers or 30, startTier + 7)
+		for tier = startTier, endTier do
+			local unlocked = tier <= (pass.Tier or 1)
+			local rewardCoins = (200 + 25 * tier)
+			offerRow(refs.List, offsetY, "Poziom " .. tier .. " — DARMOWY",
+				unlocked and ("nagroda: +" .. rewardCoins .. " monet") or ("za " .. ((tier - (pass.Tier or 1)) * (pass.XpPerTier or 250)) .. " XP"),
+				unlocked and "ODBIERZ" or "🔒", Color3.fromRGB(90, 200, 120), function()
+					task.spawn(function()
+						local ok, message = net:Invoke("ClaimPass", tier, "free")
+						if hud and message ~= "" then
+							hud.Notify(ok and "success" or "error", message)
+						end
+					end)
+				end)
+			offsetY += 60
+			if pass.Premium then
+				offerRow(refs.List, offsetY, "Poziom " .. tier .. " — PREMIUM",
+					"nagroda: +" .. (rewardCoins * 3) .. " monet" .. (tier % 5 == 0 and " + 1 spin" or ""),
+					unlocked and "ODBIERZ" or "🔒", Color3.fromRGB(190, 90, 255), function()
+						task.spawn(function()
+							local ok, message = net:Invoke("ClaimPass", tier, "premium")
+							if hud and message ~= "" then
+								hud.Notify(ok and "success" or "error", message)
+							end
+						end)
+					end)
+				offsetY += 60
+			end
+		end
 	elseif activeTab == "pets" then
 		local equippedSet = {}
 		for _, uid in ipairs(snapshot.EquippedPets or {}) do
@@ -301,18 +389,21 @@ function ShopUI.Init(stateIn, configIn, netIn)
 
 	refs.Tabs = {}
 	local tabDefs = {
+		{ id = "offers", name = "OFERTY" },
+		{ id = "spin", name = "SPIN" },
+		{ id = "pass", name = "SEZON" },
 		{ id = "trails", name = "ŚLADY" },
-		{ id = "forge", name = "SKLEP TRYBU" },
+		{ id = "forge", name = "TRYB" },
 		{ id = "pets", name = "ZWIERZAKI" },
 		{ id = "passes", name = "PRZEPUSTKI" },
 		{ id = "coins", name = "MONETY" },
 	}
 	for _, tabDef in ipairs(tabDefs) do
 		local button = Instance.new("TextButton")
-		button.Size = UDim2.new(0, 150, 1, 0)
+		button.Size = UDim2.new(0.125, -6, 1, 0)
 		button.BackgroundColor3 = color3From(config.Ui.PanelColor)
 		button.Font = Enum.Font.GothamBold
-		button.TextSize = 14
+		button.TextScaled = true
 		button.TextColor3 = Color3.fromRGB(200, 210, 230)
 		button.Text = tabDef.name
 		button.Parent = refs.TabBar

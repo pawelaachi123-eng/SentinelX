@@ -39,16 +39,20 @@ Forge.GenreAliases = {
 	parkour = "obby", przeszkody = "obby",
 }
 
--- Klasyczna ścieżka Mega Obby — kolejność bez zmian (gwarancja braku regresji)
+-- Klasyczna ścieżka Mega Obby — kolejność bez zmian + nowe usługi monetyzacji PRO
 local OBBY_ORDER = {
-	"PlayerDataService", "EffectsService", "WorldBuilder", "StageService", "CoinService",
+	"PlayerDataService", "BoostService", "GroupBonusService", "OnboardingService",
+	"SpinService", "OfferService", "BattlePassService", "OfflineEarningsService",
+	"EffectsService", "WorldBuilder", "StageService", "CoinService",
 	"PetService", "TrailService", "MonetizationService", "QuestService", "DailyRewardService",
 	"LeaderboardService", "AntiCheatService", "AdminService", "AmbientService",
 }
 
 -- Wspólne usługi dla WSZYSTKICH wygenerowanych gatunków
 local COMMON_ORDER = {
-	"PlayerDataService", "EffectsService", "TrailService", "ForgeShopService",
+	"PlayerDataService", "BoostService", "GroupBonusService", "OnboardingService",
+	"SpinService", "OfferService", "BattlePassService", "OfflineEarningsService",
+	"EffectsService", "TrailService", "ForgeShopService",
 	"MonetizationService", "QuestService", "DailyRewardService", "LeaderboardService",
 	"AntiCheatService", "AdminService",
 }

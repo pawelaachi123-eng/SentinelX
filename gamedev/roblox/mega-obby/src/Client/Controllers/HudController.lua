@@ -135,6 +135,20 @@ function Hud.OnSnapshot(snapshot)
 	refs.IslandUnderline.BackgroundColor3 = color3From(snapshot.IslandColor or { 34, 211, 238 })
 	coinsTarget = snapshot.Coins or 0
 
+	-- chip boosta: x2 osobisty / globalny event
+	if refs.BoostChip then
+		local boosts = snapshot.Boosts
+		if boosts and (boosts.Personal or 1) > 1 then
+			refs.BoostChip.Visible = true
+			refs.BoostChip.Text = "⚡ BOOST x" .. boosts.Personal .. " (" .. math.ceil((boosts.PersonalEndsIn or 0) / 60) .. " min)"
+		elseif boosts and (boosts.Global or 1) > 1 then
+			refs.BoostChip.Visible = true
+			refs.BoostChip.Text = "🔥 EVENT x" .. boosts.Global .. " (" .. math.ceil((boosts.GlobalEndsIn or 0) / 60) .. " min)"
+		else
+			refs.BoostChip.Visible = false
+		end
+	end
+
 	-- panel statystyk GATUNKU (Forge): jeśli snapshot.Hud istnieje, pokazujemy wiersze
 	if snapshot.Hud then
 		refs.PackPanel.Visible = true
@@ -238,7 +252,28 @@ end
 
 function Hud.OnStatChanged(key, value)
 	if key == "Coins" then
-		coinsTarget = tonumber(value) or coinsTarget
+		local newValue = tonumber(value) or coinsTarget
+		local delta = newValue - coinsTarget
+		if delta > 0 and refs.Screen then
+			-- pływający licznik: +X nad chipem monet (feedback natychmiastowy)
+			local floatLabel = Instance.new("TextLabel")
+			floatLabel.Size = UDim2.fromOffset(140, 24)
+			floatLabel.Position = UDim2.new(1, -200, 0, 62)
+			floatLabel.BackgroundTransparency = 1
+			floatLabel.Font = Enum.Font.GothamBold
+			floatLabel.TextSize = 17
+			floatLabel.TextColor3 = Color3.fromRGB(255, 230, 120)
+			floatLabel.Text = "+" .. formatNumber(delta) .. " 🪙"
+			floatLabel.Parent = refs.Screen
+			TweenService:Create(floatLabel, TweenInfo.new(1.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+				Position = UDim2.new(1, -200, 0, 26),
+				TextTransparency = 1,
+			}):Play()
+			task.delay(1.2, function()
+				floatLabel:Destroy()
+			end)
+		end
+		coinsTarget = newValue
 	end
 end
 
@@ -424,6 +459,21 @@ function Hud.Init(stateIn, configIn, netIn)
 	refs.CoinsLabel.TextColor3 = Color3.fromRGB(255, 220, 100)
 	refs.CoinsLabel.Text = "🪙 0"
 	refs.CoinsLabel.Parent = coinsChip
+
+	-- chip boosta (pod monetami): pokazuje aktywny mnożnik z BoostService
+	refs.BoostChip = Instance.new("TextLabel")
+	refs.BoostChip.Size = UDim2.fromOffset(170, 30)
+	refs.BoostChip.Position = UDim2.new(1, -182, 0, 64)
+	refs.BoostChip.BackgroundColor3 = color3From(config.Ui.PanelColor)
+	refs.BoostChip.BackgroundTransparency = 0.1
+	refs.BoostChip.BorderSizePixel = 0
+	refs.BoostChip.Visible = false
+	refs.BoostChip.Font = Enum.Font.GothamBold
+	refs.BoostChip.TextSize = 14
+	refs.BoostChip.TextColor3 = Color3.fromRGB(180, 255, 200)
+	refs.BoostChip.Text = ""
+	refs.BoostChip.Parent = screen
+	corner(8).Parent = refs.BoostChip
 
 	-- lista zadań (lewy środek)
 	local questPanel = Instance.new("Frame")

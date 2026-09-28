@@ -408,7 +408,12 @@ usuwanie, dobór do zadania i licencje doszły w drugim przyroście — sekcja 1
   `symulator` (klik → siła → narodziny), `tycoon` (działki z dozownikami), `horror` (latarka,
   bezpieczniki, goniący potwór), `shooter` (raycast na serwerze), `wyscigi` (checkpointy, okrążenia).
   Wspólne: monetyzacja idempotentna, questa (w tym statystyczne), tablice wg gatunku, anty-cheat.
-  Razem **40 zestawów** (doszły GameAssetsRegression i GameForgeRegression).
+  Razem **41 zestawów** (doszły GameAssetsRegression, GameForgeRegression i MoneySystemsRegression).
+- **Monetyzacja PRO (0.99)**: zestawy limitowane (STARTER 72 h z REALNYM licznikiem od
+  pierwszego wejścia), koło fortuny z jawnymi szansami (wymóg Roblox dla płatnych losowań),
+  SEZON — battle pass 30 poziomów z torem premium, zarobki offline z podwojeniem raz/dobę,
+  globalne eventy x3 co 15 minut, bonus grupy +10%, onboarding 5 kroków. Wszystko przez
+  ten sam idempotentny ProcessReceipt; playbook: `gamedev/roblox/mega-obby/README-MONEY.md`.
 
 ## 18. Zestawy regresji po tym przyroście
 

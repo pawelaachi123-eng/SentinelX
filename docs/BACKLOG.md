@@ -334,6 +334,14 @@ Stan na 2026-09-27 (0.97). Zasada: każda pojedyncza pozycja znika z listy dopie
 - **§9–10 Media** (`MediaVisionToolbox.cs`): kontrast WCAG, PPI, proporcje, bitrate, audio, tempo, dB.
 - **§7/§11/§13 dokładki** (w `ProductivityToolbox.cs`): jezyk, i18n, webhook, token bucket, retry plan,
   sesje, koszt spotkania, godziny pracy.
+- **MONETYZACJA PRO (0.99, „żeby zarobić”)**: 7 usług — BoostService (x2 osobisty
+  + globalne eventy x3 co 15 min, wpięte w AddCoins), SpinService (darmowy dzienny,
+  JAWNE szanse — zgodność Roblox), OfferService (starter 72 h / mega 7 dni, realny
+  licznik, idempotentne), BattlePassService (SEZON 30 poziomów, free+premium),
+  OfflineEarningsService (limit 8 h, stawki wg gatunku, podwojenie raz/dobę),
+  GroupBonusService (+10% dla grupy), OnboardingService (5 kroków FTUE). Klient:
+  zakładki OFERTY/SPIN/SEZON, chip boosta, pływające monety. Playbook: README-MONEY.md.
+  Regresja: MoneySystemsRegression (41. zestaw).
 - **GameForge — GENERATOR GIER (0.98)**: `GameSpec.Genre` wybiera gatunek; Forge.lua
   dystrybuuje: obby = pełny Mega Obby (bez regresji), a symulator/tycoon/horror/
   shooter/wyścigi = generowane światy + pętle + sklepy gatunku (ForgeShopService,

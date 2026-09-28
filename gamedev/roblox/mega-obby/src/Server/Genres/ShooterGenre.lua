@@ -218,6 +218,11 @@ Pack.QuestPool = {
 	{ id = "sh_time_20", type = "playtime", target = 20, reward = 300, desc = "Walcz 20 minut" },
 }
 
+function Pack.OfflineRatePerHour(deps, player)
+	local data = deps.PlayerDataService.Get(player)
+	return data and (25 + math.min(25, data.Stats.Kills or 0)) or 25
+end
+
 function Pack.LeaderValue(deps, player)
 	local data = deps.PlayerDataService.Get(player)
 	return data and (data.Stats.Kills or 0) or 0

@@ -305,6 +305,11 @@ function PlayerDataService.Snapshot(player)
 		Quests = deps.QuestService and deps.QuestService.QuestsOf(player) or {},
 		Hud = deps.HudProvider and deps.HudProvider(player) or nil,
 		ShopItems = deps.ShopProvider and deps.ShopProvider(player) or nil,
+		Boosts = deps.BoostService and deps.BoostService.InfoOf(player) or nil,
+		Spins = deps.SpinService and deps.SpinService.InfoOf(player) or nil,
+		Pass = deps.BattlePassService and deps.BattlePassService.InfoOf(player) or nil,
+		Offers = deps.OfferService and deps.OfferService.VisibleOf(player) or nil,
+		Onboarding = deps.OnboardingService and deps.OnboardingService.InfoOf(player) or nil,
 		Daily = deps.DailyRewardService and deps.DailyRewardService.InfoOf(player) or { Streak = 0, CanClaim = false, NextReward = 0 },
 		Stats = data.Stats,
 	}

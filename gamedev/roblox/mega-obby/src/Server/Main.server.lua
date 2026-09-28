@@ -23,6 +23,7 @@ local EventBus = {
 	PetEquipped = Util.Signal(),   -- (player, petDefOrNil)
 	PlaytimeTick = Util.Signal(),  -- (player, deltaSeconds)
 	GamepassGranted = Util.Signal(), -- (player, passId)
+	CoinsSpent = Util.Signal(),    -- (player, amount) — onboarding/statystyki
 }
 
 local deps = {

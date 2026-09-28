@@ -119,6 +119,18 @@ local function registerGrants()
 			productGrants[grantId] = grant
 		end
 	end
+
+	-- usługi monetyzacji PRO doklejają swoje granty produktów (spin/oferty/paszport/offline)
+	for _, source in ipairs({ deps.SpinService, deps.OfferService, deps.BattlePassService, deps.OfflineEarningsService }) do
+		if source and source.ProductGrants then
+			local okGrants, grants = pcall(source.ProductGrants, deps)
+			if okGrants and type(grants) == "table" then
+				for grantId, grant in pairs(grants) do
+					productGrants[grantId] = grant
+				end
+			end
+		end
+	end
 end
 
 -- ————————————————————————————————————————————————
@@ -206,6 +218,21 @@ function MonetizationService.Finish(_deps)
 				end
 				warn("[MegaObby] Grant nie powiódł się (" .. product.id .. "): " .. tostring(message))
 				return Enum.ProductPurchaseDecision.NotProcessedYet
+			end
+		end
+		-- oferty limitowane mają własne ID produktów (poza DevProducts)
+		if deps.OfferService then
+			for _, offer in ipairs(config.Offers) do
+				if offer.robuxProductId == receiptInfo.ProductId then
+					local ok, message = deps.OfferService.GrantOffer(player, offer)
+					if ok then
+						notify(player, "success", message)
+						deps.PlayerDataService.SavePlayer(player)
+						deps.PlayerDataService.PushSnapshot(player)
+						return Enum.ProductPurchaseDecision.PurchaseGranted
+					end
+					return Enum.ProductPurchaseDecision.NotProcessedYet
+				end
 			end
 		end
 		warn("[MegaObby] Nieznany ProductId w paragonie: " .. tostring(receiptInfo.ProductId))

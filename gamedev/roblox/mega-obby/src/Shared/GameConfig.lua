@@ -209,6 +209,65 @@ GameConfig.Admins = {
 }
 
 -- ————————————————————————————————————————————————
+-- MONETYZACJA PRO (0.99): oferty limitowane, spin dobowy, battle pass,
+-- zarobki offline, bonus grupy, globalne eventy x3, onboarding.
+-- ID = 0 do czasu publikacji (UI uczciwie tłumaczy — README-MONEY.md).
+-- ————————————————————————————————————————————————
+GameConfig.Offers = {
+	{ id = "starter", name = "ZESTAW STARTOWY", robuxProductId = 0,
+		coins = 1500, spins = 3, label = "NAJLEPSZA WARTOŚĆ",
+		expireHoursFromJoin = 72, -- realny licznik: 3 doby od pierwszego wejścia
+		description = "1500 monet + 3 spiny. Widoczny tylko pierwsze 72 h gry." },
+	{ id = "mega", name = "MEGA ZESTAW", robuxProductId = 0,
+		coins = 6000, spins = 8, label = "DLA SZYBKICH",
+		expireHoursFromJoin = 168,
+		description = "6000 monet + 8 spinów. Znika po tygodniu gry." },
+}
+
+GameConfig.Spin = {
+	FreePerDay = 1,
+	PaidProductId = 0, -- produkt deweloperski: dodatkowy spin
+	-- wagi = widoczne szanse (Roblox wymaga pokazywania szans dla PŁATNYCH losowań)
+	Rewards = {
+		{ type = "coins",  amount = 150,  weight = 40, label = "150 monet" },
+		{ type = "coins",  amount = 400,  weight = 25, label = "400 monet" },
+		{ type = "boost",  amount = 600,  weight = 20, label = "BOOST x2 (10 min)" },
+		{ type = "coins",  amount = 1000, weight = 10, label = "JACKPOT 1000!" },
+		{ type = "pet",    weight = 5,    label = "LOSOWANIE ZWIERZAKA" },
+	},
+}
+
+GameConfig.BattlePass = {
+	Tiers = 30,
+	XpPerTier = 250,
+	PremiumProductId = 0,   -- produkt: premium track na sezon
+	PremiumGamepassId = 0,  -- alternatywnie przepustka
+	XpFor = { Coins = 0.05, Stage = 40, PlayMinute = 2 }, -- xp za monetę / etap / minutę
+}
+
+GameConfig.Offline = {
+	MaxHours = 8,        -- tyle maksymalnie liczymy (uczciwy limit)
+	BasePerHour = 40,    -- gatunek może nadpisać (Pack.OfflineRatePerHour)
+	DoubleProductId = 0, -- produkt: „podwój zarobek offline” (raz na dobę)
+}
+
+GameConfig.Group = { Id = 0, BonusPercent = 10 } -- 0 = wyłączone
+
+GameConfig.GlobalBoost = {
+	IntervalSeconds = 900, -- co 15 min event serwerowy
+	DurationSeconds = 180, -- przez 3 minuty
+	Multiplier = 3,
+}
+
+GameConfig.Onboarding = {
+	{ type = "playtime", amount = 60,  reward = 100, label = "Pobaw się minutę w swojej grze" },
+	{ type = "coins",    amount = 50,  reward = 150, label = "Zarób 50 monet" },
+	{ type = "spent",    amount = 200, reward = 250, label = "Wydaj 200 monet (ulepszenia!)" },
+	{ type = "coins",    amount = 300, reward = 400, label = "Zarób łącznie 300 monet" },
+	{ type = "playtime", amount = 600, reward = 500, label = "Zagraj 10 minut" },
+}
+
+-- ————————————————————————————————————————————————
 -- Różne
 -- ————————————————————————————————————————————————
 GameConfig.Player = {
