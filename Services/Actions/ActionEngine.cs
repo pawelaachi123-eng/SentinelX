@@ -67,15 +67,40 @@ public sealed class ActionEngine(IIntentRouter router, SentinelToolboxService to
             record.Phase = "Wykonywanie polecenia · możesz je przerwać";
             response = await Task.Run(async () =>
             {
-                history.AddRunning(record.ActionId, "REQUEST", AuditText(input));
                 memory.AddUserMessage(input, fromVoice ? "voice" : "keyboard");
-                using var approval = ApprovalContext.Begin(input, fromVoice);
-                using var scope = ActionEvidenceCapture.Begin(record.ActionId);
-                capture = scope;
-                var text = await router.ProcessAsync(input, source.Token, onDelta == null ? null : Publish);
-                source.Token.ThrowIfCancellationRequested();
-                memory.AddAssistantMessage(text);
-                return text;
+                // 0.99 · NAMYSŁ: jedna ponowna próba, TYLKO gdy przyczyna wygląda na chwilową
+                // (limit czasu / zajęty zasób / sieć / usługa) i PIERWSZA próba nic nie wykonała
+                // (zero dowodów = zero ryzyka podwójnego wykonania). Błędy trwałe nie są
+                // ponawiane — to byłoby udawaniem myślenia.
+                for (int attempt = 1; ; attempt++)
+                {
+                    history.AddRunning(record.ActionId, "REQUEST", AuditText(input));
+                    using var approval = ApprovalContext.Begin(input, fromVoice);
+                    using var scope = ActionEvidenceCapture.Begin(record.ActionId);
+                    capture = scope;
+                    string text;
+                    try
+                    {
+                        text = await router.ProcessAsync(input, source.Token, onDelta == null ? null : Publish);
+                    }
+                    catch (Exception ex) when (attempt == 1 && !source.Token.IsCancellationRequested
+                        && RetryAdvisor.TransientCause(ex.Message) is { Length: > 0 } cause)
+                    {
+                        record.Phase = "Namysł: przyczyna wygląda na chwilową (" + cause + ") · ponawiam raz";
+                        record.Evidence = "PRÓBA 1 · niepowodzenie: " + ex.Message + "\n";
+                        AppLog.Write(ex);
+                        source.Token.ThrowIfCancellationRequested();
+                        await Task.Delay(350, source.Token);
+                        continue;
+                    }
+                    if (attempt > 1)
+                    {
+                        record.Evidence += "PRÓBA 2 · ponowienie po namyśle zakończone sukcesem.\n";
+                    }
+                    source.Token.ThrowIfCancellationRequested();
+                    memory.AddAssistantMessage(text);
+                    return text;
+                }
             }, source.Token);
             record.Status = ActionStatus.Verifying;
             record.Phase = "Sprawdzanie dowodów z narzędzi";
@@ -125,8 +150,14 @@ public sealed class ActionEngine(IIntentRouter router, SentinelToolboxService to
         {
             AppLog.Write(ex); record.Status = ActionStatus.Failed; record.Error = ex.Message;
             record.ToolResults = capture?.Snapshot() ?? [];
-            record.Evidence = "Polecenie zakończone błędem. Sprawdź ukończone kroki przed ponowieniem." + FormatProof(record.ToolResults);
-            response = "Nie udało się wykonać polecenia: " + ex.Message;
+            bool retried = record.Evidence.StartsWith("PRÓBA 1", StringComparison.Ordinal);
+            record.Evidence = (retried ? record.Evidence + "\n" : "")
+                + "Polecenie zakończone błędem. Sprawdź ukończone kroki przed ponowieniem."
+                + (retried ? "\nPonowienie też nie wyszło — przyczyna nie jest chwilowa." : "")
+                + FormatProof(record.ToolResults);
+            response = retried
+                ? "Nie udało się wykonać polecenia (także po ponowieniu): " + ex.Message
+                : "Nie udało się wykonać polecenia: " + ex.Message;
             return new(response, record);
         }
         finally

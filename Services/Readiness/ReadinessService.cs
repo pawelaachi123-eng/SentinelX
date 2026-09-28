@@ -2,11 +2,13 @@ using SentinelX.Models;
 using SentinelX.Services.AI;
 using SentinelX.Services.History;
 using SentinelX.Services.Settings;
+using SentinelX.Core;
 using SentinelX.Services.Voice;
 namespace SentinelX.Services.Readiness;
 
 /// <summary>Read-only probes. Never captures audio, downloads models, launches Ollama or changes settings.</summary>
-public sealed class ReadinessService(ISettingsService settings, IHistoryService history, IVoiceService voice, IAiService ai) : IReadinessService
+public sealed class ReadinessService(ISettingsService settings, IHistoryService history, IVoiceService voice, IAiService ai,
+    ActionHistoryService audit) : IReadinessService
 {
     public async Task<IReadOnlyList<ReadinessCheck>> CheckAsync(CancellationToken token)
     {
@@ -33,6 +35,15 @@ public sealed class ReadinessService(ISettingsService settings, IHistoryService 
                     ready ? "Lokalne pliki ASR i VAD są dostępne. Ich uruchomienie zostanie sprawdzone po włączeniu głosu." : "Brak kompletnego zestawu lokalnych modeli. Nic nie jest pobierane bez Twojej decyzji.", "voice", ready ? "Przetestuj głos" : "Skonfiguruj modele"));
             }
             catch (Exception ex) { checks.Add(new("asr", "Rozpoznawanie mowy", ReadinessState.Unavailable, ex.Message, "voice", "Sprawdź modele")); }
+            // 0.99 · PODSUMOWANIE ZAUFANIA: ile zakończonych akcji realnie udowodniło sukces.
+            var report = TrustSummary.Calculate(audit.GetRecentEntries(50));
+            checks.Add(report.HasData
+                ? new("trust", "Zaufanie do akcji", report.Percent >= 80 ? ReadinessState.Ready : ReadinessState.NeedsSetup,
+                    report.Percent + "% VERIFIED (" + report.Verified + "/" + report.Total + ") · "
+                    + report.Unverified + " bez dowodu · " + report.Failed + " błędów/przerwanych. Sukces bez dowodu się nie liczy.",
+                    "history", "Otwórz historię")
+                : new("trust", "Zaufanie do akcji", ReadinessState.NotChecked,
+                    "Brak historii akcji — nie oceniam na zapasie (no success = no pass).", "history", "Otwórz historię"));
             return checks;
         }, token);
         var ollama = CheckAiAsync(token);

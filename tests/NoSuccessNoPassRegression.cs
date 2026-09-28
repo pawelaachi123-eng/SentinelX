@@ -106,11 +106,51 @@ internal static class NoSuccessNoPassRegression
             "SEKWENCJA NIEDOKOŃCZONA", "CZĘŚCIOWA PRAWDA" })
             Check(center.Contains(rule), "brak reguły domyślnej: " + rule);
 
+        // ————— 9. NAMYSŁ: ponawiamy tylko przyczyny chwilowe, i to RAZ —————
+        Check(RetryAdvisor.TransientCause("Połączenie z usługą przerwane: timeout operacji") == "limit czasu",
+            "timeout = przyczyna chwilowa (limit czasu)");
+        Check(RetryAdvisor.TransientCause("Plik jest używany przez inny proces (zajęty)") == "zasób zajęty",
+            "zasób zajęty = chwilowa");
+        Check(RetryAdvisor.TransientCause("Błąd sieci: połączenie zerwane") == "sieć", "sieć = chwilowa");
+        Check(RetryAdvisor.TransientCause("Usługa chwilowo niedostępna, spróbuj później") != null,
+            "usługa niedostępna = chwilowa");
+        Check(RetryAdvisor.TransientCause("Plik nie istnieje: config.json") is null,
+            "brak pliku = TRWAŁA, nie ponawiamy");
+        Check(RetryAdvisor.TransientCause("Odmowa dostępu do rejestru") is null,
+            "odmowa dostępu = TRWAŁA, nie ponawiamy");
+        Check(RetryAdvisor.TransientCause("Nieznanay błąd xyzq") is null,
+            "nieznana przyczyna = nie ryzykujemy ponowienia");
+        Check(engine.Contains("RetryAdvisor.TransientCause"), "silnik konsultuje doradcę ponowień");
+        Check(engine.Contains("PRÓBA 1") && engine.Contains("ponawiam raz"), "ślad namysłu trafia do dowodów");
+
+        // ————— 10. ZAUFANIE: procent z historii; pusta historia NIE daje 100% —————
+        var mixedHistory = new[]
+        {
+            Entry("H1", "MEASURE_RAM", "VERIFIED", "RAM 62%", "pomiar: 62"),
+            Entry("H2", "MEASURE_CPU", "VERIFIED", "CPU 18%", "pomiar: 18"),
+            Entry("H3", "OPEN_APP", "UNVERIFIED", "tekst", "brak dowodu"),
+            Entry("H4", "CLEANUP", "FAILED", "błąd", "dowód błędu"),
+            Entry("H5", "RESPONSE", "RUNNING", "w toku", "—"),
+        };
+        var trust = TrustSummary.Calculate(mixedHistory);
+        Check(trust.HasData && trust.Total == 4, "RUNNING nie jest zakończony (4 zakończone)");
+        Check(trust.Verified == 2 && trust.Percent == 50, "50% VERIFIED z 4 zakończonych");
+        Check(trust.Unverified == 1 && trust.Failed == 1, "bez dowodu i błędy liczone wprost");
+        var emptyTrust = TrustSummary.Calculate([]);
+        Check(!emptyTrust.HasData && emptyTrust.Percent == 0, "pusta historia = brak danych, NIE 100%");
+        string readiness = File.ReadAllText(Path.Combine(FindRoot(), "Services", "Readiness", "ReadinessService.cs"));
+        Check(readiness.Contains("TrustSummary.Calculate") && readiness.Contains("\"trust\""),
+            "panel gotowości ma kartę ZAUFANIE");
+        string smokeRunner = File.ReadAllText(Path.Combine(FindRoot(), "UiSmokeTestRunner.cs"));
+        Check(smokeRunner.Contains("Checks.Count != 5"), "smoke pilnuje 5 kart gotowości");
+
         File.WriteAllText(Path.Combine(directory, "no-success-no-pass.txt"),
             "PASS\nNo success = no pass: VerificationCenter (5 reguł domyślnych + rejestr wg prefiksu) obala\n" +
             "VERIFIED bez dowodu, liczbę bez pomiaru, sprzeczne werdykty i niedokończone sekwencje;\n" +
             "silnik stosuje wyrok (VERIFIED→FAILED + szczery komunikat), UNVERIFIED na polecenie-\n" +
-            "systemowe dostaje pieczęć, a PLAN→CHECK trafia do dowodów.\n");
+            "systemowe dostaje pieczęć, a PLAN→CHECK trafia do dowodów. NAMYSŁ: auto-retry raz, tylko\n" +
+            "przyczyny chwilowe i nic niewykonane; ZAUFANIE: procent VERIFIED w historii, pusta = brak\n" +
+            "danych; panel gotowości pokazuje 5. kartę.\n");
         return Task.CompletedTask;
     }
 

@@ -365,6 +365,12 @@ Stan na 2026-09-27 (0.97). Zasada: każda pojedyncza pozycja znika z listy dopie
   Silnik stosuje wyrok: obalony VERIFIED → FAILED ze szczerym komunikatem, ślad
   PLAN→CHECK trafia do dowodów, a UNVERIFIED na polecenie-systemowe dostaje pieczęć
   „nie potwierdzam wykonania”. Regresja NoSuccessNoPassRegression (44. zestaw).
+- **NAMYSŁ I ZAUFANIE (0.99)**: RetryAdvisor — auto-retry WYŁĄCZNIE dla przyczyn
+  chwilowych (limit czasu/zajęty zasób/sieć/usługa), raz, i tylko gdy pierwsza próba
+  nic nie wykonała (zero dowodów = zero ryzyka podwójnego wykonania); błędy trwałe
+  (brak pliku, odmowa dostępu) nie są ponawiane; ślad „PRÓBA 1/2” trafia do dowodów.
+  TrustSummary + 5. karta panelu gotowości: % VERIFIED z historii (pusta historia =
+  uczciwe „brak danych”, nie 100%).
 - **DUŻA GRA (0.99, Fisch-style)**: gatunek `ryby` — 12 ryb w 5 rzadkościach
   (wagi w configu), mutacje Błyszczący ×2 / Ogromny ×3, łódka na GŁĘBINY (×1,6),
   POGODA rotująca na serwerze (szczęście do ×2, ogłaszana wszystkim), ZBIORY/INDEKS

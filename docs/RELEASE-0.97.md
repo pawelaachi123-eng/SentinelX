@@ -440,6 +440,9 @@ usuwanie, dobór do zadania i licencje doszły w drugim przyroście — sekcja 1
   przez **VerificationCenter**: sukces bez dowodu jest OBALANY (VERIFIED → FAILED,
   szczery komunikat), „pomiary” bez liczb nie przechodzą, sekwencje muszą być całe,
   a ślad rozumowania (PLAN → CHECK) zapisuje się w dowodach. **44 zestaw** regresji.
+  Do tego **namysł**: jedno rozsądne ponowienie dla przyczyn chwilowych (ślad PRÓBA 1/2
+  w dowodach) i **podsumowanie zaufania** w panelu gotowości (ile % akcji realnie
+  udowodniło sukces; pusta historia = brak danych, nie sztuczne 100%).
 - **Duża gra (0.99, Fisch-style)**: **10. gatunek generatora — `ryby`**: brania
   losowane wagami rzadkości (wspólne → legendarna, wagi jawne w configu), mutacje
   ×2/×3, łódka na GŁĘBINY, **pogoda** rotująca na serwerze ze „szczęściem” do ×2,
