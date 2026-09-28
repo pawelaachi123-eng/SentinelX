@@ -429,6 +429,9 @@ usuwanie, dobór do zadania i licencje doszły w drugim przyroście — sekcja 1
   zakładek, karty z uniesieniem na hover i paski postępu. **UiSmoke v2**: test UI
   uczy się głębiej — pilnuje cyklu życia powiadomień, paska statusu i dostępności
   (przycisk bez etykiety dla czytnika ekranu = czerwone CI).
+- **Redesign „Claude” (0.99)**: interfejs w duchu najlepszych GUI — ciepłe tony
+  (ivory/węgiel), terakotowy akcent, **szeryfowe nagłówki**, płaskie cienie,
+  spokojniejsze animacje; pełny audyt kontrastu WCAG w generatorze motywów.
 - **Duża gra (0.99, Fisch-style)**: **10. gatunek generatora — `ryby`**: brania
   losowane wagami rzadkości (wspólne → legendarna, wagi jawne w configu), mutacje
   ×2/×3, łódka na GŁĘBINY, **pogoda** rotująca na serwerze ze „szczęściem” do ×2,

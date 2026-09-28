@@ -345,6 +345,12 @@ Stan na 2026-09-27 (0.97). Zasada: każda pojedyncza pozycja znika z listy dopie
   limit 4, auto-fade), render PNG z kartami, pasek statusu (obecność + brak łapania
   myszy), audyt dostępności przycisków (każdy musi mieć etykietę dla czytnika), paleta
   z licznikiem wyników, karty toastów z paskiem życia.
+- **REDESIGN „CLAUDE” (0.99)**: cała paleta przebudowana na ciepłą-stonowaną
+  (jasny: kość słoniowa #FAF9F5 + terakota #B0522F; ciemny: ciepły węgiel #262624 +
+  jasna glina #DE8668; Deep Dark: #1A1918), nagłówki SZERYFOWE (Georgia/Cambria),
+  płaskie cienie (mniej glow, więcej włosowych linii), łagodniejszy ruch (sprężyny
+  0.45→0.28, hover 1.022→1.012). Motywy nadal generuje scripts/generate-themes.py
+  z audytem WCAG (71 tokenów × 3 motywy PASS). UiSmoke v2 pilnuje szeryfowych nagłówków.
 - **DUŻA GRA (0.99, Fisch-style)**: gatunek `ryby` — 12 ryb w 5 rzadkościach
   (wagi w configu), mutacje Błyszczący ×2 / Ogromny ×3, łódka na GŁĘBINY (×1,6),
   POGODA rotująca na serwerze (szczęście do ×2, ogłaszana wszystkim), ZBIORY/INDEKS

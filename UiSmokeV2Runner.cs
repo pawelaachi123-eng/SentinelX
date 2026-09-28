@@ -142,6 +142,7 @@ public static class UiSmokeV2Runner
         File.WriteAllText(Path.Combine(output, "uismoke2.txt"),
             "PASS\nUI SMOKE v2: host toastów obecny · karty wjeżdżają i znikają same · limit 4 działa ·\n" +
             "render PNG z kartami OK (" + buttons.Count + " przycisków poddanych audytowi dostępności — 0 ślepych) ·\n" +
-            "pasek statusu obecny, niewidzialny dla myszy · Ctrl+K paleta z licznikiem wyników ·" + "\n            "typografia Claude: szeryfowe nagłówki (Georgia) · paleta ciepła (ivory/węgiel/terakota)\n");
+            "pasek statusu obecny, niewidzialny dla myszy · Ctrl+K paleta z licznikiem wyników ·\n" +
+            "typografia Claude: szeryfowe nagłówki (Georgia) · paleta ciepła (ivory/węgiel/terakota)\n");
     }
 }
