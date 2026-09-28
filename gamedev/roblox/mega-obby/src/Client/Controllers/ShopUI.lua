@@ -302,6 +302,7 @@ function ShopUI.Init(stateIn, configIn, netIn)
 	refs.Tabs = {}
 	local tabDefs = {
 		{ id = "trails", name = "ŚLADY" },
+		{ id = "forge", name = "SKLEP TRYBU" },
 		{ id = "pets", name = "ZWIERZAKI" },
 		{ id = "passes", name = "PRZEPUSTKI" },
 		{ id = "coins", name = "MONETY" },
