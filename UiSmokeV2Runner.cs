@@ -35,7 +35,7 @@ public static class UiSmokeV2Runner
 
     private static Task IdleAsync(Window shell) => shell.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle).Task;
 
-    private static string? AccessibleLabel(Button button)
+    private static string AccessibleLabel(Button button)
     {
         if (!string.IsNullOrWhiteSpace(button.GetValue(System.Windows.Automation.AutomationProperties.NameProperty) as string))
         {
@@ -49,7 +49,7 @@ public static class UiSmokeV2Runner
         {
             return "tooltip";
         }
-        return null;
+        return "";
     }
 
     private static void WalkAccessibility(System.Windows.DependencyObject node, List<Button> found)
@@ -58,12 +58,11 @@ public static class UiSmokeV2Runner
         {
             found.Add(button);
         }
-        int count = System.Windows.LogicalTreeHelper.GetChildren(node).Count();
-        foreach (var child in System.Windows.LogicalTreeHelper.GetChildren(node))
+        foreach (object child in System.Windows.LogicalTreeHelper.GetChildren(node))
         {
-            if (child is System.Windows.DependencyObject dependency)
+            if (child is System.Windows.DependencyObject dependencyObject)
             {
-                WalkAccessibility(dependency, found);
+                WalkAccessibility(dependencyObject, found);
             }
         }
     }
