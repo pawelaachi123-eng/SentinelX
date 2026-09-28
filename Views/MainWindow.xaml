@@ -162,7 +162,7 @@
         </Grid>
 
         <!-- 0.99 · SZKLANY PASEK STATUSU: wersja + stan pulpitu + skrót palety (dekoracyjny, nie blokuje myszy) -->
-        <Border Grid.Column="1" VerticalAlignment="Bottom" Height="34" IsHitTestVisible="False" Panel.ZIndex="5"
+        <Border x:Name="StatusBar" Grid.Column="1" VerticalAlignment="Bottom" Height="34" IsHitTestVisible="False" Panel.ZIndex="5"
                 Background="{DynamicResource SxSurfaceGlass}" BorderBrush="{DynamicResource SxBorderSubtle}" BorderThickness="0,1,0,0">
             <DockPanel Margin="18,0,18,0">
                 <TextBlock DockPanel.Dock="Left" Text="{Binding Version, StringFormat=● SENTINEL X · {0}}" Style="{StaticResource SxMuted}" VerticalAlignment="Center"/>

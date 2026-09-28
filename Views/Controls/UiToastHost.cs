@@ -32,6 +32,10 @@ public sealed class UiToastHost : Canvas
     private static UiToastHost? active;
 
     private const int MaxVisible = 4;
+
+    /// <summary>Limit widocznych kart — publiczny, żeby smoke v2 pilnował reguły.</summary>
+    public const int MaxVisibleForTests = MaxVisible;
+
     private const double CardWidth = 352;
 
     public UiToastHost()
@@ -177,7 +181,26 @@ public sealed class UiToastHost : Canvas
         row.Children.Add(accentBar);
         row.Children.Add(iconDot);
         row.Children.Add(textStack);
-        card.Child = row;
+
+        // karta = siatka: treść + PASEK ŻYCIA (malejąca linia do końca czasu życia)
+        var cardGrid = new Grid();
+        row.Margin = new Thickness(0, 0, 0, 9);
+        cardGrid.Children.Add(row);
+        var lifeScale = new ScaleTransform(1, 1);
+        var lifeBar = new Border
+        {
+            Height = 3,
+            CornerRadius = new CornerRadius(2),
+            Background = accent,
+            Opacity = 0.65,
+            VerticalAlignment = VerticalAlignment.Bottom,
+            Margin = new Thickness(2, 0, 2, 0),
+            RenderTransform = lifeScale,
+            RenderTransformOrigin = new Point(0, 0.5),
+        };
+        cardGrid.Children.Add(lifeBar);
+        card.Child = cardGrid;
+        lifeScale.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation(1, 0, lifetime));
 
         // ————— wejście: sprężyna (przesuw + skala + fade) —————
         var slideIn = new DoubleAnimation(-16, 0, TimeSpan.FromMilliseconds(340))

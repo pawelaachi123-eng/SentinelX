@@ -341,6 +341,10 @@ Stan na 2026-09-27 (0.97). Zasada: każda pojedyncza pozycja znika z listy dopie
   HudController i ShopUI przebudowane na UiKit (lewy rail zakładek, karty z hoverem,
   pasek 7 dni w nagrodzie dziennej, paski postępu questa). Wszystkie kotwice regresji
   (ForgeBuy, SKLEP TRYBU, KOŁO FORTUNY, BoostChip, floatLabel, NextSpins…) zachowane.
+  UiSmoke v2: nowa warstwa testu UI (UiSmokeV2Runner) — cykl życia toastów (wjazd,
+  limit 4, auto-fade), render PNG z kartami, pasek statusu (obecność + brak łapania
+  myszy), audyt dostępności przycisków (każdy musi mieć etykietę dla czytnika), paleta
+  z licznikiem wyników, karty toastów z paskiem życia.
 - **DUŻA GRA (0.99, Fisch-style)**: gatunek `ryby` — 12 ryb w 5 rzadkościach
   (wagi w configu), mutacje Błyszczący ×2 / Ogromny ×3, łódka na GŁĘBINY (×1,6),
   POGODA rotująca na serwerze (szczęście do ×2, ogłaszana wszystkim), ZBIORY/INDEKS

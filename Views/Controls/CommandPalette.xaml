@@ -21,6 +21,7 @@
                         <TextBlock Text="PALETA POLECEŃ" Style="{StaticResource SxEyebrow}" Foreground="{DynamicResource SxAccentCyan}"/>
                         <TextBlock Text="Co chcesz zrobić?" Style="{StaticResource SxHeading}"/>
                         <TextBlock Text="Szukaj po polsku: strony, narzędzia, ustawienia. Bez zapamiętywania komend." Style="{StaticResource SxCaption}"/>
+                        <TextBlock Text="{Binding Results.Count, StringFormat=Zgodne podpowiedzi: {0}}" Style="{StaticResource SxMuted}" Margin="0,6,0,0"/>
                     </StackPanel>
                 </DockPanel>
             </StackPanel>

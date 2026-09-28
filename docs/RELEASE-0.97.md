@@ -426,7 +426,9 @@ usuwanie, dobór do zadania i licencje doszły w drugim przyroście — sekcja 1
   WiFi, oraz **szklany pasek statusu** na dole. UI gry Roblox zbudowano **od zera** na
   wspólnym `UiKit.lua` (glassmorphism: półprzezroczyste karty, sprężynowe animacje,
   toasty, konfetti, licznik „goniący” monety) — HUD i sklep mają teraz lewy rail
-  zakładek, karty z uniesieniem na hover i paski postępu.
+  zakładek, karty z uniesieniem na hover i paski postępu. **UiSmoke v2**: test UI
+  uczy się głębiej — pilnuje cyklu życia powiadomień, paska statusu i dostępności
+  (przycisk bez etykiety dla czytnika ekranu = czerwone CI).
 - **Duża gra (0.99, Fisch-style)**: **10. gatunek generatora — `ryby`**: brania
   losowane wagami rzadkości (wspólne → legendarna, wagi jawne w configu), mutacje
   ×2/×3, łódka na GŁĘBINY, **pogoda** rotująca na serwerze ze „szczęściem” do ×2,
