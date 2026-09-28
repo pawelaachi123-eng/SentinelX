@@ -99,7 +99,7 @@ internal static class BigGameRegression
         Check(forge.Contains("ryby = \"RybyGenre\""), "Forge: gatunek ryby w rejestrze");
         Check(forge.Contains("fish = \"ryby\"") && forge.Contains("wedkowanie = \"ryby\"")
             && forge.Contains("lowienie = \"ryby\""), "Forge: aliasy wędkowania");
-        Check(forge.Split(new[] { "\"CollectionService\", \"AchievementService\", \"WeatherService\"" }).Length - 1 == 2,
+        Check(forge.Split(new[] { "\"CollectionService\", \"AchievementService\", \"WeatherService\"" }, StringSplitOptions.None).Length - 1 == 2,
             "Forge: 3 nowe usługi w OBU ścieżkach startu");
         Check(forge.Contains("fale, ryby."), "Forge: uczciwa lista gatunków w odmowie");
 
