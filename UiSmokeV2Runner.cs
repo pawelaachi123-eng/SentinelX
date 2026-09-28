@@ -116,11 +116,19 @@ public static class UiSmokeV2Runner
             throw new InvalidOperationException("UI 2.0: toasty nie znikają same po czasie (wyciek wizualny).");
         }
 
-        // ————— 3.5. typografia Claude: nagłówki szeryfowe —————
+        // ————— 3.5. typografia „zrobione przez AI”: display = nowoczesny sans —————
         if (Application.Current.TryFindResource("SxFontDisplay") is not FontFamily display
-            || !display.FamilyNames.Values.Any(family => family.Contains("Georgia")))
+            || !display.FamilyNames.Values.Any(family => family.Contains("Segoe")))
         {
-            throw new InvalidOperationException("UI Claude: SxFontDisplay ma być szeryfowy (Georgia/Cambria).");
+            throw new InvalidOperationException("UI noc: SxFontDisplay ma być nowoczesnym sansem (Segoe UI Variable Display).");
+        }
+        if (statusBar.CornerRadius.TopLeft < 8)
+        {
+            throw new InvalidOperationException("UI noc: kafelek statusu ma być zaokrąglony (CornerRadius >= 8).");
+        }
+        if (statusBar.Margin.Bottom < 8 || statusBar.Margin.Left < 8)
+        {
+            throw new InvalidOperationException("UI noc: kafelek statusu ma pływać (margines od krawędzi >= 8).");
         }
 
         // ————— 4. dostępność: każdy przycisk ma etykietę —————
@@ -143,6 +151,6 @@ public static class UiSmokeV2Runner
             "PASS\nUI SMOKE v2: host toastów obecny · karty wjeżdżają i znikają same · limit 4 działa ·\n" +
             "render PNG z kartami OK (" + buttons.Count + " przycisków poddanych audytowi dostępności — 0 ślepych) ·\n" +
             "pasek statusu obecny, niewidzialny dla myszy · Ctrl+K paleta z licznikiem wyników ·\n" +
-            "typografia Claude: szeryfowe nagłówki (Georgia) · paleta ciepła (ivory/węgiel/terakota)\n");
+            "typografia: nowoczesny sans · paleta nocny iris (dark-first) · pływający szklany kafelek statusu · TileIn/Bob\n");
     }
 }

@@ -452,7 +452,7 @@ public static class UiSmokeTestRunner
                 if (Application.Current.TryFindResource(token) is not System.Windows.Data.IValueConverter) throw new InvalidOperationException("Converter missing: " + token);
             string[] tokenBoards = ["SxPageIn", "SxModalIn", "SxScrimIn", "SxFadeIn", "SxFadeOut", "SxHoverIn", "SxHoverOut", "SxPressIn",
                 "SxPressOut", "SxGlowIn", "SxGlowOut", "SxSheenIn", "SxLiftIn", "SxLiftOut", "SxNavBarGrow", "SxNavBarShrink", "SxLineGrow",
-                "SxLineShrink", "SxPulse", "SxPulseSoft", "SxBreathe", "SxShimmerSlide", "SxStripeSlide", "SxAuroraDriftA", "SxAuroraDriftB", "SxAuroraDriftC", "SxFadeSlideIn"];
+                "SxLineShrink", "SxPulse", "SxPulseSoft", "SxBreathe", "SxShimmerSlide", "SxStripeSlide", "SxAuroraDriftA", "SxAuroraDriftB", "SxAuroraDriftC", "SxFadeSlideIn", "SxTileIn", "SxBob"];
             foreach (string token in tokenBoards)
                 if (Application.Current.TryFindResource(token) is not Storyboard) throw new InvalidOperationException("Animation storyboard missing: " + token);
             if (Application.Current.TryFindResource("SxAnimationsEnabled") is not bool) throw new InvalidOperationException("Animation gate token missing.");

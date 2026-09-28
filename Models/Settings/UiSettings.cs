@@ -9,7 +9,7 @@ public sealed class UiSettings
     public bool MinimizeToTray { get; set; }
     public string Theme { get; set; } = "Dark";
     public string DefaultBrowserPreference { get; set; } = "Brave";
-    public string AccentColor { get; set; } = "#00D4FF";
+    public string AccentColor { get; set; } = "#7C6BE8";
     public int OverlayOpacityPercent { get; set; } = 85;
     public int OverlayScalePercent { get; set; } = 100;
     public string OverlayPosition { get; set; } = "Lewy górny";

@@ -6,7 +6,7 @@
          więc zmiana skali jest jedną edycją, nie stu.
          ============================================================ -->
     <FontFamily x:Key="SxFontFamily">Segoe UI Variable Text, Segoe UI, Cascadia Sans</FontFamily>
-    <FontFamily x:Key="SxFontDisplay">Georgia, Cambria, Constantia, Segoe UI</FontFamily>
+    <FontFamily x:Key="SxFontDisplay">Segoe UI Variable Display, Segoe UI Semibold, Segoe UI</FontFamily>
     <FontFamily x:Key="SxFontMono">Cascadia Mono, Consolas, Segoe UI</FontFamily>
 
     <sys:Double x:Key="SxFontDisplay1">40</sys:Double>

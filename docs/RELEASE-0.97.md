@@ -432,6 +432,10 @@ usuwanie, dobór do zadania i licencje doszły w drugim przyroście — sekcja 1
 - **Redesign „Claude” (0.99)**: interfejs w duchu najlepszych GUI — ciepłe tony
   (ivory/węgiel), terakotowy akcent, **szeryfowe nagłówki**, płaskie cienie,
   spokojniejsze animacje; pełny audyt kontrastu WCAG w generatorze motywów.
+- **Redesign 2 „Nocny iris” (0.99)**: estetyka „jak zbudowałoby je najlepsze AI” —
+  flagowy ciemny motyw na neutralnych nocnych powierzchniach z akcentem iris,
+  czysty jasny motyw, **płynący szklany kafelek statusu** w rogu, wejścia kafelków
+  (SxTileIn) i delikatne unszanie herbu (SxBob), nowoczesny sans; WCAG nadal PASS.
 - **Duża gra (0.99, Fisch-style)**: **10. gatunek generatora — `ryby`**: brania
   losowane wagami rzadkości (wspólne → legendarna, wagi jawne w configu), mutacje
   ×2/×3, łódka na GŁĘBINY, **pogoda** rotująca na serwerze ze „szczęściem” do ×2,

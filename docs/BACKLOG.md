@@ -351,6 +351,13 @@ Stan na 2026-09-27 (0.97). Zasada: każda pojedyncza pozycja znika z listy dopie
   płaskie cienie (mniej glow, więcej włosowych linii), łagodniejszy ruch (sprężyny
   0.45→0.28, hover 1.022→1.012). Motywy nadal generuje scripts/generate-themes.py
   z audytem WCAG (71 tokenów × 3 motywy PASS). UiSmoke v2 pilnuje szeryfowych nagłówków.
+- **REDESIGN 2 · NOCNY IRIS (0.99)**: kierunek „zrobione przez najlepsze AI”, nie marka:
+  ciemny motyw FLAGOWY (domyślny Dark), neutralne nocne powierzchnie (#0C0C0F/#131316)
+  z jednym akcentem IRIS (#A195F5 w ciemnym / #5F4ECF w jasnym), jasny motyw czysto
+  cynkowy (#FAFAFA). Płynący szklany KAFELEK statusu (zaokrąglenie 14, margines 24/14,
+  wejście TileIn), animacje SxTileIn (kafele metryk) i SxBob (delikatne unszanie herbu),
+  nowoczesny sans display (cofnięty eksperyment serif), domyślny akcent #7C6BE8.
+  UiSmoke v2: sans display + zaokrąglony/pływający kafelek + nowe storyboardy w liście.
 - **DUŻA GRA (0.99, Fisch-style)**: gatunek `ryby` — 12 ryb w 5 rzadkościach
   (wagi w configu), mutacje Błyszczący ×2 / Ogromny ×3, łódka na GŁĘBINY (×1,6),
   POGODA rotująca na serwerze (szczęście do ×2, ogłaszana wszystkim), ZBIORY/INDEKS

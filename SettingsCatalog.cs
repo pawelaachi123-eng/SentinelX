@@ -28,7 +28,7 @@ public static class SettingsCatalog
 
         Choice("Wygląd", "Motyw", "Zmiana kolorów całego interfejsu od razu.", () => S().Ui.Theme, x => S().Ui.Theme = x, "Dark", "Deep Dark", "System");
         Choice("Wygląd", "Przeglądarka", "Strony i wyszukiwanie. Gdy wybranej nie ma, używana jest domyślna przeglądarka Windows.", () => S().Ui.DefaultBrowserPreference, x => S().Ui.DefaultBrowserPreference = x, "Brave", "Chrome", "System");
-        Choice("Wygląd", "Kolor akcentu", "Mięta, błękit, fiolet, bursztyn albo róż.", () => S().Ui.AccentColor, x => S().Ui.AccentColor = x, "#00D4FF", "#66F2C2", "#48D8FF", "#A98BFF", "#FFC86B", "#FF8DA6");
+        Choice("Wygląd", "Kolor akcentu", "Iris, mięta, błękit, fiolet, bursztyn albo róż.", () => S().Ui.AccentColor, x => S().Ui.AccentColor = x, "#7C6BE8", "#00D4FF", "#66F2C2", "#48D8FF", "#A98BFF", "#FF8DA6");
         Number("Wygląd", "Przezroczystość nakładki (%)", "Stosowana również do otwartej nakładki.", () => S().Ui.OverlayOpacityPercent, x => S().Ui.OverlayOpacityPercent = (int)x, 20, 100, true);
         Number("Wygląd", "Rozmiar nakładki (%)", "Skalowanie tekstu i karty.", () => S().Ui.OverlayScalePercent, x => S().Ui.OverlayScalePercent = (int)x, 60, 180, true);
         Choice("Wygląd", "Pozycja nakładki", "Róg głównego ekranu; kartę można też przeciągać.", () => S().Ui.OverlayPosition, x => S().Ui.OverlayPosition = x, "Lewy górny", "Prawy górny", "Lewy dolny", "Prawy dolny");

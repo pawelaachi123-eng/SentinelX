@@ -81,7 +81,7 @@
 
                 <!-- Metryki na żywo: kolor + pasek + wartość słownie. -->
                 <UniformGrid Columns="4" Margin="-5,0,-5,14">
-                    <Border Style="{StaticResource SxMetricCard}" Margin="5" Padding="18,14" u:Reveal.Enabled="True">
+                    <Border Style="{StaticResource SxMetricCard}" Margin="5" Padding="18,14" u:Reveal.Enabled="True" u:Motion.TileIn="True">
                         <StackPanel>
                             <Border Height="3" CornerRadius="2" Background="{StaticResource SxAccentGradient}" Margin="-18,-14,-18,12"/>
                             <TextBlock Text="CPU" Style="{StaticResource SxEyebrow}" Foreground="{DynamicResource SxAccentCyan}"/>
@@ -90,7 +90,7 @@
                             <TextBlock Text="Całkowite użycie" Style="{StaticResource SxMuted}" Margin="0,8,0,0"/>
                         </StackPanel>
                     </Border>
-                    <Border Style="{StaticResource SxMetricCard}" Margin="5" Padding="18,14" u:Reveal.Enabled="True">
+                    <Border Style="{StaticResource SxMetricCard}" Margin="5" Padding="18,14" u:Reveal.Enabled="True" u:Motion.TileIn="True">
                         <StackPanel>
                             <Border Height="3" CornerRadius="2" Background="{StaticResource SxVioletPinkGradient}" Margin="-18,-14,-18,12"/>
                             <TextBlock Text="RAM" Style="{StaticResource SxEyebrow}" Foreground="{DynamicResource SxAccentViolet}"/>
@@ -101,7 +101,7 @@
                             <TextBlock Text="Pamięć fizyczna" Style="{StaticResource SxMuted}" Margin="0,8,0,0"/>
                         </StackPanel>
                     </Border>
-                    <Border Style="{StaticResource SxMetricCard}" Margin="5" Padding="18,14" u:Reveal.Enabled="True">
+                    <Border Style="{StaticResource SxMetricCard}" Margin="5" Padding="18,14" u:Reveal.Enabled="True" u:Motion.TileIn="True">
                         <StackPanel>
                             <Border Height="3" CornerRadius="2" Background="{StaticResource SxTealLimeGradient}" Margin="-18,-14,-18,12"/>
                             <TextBlock Text="GPU" Style="{StaticResource SxEyebrow}" Foreground="{DynamicResource SxAccentTeal}"/>
@@ -110,7 +110,7 @@
                             <TextBlock Text="Silnik 3D / Compute" Style="{StaticResource SxMuted}" Margin="0,8,0,0"/>
                         </StackPanel>
                     </Border>
-                    <Border Style="{StaticResource SxMetricCard}" Margin="5" Padding="18,14" u:Reveal.Enabled="True">
+                    <Border Style="{StaticResource SxMetricCard}" Margin="5" Padding="18,14" u:Reveal.Enabled="True" u:Motion.TileIn="True">
                         <StackPanel>
                             <Border Height="3" CornerRadius="2" Background="{StaticResource SxBlueCyanGradient}" Margin="-18,-14,-18,12"/>
                             <TextBlock Text="VRAM" Style="{StaticResource SxEyebrow}" Foreground="{DynamicResource SxAccentBlue}"/>

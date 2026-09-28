@@ -182,4 +182,18 @@
         <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleY)" From="0.94" To="1.12" Duration="0:0:27" EasingFunction="{StaticResource SxEaseSoft}"/>
         <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0.14" To="0.30" Duration="0:0:21" EasingFunction="{StaticResource SxEaseSoft}"/>
     </Storyboard>
+    <!-- 0.99 · NOC: wejście kafelka (metryki/kafelek statusu) i delikatne unszanie dekoracji. -->
+    <Storyboard x:Key="SxTileIn">
+        <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.26" EasingFunction="{StaticResource SxEaseOut}"/>
+        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[1].(TranslateTransform.Y)" From="12" To="0" Duration="0:0:0.32" EasingFunction="{StaticResource SxEaseOut}"/>
+        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleX)" From="0.97" To="1" Duration="0:0:0.32" EasingFunction="{StaticResource SxEaseOut}"/>
+        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleY)" From="0.97" To="1" Duration="0:0:0.32" EasingFunction="{StaticResource SxEaseOut}"/>
+    </Storyboard>
+    <Storyboard x:Key="SxBob">
+        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[1].(TranslateTransform.Y)" To="-3.5" Duration="0:0:2.8" AutoReverse="True" RepeatBehavior="Forever">
+            <DoubleAnimation.EasingFunction>
+                <SineEase EasingMode="EaseInOut"/>
+            </DoubleAnimation.EasingFunction>
+        </DoubleAnimation>
+    </Storyboard>
 </ResourceDictionary>

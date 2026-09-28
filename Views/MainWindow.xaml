@@ -57,7 +57,7 @@
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
-                        <ContentControl Style="{StaticResource SxCrest}" Width="46" Height="46" Margin="0,0,12,0" AutomationProperties.Name="Herb Sentinel X"/>
+                        <ContentControl Style="{StaticResource SxCrest}" Width="46" Height="46" Margin="0,0,12,0" AutomationProperties.Name="Herb Sentinel X" u:Motion.Float="True"/>
                         <StackPanel Grid.Column="1" VerticalAlignment="Center">
                             <TextBlock Text="SENTINEL X" FontFamily="{StaticResource SxFontDisplay}" FontSize="{StaticResource SxFontHeading3}" FontWeight="Bold" Foreground="{StaticResource SxRoyalGradient}"/>
                             <TextBlock Text="{Binding Version}" Style="{StaticResource SxMuted}" Margin="0,3,0,0"/>
@@ -161,9 +161,9 @@
             <controls:ReadinessPanel DataContext="{Binding Readiness}" VerticalAlignment="Center" HorizontalAlignment="Center"/>
         </Grid>
 
-        <!-- 0.99 · SZKLANY PASEK STATUSU: wersja + stan pulpitu + skrót palety (dekoracyjny, nie blokuje myszy) -->
-        <Border x:Name="StatusBar" Grid.Column="1" VerticalAlignment="Bottom" Height="34" IsHitTestVisible="False" Panel.ZIndex="5"
-                Background="{DynamicResource SxSurfaceGlass}" BorderBrush="{DynamicResource SxBorderSubtle}" BorderThickness="0,1,0,0">
+        <!-- 0.99 · NOC: PŁYWAJĄCY SZKLANY KAFELEK STATUSU (zaokrąglony, unoszony, nie łapie myszy) -->
+        <Border x:Name="StatusBar" Grid.Column="1" VerticalAlignment="Bottom" Height="40" Margin="24,0,24,14" IsHitTestVisible="False" Panel.ZIndex="5"
+                CornerRadius="14" Background="{DynamicResource SxSurfaceGlass}" BorderBrush="{DynamicResource SxBorderSubtle}" BorderThickness="1" u:Motion.TileIn="True">
             <DockPanel Margin="18,0,18,0">
                 <TextBlock DockPanel.Dock="Left" Text="{Binding Version, StringFormat=● SENTINEL X · {0}}" Style="{StaticResource SxMuted}" VerticalAlignment="Center"/>
                 <TextBlock DockPanel.Dock="Right" Text="Ctrl+K · paleta poleceń" Style="{StaticResource SxMuted}" VerticalAlignment="Center"/>

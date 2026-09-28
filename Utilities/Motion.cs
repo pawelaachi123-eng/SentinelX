@@ -284,4 +284,49 @@ public static class Motion
         };
     }
 
+    // ------------------------------------------------- wejście kafelka (0.99 · NOC)
+    /// <summary>Wejście kafelka (metryki, kafelek statusu): fade + krótki wjazd + skala.</summary>
+    public static readonly DependencyProperty TileInProperty = DependencyProperty.RegisterAttached(
+        "TileIn", typeof(bool), typeof(Motion), new PropertyMetadata(false, OnTileInChanged));
+    public static void SetTileIn(DependencyObject d, bool value) => d.SetValue(TileInProperty, value);
+    public static bool GetTileIn(DependencyObject d) => (bool)d.GetValue(TileInProperty);
+
+    private static void OnTileInChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (d is not FrameworkElement element) return;
+        element.Loaded -= OnTileInLoaded;
+        if (e.NewValue is true) element.Loaded += OnTileInLoaded;
+    }
+
+    private static void OnTileInLoaded(object sender, RoutedEventArgs args)
+    {
+        if (sender is not FrameworkElement element) return;
+        element.Loaded -= OnTileInLoaded;
+        EnsureTransform(element);
+        if (!AnimationsOn) { element.Opacity = 1; return; }
+        Board("SxTileIn")?.Begin(element);
+    }
+
+    // ------------------------------------------------- unszanie dekoracji (0.99 · NOC)
+    /// <summary>Ciągłe, delikatne unszanie (herb, ornamenty) — tylko gdy animacje włączone.</summary>
+    public static readonly DependencyProperty FloatProperty = DependencyProperty.RegisterAttached(
+        "Float", typeof(bool), typeof(Motion), new PropertyMetadata(false, OnFloatChanged));
+    public static void SetFloat(DependencyObject d, bool value) => d.SetValue(FloatProperty, value);
+    public static bool GetFloat(DependencyObject d) => (bool)d.GetValue(FloatProperty);
+
+    private static void OnFloatChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (d is not FrameworkElement element) return;
+        element.Loaded -= OnFloatLoaded;
+        if (e.NewValue is true) element.Loaded += OnFloatLoaded;
+    }
+
+    private static void OnFloatLoaded(object sender, RoutedEventArgs args)
+    {
+        if (sender is not FrameworkElement element) return;
+        element.Loaded -= OnFloatLoaded;
+        EnsureTransform(element);
+        if (AnimationsOn) Board("SxBob")?.Begin(element);
+    }
+
 }
