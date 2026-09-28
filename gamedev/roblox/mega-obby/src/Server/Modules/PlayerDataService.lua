@@ -195,6 +195,13 @@ function PlayerDataService.AddCoins(player, amount: number, reason: string?): nu
 	if deps.PetService then
 		multiplier = multiplier * deps.PetService.GetCoinMultiplier(player)
 	end
+	if deps.BoostService then
+		multiplier = multiplier * deps.BoostService.PersonalMultiplier(data)
+		multiplier = multiplier * deps.BoostService.GlobalMultiplier()
+	end
+	if deps.GroupBonusService and deps.GroupBonusService.IsMember(player) then
+		multiplier = multiplier * (1 + deps.Config.Group.BonusPercent / 100)
+	end
 	local granted = math.floor(amount * multiplier + 0.5)
 	data.Coins = data.Coins + granted
 	local stats = player:FindFirstChild("leaderstats")
@@ -219,12 +226,14 @@ function PlayerDataService.TrySpend(player, amount: number): boolean
 		return false
 	end
 	data.Coins = data.Coins - amount
+	data.Stats.SpentTotal = (data.Stats.SpentTotal or 0) + amount
 	local stats = player:FindFirstChild("leaderstats")
 	local coinsValue = stats and stats:FindFirstChild("Monety")
 	if coinsValue then
 		coinsValue.Value = data.Coins
 	end
 	PlayerDataService._deps.Net:SendTo(player, "StatChanged", "Coins", data.Coins)
+	PlayerDataService._deps.EventBus.CoinsSpent:Fire(player, amount)
 	scheduleSnapshot(player)
 	return true
 end
