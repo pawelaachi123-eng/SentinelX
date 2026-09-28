@@ -2,7 +2,7 @@
 
 To nie jest „gra obby". To **generator gier**: jedna linijka w `GameSpec.lua`
 wybiera gatunek, a serwer buduje CAŁĄ grę od zera — świat, pętlę rozgrywki,
-sklep, questa i ekonomię. Obby to tylko jeden z sześciu gatunków.
+sklep, questa i ekonomię. Obby to tylko jeden z DZIEWIĘCIU gatunków.
 
 ## Jak wygrać inną grę (60 sekund)
 
@@ -29,6 +29,9 @@ goniącym potworem.
 | `horror` | przetrwanie | **ciemny budynek** z losowym labiryntem (ten sam seed dla wszystkich), latarka z baterią, **3 bezpieczniki**, otwierane drzwi, **goniący potwór** (przyspiesza po każdej ucieczce) |
 | `shooter` | strzelanka, fps | arena z osłonami, **6 ruchomych celów**, strzał = **raycast na serwerze** (cooldown/zasięg z ulepszeń), statystyki |
 | `wyscigi` | racing, samochody | **tor owalny**, 8 checkpointów w kolejności, okrążenia z nagrodami, doładowania prędkości, stałe ulepszenie |
+| `biegacz` | bieg, runner, dystans | **endless runner**: tor z seeda (ściany z lukami, przyspieszacze, monety), kamienie milowe co 100 studów, rekord dystansu, ulepszenia mnożnika i prędkości |
+| `farma` | rolnik, sadzenie, ogród | **12 działek** (4 premium), skrzynia nasion, uprawy rosną w czasie serwera, zbiór = monety (nasiono wraca), ulepszenia wzrostu/wartości |
+| `fale` | obrona, zombie, wave, kryształ | **obrona kryształu**: fale wrogów rosną co rundę, zabijanie dotykiem, bonus za oczyszczoną falę, pancerz kryształu, spowolnienia |
 
 W SentinelX nie musisz nawet znać pliku: wpisz w czacie
 **`roblox wygeneruj: tycoon pizzeria`** — rozpozna gatunek i poda gotowy

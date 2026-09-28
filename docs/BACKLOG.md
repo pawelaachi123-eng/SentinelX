@@ -334,6 +334,11 @@ Stan na 2026-09-27 (0.97). Zasada: każda pojedyncza pozycja znika z listy dopie
 - **§9–10 Media** (`MediaVisionToolbox.cs`): kontrast WCAG, PPI, proporcje, bitrate, audio, tempo, dB.
 - **§7/§11/§13 dokładki** (w `ProductivityToolbox.cs`): jezyk, i18n, webhook, token bucket, retry plan,
   sesje, koszt spotkania, godziny pracy.
+- **RÓŻNORODNOŚĆ (0.99)**: 9 gatunków generatora (+biegacz: endless runner z rekordem
+  dystansu; +farma: nasiona/uprawy/zbiory z działkami premium; +fale: obrona kryształu
+  przed rosnącymi falami), trzecie jajko wulkaniczne (6 zwierzaków), ślady toxic/cyber,
+  LOSOWANE eventy globalne (x3/x5/dar), nagrody dzienne ze spinami i zwierzakiem,
+  +3 questa. Regresja: VarietyRegression (42. zestaw).
 - **MONETYZACJA PRO (0.99, „żeby zarobić”)**: 7 usług — BoostService (x2 osobisty
   + globalne eventy x3 co 15 min, wpięte w AddCoins), SpinService (darmowy dzienny,
   JAWNE szanse — zgodność Roblox), OfferService (starter 72 h / mega 7 dni, realny

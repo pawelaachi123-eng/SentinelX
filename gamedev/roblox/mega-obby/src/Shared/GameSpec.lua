@@ -11,8 +11,12 @@
 --   "horror"     → ciemny budynek, latarka z baterią, 3 bezpieczniki, potwór
 --   "shooter"    → arena, strzelanie do celów, szybkostrzelność i zasięg
 --   "wyscigi"    → tor owalny, checkpointy, okrążenia, doładowania prędkości
+--   "biegacz"    → endless runner: tor z przeszkodami, rekord dystansu, kamienie milowe
+--   "farma"      → nasiona, uprawy rosnące w czasie, zbiory = monety, działki premium
+--   "fale"       → broń kryształu przed falami wrogów (fale rosną, bonus za obronę)
 -- Aliasy też działają: "clicker", "biznes", "fabryka", "przetrwanie",
--- "strzelanka", "fps", "racing", "samochody", "parkour", "przeszkody".
+-- "strzelanka", "fps", "racing", "samochody", "parkour", "przeszkody",
+-- "bieg", "runner", "rolnik", "sadzenie", "ogrod", "wave", "obrona", "zombie".
 -- ============================================================================
 
 local GameSpec = {}

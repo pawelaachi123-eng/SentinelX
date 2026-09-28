@@ -28,6 +28,9 @@ local GENRE_MODULES = {
 	horror = "HorrorGenre",
 	shooter = "ShooterGenre",
 	wyscigi = "RacingGenre",
+	biegacz = "BiegaczGenre",
+	farma = "FarmaGenre",
+	fale = "FaleGenre",
 }
 
 Forge.GenreAliases = {
@@ -37,6 +40,9 @@ Forge.GenreAliases = {
 	strzelanka = "shooter", fps = "shooter", strzelanie = "shooter",
 	wyscig = "wyscigi", racing = "wyscigi", samochody = "wyscigi", tor = "wyscigi",
 	parkour = "obby", przeszkody = "obby",
+	bieg = "biegacz", runner = "biegacz", bieganie = "biegacz", dystans = "biegacz",
+	farm = "farma", rolnik = "farma", sadzenie = "farma", ogrod = "farma", plony = "farma",
+	wave = "fale", obrona = "fale", zombie = "fale", krysztal = "fale",
 }
 
 -- Klasyczna ścieżka Mega Obby — kolejność bez zmian + nowe usługi monetyzacji PRO
@@ -168,7 +174,7 @@ function Forge.Run(deps)
 		return runObby(deps)
 	end
 	if not moduleName then
-		warn("[Forge] Nie znam gatunku „" .. tostring(spec.Genre) .. "”. Dostępne: obby, symulator, tycoon, horror, shooter, wyscigi. Wracam do obby.")
+		warn("[Forge] Nie znam gatunku „" .. tostring(spec.Genre) .. "”. Dostępne: obby, symulator, tycoon, horror, shooter, wyscigi, biegacz, farma, fale. Wracam do obby.")
 		return runObby(deps)
 	end
 	return runGenre(deps, genreKey, moduleName)

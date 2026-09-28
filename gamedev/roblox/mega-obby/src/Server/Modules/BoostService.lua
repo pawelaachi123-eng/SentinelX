@@ -82,19 +82,29 @@ function BoostService.Start(depsIn)
 	deps = depsIn
 	config = deps.Config
 
-	-- pętla globalnych eventów
+	-- pętla globalnych eventów: każdy jest LOSOWANY z Rotations (x3 monety, x5 krótko, dar dla wszystkich)
 	task.spawn(function()
 		while true do
 			task.wait(config.GlobalBoost.IntervalSeconds)
-			globalUntil = os.time() + config.GlobalBoost.DurationSeconds
-			deps.Net:SendAll("Notify", "success",
-				"🔥 GLOBALNY EVENT: WSZYSTKIE MONETY x" .. config.GlobalBoost.Multiplier
-				.. " przez " .. math.floor(config.GlobalBoost.DurationSeconds / 60) .. " minuty! WOŁAJ ZNAJOMYCH!")
+			local picked = deps.Util.WeightedPick(config.GlobalBoost.Rotations, Random.new(os.time()))
+			if picked.kind == "coins" then
+				activeMultiplier = picked.multiplier
+				globalUntil = os.time() + picked.duration
+				deps.Net:SendAll("Notify", "success",
+					"🔥 GLOBALNY EVENT: WSZYSTKIE MONETY x" .. picked.multiplier
+					.. " przez " .. math.floor(picked.duration / 60) .. " min! WOŁAJ ZNAJOMYCH!")
+			elseif picked.kind == "gift" then
+				for _, player in ipairs(Players:GetPlayers()) do
+					deps.PlayerDataService.AddCoins(player, picked.amount, "dar eventu")
+				end
+				deps.Net:SendAll("Notify", "success",
+					"🎁 DAR EVENTU: +" .. picked.amount .. " monet dla KAŻDEGO online!")
+			end
 		end
 	end)
 
-	print("[MegaObby] BoostService gotowy — globalne eventy co "
-		.. config.GlobalBoost.IntervalSeconds .. " s (x" .. config.GlobalBoost.Multiplier .. ").")
+	print("[MegaObby] BoostService gotowy — eventy losowane co "
+		.. config.GlobalBoost.IntervalSeconds .. " s (rodzajów: " .. #config.GlobalBoost.Rotations .. ").")
 end
 
 return BoostService

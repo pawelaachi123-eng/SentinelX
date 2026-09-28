@@ -93,6 +93,8 @@ GameConfig.Trails = {
 	{ id = "trail_shadow",  name = "Cień",           price = 2000, colors = { { 30, 30, 40 }, { 80, 40, 120 } } },
 	{ id = "trail_stardust",name = "Gwiezdny pył",   price = 2500, colors = { { 255, 255, 200 }, { 200, 160, 255 }, { 255, 255, 255 } } },
 	{ id = "trail_gold",    name = "Złoty (VIP)",    price = 0,    vipOnly = true, colors = { { 255, 215, 0 }, { 255, 240, 150 } } },
+	{ id = "trail_toxic",   name = "Toksyczny",      price = 2200, colors = { { 120, 255, 60 }, { 40, 160, 30 } } },
+	{ id = "trail_cyber",   name = "Cyberpunk",      price = 3000, colors = { { 255, 40, 180 }, { 40, 220, 255 }, { 120, 40, 255 } } },
 }
 
 -- ————————————————————————————————————————————————
@@ -121,6 +123,17 @@ GameConfig.Eggs = {
 			{ id = "pet_jednorożec", name = "Jednorożec", rarity = "Epicki",     weight = 12, bonus = 1.25, magnetRadius = 10, color = { 255, 170, 230 } },
 			{ id = "pet_feniks",  name = "Feniks",        rarity = "Epicki",     weight = 10, bonus = 1.28, magnetRadius = 10, color = { 255, 120, 0 } },
 			{ id = "pet_golem",   name = "Golem Kodu",    rarity = "Legendarny", weight = 4,  bonus = 1.45, magnetRadius = 14, color = { 40, 200, 120 } },
+		},
+	},
+	{
+		id = "egg_wulkan", name = "Wulkaniczne Jajko", price = 6000, currency = "Coins",
+		pets = {
+			{ id = "pet_osiemnastka", name = "Płonący Krab",  rarity = "Częsty",     weight = 30, bonus = 1.12, magnetRadius = 4,  color = { 255, 100, 40 } },
+			{ id = "pet_popiol",  name = "Duch Popiołu",      rarity = "Częsty",     weight = 26, bonus = 1.14, magnetRadius = 6,  color = { 130, 120, 120 } },
+			{ id = "pet_bazalt",  name = "Bazaltowy Wilk",    rarity = "Rzadki",     weight = 20, bonus = 1.20, magnetRadius = 8,  color = { 60, 55, 60 } },
+			{ id = "pet_lawa",    name = "Salamandra Lawy",   rarity = "Rzadki",     weight = 14, bonus = 1.22, magnetRadius = 9,  color = { 255, 150, 0 } },
+			{ id = "pet_smokognia", name = "Smok Ognia",      rarity = "Epicki",     weight = 7,  bonus = 1.32, magnetRadius = 12, color = { 255, 60, 0 } },
+			{ id = "pet_fenikspro", name = "Protopan Feniks", rarity = "Legendarny", weight = 3,  bonus = 1.55, magnetRadius = 16, color = { 255, 220, 60 } },
 		},
 	},
 }
@@ -155,6 +168,9 @@ GameConfig.QuestPool = {
 	{ id = "q_stages_15",  type = "stages",   target = 15,  reward = 1800, desc = "Zalicz 15 nowych etapów" },
 	{ id = "q_time_15",    type = "playtime", target = 15,  reward = 200,  desc = "Zagraj 15 minut" },
 	{ id = "q_time_40",    type = "playtime", target = 40,  reward = 500,  desc = "Zagraj 40 minut" },
+	{ id = "q_coins_1500", type = "coins",    target = 1500, reward = 3000, desc = "Zbierz 1 500 monet" },
+	{ id = "q_time_90",    type = "playtime", target = 90,  reward = 1100, desc = "Zagraj 90 minut" },
+	{ id = "q_stages_30",  type = "stages",   target = 30,  reward = 3600, desc = "Zalicz 30 nowych etapów" },
 }
 GameConfig.DailyQuestCount = 3
 
@@ -162,11 +178,11 @@ GameConfig.DailyQuestCount = 3
 GameConfig.DailyRewards = {
 	{ day = 1, coins = 150 },
 	{ day = 2, coins = 250 },
-	{ day = 3, coins = 400 },
+	{ day = 3, coins = 400, spins = 1 },
 	{ day = 4, coins = 600 },
-	{ day = 5, coins = 850 },
+	{ day = 5, coins = 850, spins = 1 },
 	{ day = 6, coins = 1200 },
-	{ day = 7, coins = 2000 },
+	{ day = 7, coins = 2000, spins = 2, pet = true },
 }
 
 -- ————————————————————————————————————————————————
@@ -254,9 +270,12 @@ GameConfig.Offline = {
 GameConfig.Group = { Id = 0, BonusPercent = 10 } -- 0 = wyłączone
 
 GameConfig.GlobalBoost = {
-	IntervalSeconds = 900, -- co 15 min event serwerowy
-	DurationSeconds = 180, -- przez 3 minuty
-	Multiplier = 3,
+	IntervalSeconds = 900, -- co 15 min losowany event serwerowy
+	Rotations = {
+		{ kind = "coins", multiplier = 3, duration = 180, weight = 50 },
+		{ kind = "coins", multiplier = 5, duration = 60, weight = 25 },
+		{ kind = "gift", amount = 250, weight = 25 },
+	},
 }
 
 GameConfig.Onboarding = {

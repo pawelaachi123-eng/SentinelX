@@ -34,6 +34,8 @@ function DailyRewardService.InfoOf(player)
 		Streak = data.Daily.Streak,
 		CanClaim = canClaim,
 		NextReward = config.DailyRewards[nextIndex].coins,
+		NextSpins = config.DailyRewards[nextIndex].spins or 0,
+		NextPet = config.DailyRewards[nextIndex].pet == true,
 		Day = nextIndex,
 	}
 end
@@ -56,9 +58,21 @@ local function handleClaimDaily(player)
 	local index = ((data.Daily.Streak - 1) % #config.DailyRewards) + 1
 	local reward = config.DailyRewards[index]
 	deps.PlayerDataService.AddCoins(player, reward.coins, "nagroda dnia " .. reward.day)
+	local extras = {}
+	if reward.spins and deps.SpinService then
+		for _ = 1, reward.spins do
+			deps.SpinService.GrantSpin(player)
+		end
+		table.insert(extras, "+" .. reward.spins .. " spin")
+	end
+	if reward.pet and deps.PetService and deps.PetService.GrantEggRoll then
+		local _, message = deps.PetService.GrantEggRoll(player, "egg_basic")
+		table.insert(extras, "zwierzak: " .. tostring(message))
+	end
 	deps.PlayerDataService.PushSnapshot(player)
 	return true, "Dzień " .. reward.day .. "/7: +" .. deps.Util.Format.Number(reward.coins)
 		.. " monet! Streak: " .. data.Daily.Streak .. "."
+		.. (#extras > 0 and (" EXTRA: " .. table.concat(extras, ", ")) or "")
 end
 
 function DailyRewardService.Start(depsIn)

@@ -317,6 +317,8 @@ local function showDailyPopup()
 	info.TextWrapped = true
 	info.TextColor3 = Color3.fromRGB(200, 210, 230)
 	info.Text = "Seria: " .. (daily.Streak or 0) .. " dni · dzień " .. (daily.Day or 1) .. "/7\nNagroda: " .. (daily.NextReward or 0) .. " monet"
+		.. (((daily.NextSpins or 0) > 0) and (" + " .. daily.NextSpins .. " spinów") or "")
+		.. (daily.NextPet == true and " + zwierzak!" or "")
 	info.Parent = panel
 
 	local claim = Instance.new("TextButton")

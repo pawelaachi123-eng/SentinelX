@@ -72,6 +72,11 @@ public static class GameDevToolbox
             || flat.Contains("broni") || flat.Contains("arena")) return ("shooter", "STRZELANKA (arena, cele, szybkostrzelność)");
         if (flat.Contains("wyscig") || flat.Contains("racing") || flat.Contains("samochod")
             || flat.Contains("tor wyscig") || flat.Contains("sciaganie")) return ("wyscigi", "WYŚCIGI (tor, checkpointy, okrążenia)");
+        if (flat.Contains("bieg") || flat.Contains("runner") || flat.Contains("dystans")) return ("biegacz", "BIEGACZ (endless runner: przeszkody, rekord dystansu)");
+        if (flat.Contains("farma") || flat.Contains("rolnik") || flat.Contains("sadzenie")
+            || flat.Contains("ogrod") || flat.Contains("plony")) return ("farma", "FARMA (nasiona, uprawy, zbiory)");
+        if (flat.Contains("fale") || flat.Contains("wave") || flat.Contains("obrona")
+            || flat.Contains("zombie") || flat.Contains("krysztal")) return ("fale", "PRZETRWANIE FAL (broń kryształu)");
         if (flat.Contains("obby") || flat.Contains("parkour") || flat.Contains("przeszkod")) return ("obby", "OBBY (120 etapów toru przeszkód)");
         return null;
     }
@@ -87,6 +92,7 @@ public static class GameDevToolbox
             return "GENERATOR GRY (GameForge)\n" +
                 "Nie zgaduję gatunku z opisu „" + name + "” — nie zmyślam.\n" +
                 "Podaj jeden z gatunków w opisie: symulator (klikaj/narodziny) · tycoon (fabryka/biznes/pizzeria) · " +
+                "biegacz (bieg/runner/dystans) · farma (rolnik/sadzenie/ogrod) · fale (obrona/zombie/wave/kryształ) · " +
                 "horror (potwór/ucieczka/przetrwanie) · strzelanka (fps/arena/broni) · wyścigi (samochody/tor/racing) · obby (parkour/przeszkody).\n" +
                 "Przykład: „roblox wygeneruj: symulator treningu ninja”.";
         }
@@ -97,6 +103,9 @@ public static class GameDevToolbox
             "horror" => "ciemny budynek z losowym labiryntem (ten sam seed dla wszystkich), latarka z baterią, 3 bezpieczniki, otwierane drzwi, GONIĄCY POTWÓR (przyspiesza po każdej ucieczce)",
             "shooter" => "arena z osłonami, 6 ruchomych celów, strzał = raycast NA SERWERZE (cooldown i zasięg z ulepszeń), statystyki zestrzeleń",
             "wyscigi" => "tor owalny z 8 checkpointów w kolejności, okrążenia z nagrodami, doładowania prędkości, stałe ulepszenie prędkości",
+            "biegacz" => "długi tor generowany z seeda (ściany z lukami, przyspieszacze, monety), dystans i kamienie milowe liczone na serwerze, rekord w danych, ulepszenia mnożnika i prędkości",
+            "farma" => "12 działek (4 premium w sklepie), skrzynia nasion, uprawy rosnące w czasie serwera, zbiór = monety + nasiono wraca, ulepszenia wzrostu i wartości",
+            "fale" => "kryształ w centrum areny, fale wrogów rosnące co rundę, zabijanie dotykiem z cooldownem, bonus za oczyszczoną falę, pancerz kryształu i spowolnienia",
             _ => "klasyczny tor 120 etapów na 6 wyspach (pełny Mega Obby)",
         };
         return "GENERATOR GRY (GameForge) — „" + name + "”\n" +

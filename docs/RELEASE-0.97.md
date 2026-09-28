@@ -414,6 +414,13 @@ usuwanie, dobór do zadania i licencje doszły w drugim przyroście — sekcja 1
   SEZON — battle pass 30 poziomów z torem premium, zarobki offline z podwojeniem raz/dobę,
   globalne eventy x3 co 15 minut, bonus grupy +10%, onboarding 5 kroków. Wszystko przez
   ten sam idempotentny ProcessReceipt; playbook: `gamedev/roblox/mega-obby/README-MONEY.md`.
+- **Różnorodność (0.99)**: generator gier ma teraz **9 gatunków** — doszły `biegacz`
+  (endless runner z rekordem dystansu), `farma` (uprawy rosnące w czasie serwera,
+  działki premium) i `fale` (obrona kryształu przed rosnącymi falami wrogów). Do tego
+  trzecie jajko (legendarny Protopan Feniks ×1,55), ślady toxic/cyberpunk, **losowane**
+  globalne eventy (x3 długie / x5 krótkie / dar dla wszystkich online) i nagrody
+  dzienne ze spinami (dzień 3/5) oraz zwierzakiem (dzień 7). Razem **42 zestawy**
+  regresji (doszła VarietyRegression).
 
 ## 18. Zestawy regresji po tym przyroście
 
