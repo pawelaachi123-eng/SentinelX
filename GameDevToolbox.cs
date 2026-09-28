@@ -77,6 +77,8 @@ public static class GameDevToolbox
             || flat.Contains("ogrod") || flat.Contains("plony")) return ("farma", "FARMA (nasiona, uprawy, zbiory)");
         if (flat.Contains("fale") || flat.Contains("wave") || flat.Contains("obrona")
             || flat.Contains("zombie") || flat.Contains("krysztal")) return ("fale", "PRZETRWANIE FAL (broń kryształu)");
+        if (flat.Contains("ryb") || flat.Contains("lowi") || flat.Contains("wedk") || flat.Contains("fish"))
+            return ("ryby", "RYBY (wędkowanie: rzadkie ryby, indeks, pogoda)");
         if (flat.Contains("obby") || flat.Contains("parkour") || flat.Contains("przeszkod")) return ("obby", "OBBY (120 etapów toru przeszkód)");
         return null;
     }
@@ -92,7 +94,7 @@ public static class GameDevToolbox
             return "GENERATOR GRY (GameForge)\n" +
                 "Nie zgaduję gatunku z opisu „" + name + "” — nie zmyślam.\n" +
                 "Podaj jeden z gatunków w opisie: symulator (klikaj/narodziny) · tycoon (fabryka/biznes/pizzeria) · " +
-                "biegacz (bieg/runner/dystans) · farma (rolnik/sadzenie/ogrod) · fale (obrona/zombie/wave/kryształ) · " +
+                "biegacz (bieg/runner/dystans) · farma (rolnik/sadzenie/ogrod) · fale (obrona/zombie/wave/kryształ) · ryby (wędkowanie/łowisko/fish) · " +
                 "horror (potwór/ucieczka/przetrwanie) · strzelanka (fps/arena/broni) · wyścigi (samochody/tor/racing) · obby (parkour/przeszkody).\n" +
                 "Przykład: „roblox wygeneruj: symulator treningu ninja”.";
         }
@@ -106,6 +108,7 @@ public static class GameDevToolbox
             "biegacz" => "długi tor generowany z seeda (ściany z lukami, przyspieszacze, monety), dystans i kamienie milowe liczone na serwerze, rekord w danych, ulepszenia mnożnika i prędkości",
             "farma" => "12 działek (4 premium w sklepie), skrzynia nasion, uprawy rosnące w czasie serwera, zbiór = monety + nasiono wraca, ulepszenia wzrostu i wartości",
             "fale" => "kryształ w centrum areny, fale wrogów rosnące co rundę, zabijanie dotykiem z cooldownem, bonus za oczyszczoną falę, pancerz kryształu i spowolnienia",
+            "ryby" => "jezioro z pomostem: brania losowane wagami rzadkości (wspólne → legendarna), mutacje błyszczące/ogromne, indeks ryb z nagrodami za komplet, pogoda wzmacniająca szczęście, sklep z wędziskiem, przynętą i łódką na głębiny",
             _ => "klasyczny tor 120 etapów na 6 wyspach (pełny Mega Obby)",
         };
         return "GENERATOR GRY (GameForge) — „" + name + "”\n" +

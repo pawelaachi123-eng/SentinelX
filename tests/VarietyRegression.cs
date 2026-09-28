@@ -105,7 +105,7 @@ internal static class VarietyRegression
         // ————— dokumentacja —————
         string forgeReadme = Read("README-FORGE.md");
         Check(forgeReadme.Contains("`biegacz`") && forgeReadme.Contains("`farma`") && forgeReadme.Contains("`fale`")
-            && forgeReadme.Contains("DZIEWIĘCIU"),
+            && forgeReadme.Contains("DZIESIĘCIU"),
             "README-FORGE.md: 9 gatunków w tabeli");
         string spec = Read("src/Shared/GameSpec.lua");
         Check(spec.Contains("biegacz") && spec.Contains("farma") && spec.Contains("fale"),

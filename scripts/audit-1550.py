@@ -49,7 +49,7 @@ MODULES = [
     ("GameDevToolbox.cs", "—", "Game Dev (Roblox) — nowy obszar", "poza 20 sekcjami listy"),
     ("gamedev/ (pełna gra + Blender)", "—", "Mega Obby: 120 etapów z kodu + modele/animacje", "poza 20 sekcjami listy"),
     ("gamedev/ (GameForge)", "—", "Generator gier: 6 gatunków z jednej linijki GameSpec", "poza 20 sekcjami listy"),
-    ("gamedev/ (różnorodność)", "—", "9 gatunków, 3. jajko, losowane eventy, bogatsze nagrody", "poza 20 sekcjami listy"),
+    ("gamedev/ (różnorodność)", "—", "10 gatunków (z wędkowaniem Fisch-style), zbiory-indeks, osiągnięcia, pogoda, 3. jajko, losowane eventy", "poza 20 sekcjami listy"),
 ]
 
 # Sekcje bez modułu obsługi poleceń — z jawnym powodem, żeby brak był widoczny.

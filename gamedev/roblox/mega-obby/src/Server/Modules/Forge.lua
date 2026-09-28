@@ -31,6 +31,7 @@ local GENRE_MODULES = {
 	biegacz = "BiegaczGenre",
 	farma = "FarmaGenre",
 	fale = "FaleGenre",
+	ryby = "RybyGenre",
 }
 
 Forge.GenreAliases = {
@@ -43,12 +44,14 @@ Forge.GenreAliases = {
 	bieg = "biegacz", runner = "biegacz", bieganie = "biegacz", dystans = "biegacz",
 	farm = "farma", rolnik = "farma", sadzenie = "farma", ogrod = "farma", plony = "farma",
 	wave = "fale", obrona = "fale", zombie = "fale", krysztal = "fale",
+	ryby = "ryby", fish = "ryby", wedkowanie = "ryby", lowienie = "ryby", wedka = "ryby",
 }
 
 -- Klasyczna ścieżka Mega Obby — kolejność bez zmian + nowe usługi monetyzacji PRO
 local OBBY_ORDER = {
 	"PlayerDataService", "BoostService", "GroupBonusService", "OnboardingService",
 	"SpinService", "OfferService", "BattlePassService", "OfflineEarningsService",
+	"CollectionService", "AchievementService", "WeatherService",
 	"EffectsService", "WorldBuilder", "StageService", "CoinService",
 	"PetService", "TrailService", "MonetizationService", "QuestService", "DailyRewardService",
 	"LeaderboardService", "AntiCheatService", "AdminService", "AmbientService",
@@ -58,6 +61,7 @@ local OBBY_ORDER = {
 local COMMON_ORDER = {
 	"PlayerDataService", "BoostService", "GroupBonusService", "OnboardingService",
 	"SpinService", "OfferService", "BattlePassService", "OfflineEarningsService",
+	"CollectionService", "AchievementService", "WeatherService",
 	"EffectsService", "TrailService", "ForgeShopService",
 	"MonetizationService", "QuestService", "DailyRewardService", "LeaderboardService",
 	"AntiCheatService", "AdminService",
@@ -174,7 +178,7 @@ function Forge.Run(deps)
 		return runObby(deps)
 	end
 	if not moduleName then
-		warn("[Forge] Nie znam gatunku „" .. tostring(spec.Genre) .. "”. Dostępne: obby, symulator, tycoon, horror, shooter, wyscigi, biegacz, farma, fale. Wracam do obby.")
+		warn("[Forge] Nie znam gatunku „" .. tostring(spec.Genre) .. "”. Dostępne: obby, symulator, tycoon, horror, shooter, wyscigi, biegacz, farma, fale, ryby. Wracam do obby.")
 		return runObby(deps)
 	end
 	return runGenre(deps, genreKey, moduleName)

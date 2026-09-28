@@ -315,4 +315,67 @@ function GameConfig.IslandOf(stage: number)
 	return GameConfig.Islands[#GameConfig.Islands]
 end
 
+-- ============================================================================
+-- RYBY (gatunek „ryby”): wagi rzadkości, gatunki ryb, mutacje, głębiny
+-- ============================================================================
+GameConfig.Fish = {
+	WaitSeconds = { 3, 8 },
+	RarityWeights = {
+		{ name = "Wspólna", weight = 58 },
+		{ name = "Niezwykła", weight = 25 },
+		{ name = "Rzadka", weight = 11 },
+		{ name = "Epicka", weight = 4.5 },
+		{ name = "Legendarna", weight = 1.5 },
+	},
+	Species = {
+		{ name = "Płoć", rarity = "Wspólna", value = 6 },
+		{ name = "Karp Lustrzany", rarity = "Wspólna", value = 9 },
+		{ name = "Leszcz", rarity = "Wspólna", value = 12 },
+		{ name = "Szczupak", rarity = "Niezwykła", value = 22 },
+		{ name = "Węgorz", rarity = "Niezwykła", value = 30 },
+		{ name = "Sieja Królewska", rarity = "Rzadka", value = 65 },
+		{ name = "Sum Olbrzymi", rarity = "Rzadka", value = 85 },
+		{ name = "Marlin Szafirowy", rarity = "Epicka", value = 180 },
+		{ name = "Rekin Głębin", rarity = "Epicka", value = 240 },
+		{ name = "Złoty Koi", rarity = "Legendarna", value = 520 },
+		{ name = "Prastary Król Stawu", rarity = "Legendarna", value = 800 },
+		{ name = "Upiór Odległych Wód", rarity = "Legendarna", value = 1200, deep = true },
+	},
+	DeepBonus = 1.6,
+	Mutations = {
+		{ name = "Błyszczący", multiplier = 2, weight = 5 },
+		{ name = "Ogromny", multiplier = 3, weight = 2 },
+	},
+}
+
+-- POGODA: rotuje na serwerze; szczęście wzmacnia rzadkie ryby
+GameConfig.Weather = {
+	RotationSeconds = 180,
+	Types = {
+		{ id = "slonko", name = "☀️ Słonecznie", luck = 1, weight = 45 },
+		{ id = "deszcz", name = "🌧️ Deszcz", luck = 1.25, weight = 30 },
+		{ id = "burza", name = "⛈️ Burza", luck = 1.5, weight = 20 },
+		{ id = "tecza", name = "🌈 Tęcza", luck = 2, weight = 5 },
+	},
+}
+
+-- ZBIORY (indeks): odkrycie wpisu + nagroda za KOMPLET zestawu
+GameConfig.Collections = {
+	{ id = "ryby_staw", name = "Indeks: Staw", reward = 900,
+		entries = { "Płoć", "Karp Lustrzany", "Leszcz", "Szczupak", "Węgorz", "Sieja Królewska", "Sum Olbrzymi" } },
+	{ id = "ryby_glebiny", name = "Indeks: Głębiny", reward = 2500,
+		entries = { "Marlin Szafirowy", "Rekin Głębin", "Złoty Koi", "Prastary Król Stawu", "Upiór Odległych Wód" } },
+}
+
+-- OSIĄGNIĘCIA: progi statystyk nagradzane raz — działają w KAŻDYM gatunku
+GameConfig.Achievements = {
+	{ id = "first_catch", stat = "Caught", threshold = 1, reward = 120, desc = "Złów pierwszą rybę" },
+	{ id = "angler_50", stat = "Caught", threshold = 50, reward = 800, desc = "Złów 50 ryb" },
+	{ id = "record_500", stat = "BestCatch", threshold = 500, reward = 1000, desc = "Złów rybę wartą 500+" },
+	{ id = "runner_1500", stat = "BestDistance", threshold = 1500, reward = 900, desc = "Przebiegnij 1500 studów" },
+	{ id = "farmer_100", stat = "Harvested", threshold = 100, reward = 850, desc = "Zbierz 100 plonów" },
+	{ id = "defender_10", stat = "BestWave", threshold = 10, reward = 900, desc = "Dotrzyj do fali 10" },
+	{ id = "stages_30", stat = "Stages", threshold = 30, reward = 500, desc = "Ukończ 30 etapów" },
+}
+
 return GameConfig

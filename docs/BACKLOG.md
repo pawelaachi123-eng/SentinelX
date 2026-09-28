@@ -334,6 +334,12 @@ Stan na 2026-09-27 (0.97). Zasada: każda pojedyncza pozycja znika z listy dopie
 - **§9–10 Media** (`MediaVisionToolbox.cs`): kontrast WCAG, PPI, proporcje, bitrate, audio, tempo, dB.
 - **§7/§11/§13 dokładki** (w `ProductivityToolbox.cs`): jezyk, i18n, webhook, token bucket, retry plan,
   sesje, koszt spotkania, godziny pracy.
+- **DUŻA GRA (0.99, Fisch-style)**: gatunek `ryby` — 12 ryb w 5 rzadkościach
+  (wagi w configu), mutacje Błyszczący ×2 / Ogromny ×3, łódka na GŁĘBINY (×1,6),
+  POGODA rotująca na serwerze (szczęście do ×2, ogłaszana wszystkim), ZBIORY/INDEKS
+  (odkrycia + nagroda za komplet zestawu), OSIĄGNIĘCIA (7 progów nagradzanych raz,
+  wspólne dla wszystkich gatunków). Nowe usługi: CollectionService, AchievementService,
+  WeatherService (w OBU ścieżkach Forge). Regresja: BigGameRegression (43. zestaw).
 - **RÓŻNORODNOŚĆ (0.99)**: 9 gatunków generatora (+biegacz: endless runner z rekordem
   dystansu; +farma: nasiona/uprawy/zbiory z działkami premium; +fale: obrona kryształu
   przed rosnącymi falami), trzecie jajko wulkaniczne (6 zwierzaków), ślady toxic/cyber,

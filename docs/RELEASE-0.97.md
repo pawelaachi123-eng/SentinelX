@@ -421,6 +421,11 @@ usuwanie, dobór do zadania i licencje doszły w drugim przyroście — sekcja 1
   globalne eventy (x3 długie / x5 krótkie / dar dla wszystkich online) i nagrody
   dzienne ze spinami (dzień 3/5) oraz zwierzakiem (dzień 7). Razem **42 zestawy**
   regresji (doszła VarietyRegression).
+- **Duża gra (0.99, Fisch-style)**: **10. gatunek generatora — `ryby`**: brania
+  losowane wagami rzadkości (wspólne → legendarna, wagi jawne w configu), mutacje
+  ×2/×3, łódka na GŁĘBINY, **pogoda** rotująca na serwerze ze „szczęściem” do ×2,
+  **ZBIORY/INDEKS** z nagrodą za komplet i **OSIĄGNIĘCIA** (progi wspólne dla
+  wszystkich gatunków). **43 zestawy** regresji (doszła BigGameRegression).
 
 ## 18. Zestawy regresji po tym przyroście
 
