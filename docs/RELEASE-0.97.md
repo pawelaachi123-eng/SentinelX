@@ -421,6 +421,12 @@ usuwanie, dobór do zadania i licencje doszły w drugim przyroście — sekcja 1
   globalne eventy (x3 długie / x5 krótkie / dar dla wszystkich online) i nagrody
   dzienne ze spinami (dzień 3/5) oraz zwierzakiem (dzień 7). Razem **42 zestawy**
   regresji (doszła VarietyRegression).
+- **UI 2.0 (0.99)**: aplikacja dostała **powiadomienia toast** (UiToastHost — sprężyna,
+  stos, auto-fade, kolory z motywu) wpinane w stop awaryjny, wznowienie i przełącznik
+  WiFi, oraz **szklany pasek statusu** na dole. UI gry Roblox zbudowano **od zera** na
+  wspólnym `UiKit.lua` (glassmorphism: półprzezroczyste karty, sprężynowe animacje,
+  toasty, konfetti, licznik „goniący” monety) — HUD i sklep mają teraz lewy rail
+  zakładek, karty z uniesieniem na hover i paski postępu.
 - **Duża gra (0.99, Fisch-style)**: **10. gatunek generatora — `ryby`**: brania
   losowane wagami rzadkości (wspólne → legendarna, wagi jawne w configu), mutacje
   ×2/×3, łódka na GŁĘBINY, **pogoda** rotująca na serwerze ze „szczęściem” do ×2,

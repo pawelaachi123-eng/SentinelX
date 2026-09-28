@@ -334,6 +334,13 @@ Stan na 2026-09-27 (0.97). Zasada: każda pojedyncza pozycja znika z listy dopie
 - **§9–10 Media** (`MediaVisionToolbox.cs`): kontrast WCAG, PPI, proporcje, bitrate, audio, tempo, dB.
 - **§7/§11/§13 dokładki** (w `ProductivityToolbox.cs`): jezyk, i18n, webhook, token bucket, retry plan,
   sesje, koszt spotkania, godziny pracy.
+- **UI 2.0 (0.99)**: SentinelX — system powiadomień TOAST (UiToastHost + UiToast.Show:
+  sprężyna, stos 4 kart, klik = zamknięcie) z wpisem w shellu i szklanym paskiem
+  statusu (wersja + stan pulpitu + skrót palety); toasty na stop awaryjny/wznowienie/WiFi.
+  Roblox — od zera: `Client/UiKit.lua` (szkło/sprężyny/toasty/konfetti/count-up/shine),
+  HudController i ShopUI przebudowane na UiKit (lewy rail zakładek, karty z hoverem,
+  pasek 7 dni w nagrodzie dziennej, paski postępu questa). Wszystkie kotwice regresji
+  (ForgeBuy, SKLEP TRYBU, KOŁO FORTUNY, BoostChip, floatLabel, NextSpins…) zachowane.
 - **DUŻA GRA (0.99, Fisch-style)**: gatunek `ryby` — 12 ryb w 5 rzadkościach
   (wagi w configu), mutacje Błyszczący ×2 / Ogromny ×3, łódka na GŁĘBINY (×1,6),
   POGODA rotująca na serwerze (szczęście do ×2, ogłaszana wszystkim), ZBIORY/INDEKS

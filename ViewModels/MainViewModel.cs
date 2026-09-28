@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.Input;
 using SentinelX.Core;
 using SentinelX.Services.Actions;
 using SentinelX.Services.Desktop;
+using SentinelX.Views.Controls;
 namespace SentinelX.ViewModels;
 public sealed record NavItem(string Key, string Icon, string Label, object ViewModel);
 public partial class MainViewModel : ObservableObject, IDisposable
@@ -21,10 +22,20 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty] private bool isStopped;
     [ObservableProperty] private string desktopStatus = "";
     private readonly WebAccessService web = WebAccessService.Shared;
-    public bool WifiEnabled => web.Enabled;
+    /// <summary>0.99 · TOASTY: ważne zmiany stanu (WiFi, stop awaryjny, wznowienie)
+/// wpadają w rogu ekranu jako zwinne powiadomienie — nie tylko w sidebare.</summary>
+private static void Toast(string title, string message, ToastKind kind) => UiToast.Show(title, message, kind);
+
+public bool WifiEnabled => web.Enabled;
     public string WifiLabel => web.Enabled ? "WiFi: wł. — szukanie w sieci działa" : "WiFi: wył. — wszystko lokalnie";
     public System.Windows.Media.Brush WifiBrush => (System.Windows.Media.Brush?)System.Windows.Application.Current?.TryFindResource(web.Enabled ? "SxAccentCyan" : "SxTextSecondary") ?? System.Windows.Media.Brushes.Gray;
-    [RelayCommand] private void ToggleWifi() => web.Toggle(!web.Enabled);
+    [RelayCommand] private void ToggleWifi()
+    {
+        web.Toggle(!web.Enabled);
+        Toast("Połączenie z siecią", web.Enabled
+            ? "WiFi WŁĄCZONE — szukanie w sieci i modele zdalne działają."
+            : "WiFi WYŁĄCZONE — wszystko zostaje na tym komputerze.", ToastKind.Info);
+    }
     private void OnWebChanged() { OnPropertyChanged(nameof(WifiEnabled)); OnPropertyChanged(nameof(WifiLabel)); OnPropertyChanged(nameof(WifiBrush)); }
 
     /// <summary>0.91 · CENTRUM: every former top-level page key now lives as an icon tab inside Centrum.
@@ -88,8 +99,16 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [RelayCommand] private Task InitializeAsync() => Readiness.RefreshCommand.ExecuteAsync(null);
     private void Sync() => dispatcher.Post(() => IsStopped = engine.IsStopped);
     private void DesktopChanged() => dispatcher.Post(() => DesktopStatus = desktop.Status);
-    [RelayCommand] private void EmergencyStop() => engine.EmergencyStop();
-    [RelayCommand] private void Resume() => engine.Resume();
+    [RelayCommand] private void EmergencyStop()
+    {
+        engine.EmergencyStop();
+        Toast("STOP AWARYJNY", "Nowe akcje zablokowane, głos wyciszony. Ctrl+Shift+X lub „Wznów”, by przywrócić.", ToastKind.Error);
+    }
+    [RelayCommand] private void Resume()
+    {
+        engine.Resume();
+        Toast("Sentinel wznowiony", "Akcje i głos znów działają. Przygotowany do poleceń.", ToastKind.Success);
+    }
     [RelayCommand] private void Exit() => desktop.Exit();
     public void Dispose() { engine.Changed -= Sync; desktop.StatusChanged -= DesktopChanged; Palette.Chosen -= PaletteChosen; Readiness.OpenSectionRequested -= Navigate; commandCenter.NavigationRequested -= Navigate; Readiness.RefreshCommand.Cancel(); web.StateChanged -= OnWebChanged; }
 }
