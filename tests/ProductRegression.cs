@@ -150,7 +150,7 @@ internal static class ProductRegression
         Check(voice.StartCalls == 0 && voice.SpeakCalls == 0, "Readiness must never capture or speak.");
         var readyVm = new ReadinessViewModel(readiness);
         await readyVm.RefreshCommand.ExecuteAsync(null);
-        Check(readyVm.Checks.Count == 4, "Readiness results must reach the ViewModel.");
+        Check(readyVm.Checks.Count == 5, "Readiness results must reach the ViewModel (4 classic + trust).");
         using var cancelledProbe = new CancellationTokenSource(); cancelledProbe.Cancel();
         bool probeCancelled = false;
         try { await readiness.CheckAsync(cancelledProbe.Token); } catch (OperationCanceledException) { probeCancelled = true; }
