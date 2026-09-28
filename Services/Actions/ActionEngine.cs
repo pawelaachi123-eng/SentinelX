@@ -81,6 +81,27 @@ public sealed class ActionEngine(IIntentRouter router, SentinelToolboxService to
             record.Phase = "Sprawdzanie dowodów z narzędzi";
             record.ToolResults = capture?.Snapshot() ?? [];
             ApplyProof(record);
+            // 0.99 · NO SUCCESS = NO PASS: niezależny sąd nad dowodami. Nawet gdy
+            // narzędzie zgłosiło VERIFIED, centrum weryfikacji może sukces obalić —
+            // ślad rozumowania (PLAN → CHECK) trafia do dowodów.
+            string trace = "PLAN: " + AuditText(input) + " → CHECK: "
+                + VerificationCenter.RegisteredCount + " reguł post-kondycji";
+            var (passed, findings) = VerificationCenter.Evaluate(input, record.ActionType, record.ToolResults);
+            trace += passed ? " · ✔ wszystkie przeszły" : " · ✗ " + findings.Count + " nie przeszło";
+            record.Evidence = trace + "\n" + record.Evidence;
+            if (!passed && record.Status == ActionStatus.Verified)
+            {
+                record.Status = ActionStatus.Failed;
+                record.Error = "NO SUCCESS = NO PASS · " + string.Join(" | ", findings);
+                record.Evidence += "\n✗ " + string.Join("\n✗ ", findings);
+                response = "Nie potwierdzam sukcesu (no success = no pass): " + string.Join(" | ", findings);
+            }
+            else if (record.Status == ActionStatus.Unverified && RequestsSystemAction(input))
+            {
+                // Polecenie brzmi jak akcja systemowa, a dowodu wykonania nie ma —
+                // uczciwie mówię, że sukcesu NIE potwierdzam, zamiast go implikować.
+                response += "\n\n⚠️ NO SUCCESS = NO PASS: nie mam dowodu z narzędzia, więc NIE potwierdzam wykonania. Sformułuj wprost, np. „ile mam RAM?” albo „pokaż użycie CPU”.";
+            }
             UpdateWaitingRequests(record.ToolResults);
             return new(response, record);
         }
@@ -123,7 +144,8 @@ public sealed class ActionEngine(IIntentRouter router, SentinelToolboxService to
                 ActionStatus.WaitingPermission => "Czeka na Twoją decyzję · nic więcej nie jest wykonywane",
                 ActionStatus.Cancelled => "Przerwano · ukończone kroki nie są cofane",
                 ActionStatus.Failed => "Błąd · szczegóły i dowody poniżej",
-                _ => record.ToolResults.Count == 0 ? "Odpowiedź · bez potwierdzonej akcji systemowej" : "Zakończono · wynik wymaga sprawdzenia"
+                ActionStatus.Unverified => "NO SUCCESS = NO PASS · brak dowodu — sukcesu nie potwierdzam",
+                _ => "Odpowiedź · bez potwierdzonej akcji systemowej"
             };
             try
             {
@@ -154,6 +176,13 @@ public sealed class ActionEngine(IIntentRouter router, SentinelToolboxService to
         catch (OperationCanceledException) when (token.IsCancellationRequested) { }
         catch (Exception ex) { AppLog.Write(ex); } // telemetry must not break the execution lane
     }
+    /// <summary>Czy tekst polecenia wygląda na żądanie akcji systemowej (szczera pieczęć UNVERIFIED).</summary>
+    private static bool RequestsSystemAction(string input)
+    {
+        string[] cues = ["ile", "pokaż", "sprawdź", "zmierz", "uruchom", "otwórz", "zamknij", "zapisz", "ustaw", "wyczyść", "wyłącz", "włącz"];
+        return cues.Any(cue => input.Contains(cue, StringComparison.OrdinalIgnoreCase));
+    }
+
     private static void ApplyProof(ActionRecord task)
     {
         var results = task.ToolResults;

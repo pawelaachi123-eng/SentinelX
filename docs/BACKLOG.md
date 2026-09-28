@@ -358,6 +358,13 @@ Stan na 2026-09-27 (0.97). Zasada: każda pojedyncza pozycja znika z listy dopie
   wejście TileIn), animacje SxTileIn (kafele metryk) i SxBob (delikatne unszanie herbu),
   nowoczesny sans display (cofnięty eksperyment serif), domyślny akcent #7C6BE8.
   UiSmoke v2: sans display + zaokrąglony/pływający kafelek + nowe storyboardy w liście.
+- **NO SUCCESS = NO PASS (0.99, mózg)**: VerificationCenter (Core/Verification) —
+  niezależny sąd nad dowodami każdej akcji: obala VERIFIED bez dowodu, „pomiar” z
+  jednostką a bez liczby, werdykt z komunikatem błędu, WORKFLOW niedokończony lub
+  łączący VERIFIED+FAILED; rodziny narzędzi dopisują własne post-kondycje wg prefiksu.
+  Silnik stosuje wyrok: obalony VERIFIED → FAILED ze szczerym komunikatem, ślad
+  PLAN→CHECK trafia do dowodów, a UNVERIFIED na polecenie-systemowe dostaje pieczęć
+  „nie potwierdzam wykonania”. Regresja NoSuccessNoPassRegression (44. zestaw).
 - **DUŻA GRA (0.99, Fisch-style)**: gatunek `ryby` — 12 ryb w 5 rzadkościach
   (wagi w configu), mutacje Błyszczący ×2 / Ogromny ×3, łódka na GŁĘBINY (×1,6),
   POGODA rotująca na serwerze (szczęście do ×2, ogłaszana wszystkim), ZBIORY/INDEKS

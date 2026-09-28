@@ -436,6 +436,10 @@ usuwanie, dobór do zadania i licencje doszły w drugim przyroście — sekcja 1
   flagowy ciemny motyw na neutralnych nocnych powierzchniach z akcentem iris,
   czysty jasny motyw, **płynący szklany kafelek statusu** w rogu, wejścia kafelków
   (SxTileIn) i delikatne unszanie herbu (SxBob), nowoczesny sans; WCAG nadal PASS.
+- **No success = no pass (0.99)**: Sentinel myśli i sprawdza — każda akcja przechodzi
+  przez **VerificationCenter**: sukces bez dowodu jest OBALANY (VERIFIED → FAILED,
+  szczery komunikat), „pomiary” bez liczb nie przechodzą, sekwencje muszą być całe,
+  a ślad rozumowania (PLAN → CHECK) zapisuje się w dowodach. **44 zestaw** regresji.
 - **Duża gra (0.99, Fisch-style)**: **10. gatunek generatora — `ryby`**: brania
   losowane wagami rzadkości (wspólne → legendarna, wagi jawne w configu), mutacje
   ×2/×3, łódka na GŁĘBINY, **pogoda** rotująca na serwerze ze „szczęściem” do ×2,
