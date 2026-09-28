@@ -69,6 +69,10 @@ local function handleChat(player: Player, message: string)
 				reply(player, "Użycie: !coins 1000")
 			end
 		elseif command == "stage" then
+			if not deps.WorldBuilder or not deps.WorldBuilder.Result then
+				reply(player, "!stage działa w trybie obby — ten gatunek nie ma etapów.")
+				return
+			end
 			local stage = tonumber(argument)
 			if stage and stage >= 1 and stage <= config.TotalStages then
 				stage = math.floor(stage)
@@ -92,8 +96,12 @@ local function handleChat(player: Player, message: string)
 				reply(player, "Użycie: !stage 42")
 			end
 		elseif command == "rain" then
-			deps.CoinService.TriggerRain()
-			reply(player, "Deszcz monet odpalony w lobby.")
+			if deps.CoinService and deps.CoinService.TriggerRain then
+				deps.CoinService.TriggerRain()
+				reply(player, "Deszcz monet odpalony w lobby.")
+			else
+				reply(player, "Deszcz monet jest w trybie obby — ten gatunek ma własną ekonomię.")
+			end
 		elseif command == "announce" then
 			if argument ~= "" then
 				deps.Net:SendAll("Notify", "info", "📣 " .. player.DisplayName .. ": " .. argument)

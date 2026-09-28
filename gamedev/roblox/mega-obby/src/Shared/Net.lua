@@ -32,6 +32,9 @@ Net.FUNCTIONS = {
 	"ClaimDaily",  -- () -> ok, message
 	"ClaimQuest",  -- (questId) -> ok, message
 	"Respawn",     -- () -> ok, message (klawisz R)
+	"Train",       -- (symulator) -> ok, message
+	"Shoot",       -- (shooter, Vector3 celownika) -> ok, message
+	"ForgeBuy",    -- (itemId) -> ok, message — uniwersalny sklep gatunku
 }
 
 Net.LIMITS = {
@@ -42,6 +45,7 @@ Net.LIMITS = {
 	ClaimDaily = { 0.2, 2 },
 	ClaimQuest = { 0.5, 4 },
 	Respawn = { 0.5, 2 },
+	ForgeBuy = { 2, 6 },
 }
 
 local remoteFolder: Folder? = nil

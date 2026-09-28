@@ -401,7 +401,14 @@ usuwanie, dobór do zadania i licencje doszły w drugim przyroście — sekcja 1
 - **Regresja**: `tests/WebAccessRegression.cs` (fejkowa sieć: parsowanie DDG Lite, dekodowanie uddg,
   tarcza SSRF, https-only, trwałość wyłącznika, routing) i `tests/GameDevRegression.cs` (szablony
   dosłownie z pcall/BindToClose/idempotencją, matematyka DevEx 10 000 R$ = 35,00 USD i 35 000 = 122,50 USD,
-  słownik, plan nauki, szukanie za fejkowym WiFi) — razem **38 zestawów**.
+  słownik, plan nauki, szukanie za fejkowym WiFi).
+- **GameForge — generator gier (0.98, dalej)**: wpisujesz JAKĄ grę chcesz —
+  `roblox wygeneruj: <opis>` w SentinelX rozpoznaje gatunek i podaje gotowy `GameSpec.lua`;
+  w grze `GameSpec.Genre` = jedno słowo zmienia CAŁĄ grę: `obby` (pełny Mega Obby, bez regresji),
+  `symulator` (klik → siła → narodziny), `tycoon` (działki z dozownikami), `horror` (latarka,
+  bezpieczniki, goniący potwór), `shooter` (raycast na serwerze), `wyscigi` (checkpointy, okrążenia).
+  Wspólne: monetyzacja idempotentna, questa (w tym statystyczne), tablice wg gatunku, anty-cheat.
+  Razem **40 zestawów** (doszły GameAssetsRegression i GameForgeRegression).
 
 ## 18. Zestawy regresji po tym przyroście
 

@@ -18,6 +18,17 @@ local QuestService = {}
 local deps = nil
 local config = nil
 
+-- Aktywna pula: gatunek (Forge) może podmienić questa na swoje
+local function activePool()
+	if deps.QuestPoolProvider then
+		local ok, pool = pcall(deps.QuestPoolProvider)
+		if ok and type(pool) == "table" and #pool > 0 then
+			return pool
+		end
+	end
+	return config.QuestPool
+end
+
 -- Deterministyczny wybór 3 questów dla danego dnia (ten sam dla każdego gracza)
 local function questsForDay(dayKey: string)
 	local seed = 0
@@ -26,7 +37,7 @@ local function questsForDay(dayKey: string)
 	end
 	local rng = Random.new(seed)
 	local pool = {}
-	for index, quest in ipairs(config.QuestPool) do
+	for index, quest in ipairs(activePool()) do
 		table.insert(pool, index)
 	end
 	local chosen = {}
@@ -114,7 +125,7 @@ local function handleClaimQuest(player, questId)
 	end
 	local state = today[questId]
 	local definition = nil
-	for _, quest in ipairs(config.QuestPool) do
+	for _, quest in ipairs(activePool()) do
 		if quest.id == questId then
 			definition = quest
 			break
@@ -126,8 +137,13 @@ local function handleClaimQuest(player, questId)
 	if state.Claimed then
 		return false, "Nagroda już odebrana."
 	end
-	if state.Progress < definition.target then
-		return false, "Zadanie jeszcze niewykonane (" .. math.floor(state.Progress) .. "/" .. definition.target .. ")."
+	local progress = state.Progress
+	if string.sub(definition.type, 1, 5) == "stat:" then
+		local data = deps.PlayerDataService.Get(player)
+		progress = data and (data.Stats[string.sub(definition.type, 6)] or 0) or 0
+	end
+	if progress < definition.target then
+		return false, "Zadanie jeszcze niewykonane (" .. math.floor(progress) .. "/" .. definition.target .. ")."
 	end
 	state.Claimed = true
 	deps.PlayerDataService.AddCoins(player, definition.reward, "quest: " .. definition.desc)

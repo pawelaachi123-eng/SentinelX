@@ -303,6 +303,8 @@ function PlayerDataService.Snapshot(player)
 		EquippedPets = data.EquippedPets or {},
 		Gamepasses = data.Gamepasses,
 		Quests = deps.QuestService and deps.QuestService.QuestsOf(player) or {},
+		Hud = deps.HudProvider and deps.HudProvider(player) or nil,
+		ShopItems = deps.ShopProvider and deps.ShopProvider(player) or nil,
 		Daily = deps.DailyRewardService and deps.DailyRewardService.InfoOf(player) or { Streak = 0, CanClaim = false, NextReward = 0 },
 		Stats = data.Stats,
 	}

@@ -94,8 +94,16 @@ local function pushLoop()
 				for _, player in ipairs(Players:GetPlayers()) do
 					local data = deps.PlayerDataService.Get(player)
 					if data then
+						-- wartość lidera zależy od gatunku (obby: etapy, symulator: siła, …)
+						local leaderValue = data.Stage
+						if deps.LeaderValueProvider then
+							local okValue, value = pcall(deps.LeaderValueProvider, player)
+							if okValue and type(value) == "number" then
+								leaderValue = value
+							end
+						end
 						pcall(function()
-							boards.stages.store:SetAsync(tostring(player.UserId), data.Stage)
+							boards.stages.store:SetAsync(tostring(player.UserId), leaderValue)
 						end)
 						pcall(function()
 							boards.coins.store:SetAsync(tostring(player.UserId), data.Coins)

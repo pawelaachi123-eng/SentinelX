@@ -334,6 +334,12 @@ Stan na 2026-09-27 (0.97). Zasada: każda pojedyncza pozycja znika z listy dopie
 - **§9–10 Media** (`MediaVisionToolbox.cs`): kontrast WCAG, PPI, proporcje, bitrate, audio, tempo, dB.
 - **§7/§11/§13 dokładki** (w `ProductivityToolbox.cs`): jezyk, i18n, webhook, token bucket, retry plan,
   sesje, koszt spotkania, godziny pracy.
+- **GameForge — GENERATOR GIER (0.98)**: `GameSpec.Genre` wybiera gatunek; Forge.lua
+  dystrybuuje: obby = pełny Mega Obby (bez regresji), a symulator/tycoon/horror/
+  shooter/wyścigi = generowane światy + pętle + sklepy gatunku (ForgeShopService,
+  questa statystyczne stat:, wartość tablic wg gatunku, granty wg gatunku).
+  Toolbox: „roblox wygeneruj: <opis>” rozpoznaje gatunek z opisu i podaje gotowy
+  GameSpec. Regresja: GameForgeRegression (40. zestaw).
 - **PEŁNA GRA „MEGA OBBY: Wyspy Przygód” + Blender (0.98)**: 22 pliki — 19 Luau
   (serwer buduje 120 etapów z seeda; ekonomia/questy/zwierzaki/monetyzacja po
   stronie serwera; ProcessReceipt idempotentny; DataStore z retry i BindToClose;

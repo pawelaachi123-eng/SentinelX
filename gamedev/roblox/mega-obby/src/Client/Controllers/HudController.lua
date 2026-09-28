@@ -351,6 +351,36 @@ function Hud.Init(stateIn, configIn, netIn)
 	refs.IslandUnderline.BackgroundColor3 = color3From(config.Ui.AccentColor)
 	refs.IslandUnderline.Parent = stageChip
 
+	-- panel statystyk gatunku (Forge: symulator/horror/tycoon/shooter/wyścigi)
+	refs.PackPanel = Instance.new("Frame")
+	refs.PackPanel.Size = UDim2.fromOffset(250, 120)
+	refs.PackPanel.Position = UDim2.new(0, 12, 0, 78)
+	refs.PackPanel.BackgroundColor3 = color3From(config.Ui.PanelColor)
+	refs.PackPanel.BackgroundTransparency = 0.12
+	refs.PackPanel.BorderSizePixel = 0
+	refs.PackPanel.Visible = false
+	refs.PackPanel.Parent = screen
+	corner(12).Parent = refs.PackPanel
+	local packStroke = Instance.new("UIStroke")
+	packStroke.Color = color3From(config.Ui.AccentColor)
+	packStroke.Transparency = 0.5
+	packStroke.Parent = refs.PackPanel
+	refs.PackTitle = Instance.new("TextLabel")
+	refs.PackTitle.Size = UDim2.new(1, -16, 0, 26)
+	refs.PackTitle.Position = UDim2.new(0, 8, 0, 4)
+	refs.PackTitle.BackgroundTransparency = 1
+	refs.PackTitle.Font = Enum.Font.GothamBlack
+	refs.PackTitle.TextSize = 14
+	refs.PackTitle.TextXAlignment = Enum.TextXAlignment.Left
+	refs.PackTitle.TextColor3 = color3From(config.Ui.AccentColor)
+	refs.PackTitle.Text = ""
+	refs.PackTitle.Parent = refs.PackPanel
+	refs.PackRows = Instance.new("Frame")
+	refs.PackRows.Size = UDim2.new(1, 0, 1, -30)
+	refs.PackRows.Position = UDim2.new(0, 0, 0, 30)
+	refs.PackRows.BackgroundTransparency = 1
+	refs.PackRows.Parent = refs.PackPanel
+
 	-- chip monet (prawy górny)
 	local coinsChip = Instance.new("Frame")
 	coinsChip.Size = UDim2.fromOffset(170, 46)

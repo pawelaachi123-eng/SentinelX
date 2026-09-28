@@ -48,6 +48,7 @@ MODULES = [
     ("WebAccessService.cs", "12", "WiFi i szukanie w sieci", "881–940 (dopełnienie)"),
     ("GameDevToolbox.cs", "—", "Game Dev (Roblox) — nowy obszar", "poza 20 sekcjami listy"),
     ("gamedev/ (pełna gra + Blender)", "—", "Mega Obby: 120 etapów z kodu + modele/animacje", "poza 20 sekcjami listy"),
+    ("gamedev/ (GameForge)", "—", "Generator gier: 6 gatunków z jednej linijki GameSpec", "poza 20 sekcjami listy"),
 ]
 
 # Sekcje bez modułu obsługi poleceń — z jawnym powodem, żeby brak był widoczny.

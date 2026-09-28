@@ -172,6 +172,7 @@ public static class IntentCatalog
             "roblox budowanie", "roblox optymalizacja", "roblox wydajnosc", "roblox checklist", "roblox checklista",
             "roblox monetyzacja", "roblox skrypt", "roblox pojecie", "roblox szkic", "roblox gdd",
             "roblox najlepsze", "roblox szukaj", "roblox przyklad", "roblox nowosci", "roblox najnowsze",
+            "roblox wygeneruj", "roblox generator",
             // 0.97 · SEKCJA 15 — analiza danych (nazwy własne, więc mogą stać w katalogu naprawy)
             "statystyki liczb", "analiza liczb", "opis zbioru", "kwartyle", "odchylenie", "wariancja",
             "skosnosc", "kurtoza", "wspolczynnik zmiennosci", "przedzial ufnosci", "korelacja", "regresja",

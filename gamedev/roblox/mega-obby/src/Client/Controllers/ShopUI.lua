@@ -127,6 +127,29 @@ local function refreshButtons()
 				end)
 			offsetY += 60
 		end
+	elseif activeTab == "forge" then
+		-- uniwersalny sklep GATUNKU (pozycje definiuje moduł trybu — ForgeBuy)
+		local items = snapshot.ShopItems or {}
+		for _, item in ipairs(items) do
+			local buttonText = item.Owned and "MASZ ✔" or ((item.Price or 0) .. " 🪙 — KUP")
+			local buttonColor = item.Owned and Color3.fromRGB(90, 200, 120) or color3From(config.Ui.SuccessColor)
+			offerRow(refs.List, offsetY, item.Name or item.Id, item.Description or "", buttonText, buttonColor, function()
+				if item.Owned then
+					return
+				end
+				task.spawn(function()
+					local ok, message = net:Invoke("ForgeBuy", item.Id)
+					if hud and message ~= "" then
+						hud.Notify(ok and "success" or "error", message)
+					end
+				end)
+			end)
+			offsetY += 60
+		end
+		if #items == 0 then
+			offerRow(refs.List, offsetY, "Ten tryb nie ma własnego sklepu",
+				"kupuj ślady i przepustki na pozostałych zakładkach", "—", Color3.fromRGB(70, 78, 95), function() end)
+		end
 	elseif activeTab == "pets" then
 		local equippedSet = {}
 		for _, uid in ipairs(snapshot.EquippedPets or {}) do

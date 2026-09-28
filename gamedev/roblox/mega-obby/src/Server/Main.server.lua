@@ -32,43 +32,23 @@ local deps = {
 	EventBus = EventBus,
 }
 
-local ORDER = {
-	"PlayerDataService",
-	"EffectsService",
-	"WorldBuilder",
-	"StageService",
-	"CoinService",
-	"PetService",
-	"TrailService",
-	"MonetizationService",
-	"QuestService",
-	"DailyRewardService",
-	"LeaderboardService",
-	"AntiCheatService",
-	"AdminService",
-	"AmbientService",
-}
+-- GAMEFORGE: dystrybutor gatunków — czyta GameSpec (TO wybrana przez ciebie gra)
+-- i buduje ją: obby = klasyczny Mega Obby, inne gatunki = generowany świat.
+deps.GameSpec = require(Shared:WaitForChild("GameSpec"))
+deps.GenresFolder = script.Parent:WaitForChild("Genres")
 
-for _, name in ipairs(ORDER) do
-	local module = require(Modules:WaitForChild(name))
-	assert(type(module) == "table", name .. " musi zwracać tabelę (ModuleScript)")
-	assert(type(module.Start) == "function", name .. " musi mieć .Start(deps)")
-	deps[name] = module
-end
+print("[MegaObby] " .. Config.GameName .. " v" .. Config.Version .. " — wczytuję moduły…")
 
-print("[MegaObby] " .. Config.GameName .. " v" .. Config.Version .. " — wczytano " .. #ORDER .. " modułów, startuję…")
-
-for _, name in ipairs(ORDER) do
-	local ok, err = pcall(deps[name].Start, deps)
-	if not ok then
-		warn("[MegaObby] BŁĄD STARTU " .. name .. ": " .. tostring(err))
-	else
-		print("[MegaObby] ✔ " .. name)
-	end
+local Forge = require(Modules:WaitForChild("Forge"))
+local ok, err = pcall(Forge.Run, deps)
+if not ok then
+	warn("[MegaObby] BŁĄD KRYTYCZNY FORGE: " .. tostring(err))
 end
 
 -- Produkty i przepustki podpięte dopiero teraz — wszystkie granty zdążyły się
 -- zarejestrować (patrz MonetizationService.Finish).
-deps.MonetizationService.Finish(deps)
+if deps.MonetizationService then
+	deps.MonetizationService.Finish(deps)
+end
 
-print("[MegaObby] START ZAKOŃCZONY — powodzenia na 120 etapach! 🎮")
+print("[MegaObby] START ZAKOŃCZONY — „" .. deps.GameSpec.Name .. "” (" .. tostring(deps.Forge and deps.Forge.Genre or "obby") .. ") czeka na graczy! 🎮")

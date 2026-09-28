@@ -82,6 +82,7 @@ public static class CommandCatalog
         new("RAG — gotowy prompt", "Pytanie + top fragmenty z bazy + źródła · do czatu", "rag prompt pytanie zrodla kontekst", CommandText: "rag prompt: o czym jest baza?"),
         new("WiFi — dostęp do internetu", "Wyłącznik 📶: niebieska ikona = szukanie w sieci włączone", "wifi internet siec szukanie wylacznik", CommandText: "wifi"),
         new("Game Dev — Roblox", "Plan nauki, gotowce Luau z najlepszymi praktykami, monetyzacja, szukanie w sieci", "roblox luau gamedev gra skrypt datastore", CommandText: "roblox nauka"),
+        new("Generator gier (GameForge)", "Wpisz JAKĄ grę chcesz — silnik generuje świat, pętlę i sklep", "generator gier wygeneruj symulator tycoon horror shooter wyscigi", CommandText: "roblox wygeneruj: symulator treningu ninja"),
         new("Centrum", "Rozmowa i lokalne polecenia — wszystkie zakładki w jednym miejscu", "czat chat rozmowa centrum center", PageKey: "command"),
         new("Pamięć", "Wspomnienia, profil i prywatność", "pamiec memory wspomnienia", PageKey: "memory"),
         new("Projekty", "Kontekst projektów i ich notatki", "projekt projects kontekst", PageKey: "projects"),

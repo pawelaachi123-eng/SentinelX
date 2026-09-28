@@ -100,11 +100,24 @@ local function registerGrants()
 	end
 
 	productGrants["egg_premium"] = function(player)
-		return deps.PetService.GrantEggRoll(player, "egg_sky")
+		if deps.PetService and deps.PetService.GrantEggRoll then
+			return deps.PetService.GrantEggRoll(player, "egg_sky")
+		end
+		return false, "Ten produkt działa w trybie obby."
 	end
 
 	productGrants["skip_stage"] = function(player)
-		return deps.StageService.SkipStage(player)
+		if deps.StageService then
+			return deps.StageService.SkipStage(player)
+		end
+		return false, "Ten produkt działa w trybie obby."
+	end
+
+	-- gatunek (Forge) może dołożyć własne granty (np. darmowe narodziny w symulatorze)
+	if deps.MonetizationGrants then
+		for grantId, grant in pairs(deps.MonetizationGrants(deps)) do
+			productGrants[grantId] = grant
+		end
 	end
 end
 

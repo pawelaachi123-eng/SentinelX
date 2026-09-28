@@ -53,7 +53,61 @@ public static class GameDevToolbox
         if (concept.Success) return Concept(Payload(raw, "roblox pojecie"));
         var sketch = Regex.Match(text, @"^(?:roblox szkic|roblox gdd)[:\s]+(.+)$", RegexOptions.Singleline);
         if (sketch.Success) return Sketch(Payload(raw, "roblox szkic", "roblox gdd"));
+        var forge = Regex.Match(text, @"^(?:roblox wygeneruj|roblox generator)[:\s]+(.+)$", RegexOptions.Singleline);
+        if (forge.Success) return ForgeGuide(Payload(raw, "roblox wygeneruj", "roblox generator"));
         return null;
+    }
+
+    // ————— GAMEFORGE: generator gry wg wpisanego opisu —————
+
+    private static (string Id, string Label)? DetectGenre(string flat)
+    {
+        if (flat.Contains("symulator") || flat.Contains("simulator") || flat.Contains("clicker")
+            || flat.Contains("klikanie") || flat.Contains("klikaj")) return ("symulator", "SYMULATOR (klikaj → siła → narodziny)");
+        if (flat.Contains("tycoon") || flat.Contains("biznes") || flat.Contains("fabryka")
+            || flat.Contains("pizzeria") || flat.Contains("sklep ") || flat.Contains("imperium")) return ("tycoon", "TYCOON (działki, kropelki, ulepszenia)");
+        if (flat.Contains("horror") || flat.Contains("przetrwanie") || flat.Contains("strachu")
+            || flat.Contains("potwor") || flat.Contains("straszny")) return ("horror", "HORROR (ciemność, latarka, potwór, ucieczka)");
+        if (flat.Contains("strzel") || flat.Contains("shooter") || flat.Contains("fps")
+            || flat.Contains("broni") || flat.Contains("arena")) return ("shooter", "STRZELANKA (arena, cele, szybkostrzelność)");
+        if (flat.Contains("wyscig") || flat.Contains("racing") || flat.Contains("samochod")
+            || flat.Contains("tor wyscig") || flat.Contains("sciaganie")) return ("wyscigi", "WYŚCIGI (tor, checkpointy, okrążenia)");
+        if (flat.Contains("obby") || flat.Contains("parkour") || flat.Contains("przeszkod")) return ("obby", "OBBY (120 etapów toru przeszkód)");
+        return null;
+    }
+
+    private static string ForgeGuide(string input)
+    {
+        string name = (input ?? "").Trim();
+        if (name.Length < 2)
+            return "Użycie: „roblox wygeneruj: tycoon pizzeria” — dostaniesz gotową specyfikację gry do wgrania.";
+        var genre = DetectGenre(Flat(name));
+        if (genre == null)
+        {
+            return "GENERATOR GRY (GameForge)\n" +
+                "Nie zgaduję gatunku z opisu „" + name + "” — nie zmyślam.\n" +
+                "Podaj jeden z gatunków w opisie: symulator (klikaj/narodziny) · tycoon (fabryka/biznes/pizzeria) · " +
+                "horror (potwór/ucieczka/przetrwanie) · strzelanka (fps/arena/broni) · wyścigi (samochody/tor/racing) · obby (parkour/przeszkody).\n" +
+                "Przykład: „roblox wygeneruj: symulator treningu ninja”.";
+        }
+        string features = genre.Value.Id switch
+        {
+            "symulator" => "plac + 3 strefy treningowe z progami siły, klik (remote z limitem), automatyczne treningi, NARODZINY (mnożnik +50%), questa siły",
+            "tycoon" => "4 działki do przejęcia, dozowniki kropel na kolektory, przyciski ulepszeń (szybkość/wartość/drugi dozownik), sklep trybu (podwójna wartość, superszybkie kropelki)",
+            "horror" => "ciemny budynek z losowym labiryntem (ten sam seed dla wszystkich), latarka z baterią, 3 bezpieczniki, otwierane drzwi, GONIĄCY POTWÓR (przyspiesza po każdej ucieczce)",
+            "shooter" => "arena z osłonami, 6 ruchomych celów, strzał = raycast NA SERWERZE (cooldown i zasięg z ulepszeń), statystyki zestrzeleń",
+            "wyscigi" => "tor owalny z 8 checkpointów w kolejności, okrążenia z nagrodami, doładowania prędkości, stałe ulepszenie prędkości",
+            _ => "klasyczny tor 120 etapów na 6 wyspach (pełny Mega Obby)",
+        };
+        return "GENERATOR GRY (GameForge) — „" + name + "”\n" +
+            "Gatunek: " + genre.Value.Label + "\n\n" +
+            "1) Otwórz plik gamedev/roblox/mega-obby/src/Shared/GameSpec.lua i wpisz:\n" +
+            "   GameSpec.Name = \"" + name + "\"\n" +
+            "   GameSpec.Genre = \"" + genre.Value.Id + "\"   -- to JEDYNA linijka, która zmienia grę\n" +
+            "   GameSpec.Theme = \"" + name + "\"\n" +
+            "2) Wgraj do Studio (README-GRA.md: Rojo albo ręczne wklejenie plików).\n" +
+            "3) Play — serwer SAM zbuduje: " + features + ".\n\n" +
+            "Wspólne dla każdego gatunku: monety i zakupy liczone na serwerze, idempotentny ProcessReceipt, questa dnia, nagrody 7-dniowe, tablice TOP-10, ślady z lobby, anty-cheat. Zmiana gatunku = zmiana jednej linijki; obok stroi się szczegóły w GameSpec.Knobs (np. MonsterSpeed).";
     }
 
     // ————— ONLINE —————

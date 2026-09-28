@@ -3,6 +3,7 @@
 ## Nowe w 0.98 — WiFi 📶 i Game Dev (Roblox)
 
 - **WiFi 📶**: wyłącznik internetu w pasku bocznym (niebieska ikona = włączone) i poleceniami `wifi on/off`; domyślnie wyłączone; tarcza SSRF (localhost i sieci prywatne zawsze odrzucone), tylko https. Za WiFi: `szukaj w sieci: …`, `strona: https://…`, `roblox najlepsze: …`.
+- **GENERATOR GIER (GameForge)**: wpisujesz JAKĄ grę chcesz (`roblox wygeneruj: tycoon pizzeria`) — silnik `gamedev/roblox/mega-obby` generuje TĘ grę: 6 gatunków (obby · symulator · tycoon · horror · strzelanka · wyścigi), każdy z własnym światem z kodu, pętlą rozgrywki, sklepem i questa; zmiana gatunku = jedna linijka `GameSpec.Genre`.
 - **Pełna gra + Blender**: `gamedev/roblox/mega-obby/` — **MEGA OBBY: Wyspy Przygód**: 120 etapów generowanych proceduralnie z kodu serwera, lobby z portalem, sklep, zwierzaki z jajek, questy, nagrody dzienne, tablice TOP-10, anty-cheat, monetyzacja (idempotentny ProcessReceipt) + `gamedev/blender/` — postać R6 z rigiem, 7 animacji i 11 propów, eksport FBX/GLB.
 - **Game Dev (Roblox)**: `roblox nauka` (8 etapów), gotowce **Luau** z najlepszymi praktykami (`roblox skrypt: leaderstats | killbrick | checkpoint | sklep | zdalne | tween | narzedzie` — DataStore z pcall i BindToClose, idempotentny ProcessReceipt, walidacja i rate-limit na serwerze), `roblox struktura/projektowanie/modelowanie/optymalizacja/checklist/pojecie/szkic`, `roblox monetyzacja: N` (DevEx 0,0035 USD/R$, min. 30 000 R$, prowizja 30%).
 

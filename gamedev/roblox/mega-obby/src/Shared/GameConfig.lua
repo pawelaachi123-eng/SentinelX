@@ -72,7 +72,7 @@ GameConfig.Coins = {
 	StageRewardPerIslandStep = 2,             -- +2 za każdą wyspę (im dalej, tym więcej)
 	FinishBonus = 1000,                       -- przejście całości
 	CoinRespawnSeconds = 20,                  -- moneta wraca po zebraniu
-	RainIntervalSeconds = 600,                // deszcz monet w lobby co 10 minut
+	RainIntervalSeconds = 600,                -- deszcz monet w lobby co 10 minut
 	RainCount = 40,
 	RainLifetimeSeconds = 90,
 	DuplicatePetRefund = 150,                 -- powtórzony zwierzak → monety
@@ -132,7 +132,7 @@ GameConfig.Eggs = {
 GameConfig.Gamepasses = {
 	{ id = "x2coins", name = "x2 Monety",          robuxProductId = 0, description = "Zawsze podwójne monety." },
 	{ id = "speed25", name = "+25% Szybkości",     robuxProductId = 0, description = "Stałe szybsze bieganie." },
-	{ id = "vip",     name = "VIP",                robuxProductId = 0, description = "Złoty ślad + 2 zwierzaki naraz + rangа VIP." },
+	{ id = "vip",     name = "VIP",                robuxProductId = 0, description = "Złoty ślad + 2 zwierzaki naraz + ranga VIP." },
 }
 GameConfig.DevProducts = {
 	{ id = "coins_small", name = "500 Monet",        robuxProductId = 0 },
