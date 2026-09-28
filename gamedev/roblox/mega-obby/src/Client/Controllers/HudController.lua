@@ -135,6 +135,30 @@ function Hud.OnSnapshot(snapshot)
 	refs.IslandUnderline.BackgroundColor3 = color3From(snapshot.IslandColor or { 34, 211, 238 })
 	coinsTarget = snapshot.Coins or 0
 
+	-- panel statystyk GATUNKU (Forge): jeśli snapshot.Hud istnieje, pokazujemy wiersze
+	if snapshot.Hud then
+		refs.PackPanel.Visible = true
+		refs.PackTitle.Text = snapshot.Hud.Title or ""
+		refs.PackRows:ClearAllChildren()
+		local rowY = 0
+		for _, row in ipairs(snapshot.Hud.Rows or {}) do
+			local label = Instance.new("TextLabel")
+			label.Size = UDim2.new(1, -16, 0, 20)
+			label.Position = UDim2.new(0, 8, 0, rowY)
+			label.BackgroundTransparency = 1
+			label.Font = Enum.Font.GothamBold
+			label.TextSize = 13
+			label.TextXAlignment = Enum.TextXAlignment.Left
+			label.TextColor3 = Color3.fromRGB(220, 230, 250)
+			label.Text = (row.Label or "?") .. ": " .. tostring(row.Value or "?")
+			label.Parent = refs.PackRows
+			rowY += 20
+		end
+		refs.PackPanel.Size = UDim2.fromOffset(250, 34 + rowY)
+	else
+		refs.PackPanel.Visible = false
+	end
+
 	-- zadania dnia
 	refs.QuestList:ClearAllChildren()
 	local offsetY = 0
