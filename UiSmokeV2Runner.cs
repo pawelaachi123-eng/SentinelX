@@ -116,6 +116,13 @@ public static class UiSmokeV2Runner
             throw new InvalidOperationException("UI 2.0: toasty nie znikają same po czasie (wyciek wizualny).");
         }
 
+        // ————— 3.5. typografia Claude: nagłówki szeryfowe —————
+        if (Application.Current.TryFindResource("SxFontDisplay") is not FontFamily display
+            || !display.FamilyNames.Values.Any(family => family.Contains("Georgia")))
+        {
+            throw new InvalidOperationException("UI Claude: SxFontDisplay ma być szeryfowy (Georgia/Cambria).");
+        }
+
         // ————— 4. dostępność: każdy przycisk ma etykietę —————
         var buttons = new List<Button>();
         WalkAccessibility(shell, buttons);
@@ -135,6 +142,6 @@ public static class UiSmokeV2Runner
         File.WriteAllText(Path.Combine(output, "uismoke2.txt"),
             "PASS\nUI SMOKE v2: host toastów obecny · karty wjeżdżają i znikają same · limit 4 działa ·\n" +
             "render PNG z kartami OK (" + buttons.Count + " przycisków poddanych audytowi dostępności — 0 ślepych) ·\n" +
-            "pasek statusu obecny, niewidzialny dla myszy · Ctrl+K paleta z licznikiem wyników\n");
+            "pasek statusu obecny, niewidzialny dla myszy · Ctrl+K paleta z licznikiem wyników ·" + "\n            "typografia Claude: szeryfowe nagłówki (Georgia) · paleta ciepła (ivory/węgiel/terakota)\n");
     }
 }

@@ -17,15 +17,15 @@
 
     <CubicEase x:Key="SxEaseOut" EasingMode="EaseOut"/>
     <CubicEase x:Key="SxEaseIn" EasingMode="EaseIn"/>
-    <BackEase x:Key="SxEaseSpring" EasingMode="EaseOut" Amplitude="0.45"/>
+    <BackEase x:Key="SxEaseSpring" EasingMode="EaseOut" Amplitude="0.28"/>
     <QuadraticEase x:Key="SxEaseSoft" EasingMode="EaseInOut"/>
 
     <!-- Wejście strony / panelu: fade + wjazd z dołu + dojście skali. -->
     <Storyboard x:Key="SxPageIn">
         <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.30" EasingFunction="{StaticResource SxEaseOut}"/>
-        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[1].(TranslateTransform.Y)" From="18" To="0" Duration="0:0:0.38" EasingFunction="{StaticResource SxEaseOut}"/>
-        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleX)" From="0.985" To="1" Duration="0:0:0.38" EasingFunction="{StaticResource SxEaseOut}"/>
-        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleY)" From="0.985" To="1" Duration="0:0:0.38" EasingFunction="{StaticResource SxEaseOut}"/>
+        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[1].(TranslateTransform.Y)" From="10" To="0" Duration="0:0:0.34" EasingFunction="{StaticResource SxEaseOut}"/>
+        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleX)" From="0.992" To="1" Duration="0:0:0.38" EasingFunction="{StaticResource SxEaseOut}"/>
+        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleY)" From="0.992" To="1" Duration="0:0:0.38" EasingFunction="{StaticResource SxEaseOut}"/>
     </Storyboard>
 
     <!-- Wejście wiersza / kafelka: fade i wjazd (bezpieczne dla wielu elementów). -->
@@ -53,9 +53,9 @@
 
     <!-- Przycisk: hover = uniesienie, press = dociśnięcie. -->
     <Storyboard x:Key="SxHoverIn">
-        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleX)" To="1.022" Duration="0:0:0.17" EasingFunction="{StaticResource SxEaseOut}"/>
-        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleY)" To="1.022" Duration="0:0:0.17" EasingFunction="{StaticResource SxEaseOut}"/>
-        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[1].(TranslateTransform.Y)" To="-1.4" Duration="0:0:0.17" EasingFunction="{StaticResource SxEaseOut}"/>
+        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleX)" To="1.012" Duration="0:0:0.17" EasingFunction="{StaticResource SxEaseOut}"/>
+        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleY)" To="1.012" Duration="0:0:0.17" EasingFunction="{StaticResource SxEaseOut}"/>
+        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[1].(TranslateTransform.Y)" To="-1" Duration="0:0:0.17" EasingFunction="{StaticResource SxEaseOut}"/>
     </Storyboard>
     <Storyboard x:Key="SxHoverOut">
         <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleX)" To="1" Duration="0:0:0.22" EasingFunction="{StaticResource SxEaseSoft}"/>
@@ -63,8 +63,8 @@
         <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[1].(TranslateTransform.Y)" To="0" Duration="0:0:0.22" EasingFunction="{StaticResource SxEaseSoft}"/>
     </Storyboard>
     <Storyboard x:Key="SxPressIn">
-        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleX)" To="0.972" Duration="0:0:0.09" EasingFunction="{StaticResource SxEaseIn}"/>
-        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleY)" To="0.972" Duration="0:0:0.09" EasingFunction="{StaticResource SxEaseIn}"/>
+        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleX)" To="0.982" Duration="0:0:0.09" EasingFunction="{StaticResource SxEaseIn}"/>
+        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleY)" To="0.982" Duration="0:0:0.09" EasingFunction="{StaticResource SxEaseIn}"/>
     </Storyboard>
     <Storyboard x:Key="SxPressOut">
         <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleX)" To="1" Duration="0:0:0.18" EasingFunction="{StaticResource SxEaseSpring}"/>
@@ -86,9 +86,9 @@
 
     <!-- Karta / kafelek: hover = uniesienie bez zmiany rozmiaru siatki. -->
     <Storyboard x:Key="SxLiftIn">
-        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[1].(TranslateTransform.Y)" To="-3" Duration="0:0:0.20" EasingFunction="{StaticResource SxEaseOut}"/>
-        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleX)" To="1.006" Duration="0:0:0.20" EasingFunction="{StaticResource SxEaseOut}"/>
-        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleY)" To="1.006" Duration="0:0:0.20" EasingFunction="{StaticResource SxEaseOut}"/>
+        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[1].(TranslateTransform.Y)" To="-2" Duration="0:0:0.20" EasingFunction="{StaticResource SxEaseOut}"/>
+        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleX)" To="1.004" Duration="0:0:0.20" EasingFunction="{StaticResource SxEaseOut}"/>
+        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleY)" To="1.004" Duration="0:0:0.20" EasingFunction="{StaticResource SxEaseOut}"/>
     </Storyboard>
     <Storyboard x:Key="SxLiftOut">
         <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[1].(TranslateTransform.Y)" To="0" Duration="0:0:0.26" EasingFunction="{StaticResource SxEaseSoft}"/>
