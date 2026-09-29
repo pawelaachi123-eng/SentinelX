@@ -87,8 +87,9 @@ internal static class BackendRegression
         Check(lagDiagnosis.Handled && lagDiagnosis.Response.Contains("hipotez", StringComparison.OrdinalIgnoreCase) &&
               lagDiagnosis.Response.Contains("Nie zmieniono ustawień", StringComparison.Ordinal), "Game-lag requests must return measured data and cautious hypotheses without random system changes.");
         var unsupportedTemperature = await diagnosticsToolbox.ProcessAsync("Pokaż temperaturę GPU");
-        Check(unsupportedTemperature.Handled && unsupportedTemperature.Response.Contains("nie ma", StringComparison.OrdinalIgnoreCase) &&
-              !unsupportedTemperature.Response.Contains("0%", StringComparison.Ordinal), "Unavailable sensor data must be stated, not fabricated as zero.");
+        Check(unsupportedTemperature.Handled && unsupportedTemperature.Response.Contains("Temperatura GPU nie jest dostępna", StringComparison.OrdinalIgnoreCase) &&
+              !unsupportedTemperature.Response.Contains("Temperatura GPU: 0", StringComparison.OrdinalIgnoreCase),
+              "Unavailable temperature must be stated explicitly, without asserting that legitimate CPU/GPU utilization percentages are nonzero.");
         var focusMode = new GameFocusModeService();
         Check(focusMode.Enable().Contains("Nie zmieniono ustawień Windows", StringComparison.Ordinal) && focusMode.IsActive &&
               focusMode.Disable().Contains("nie były zmieniane", StringComparison.Ordinal) && !focusMode.IsActive, "Game focus profile should be reversible and explicitly limited to Sentinel-owned behavior.");
