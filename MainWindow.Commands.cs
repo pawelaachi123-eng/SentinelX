@@ -66,11 +66,8 @@ public partial class MainWindow
             string response = $"{result.Status}\n{result.Message}\n{result.Executable}\nProjekt: {result.ProjectDirectory}\nDowód: {result.Evidence}";
             ProgramOutput.Text = response; return response;
         }
-        if (!command.Contains(':') || text.Contains("na pulpicie"))
-        {
-            string? fileResponse = await files.ProcessAsync(command, token);
-            if (fileResponse != null) return fileResponse;
-        }
+        string? fileResponse = await files.ProcessAsync(command, token);
+        if (fileResponse != null) return fileResponse;
         if (TryHandleDotCommand(command, text, out string dotResponse))
             return dotResponse;
         if (TryAnswerLocally(command, text, out string localResponse))

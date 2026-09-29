@@ -2,6 +2,16 @@
 
 Lokalny asystent Windows 10/11, C# 13, .NET 9, WPF. Nowe GUI jest domyślnym interfejsem. Poprzedni interfejs i jego funkcje nadal są dostępne przez `--legacy`.
 
+## Narzędzia bez dodatkowego UI
+
+Główny router dobiera lokalne narzędzia przed odpowiedzią modelu — uruchamianie aplikacji i znanych URL-i, odczyty systemowe, operacje na plikach, wyszukiwanie internetowe, odczyt stron i bezpieczne żądanie zamknięcia programu. Przykładowo „Uruchom Brave i YouTube” jest planem dwóch kolejnych uruchomień, a „Znajdź dokument o budżecie wakacyjnym” przeszukuje pliki użytkownika; po jednoznacznym trafieniu „przenieś go do Dokumentów” używa zapamiętanego celu. Nieznane polecenia nie dają modelowi uprawnień do dowolnego kodu.
+
+- **Pliki:** wyszukiwanie nazw i tekstu w Pulpicie, Dokumentach, Pobranych, Obrazach, OneDrive i `CreatedFiles` (do 20 tys. plików, bez podążania za dowiązaniami); tworzenie plików/folderów, odczyt małych plików tekstowych, otwieranie nie-wykonywalnych plików, zmiana nazwy i przenoszenie do znanych folderów. Wyszukiwanie opisowe jest dopasowaniem leksykalnym, nie semantycznym. Wieloznaczne trafienia wymagają wyboru. Operacje nie nadpisują; ważne dane nie są usuwane.
+- **Web:** `wyszukaj ...` zwraca wyniki ze źródłami, `zbadaj temat ...` szuka i próbuje odczytać do trzech stron, `otwórz drugą stronę` / `podsumuj pierwszy wynik` używa kontekstu ostatniego wyszukania, a `znajdź oficjalny numer telefonu firmy X` zwraca kandydatów do ręcznej weryfikacji. `otwórz stronę https://...` otwiera adres w domyślnej przeglądarce; `czytaj stronę https://...` odczytuje tekst, a `podsumuj stronę ...` robi krótkie podsumowanie ekstrakcyjne. Wyszukiwane frazy trafiają do publicznej wyszukiwarki DuckDuckGo; odczyt stron jest tylko GET, ma limity rozmiaru, blokuje loopback/sieci prywatne i nie wysyła formularzy, płatności ani treści w imieniu użytkownika. Wyniki nie są gwarancją aktualności ani oficjalności.
+- **Aplikacje/PC:** plan uruchomienia może łączyć do sześciu znanych programów i stron; polecenia pamięci RAM/CPU/procesów idą do odczytowych narzędzi systemowych. „Zamknij program, który się zawiesił” wykrywa nieodpowiadające okno; jeśli cel jest niejednoznaczny, pyta, a zamknięcie nadal wymaga potwierdzenia, bo może utracić niezapisane zmiany. Procesów nie zabija na siłę.
+- **Ekran:** w tym wydaniu nie ma jeszcze przechwytywania obrazu/OCR ani bezpiecznego kliknięcia elementu wskazanego palcem. Sentinel nie będzie zgadywał, co widać na ekranie.
+- **Telefon:** `PhoneCallTool` i komendy `historia rozmów` / `/rozmowy historia` są wpięte do toolboksa, ale repo nie zawiera działającego providera/companion Android. Aplikacja WPF nie może sama użyć SIM/eSIM ani niezawodnie otrzymać obu kanałów audio komórkowego. Dlatego nie wykonuje połączeń, nie wyszukuje numeru do połączenia i jawnie odmawia zamiast symulować. Kolejne próby, IVR, poczta głosowa i wielojęzyczna rozmowa będą możliwe dopiero po rzeczywistej integracji telefonicznej.
+
 ## Nowe w 0.91 — CENTRUM: jeden hub, paleta `//`, głos od startu i ~50 nowych narzędzi
 
 - **Centrum zamiast wielu kart**: sidebar ma 4 pozycje (Centrum, Pamięć, Projekty, Ustawienia), a w Centrum ikony bez podpisów: 💬 rozmowa, 📓 zadania, 🕘 historia, 🎤 głos, 🖥 system, 🎮 gry, ✨ AI, ⚡ akcje, 🩺 diagnostyka. „Command Center” przemianowane na „Centrum” wszędzie.
@@ -151,9 +161,13 @@ pokaż ten plik
 skopiuj ten plik jako kopia.txt
 przenieś ten plik jako nowa-nazwa.txt
 znajdź plik notatka
+znajdź dokument o budżecie wakacyjnym
+przenieś go do folderu Dokumenty
+zmień jego nazwę na plan.txt
+utwórz folder Raporty na pulpicie
 ```
 
-Edycja, kopiowanie i zmiana nazwy dotyczą ostatniego pliku utworzonego przez asystenta. Nie nadpisują istniejących celów. Edycja zachowuje `.bak`; zapis/kopia mają weryfikację treści i SHA-256. Wyszukiwanie jest ograniczone do katalogu `CreatedFiles`, a nie całego komputera. Anulowanie **nie cofa** ukończonych operacji.
+Ostatnio jednoznacznie wybrany plik pozostaje celem dla kolejnych powiązanych poleceń w bieżącej instancji; lista wieloznacznych trafień jest porzucana przy następnym innym poleceniu. Przy wielu wynikach Sentinel prosi o numer. Przeszukiwanie jest ograniczone do typowych folderów użytkownika, ma limit i nie wchodzi w dowiązania. Nie nadpisuje istniejących celów; zmiana tekstu zachowuje kopię `.bak`, a zapis jest sprawdzany po odczycie. Przeniesienie/anulowanie nie cofa operacji, która już się zakończyła.
 
 ## Architektura i dane
 

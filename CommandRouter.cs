@@ -80,8 +80,8 @@ public sealed class CommandRouter
                 return Number(lastTopic == "RAM" ? systemMonitor.GetRamUsagePercent() : systemMonitor.GetCpuUsage(), "%");
         }
 
-        if (text is "ram" or "pokaz ram" or "status ram")
-        { return $"{Number(systemMonitor.GetUsedRamGB(), "GB", 1)} z {Number(systemMonitor.GetTotalRamGB(), "GB", 1)} ({Number(systemMonitor.GetRamUsagePercent(), "%")})."; }
+        if ((text is "ram" or "pokaz ram" or "status ram") || Regex.IsMatch(text, @"^(?:pokaz|podaj|wyswietl) (?:wykorzystanie|uzycie|zuzycie) (?:pamieci )?ramu?$"))
+        { return $"RAM: {Number(systemMonitor.GetUsedRamGB(), "GB", 1)} z {Number(systemMonitor.GetTotalRamGB(), "GB", 1)} ({Number(systemMonitor.GetRamUsagePercent(), "%")})."; }
         if (Regex.IsMatch(text, @"^(?:(?:pokaz|podaj|wyswietl) )?(?:cpu (?:i )?ram|ram (?:i )?cpu|uzycie cpu i ram)$"))
         { return $"CPU: {Number(systemMonitor.GetCpuUsage(), "%")}. RAM: {Number(systemMonitor.GetUsedRamGB(), "GB", 1)} z {Number(systemMonitor.GetTotalRamGB(), "GB", 1)}."; }
         if (Regex.IsMatch(text, @"^(?:(?:pokaz|podaj|wyswietl) )?(?:cpu|uzycie cpu|zuzycie cpu|ile cpu|ile procent cpu|jakie jest uzycie cpu|uzycie procesora|ile uzywam cpu)$"))

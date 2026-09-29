@@ -1,5 +1,7 @@
 using System;
 using System.Threading.Tasks;
+using SentinelX.Services.PhoneCall;
+using SentinelX.Services.Web;
 
 namespace SentinelX
 {
@@ -24,13 +26,16 @@ namespace SentinelX
         private readonly ProcessToolService processTools;
 
         private readonly Services.Network.INetworkService networkTools;
+        private readonly PhoneCallTool phoneCalls;
+        private readonly WebResearchTool webResearch;
 
 
         public SentinelToolboxService(Func<string>? browserPreference = null, ActionHistoryService? history = null,
             Services.Permissions.IPermissionService? permissions = null, Services.Apps.IAppLauncherService? launcher = null,
             ProcessToolService? processes = null, Services.Network.INetworkService? network = null,
             PcDiagnosticService? diagnostics = null, ActionTaskRegistry? tasks = null, ConversationMemoryService? memory = null,
-            Services.History.HistoryExportService? historyExport = null, Services.Memory.MemoryActionService? memoryActionService = null)
+            Services.History.HistoryExportService? historyExport = null, Services.Memory.MemoryActionService? memoryActionService = null,
+            PhoneCallTool? phoneCallTool = null, WebResearchTool? webResearchTool = null)
         {
             actionHistory = history ?? new ActionHistoryService();
             permissionCenter = permissions ?? new PermissionCenterService();
@@ -41,6 +46,8 @@ namespace SentinelX
             this.tasks = tasks ?? new ActionTaskRegistry();
             memoryActions = memoryActionService ?? new(memory ?? new ConversationMemoryService(), permissionCenter, actionHistory);
             this.historyExport = historyExport ?? new(actionHistory);
+            phoneCalls = phoneCallTool ?? new PhoneCallTool();
+            webResearch = webResearchTool ?? new WebResearchTool();
         }
 
         // =========================================================
@@ -52,6 +59,17 @@ namespace SentinelX
                 string command, System.Threading.CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            string? phoneResponse = await phoneCalls.TryProcessAsync(command ?? "", cancellationToken);
+            if (phoneResponse != null) return ToolboxCommandResult.HandledWith(phoneResponse);
+            if (webResearch.TryExtractOpenUrl(command ?? "", out string explicitWebUrl))
+                return await ExecuteImmediateAsync("OPEN_WEB_RESULT", command ?? "", () => appLauncher.LaunchAsync(explicitWebUrl, cancellationToken), concise: true);
+            string? webResponse = await webResearch.TryProcessAsync(command ?? "", cancellationToken);
+            if (webResponse != null) return ToolboxCommandResult.HandledWith(webResponse);
+            if (webResearch.TryResolveRecentResult(command ?? "", out string resultUrl, out bool readResult, out bool summarizeResult))
+            {
+                if (readResult) return ToolboxCommandResult.HandledWith(await webResearch.ReadPageAsync(resultUrl, summarizeResult, cancellationToken));
+                return await ExecuteImmediateAsync("OPEN_WEB_RESULT", command ?? "", () => appLauncher.LaunchAsync(resultUrl, cancellationToken), concise: true);
+            }
             string query = Core.CommandText.Normalize(command ?? "");
             string? memoryResponse = memoryActions.TryRequest(command ?? "");
             if (memoryResponse != null) return ToolboxCommandResult.HandledWith(memoryResponse);
@@ -318,6 +336,21 @@ namespace SentinelX
             }
 
 
+            // Close the sole detected hung GUI directly, but preserve approval because unsaved work may be lost.
+            if (normalized is "zamknij zawieszony program" or "zamknij zawieszona aplikacje" or
+                "zamknij program ktory sie zawiesil" or "zamknij aplikacje ktora nie odpowiada")
+            {
+                var hung = processTools.GetUnresponsiveApps();
+                if (hung.Count == 0) return ToolboxCommandResult.HandledWith("Nie wykrywam teraz zawieszonego okna.");
+                if (hung.Count > 1)
+                    return ToolboxCommandResult.HandledWith("Wykryłem kilka nieodpowiadających okien. Wybierz aplikację, np. „zamknij Discord”:\n" +
+                        string.Join("\n", hung.Select(x => $"· {x.Name} (PID {x.ProcessId})")));
+                string target = hung[0].Name;
+                if (!processTools.CanCloseSafely(target))
+                    return ToolboxCommandResult.HandledWith($"Wykryłem zawieszone okno {target}, ale nie ma ono bezpiecznego zamykania w Sentinel. Nie wymuszę zakończenia procesu.");
+                return RequestCloseAction(command, target);
+            }
+
             // =====================================================
             // CLOSE APP
             //
@@ -374,8 +407,18 @@ namespace SentinelX
                     włącz YouTube
                     otwórz ustawienia
 
-                    wyszukaj karta graficzna RTX
+                    wyszukaj karta graficzna RTX (wyniki z linkami)
+                    zbadaj temat: porównaj do 3 znalezionych stron
+                    otwórz drugą stronę / podsumuj pierwszy wynik
+                    znajdź oficjalny numer telefonu firmy X (kandydaci ze źródłami)
+                    otwórz stronę https://example.com
+                    czytaj stronę https://example.com
                     wyszukaj na YouTube CS2 settings
+
+                    znajdź plik o budżecie wakacyjnym
+                    przenieś go do folderu Dokumenty
+                    utwórz folder Raporty na pulpicie
+                    otwórz go / pokaż go
 
                     otwórz pobrane
                     otwórz dokumenty
@@ -386,6 +429,9 @@ namespace SentinelX
 
                     test internetu
                     status sieci
+
+                    zadzwoń do [firma] i opisz sprawę (wymaga aktywnego mostu telefonicznego)
+                    historia rozmów / /rozmowy historia
 
                     zamknij Discord
                     potwierdz
@@ -409,7 +455,8 @@ namespace SentinelX
             ExecuteImmediateAsync(
                 string actionType,
                 string command,
-                Func<Task<ActionExecutionResult>> executor)
+                Func<Task<ActionExecutionResult>> executor,
+                bool concise = false)
         {
             string actionId =
                 actionHistory
@@ -444,6 +491,10 @@ namespace SentinelX
                     result);
 
 
+            if (concise)
+                return ToolboxCommandResult.HandledWith(!result.Success ? "Nie udało się otworzyć strony."
+                    : result.Verified ? "Gotowe."
+                    : "Wysłano stronę do przeglądarki; nie potwierdziłem, że karta została wyświetlona.");
             return ToolboxCommandResult.HandledWith(
                 FormatActionResponse(
                     actionId,
@@ -469,12 +520,15 @@ namespace SentinelX
                     if (result.Verified) lastVerifiedApplication = AppLauncherService.CanonicalizeLaunchTarget(target);
                     actionHistory.AddResult(id, "LAUNCH", target, result, clock.ElapsedMilliseconds, parent);
                     failed |= !result.Success; unverified |= !result.Verified;
-                    output.Add(FormatActionResponse(id, result)); task.CompleteStep();
+                    output.Add(result.Success && result.Verified ? "Gotowe: " + target + "."
+                        : result.Success ? "Wysłano polecenie otwarcia " + target + ", ale nie potwierdzono uruchomienia."
+                        : "Nie udało się otworzyć " + target + ".");
+                    task.CompleteStep();
                 }
                 catch (OperationCanceledException)
                 { actionHistory.AddCancelled(id, "LAUNCH", target, "Przerwano weryfikację; aplikacja mogła już wystartować."); task.Complete("CANCELLED"); throw; }
                 catch (Exception ex)
-                { var result = ActionExecutionResult.Failure("Nie udało się uruchomić: " + target, ex.Message); actionHistory.AddResult(id, "LAUNCH", target, result, clock.ElapsedMilliseconds, parent); output.Add(FormatActionResponse(id, result)); failed = true; task.CompleteStep(); }
+                { var result = ActionExecutionResult.Failure("Nie udało się uruchomić: " + target, ex.Message); actionHistory.AddResult(id, "LAUNCH", target, result, clock.ElapsedMilliseconds, parent); output.Add("Nie udało się otworzyć " + target + "."); failed = true; task.CompleteStep(); }
             }
             task.Complete(failed ? "FAILED" : unverified ? "UNVERIFIED" : "VERIFIED");
             return ToolboxCommandResult.HandledWith(string.Join("\n\n", output));

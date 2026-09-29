@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -129,6 +129,26 @@ namespace SentinelX
                 .Trim();
         }
 
+
+        /// <summary>Read-only detection of visible GUI processes that currently do not respond.</summary>
+        public IReadOnlyList<(string Name, int ProcessId)> GetUnresponsiveApps(int limit = 10)
+        {
+            var result = new List<(string Name, int ProcessId)>();
+            foreach (Process process in Process.GetProcesses())
+            {
+                try
+                {
+                    if (process.MainWindowHandle != IntPtr.Zero && !process.Responding)
+                        result.Add((process.ProcessName, process.Id));
+                }
+                catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or NotSupportedException) { }
+                finally { process.Dispose(); }
+                if (result.Count >= Math.Clamp(limit, 1, 50)) break;
+            }
+            return result;
+        }
+
+        public bool CanCloseSafely(string target) => AllowedApps.ContainsKey(AppLauncherService.CanonicalizeLaunchTarget(target));
 
         public async Task<ActionExecutionResult>
             CloseAppAsync(
