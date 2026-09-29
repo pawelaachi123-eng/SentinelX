@@ -47,4 +47,7 @@ public static class RetryAdvisor
         }
         return null;
     }
+
+    /// <summary>Rosnące oczekiwanie między próbami: 350 ms, sufit 1200 ms.</summary>
+    public static int BackoffMilliseconds(int attempt) => Math.Min(1200, 350 * Math.Max(1, attempt));
 }

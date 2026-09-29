@@ -33,6 +33,7 @@ public static class ServiceLocator
         services.AddSingleton<ActionTaskRegistry>();
         services.AddSingleton<ISystemMonitorService, SystemMonitorService>();
         services.AddSingleton<ActionHistoryService>(_ => new());
+        services.AddSingleton<SentinelX.Core.EngineLedger>();
         services.AddSingleton<ProjectService>(_ => new ProjectService());
         services.AddSingleton<TaskService>(_ => new TaskService());
         // 0.96: user-defined routines ("scenes") — own store next to tasks and projects.

@@ -19,6 +19,8 @@ public partial class ActionRecord : ObservableObject
     [ObservableProperty] private long elapsedMilliseconds;
     [ObservableProperty] private IReadOnlyList<ActionHistoryEntry> toolResults = [];
     [ObservableProperty] private string storageWarning = "";
+    [ObservableProperty] private string recoveryAdvice = "";   // R1: wykonywalna rada po porażce
+    [ObservableProperty] private string reasoningTrace = "";  // R2: PLAN/PRÓBA/CHECK/NAPRAWA
 }
 public sealed record IntentResult(string Text, ActionRecord? Action = null);
 public sealed record ConversationMessage(string Role, string Content, DateTime Timestamp, ActionRecord? ActionRecord = null);

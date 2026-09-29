@@ -8,8 +8,9 @@ namespace SentinelX.Services.Readiness;
 
 /// <summary>Read-only probes. Never captures audio, downloads models, launches Ollama or changes settings.</summary>
 public sealed class ReadinessService(ISettingsService settings, IHistoryService history, IVoiceService voice, IAiService ai,
-    ActionHistoryService audit) : IReadinessService
+    ActionHistoryService audit, EngineLedger? ledger = null) : IReadinessService
 {
+    private readonly EngineLedger ledger = ledger ?? new EngineLedger();
     public async Task<IReadOnlyList<ReadinessCheck>> CheckAsync(CancellationToken token)
     {
         token.ThrowIfCancellationRequested();
@@ -35,12 +36,21 @@ public sealed class ReadinessService(ISettingsService settings, IHistoryService 
                     ready ? "Lokalne pliki ASR i VAD są dostępne. Ich uruchomienie zostanie sprawdzone po włączeniu głosu." : "Brak kompletnego zestawu lokalnych modeli. Nic nie jest pobierane bez Twojej decyzji.", "voice", ready ? "Przetestuj głos" : "Skonfiguruj modele"));
             }
             catch (Exception ex) { checks.Add(new("asr", "Rozpoznawanie mowy", ReadinessState.Unavailable, ex.Message, "voice", "Sprawdź modele")); }
-            // 0.99 · PODSUMOWANIE ZAUFANIA: ile zakończonych akcji realnie udowodniło sukces.
+            // 0.99 · PODSUMOWANIE ZAUFANIA: księga sesji NA ŻYWO, a gdy pusta — historia z dysku.
             var report = TrustSummary.Calculate(audit.GetRecentEntries(50));
-            checks.Add(report.HasData
-                ? new("trust", "Zaufanie do akcji", report.Percent >= 80 ? ReadinessState.Ready : ReadinessState.NeedsSetup,
-                    report.Percent + "% VERIFIED (" + report.Verified + "/" + report.Total + ") · "
-                    + report.Unverified + " bez dowodu · " + report.Failed + " błędów/przerwanych. Sukces bez dowodu się nie liczy.",
+            bool live = ledger.HasData;
+            int percent = live ? ledger.TrustPercent : report.Percent;
+            int total = live ? ledger.Verified + ledger.Unverified + ledger.Failed : report.Total;
+            int verifiedCount = live ? ledger.Verified : report.Verified;
+            int unverifiedCount = live ? ledger.Unverified : report.Unverified;
+            int failedCount = live ? ledger.Failed : report.Failed;
+            var topTypes = ledger.TopUnverifiedTypes(3);
+            string topInfo = topTypes.Count > 0 ? " Najczęściej bez dowodu: " + string.Join(", ", topTypes) + "." : "";
+            checks.Add(live || report.HasData
+                ? new("trust", "Zaufanie do akcji", percent >= 80 ? ReadinessState.Ready : ReadinessState.NeedsSetup,
+                    percent + "% VERIFIED (" + verifiedCount + "/" + total + (live ? " w tej sesji" : " w historii") + ") · "
+                    + unverifiedCount + " bez dowodu · " + failedCount + " błędów/przerwanych." + topInfo
+                    + " Sukces bez dowodu się nie liczy.",
                     "history", "Otwórz historię")
                 : new("trust", "Zaufanie do akcji", ReadinessState.NotChecked,
                     "Brak historii akcji — nie oceniam na zapasie (no success = no pass).", "history", "Otwórz historię"));

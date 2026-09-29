@@ -8,8 +8,10 @@ namespace SentinelX.Services.Actions;
 
 /// <summary>Single execution lane with latched stop, immutable request IDs and execution-scoped proof.</summary>
 public sealed class ActionEngine(IIntentRouter router, SentinelToolboxService toolbox,
-    ActionHistoryService history, ConversationMemoryService memory, IAiService ai, IUiDispatcher? dispatcher = null) : IActionEngine
+    ActionHistoryService history, ConversationMemoryService memory, IAiService ai, IUiDispatcher? dispatcher = null,
+    EngineLedger? ledger = null) : IActionEngine
 {
+    private readonly EngineLedger ledger = ledger ?? new EngineLedger();
     private readonly object gate = new();
     private CancellationTokenSource? active;
     private bool stopped;
@@ -90,7 +92,7 @@ public sealed class ActionEngine(IIntentRouter router, SentinelToolboxService to
                         record.Evidence = "PRÓBA 1 · niepowodzenie: " + ex.Message + "\n";
                         AppLog.Write(ex);
                         source.Token.ThrowIfCancellationRequested();
-                        await Task.Delay(350, source.Token);
+                        await Task.Delay(RetryAdvisor.BackoffMilliseconds(attempt), source.Token);
                         continue;
                     }
                     if (attempt > 1)
@@ -114,12 +116,14 @@ public sealed class ActionEngine(IIntentRouter router, SentinelToolboxService to
             var (passed, findings) = VerificationCenter.Evaluate(input, record.ActionType, record.ToolResults);
             trace += passed ? " · ✔ wszystkie przeszły" : " · ✗ " + findings.Count + " nie przeszło";
             record.Evidence = trace + "\n" + record.Evidence;
-            if (!passed && record.Status == ActionStatus.Verified)
+            bool downgraded = !passed && record.Status == ActionStatus.Verified;
+            if (downgraded)
             {
                 record.Status = ActionStatus.Failed;
                 record.Error = "NO SUCCESS = NO PASS · " + string.Join(" | ", findings);
-                record.Evidence += "\n✗ " + string.Join("\n✗ ", findings);
-                response = "Nie potwierdzam sukcesu (no success = no pass): " + string.Join(" | ", findings);
+                record.Evidence += "\n✗ " + string.Join("\n✗ ", findings) + "\nNAPRAWA: obaliłem VERIFIED po sprawdzeniu post-kondycji — patrz rada niżej.";
+                record.RecoveryAdvice = RecoveryAdvisor.Advise(record.ActionType, string.Join(" | ", findings));
+                response = "Nie potwierdzam sukcesu (no success = no pass): " + string.Join(" | ", findings) + "\n→ " + record.RecoveryAdvice;
             }
             else if (record.Status == ActionStatus.Unverified && RequestsSystemAction(input))
             {
@@ -127,6 +131,11 @@ public sealed class ActionEngine(IIntentRouter router, SentinelToolboxService to
                 // uczciwie mówię, że sukcesu NIE potwierdzam, zamiast go implikować.
                 response += "\n\n⚠️ NO SUCCESS = NO PASS: nie mam dowodu z narzędzia, więc NIE potwierdzam wykonania. Sformułuj wprost, np. „ile mam RAM?” albo „pokaż użycie CPU”.";
             }
+            bool retriedAttempt = record.Evidence.StartsWith("PRÓBA 1", StringComparison.Ordinal);
+            record.ReasoningTrace = trace
+                + (retriedAttempt ? " · PRÓBA 1 nieudana → namysł → ponowienie" : "")
+                + (downgraded ? " · NAPRAWA: sukces obalony przez sąd dowodów" : "");
+            ledger.Record(record.Status, record.ActionType, retriedAttempt, downgraded);
             UpdateWaitingRequests(record.ToolResults);
             return new(response, record);
         }
@@ -144,6 +153,7 @@ public sealed class ActionEngine(IIntentRouter router, SentinelToolboxService to
                 memory.AddAssistantMessage(response);
             }
             else response = record.Evidence;
+            ledger.Record(ActionStatus.Cancelled, record.ActionType, record.Evidence.StartsWith("PRÓBA 1", StringComparison.Ordinal), false);
             return new(response, record);
         }
         catch (Exception ex)
@@ -155,9 +165,13 @@ public sealed class ActionEngine(IIntentRouter router, SentinelToolboxService to
                 + "Polecenie zakończone błędem. Sprawdź ukończone kroki przed ponowieniem."
                 + (retried ? "\nPonowienie też nie wyszło — przyczyna nie jest chwilowa." : "")
                 + FormatProof(record.ToolResults);
-            response = retried
+            record.RecoveryAdvice = RecoveryAdvisor.Advise(record.ActionType, ex.Message);
+            record.ReasoningTrace = "PLAN: " + AuditText(input)
+                + (retried ? " · PRÓBA 1 nieudana → namysł → PRÓBA 2 nieudana" : " · CHECK: przerwane przez wyjątek");
+            ledger.Record(ActionStatus.Failed, record.ActionType, retried, false);
+            response = (retried
                 ? "Nie udało się wykonać polecenia (także po ponowieniu): " + ex.Message
-                : "Nie udało się wykonać polecenia: " + ex.Message;
+                : "Nie udało się wykonać polecenia: " + ex.Message) + "\n→ " + record.RecoveryAdvice;
             return new(response, record);
         }
         finally

@@ -119,5 +119,38 @@ public sealed class VerificationCenter
             bool hasFailed = entries.Any(x => x.Status == "FAILED");
             return hasVerified && hasFailed ? "sekwencja łączy VERIFIED i FAILED — całość nie może być sukcesem" : null;
         });
+
+        // 6. POMIAR BEZ LICZBY W DOWODZIE: MEASURE_* musi mieć cyfrę w DOWODZIE (nie tylko w komunikacie).
+        Register("MEASURE_", (_, _, entries) =>
+        {
+            List<string> weak = entries
+                .Where(x => x.Status == "VERIFIED" && !x.Evidence.Any(char.IsDigit))
+                .Select(x => x.ActionId)
+                .ToList();
+            return weak.Count == 0 ? null : "pomiar bez liczby w dowodzie: " + string.Join(", ", weak);
+        });
+
+        // 7. DOWÓD ZBYT UBOGI: OPEN_*/CLOSE_* krótszy niż 8 znaków nie potwierdza operacji okna/procesu.
+        Register("OPEN_", (_, _, entries) =>
+        {
+            List<string> thin = entries.Where(x => x.Status == "VERIFIED" && (x.Evidence ?? "").Trim().Length < 8)
+                .Select(x => x.ActionId).ToList();
+            return thin.Count == 0 ? null : "dowód zbyt ubogi, by potwierdzić operację okna/procesu: " + string.Join(", ", thin);
+        });
+        Register("CLOSE_", (_, _, entries) =>
+        {
+            List<string> thin = entries.Where(x => x.Status == "VERIFIED" && (x.Evidence ?? "").Trim().Length < 8)
+                .Select(x => x.ActionId).ToList();
+            return thin.Count == 0 ? null : "dowód zbyt ubogi, by potwierdzić zamknięcie procesu: " + string.Join(", ", thin);
+        });
+
+        // 8. SPRZĄTANIE BEZ LICZBY: CLEANUP musi kwantyfikować, CO uwolnił.
+        Register("CLEANUP", (_, _, entries) =>
+        {
+            List<string> vague = entries
+                .Where(x => x.Status == "VERIFIED" && !x.Evidence.Any(char.IsDigit))
+                .Select(x => x.ActionId).ToList();
+            return vague.Count == 0 ? null : "sprzątanie bez liczby uwolnionych danych: " + string.Join(", ", vague);
+        });
     }
 }

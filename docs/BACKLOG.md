@@ -371,6 +371,14 @@ Stan na 2026-09-27 (0.97). Zasada: każda pojedyncza pozycja znika z listy dopie
   (brak pliku, odmowa dostępu) nie są ponawiane; ślad „PRÓBA 1/2” trafia do dowodów.
   TrustSummary + 5. karta panelu gotowości: % VERIFIED z historii (pusta historia =
   uczciwe „brak danych”, nie 100%).
+- **MÓZG ×10 RUND (0.99)**: R1 RecoveryAdvisor (wykonywalna rada naprawy per rodzina,
+  w rekordzie i toaście błędu) · R2 ActionRecord.ReasoningTrace (PLAN/PRÓBA/CHECK/
+  NAPRAWA) · R3 sąd: +3 reguły rodzin (MEASURE_ liczba w dowodzie, OPEN_/CLOSE_ dowód
+  ≥8 znaków, CLEANUP kwantyfikacja) · R4 EngineLedger (księga sesji: liczniki, %,
+  TOP typy bez dowodu, backoff 350→1200) · R5 karta zaufania: księga na żywo → historia
+  jako fallback + „najczęściej bez dowodu: …” · R6 toast FAILED z radą · R7 pasek
+  statusu „Zaufanie: N%” · R8 smoke na żywo · R9 docs/MOZG-SENTINELA.md (spec mózgu) ·
+  R10 BrainRoundsRegression (45. zestaw).
 - **DUŻA GRA (0.99, Fisch-style)**: gatunek `ryby` — 12 ryb w 5 rzadkościach
   (wagi w configu), mutacje Błyszczący ×2 / Ogromny ×3, łódka na GŁĘBINY (×1,6),
   POGODA rotująca na serwerze (szczęście do ×2, ogłaszana wszystkim), ZBIORY/INDEKS

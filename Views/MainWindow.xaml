@@ -166,6 +166,7 @@
                 CornerRadius="14" Background="{DynamicResource SxSurfaceGlass}" BorderBrush="{DynamicResource SxBorderSubtle}" BorderThickness="1" u:Motion.TileIn="True">
             <DockPanel Margin="18,0,18,0">
                 <TextBlock DockPanel.Dock="Left" Text="{Binding Version, StringFormat=● SENTINEL X · {0}}" Style="{StaticResource SxMuted}" VerticalAlignment="Center"/>
+                <TextBlock DockPanel.Dock="Right" Text="{Binding TrustPercent, StringFormat=Zaufanie: {0}%}" Style="{StaticResource SxMuted}" VerticalAlignment="Center" Margin="0,0,18,0"/>
                 <TextBlock DockPanel.Dock="Right" Text="Ctrl+K · paleta poleceń" Style="{StaticResource SxMuted}" VerticalAlignment="Center"/>
                 <TextBlock Text="{Binding DesktopStatus}" Style="{StaticResource SxMuted}" VerticalAlignment="Center" HorizontalAlignment="Center" TextTrimming="CharacterEllipsis"/>
             </DockPanel>

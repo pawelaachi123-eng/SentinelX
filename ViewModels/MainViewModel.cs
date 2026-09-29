@@ -21,6 +21,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty] private object? currentPage;
     [ObservableProperty] private bool isStopped;
     [ObservableProperty] private string desktopStatus = "";
+    [ObservableProperty] private int trustPercent;   // R7: zaufanie NA ŻYWO z księgi zdrowia silnika
     private readonly WebAccessService web = WebAccessService.Shared;
     /// <summary>0.99 · TOASTY: ważne zmiany stanu (WiFi, stop awaryjny, wznowienie)
 /// wpadają w rogu ekranu jako zwinne powiadomienie — nie tylko w sidebare.</summary>
@@ -46,13 +47,18 @@ public bool WifiEnabled => web.Enabled;
         ["system"] = "system", ["gaming"] = "gry", ["ai"] = "ai", ["actions"] = "akcje", ["diagnostics"] = "diagnostyka"
     };
 
+    private readonly SentinelX.Core.EngineLedger ledger;
+
     public MainViewModel(IActionEngine engine, IDesktopService desktop, IUiDispatcher dispatcher,
-        CommandCenterViewModel command, SystemViewModel system, GamingViewModel gaming,
+        SentinelX.Core.EngineLedger? ledgerIn, CommandCenterViewModel command, SystemViewModel system, GamingViewModel gaming,
         VoiceViewModel voice, AiViewModel ai, ActionsViewModel actions, HistoryViewModel history, SettingsViewModel settings,
         CommandPaletteViewModel palette, ReadinessViewModel readiness, MemoryViewModel memory, ProjectViewModel projects, TaskViewModel tasks,
         DiagnosticViewModel diagnostics, StudioViewModel studio)
     {
         this.engine = engine; this.desktop = desktop; this.dispatcher = dispatcher; Voice = voice; Palette = palette; Readiness = readiness; commandCenter = command;
+        ledger = ledgerIn ?? new SentinelX.Core.EngineLedger();
+        ledger.Changed += OnLedgerChanged; OnLedgerChanged();
+        engine.ActionStarted += OnActionStartedForToast;
         Palette.Chosen += PaletteChosen; Readiness.OpenSectionRequested += Navigate; commandCenter.NavigationRequested += Navigate; web.StateChanged += OnWebChanged;
         NavItems =
         [
@@ -97,6 +103,21 @@ public bool WifiEnabled => web.Enabled;
     [RelayCommand] private void OpenPalette() { Readiness.IsOpen = false; Palette.Open(); }
     [RelayCommand] private void OpenReadiness() { Palette.CloseCommand.Execute(null); Readiness.IsOpen = true; }
     [RelayCommand] private Task InitializeAsync() => Readiness.RefreshCommand.ExecuteAsync(null);
+    private void OnLedgerChanged() => dispatcher.Post(() => TrustPercent = ledger.TrustPercent);
+
+    /// <summary>R6: porażka akcji = toast z WYKONYWALNĄ radą naprawy (nie tylko „błąd”).</summary>
+    private void OnActionStartedForToast(Models.ActionRecord record)
+    {
+        record.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(Models.ActionRecord.Status) && record.Status == Models.ActionStatus.Failed)
+            {
+                string advice = string.IsNullOrWhiteSpace(record.RecoveryAdvice) ? record.Error : record.RecoveryAdvice;
+                UiToast.Show("Akcja nie powiodła się", advice, ToastKind.Error, TimeSpan.FromSeconds(8));
+            }
+        };
+    }
+
     private void Sync() => dispatcher.Post(() => IsStopped = engine.IsStopped);
     private void DesktopChanged() => dispatcher.Post(() => DesktopStatus = desktop.Status);
     [RelayCommand] private void EmergencyStop()
@@ -110,5 +131,5 @@ public bool WifiEnabled => web.Enabled;
         Toast("Sentinel wznowiony", "Akcje i głos znów działają. Przygotowany do poleceń.", ToastKind.Success);
     }
     [RelayCommand] private void Exit() => desktop.Exit();
-    public void Dispose() { engine.Changed -= Sync; desktop.StatusChanged -= DesktopChanged; Palette.Chosen -= PaletteChosen; Readiness.OpenSectionRequested -= Navigate; commandCenter.NavigationRequested -= Navigate; Readiness.RefreshCommand.Cancel(); web.StateChanged -= OnWebChanged; }
+    public void Dispose() { engine.Changed -= Sync; engine.ActionStarted -= OnActionStartedForToast; ledger.Changed -= OnLedgerChanged; desktop.StatusChanged -= DesktopChanged; Palette.Chosen -= PaletteChosen; Readiness.OpenSectionRequested -= Navigate; commandCenter.NavigationRequested -= Navigate; Readiness.RefreshCommand.Cancel(); web.StateChanged -= OnWebChanged; }
 }

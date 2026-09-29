@@ -443,6 +443,10 @@ usuwanie, dobór do zadania i licencje doszły w drugim przyroście — sekcja 1
   Do tego **namysł**: jedno rozsądne ponowienie dla przyczyn chwilowych (ślad PRÓBA 1/2
   w dowodach) i **podsumowanie zaufania** w panelu gotowości (ile % akcji realnie
   udowodniło sukces; pusta historia = brak danych, nie sztuczne 100%).
+  **Mózg ×10 rund**: rada naprawy per rodzina (rekord+toast), ślad rozumowania
+  PLAN/PRÓBA/CHECK/NAPRAWA w rekordzie, 3 nowe reguły sądu rodzin narzędzi,
+  księga zdrowia silnika (zaufanie na żywo w pasku statusu), dokument mózgu
+  (docs/MOZG-SENTINELA.md). **45 zestaw** regresji.
 - **Duża gra (0.99, Fisch-style)**: **10. gatunek generatora — `ryby`**: brania
   losowane wagami rzadkości (wspólne → legendarna, wagi jawne w configu), mutacje
   ×2/×3, łódka na GŁĘBINY, **pogoda** rotująca na serwerze ze „szczęściem” do ×2,
