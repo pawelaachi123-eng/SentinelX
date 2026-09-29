@@ -16,7 +16,7 @@ public partial class MainWindow : Window
     private readonly SystemMonitor monitor = new();
     private readonly SystemInfoService systemInfo = new();
     private readonly GamingModeService gaming = new();
-    private readonly PerformanceHistoryService performance = new(monitor, gaming);
+    private readonly PerformanceHistoryService performance;
     private readonly GameFocusModeService gameFocusMode = new();
     private readonly ConversationMemoryService memory = new();
     private readonly LocalAiService ai;
@@ -50,6 +50,7 @@ public partial class MainWindow : Window
     public MainWindow(bool smokeMode)
     {
         this.smokeMode = smokeMode;
+        performance = new PerformanceHistoryService(monitor, gaming);
         downloadContext = new DownloadContextService(smokeMode ? System.IO.Path.Combine(AppPaths.Root, "TestDownloads") : null);
         reminders = new ReminderService(smokeMode ? System.IO.Path.Combine(System.IO.Path.GetTempPath(), "SentinelX-Smoke-" + Guid.NewGuid().ToString("N"), "reminders.json") : null);
         // The compatibility UI honors the same memory privacy toggles as the MVVM shell.
