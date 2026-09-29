@@ -69,6 +69,8 @@ internal static class BackendRegression
         var webToolbox = new SentinelToolboxService(history: history, webResearchTool: routedWeb);
         var routedSearch = await webToolbox.ProcessAsync("wyszukaj w internecie test");
         Check(routedSearch.Handled && routedSearch.Response.Contains("Official guide", StringComparison.Ordinal), "Natural web-search requests must select the web tool without extra UI.");
+        Check(!(await webToolbox.ProcessAsync("szukaj wszystkiego: test")).Handled,
+            "Unified local search must bypass the broad web-search prefix and reach the workspace router.");
         var contextualMemory = new ConversationMemoryService(Path.Combine(directory, "SearchContext"));
         contextualMemory.AddUserMessage("Chcę znaleźć informacje o sentinel regression.", "TEXT");
         using var contextualWeb = new WebResearchTool(new StubWebHandler());

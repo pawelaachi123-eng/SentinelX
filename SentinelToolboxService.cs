@@ -80,6 +80,12 @@ namespace SentinelX
             if (phoneResponse != null) return ToolboxCommandResult.HandledWith(phoneResponse);
             string? audioResponse = audioControl.TryProcess(command ?? "", actionHistory, cancellationToken);
             if (audioResponse != null) return ToolboxCommandResult.HandledWith(audioResponse);
+            string normalizedForSearch = ConversationMemoryService.Normalize(command ?? "");
+            if (normalizedForSearch.StartsWith("szukaj w rozmowie", StringComparison.Ordinal) ||
+                normalizedForSearch.StartsWith("szukaj wszystkiego", StringComparison.Ordinal) ||
+                normalizedForSearch.StartsWith("znajdz w rozmowie", StringComparison.Ordinal) ||
+                normalizedForSearch.StartsWith("przeszukaj rozmowe", StringComparison.Ordinal))
+                return ToolboxCommandResult.NotHandled();
             ToolboxCommandResult? contextualSearch = await TryContextualSearchAsync(command ?? "", cancellationToken);
             if (contextualSearch != null) return contextualSearch;
             if (webResearch.TryExtractOpenUrl(command ?? "", out string explicitWebUrl))
@@ -263,14 +269,6 @@ namespace SentinelX
                         .GetNetworkSummary());
             }
 
-
-            // Searching the conversation is a local memory feature — never route it to a web search.
-            string normalizedForSearch = ConversationMemoryService.Normalize(command);
-            if (normalizedForSearch.StartsWith("szukaj w rozmowie", StringComparison.Ordinal) ||
-                normalizedForSearch.StartsWith("szukaj wszystkiego", StringComparison.Ordinal) ||
-                normalizedForSearch.StartsWith("znajdz w rozmowie", StringComparison.Ordinal) ||
-                normalizedForSearch.StartsWith("przeszukaj rozmowe", StringComparison.Ordinal))
-                return ToolboxCommandResult.NotHandled();
 
             // =====================================================
             // WEB SEARCH
