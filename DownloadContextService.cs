@@ -1,3 +1,5 @@
+using System.IO;
+
 namespace SentinelX;
 
 public sealed record RecentDownload(string Path, DateTimeOffset CompletedAt);
