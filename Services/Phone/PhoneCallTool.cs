@@ -441,7 +441,7 @@ public sealed class PhoneCallTool
                     session.Add("Rozmówca", farText);
 
                     // CZUJNIK ZMIANY MATERIALNEJ — deterministyczny, przed modelem.
-                    materialQuestion = CallPolicy.DetectMaterialChange(farText, task);
+                    materialQuestion = CallPolicy.DetectMaterialChange(farText, task, acceptance);
                     if (materialQuestion != null)
                     {
                         SpeakAndSend(tts, bridge, CallPolicy.PauseLine(), session);

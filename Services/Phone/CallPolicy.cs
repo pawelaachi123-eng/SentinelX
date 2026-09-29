@@ -80,16 +80,24 @@ public static partial class CallPolicy
 
     /// <summary>Czujnik zmiany materialnej: inna godzina, słowa o opłacie/zaliczce/braku miejsc.
     /// Zwraca pytanie do właściciela albo null, gdy zmiany nie ma.</summary>
-    public static string? DetectMaterialChange(string farEndText, PhoneTask task)
+    public static string? DetectMaterialChange(string farEndText, PhoneTask task, string? acceptedChange = null)
     {
         string text = ConversationMemoryService.Normalize(farEndText ?? "");
         if (text.Length == 0) return null;
+        string? acceptedTime = null;
+        if (!string.IsNullOrWhiteSpace(acceptedChange))
+        {
+            var acceptedMatch = TimeRegex().Match(ConversationMemoryService.Normalize(acceptedChange));
+            if (acceptedMatch.Success) acceptedTime = acceptedMatch.Value.Replace('.', ':');
+        }
         var offered = TimeRegex().Matches(text);
         var requested = TimeRegex().Match(task.WhenText);
         foreach (var offer in offered)
         {
             string offerText = offer.ToString().Replace('.', ':');
-            if (!requested.Success || offerText != requested.Value.Replace('.', ':'))
+            bool sameAsRequested = requested.Success && offerText == requested.Value.Replace('.', ':');
+            bool sameAsAccepted = acceptedTime != null && offerText == acceptedTime;
+            if (!sameAsRequested && !sameAsAccepted)
                 return "Rozmówca proponuje " + offerText
                     + (requested.Success ? " zamiast " + requested.Value : "")
                     + ". Przyjąć? (tak/nie)";
