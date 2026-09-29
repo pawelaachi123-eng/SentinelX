@@ -68,7 +68,7 @@ internal static class BrainRoundsRegression
         Check(ledger.Executed == 8 && ledger.Verified == 3 && ledger.Unverified == 3 && ledger.Failed == 1
             && ledger.Cancelled == 1 && ledger.Retried == 1 && ledger.Downgraded == 1,
             "liczniki księgi mają się zgadzać co do sztuki");
-        Check(ledger.HasData && ledger.TrustPercent == 50, "procent zaufania: 3 VERIFIED / 6 zakończonych = 50%");
+        Check(ledger.HasData && ledger.TrustPercent == 43, "procent zaufania: 3 VERIFIED / 7 zakończonych (3+3+1) = 43%");
         var top = ledger.TopUnverifiedTypes(2);
         Check(top.Count == 2 && top[0].StartsWith("OPEN_APP", StringComparison.Ordinal) && top[0].Contains("×2"),
             "TOP typy bez dowodu sortują malejąco z licznikiem ×N");
