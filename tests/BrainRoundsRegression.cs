@@ -25,7 +25,7 @@ internal static class BrainRoundsRegression
         var current = Directory.GetCurrentDirectory();
         for (int depth = 0; depth < 12 && current != null; depth++)
         {
-            if (File.Exists(Path.Combine(current, "SentinelX.csproj"))) return current;
+            if (File.Exists(Path.Combine(current, "SENTINEL-X.csproj")) || File.Exists(Path.Combine(current, "SentinelX.csproj"))) return current;
             current = Path.GetDirectoryName(current);
         }
         return AppContext.BaseDirectory;
