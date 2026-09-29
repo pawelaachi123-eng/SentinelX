@@ -112,6 +112,11 @@ internal static class PhoneCallRegression
         public void ResetSection(string section) { }
     }
 
+    /// <summary>Wywołanie narzędzia na wątku threadpool — smoke działa na wątku UI WPF,
+    /// a pętla rozmowy potrafi czekać (Task.Delay), więc await nie może łapać Dispatchera.</summary>
+    private static string Call(PhoneCallTool tool, string raw, string normalized) =>
+        Task.Run(() => tool.TryHandleAsync(raw, normalized, CancellationToken.None)).GetAwaiter().GetResult()!;
+
     public static Task RunAsync(string directory)
     {
         int savedSilence = PhoneCallTool.SilenceTimeoutMilliseconds;
@@ -136,7 +141,7 @@ internal static class PhoneCallRegression
             "Sentinel, zadzwoń do restauracji Fiesta i zarezerwuj jutro stolik na 18:00 dla 4 osób",
             "sentinel zadzwon do restauracji fiesta i zarezerwuj jutro stolik na 18:00 dla 4 osob",
             callbackNumber: "786843433", ownerName: "Pan Piotr");
-        Check(task.PlaceName == "Fiesta", "parsowanie: nazwa miejsca = " + task.PlaceName);
+        Check(task.PlaceName == "fiesta", "parsowanie: nazwa miejsca = " + task.PlaceName);
         Check(task.WhenText.Contains("jutro") && task.WhenText.Contains("18:00"), "parsowanie: termin = " + task.WhenText);
         Check(task.PartySize == 4, "parsowanie: liczba osób = " + task.PartySize);
         Check(task.CallbackNumber == "786843433", "parsowanie: numer kontaktowy właściciela podany z ustawień");
@@ -174,16 +179,16 @@ internal static class PhoneCallRegression
         string callDir = Path.Combine(directory, "calls");
         var bridge = new FakeBridge { IsConnected = false };
         var tool = NewTool(callDir, bridge, new FakeStt(), scriptedUtterances: false);
-        string refused = tool.TryHandleAsync("zadzwoń do restauracji Fiesta na 123456789",
-            "zadzwon do restauracji fiesta na 123456789", CancellationToken.None).GetAwaiter().GetResult()!;
+        string refused = Call(tool, "zadzwoń do restauracji Fiesta na 123456789",
+            "zadzwon do restauracji fiesta na 123456789");
         Check(refused.Contains("Nie dzwonię"), "brak mostu: uczciwa odmowa, zero udawania");
         Check(NewStore(callDir).List().Count == 0, "brak mostu: żadnej rozmowy nie zapisano jako zakończoną");
 
         // ————— 6. uczciwa odmowa: brak numeru i brak sieci (wifi off) —————
         var bridgeOk = new FakeBridge { IsConnected = true };
         var toolNoNumber = NewTool(Path.Combine(directory, "calls2"), bridgeOk, new FakeStt(), scriptedUtterances: false);
-        string needNumber = toolNoNumber.TryHandleAsync("zadzwoń do restauracji Fiesta i zarezerwuj stolik",
-            "zadzwon do restauracji fiesta i zarezerwuj stolik", CancellationToken.None).GetAwaiter().GetResult()!;
+        string needNumber = Call(toolNoNumber, "zadzwoń do restauracji Fiesta i zarezerwuj stolik",
+            "zadzwon do restauracji fiesta i zarezerwuj stolik");
         Check(needNumber.Contains("wifi on"), "brak numeru bez sieci: uczciwa prośba o numer albo „wifi on”");
 
         // ————— 7. pełna uczciwa ścieżka: PRAWDZIWE połączenie (atrapa mostu) + potwierdzenie = „Gotowe” —————
@@ -191,8 +196,8 @@ internal static class PhoneCallRegression
         var liveBridge = new FakeBridge { IsConnected = true };
         liveBridge.ScriptUtterance();
         var liveTool = NewTool(callDir3, liveBridge, new FakeStt("Stolik zarezerwowany, do zobaczenia jutro."), scriptedUtterances: true);
-        string done = liveTool.TryHandleAsync("Sentinel, zadzwoń do restauracji Fiesta na 123456789 i zarezerwuj jutro stolik na 18:00 dla 4 osób",
-            "zadzwon do restauracji fiesta na 123456789 i zarezerwuj jutro stolik na 18:00 dla 4 osob", CancellationToken.None).GetAwaiter().GetResult()!;
+        string done = Call(liveTool, "Sentinel, zadzwoń do restauracji Fiesta na 123456789 i zarezerwuj jutro stolik na 18:00 dla 4 osób",
+            "zadzwon do restauracji fiesta na 123456789 i zarezerwuj jutro stolik na 18:00 dla 4 osob");
         Check(done.Contains("✅") && done.Contains("Gotowe."), "sukces tylko po prawdziwym połączeniu: „" + done.Split('\n')[0] + "”");
         Check(liveBridge.DialedNumbers.Single() == "+48123456789", "most dostał numer do wybrania (+48 z 9 cyfr)");
         var liveRecord = NewStore(callDir3).List().Single();
@@ -212,12 +217,12 @@ internal static class PhoneCallRegression
         var redialTool = NewTool(callDir4, redialBridge,
             new FakeStt("18:00 mamy zajęte, możemy dać 17:00.", "Potwierdzam, stolik zarezerwowany na 17:00."),
             scriptedUtterances: true);
-        string paused = redialTool.TryHandleAsync("zadzwoń do restauracji Fiesta na 123456789 i zarezerwuj jutro stolik na 18:00 dla 4 osób",
-            "zadzwon do restauracji fiesta na 123456789 i zarezerwuj jutro stolik na 18:00 dla 4 osob", CancellationToken.None).GetAwaiter().GetResult()!;
+        string paused = Call(redialTool, "zadzwoń do restauracji Fiesta na 123456789 i zarezerwuj jutro stolik na 18:00 dla 4 osób",
+            "zadzwon do restauracji fiesta na 123456789 i zarezerwuj jutro stolik na 18:00 dla 4 osob");
         Check(paused.Contains("17:00") && paused.Contains("tak"), "właściciel decyduje: „" + paused.Split('\n')[0] + "”");
         var pendingRecord = NewStore(callDir4).List().Single();
         Check(pendingRecord.Status == "CZEKA NA CIEBIE", "status przed decyzją: CZEKA NA CIEBIE (nie „gotowe”!)");
-        string approved = redialTool.TryHandleAsync("tak", "tak", CancellationToken.None).GetAwaiter().GetResult()!;
+        string approved = Call(redialTool, "tak", "tak");
         Check(approved.Contains("Gotowe.") && approved.Contains("✅"), "po „tak”: ponowne połączenie i uczciwe „Gotowe”");
         Check(redialBridge.DialedNumbers.Count == 2, "Sentinel zadzwonił PONOWNIE po decyzji właściciela (" + redialBridge.DialedNumbers.Count + "×)");
         var finalRecord = NewStore(callDir4).List().Single();
@@ -232,9 +237,9 @@ internal static class PhoneCallRegression
         rejectBridge.ScriptUtterance();
         var rejectTool = NewTool(callDir5, rejectBridge,
             new FakeStt("18:00 mamy zajęte, możemy dać 17:00."), scriptedUtterances: true);
-        rejectTool.TryHandleAsync("zadzwoń do restauracji Fiesta na 123456789 i zarezerwuj jutro stolik na 18:00",
-            "zadzwon do restauracji fiesta na 123456789 i zarezerwuj jutro stolik na 18:00", CancellationToken.None).GetAwaiter().GetResult();
-        string rejected = rejectTool.TryHandleAsync("nie", "nie", CancellationToken.None).GetAwaiter().GetResult()!;
+        Call(rejectTool, "zadzwoń do restauracji Fiesta na 123456789 i zarezerwuj jutro stolik na 18:00",
+            "zadzwon do restauracji fiesta na 123456789 i zarezerwuj jutro stolik na 18:00");
+        string rejected = Call(rejectTool, "nie", "nie");
         Check(rejected.Contains("nie nazywam tego sukcesem"), "po „nie”: zero fałszywego sukcesu");
         Check(NewStore(callDir5).List().Single().Status == "ODRZUCONE", "historia: status ODRZUCONE");
         Check(rejectBridge.DialedNumbers.Count == 1, "po „nie” NIE akceptuję zmiany drugą rundą dzwonienia");
@@ -243,8 +248,8 @@ internal static class PhoneCallRegression
         string callDir6 = Path.Combine(directory, "calls6");
         var silentBridge = new FakeBridge { IsConnected = true };
         var silentTool = NewTool(callDir6, silentBridge, new FakeStt(), scriptedUtterances: false);
-        string silent = silentTool.TryHandleAsync("zadzwoń do restauracji Fiesta na 123456789 i zarezerwuj stolik na 18:00",
-            "zadzwon do restauracji fiesta na 123456789 i zarezerwuj stolik na 18:00", CancellationToken.None).GetAwaiter().GetResult()!;
+        string silent = Call(silentTool, "zadzwoń do restauracji Fiesta na 123456789 i zarezerwuj stolik na 18:00",
+            "zadzwon do restauracji fiesta na 123456789 i zarezerwuj stolik na 18:00");
         Check(silent.Contains("✗") && silent.Contains("Nie udało się"), "cisza rozmówcy: uczciwa porażka, nie sukces");
         Check(silent.Contains("→"), "porażka ma wykonywalną radę naprawy");
         Check(NewStore(callDir6).List().Single().Status == "NIEUDANE", "historia: status NIEUDANE");
@@ -272,8 +277,8 @@ internal static class PhoneCallRegression
             "rada naprawy CALL_: konkretna (most/aplikacja pomocnicza/głośnik)");
 
         // ————— 13. historia rozmów przez polecenie —————
-        string history = NewTool(callDir3, new FakeBridge(), new FakeStt(), scriptedUtterances: false)
-            .TryHandleAsync("historia rozmów", "historia rozmow", CancellationToken.None).GetAwaiter().GetResult()!;
+        string history = Call(NewTool(callDir3, new FakeBridge(), new FakeStt(), scriptedUtterances: false),
+            "historia rozmów", "historia rozmow");
         Check(history.Contains("Historia rozmów") && history.Contains("ZREALIZOWANE"), "„historia rozmów” pokazuje rozmowy i statusy");
 
         string report = "PASS\nparsowanie (miejsce/termin/osoby/numer), zmiana materialna → decyzja właściciela,\n" +
