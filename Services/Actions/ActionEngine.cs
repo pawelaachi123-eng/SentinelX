@@ -185,7 +185,7 @@ public sealed class ActionEngine(IIntentRouter router, SentinelToolboxService to
         };
         history.AddResult(record.ActionId, "REQUEST", AuditText(record.UserRequest), result, record.ElapsedMilliseconds);
     }
-    private string AuditText(string text) => memory.IsEphemeral ? "[rozmowa prywatna lub zapis wyłączony — treść niezapisana]" : text;
+    private string AuditText(string text) => memory.IsEphemeral ? "[rozmowa prywatna lub zapis wyłączony — treść niezapisana]" : SensitiveDataRedactor.Redact(text);
     private void UpdateWaitingRequests(IReadOnlyList<ActionHistoryEntry> proof)
     {
         ActionRecord[] waiting;

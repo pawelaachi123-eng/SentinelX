@@ -34,6 +34,18 @@ internal static class BackendRegression
         Check(routedCall.Handled && routedCall.Response.Contains("Nie wykonano połączenia", StringComparison.Ordinal), "Phone calls must be routed as an ordinary toolbox tool instead of falling through to AI text.");
         var invalidVolume = await toolbox.ProcessAsync("ustaw głośność na 101%");
         Check(invalidVolume.Handled && invalidVolume.Response.Contains("od 0 do 100", StringComparison.Ordinal), "Master volume control must validate its reversible range before invoking Windows audio APIs.");
+        var desktopAutomation = new DesktopAutomationTool();
+        var desktopPermissions = new PermissionCenterService();
+        var desktopToolbox = new SentinelToolboxService(history: history, permissions: desktopPermissions, desktopAutomationTool: desktopAutomation);
+        string? smokeSetting = Environment.GetEnvironmentVariable("SENTINEL_UI_SMOKE");
+        try
+        {
+            Environment.SetEnvironmentVariable("SENTINEL_UI_SMOKE", null);
+            var blockedDesktopClick = await desktopToolbox.ProcessAsync("kliknij Zapłać");
+            Check(blockedDesktopClick.Handled && blockedDesktopClick.Response.Contains("świeżego kontekstu okna", StringComparison.OrdinalIgnoreCase) &&
+                  !desktopPermissions.HasPendingAction, "Desktop invocation must fail closed without a recently observed external window and must not stage a blind click.");
+        }
+        finally { Environment.SetEnvironmentVariable("SENTINEL_UI_SMOKE", smokeSetting); }
         Check((await phoneTool.TryProcessAsync("/rozmowy historia"))!.Contains("Nie ma jeszcze", StringComparison.Ordinal), "Slash call-history command must be handled locally.");
         var completedStore = new PhoneCallTranscriptStore(Path.Combine(directory, "completed-phone-calls.jsonl"));
         var completedTool = new PhoneCallTool(new TestPhoneProvider(new(true, Summary: "Gotowe. 18:00, 4 osoby.", Transcript: "Sentinel: Czy jest stolik?\nRestauracja: Tak.")), completedStore);
@@ -107,6 +119,10 @@ internal static class BackendRegression
         engine.Resume(); router.Wait = false;
         var resumed = await engine.ExecuteAsync("again");
         Check(resumed.Action?.Status == ActionStatus.Unverified, "Engine must recover after cancellation.");
+        var secretAudit = await engine.ExecuteAsync("API key: KeySecret123456");
+        Check(history.GetRecentEntries().Single(x => x.ActionId == secretAudit.Action!.ActionId).Command.Contains("[REDACTED]", StringComparison.Ordinal) &&
+              !history.GetRecentEntries().Single(x => x.ActionId == secretAudit.Action!.ActionId).Command.Contains("KeySecret123456", StringComparison.Ordinal),
+              "Likely credentials in user action commands must be redacted from the persistent action audit.");
         var store = new AppSettingsService(Path.Combine(directory, "Settings"));
         var field = SettingsCatalog.Create(store).Single(x => x.Label == "Próg VAD");
         Check(field.Write("NaN") != null && field.Write("2") != null, "Invalid VAD values must be rejected.");
@@ -142,7 +158,7 @@ internal static class BackendRegression
         Check(File.Exists(Path.Combine(testDocuments, "summer-plan.txt")), "Rename must update the physical file.");
         Check((await contextualFiles.ProcessAsync("utwórz folder Projekt podróż w dokumentach", CancellationToken.None))!.StartsWith("Gotowe", StringComparison.Ordinal), "Create folder in Documents.");
         Check(Directory.Exists(Path.Combine(testDocuments, "Projekt podróż")), "Folder must really exist.");
-        File.WriteAllText(Path.Combine(directory, "backend-tests.txt"), "PASS: STOP, voice permission, proof spoofing, history, concurrency, cancellation, resume, validation, persistence, corrupt JSON, bounded file search/operations/date filtering, game-lag diagnostics, unavailable sensor honesty, audio range validation, local reminders/secret filtering, public web extraction/SSRF checks, contextual web routing, multi-app planning, phone-call refusal without provider and transcript archival gates\n");
+        File.WriteAllText(Path.Combine(directory, "backend-tests.txt"), "PASS: STOP, voice permission, proof spoofing, history, concurrency, cancellation, resume, validation, persistence, corrupt JSON, bounded file search/operations/date filtering, game-lag diagnostics, unavailable sensor honesty, audio range validation, fail-closed desktop invocation without a fresh target, local reminders/secret filtering, public web extraction/SSRF checks, contextual web routing, multi-app planning, phone-call refusal without provider and transcript archival gates\n");
     }
     private sealed class StubWebHandler : HttpMessageHandler
     {

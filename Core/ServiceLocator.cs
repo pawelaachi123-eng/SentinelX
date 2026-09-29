@@ -27,6 +27,7 @@ public static class ServiceLocator
         services.AddSingleton<Services.Permissions.IPermissionService, PermissionCenterService>();
         services.AddSingleton<Services.Apps.IAppLauncherService>(sp => new AppLauncherService(() => sp.GetRequiredService<ISettingsService>().Current.Ui.DefaultBrowserPreference));
         services.AddSingleton<ProcessToolService>();
+        services.AddSingleton<DesktopAutomationTool>();
         services.AddSingleton<PcDiagnosticService>();
         services.AddSingleton<DiagnosticSnapshotService>(sp => new DiagnosticSnapshotService(sp.GetRequiredService<PcDiagnosticService>()));
         services.AddSingleton<ActionTaskRegistry>();
@@ -62,7 +63,8 @@ public static class ServiceLocator
             sp.GetRequiredService<ProcessToolService>(), sp.GetRequiredService<Services.Network.INetworkService>(),
             sp.GetRequiredService<PcDiagnosticService>(), sp.GetRequiredService<ActionTaskRegistry>(),
             sp.GetRequiredService<ConversationMemoryService>(), sp.GetRequiredService<HistoryExportService>(),
-            sp.GetRequiredService<Services.Memory.MemoryActionService>()));
+            sp.GetRequiredService<Services.Memory.MemoryActionService>(),
+            desktopAutomationTool: sp.GetRequiredService<DesktopAutomationTool>()));
         services.AddSingleton<FileWorkspaceService>(sp => new(history: sp.GetRequiredService<ActionHistoryService>()));
         services.AddSingleton<Services.Files.IFileService>(sp => sp.GetRequiredService<FileWorkspaceService>());
         services.AddSingleton<Services.Files.FileCleanupService>(sp => new(history: sp.GetRequiredService<ActionHistoryService>()));

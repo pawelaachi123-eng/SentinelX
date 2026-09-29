@@ -1,5 +1,6 @@
 using System;
 using System.Threading.Tasks;
+using System.Text.RegularExpressions;
 using SentinelX.Services.PhoneCall;
 using SentinelX.Services.Web;
 
@@ -32,6 +33,7 @@ namespace SentinelX
         private readonly PhoneCallTool phoneCalls;
         private readonly AudioControlTool audioControl;
         private readonly WebResearchTool webResearch;
+        private readonly DesktopAutomationTool desktopAutomation;
 
 
         public SentinelToolboxService(Func<string>? browserPreference = null, ActionHistoryService? history = null,
@@ -41,7 +43,7 @@ namespace SentinelX
             Services.History.HistoryExportService? historyExport = null, Services.Memory.MemoryActionService? memoryActionService = null,
             PhoneCallTool? phoneCallTool = null, WebResearchTool? webResearchTool = null,
             SystemMonitor? systemMonitor = null, PerformanceHistoryService? performanceHistory = null,
-            GameFocusModeService? gameFocusMode = null)
+            GameFocusModeService? gameFocusMode = null, DesktopAutomationTool? desktopAutomationTool = null)
         {
             actionHistory = history ?? new ActionHistoryService();
             permissionCenter = permissions ?? new PermissionCenterService();
@@ -60,6 +62,7 @@ namespace SentinelX
             var performanceBuffer = performanceHistory ?? new PerformanceHistoryService(metricSource);
             diagnosticsTool = new DiagnosticsTool(processTools, networkTools, performanceBuffer);
             this.gameFocusMode = gameFocusMode ?? new GameFocusModeService();
+            desktopAutomation = desktopAutomationTool ?? new DesktopAutomationTool();
         }
 
         // =========================================================
@@ -71,6 +74,8 @@ namespace SentinelX
                 string command, System.Threading.CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            ToolboxCommandResult? desktopResponse = TryProcessDesktopCommand(command ?? "");
+            if (desktopResponse != null) return desktopResponse;
             string? phoneResponse = await phoneCalls.TryProcessAsync(command ?? "", cancellationToken);
             if (phoneResponse != null) return ToolboxCommandResult.HandledWith(phoneResponse);
             string? audioResponse = audioControl.TryProcess(command ?? "", actionHistory, cancellationToken);
@@ -492,6 +497,105 @@ namespace SentinelX
         // =========================================================
         // IMMEDIATE ACTION
         // =========================================================
+
+        /// <summary>Returns bounded visible UI Automation labels for an explicit screen-context request.
+        /// Editable values are never read, and captured labels are not copied into the persistent action audit.</summary>
+        public string ReadDesktopContext(string command)
+        {
+            if (Environment.GetEnvironmentVariable("SENTINEL_UI_SMOKE") == "1")
+                return "Desktop UI Automation is disabled during UI smoke tests.";
+            DesktopTarget? target = desktopAutomation.GetFreshTarget();
+            string context = desktopAutomation.ReadVisibleControls();
+            bool failed = target == null || context.StartsWith("Nie udało się", StringComparison.OrdinalIgnoreCase) ||
+                context.StartsWith("Nie można", StringComparison.OrdinalIgnoreCase) ||
+                context.StartsWith("UI Automation", StringComparison.OrdinalIgnoreCase) ||
+                context.StartsWith("Okno ", StringComparison.OrdinalIgnoreCase) && context.Contains("nie udostępnia tekstowych kontrolek", StringComparison.OrdinalIgnoreCase);
+            string id = actionHistory.CreateActionId();
+            ActionExecutionResult result = failed
+                ? ActionExecutionResult.Failure("Nie uzyskano kontekstu UI Automation.", "Nie zapisano tekstu kontrolek w audycie.")
+                : ActionExecutionResult.UnverifiedSuccess("Pobrano ograniczony kontekst tekstowych kontrolek UI Automation; nie wykonano OCR ani odczytu wartości pól.",
+                    $"Liczba znaków kontekstu: {context.Length}. Tekst kontrolek nie został utrwalony w audycie.");
+            actionHistory.AddResult(id, "UIA_READ", command, result);
+            return context;
+        }
+
+        private ToolboxCommandResult? TryProcessDesktopCommand(string command)
+        {
+            if (Environment.GetEnvironmentVariable("SENTINEL_UI_SMOKE") == "1") return null;
+            string normalized = Core.CommandText.Normalize(command).Trim().TrimEnd('.', '!', '?', ',');
+            DesktopTarget? pendingTarget = desktopAutomation.GetPendingSelectionTarget();
+            if (pendingTarget != null)
+            {
+                Match selection = Regex.Match(normalized, @"^(?:(?:kliknij|click)\s+)?(?:nr\s*)?(\d+)$", RegexOptions.CultureInvariant);
+                if (selection.Success)
+                {
+                    if (!int.TryParse(selection.Groups[1].Value, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out int index) ||
+                        !desktopAutomation.TryTakePendingCandidate(index, out DesktopTarget? selectedTarget, out DesktopControlCandidate? selected, out int choiceCount))
+                        return ToolboxCommandResult.HandledWith("Nie ma takiej pozycji. Wybierz numer z listy albo wpisz „anuluj”.");
+                    return RequestDesktopInvoke(command, selectedTarget!, selected!, index, choiceCount);
+                }
+                if (normalized is "anuluj" or "anuluj akcje" or "cancel") desktopAutomation.ClearPendingCandidates();
+                else if (!Regex.IsMatch(normalized, @"^(?:kliknij|nacisnij|wcisnij|wybierz|click|press|choose)\s+.+$", RegexOptions.CultureInvariant))
+                    desktopAutomation.ClearPendingCandidates();
+            }
+
+            Match click = Regex.Match(command.Trim(), @"^(?:kliknij|naciśnij|wciśnij|wybierz|click|press|choose)\s+(?:(?:na|on|the)\s+)?(.+?)\s*[.!?]*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+            if (!click.Success) return null;
+            desktopAutomation.ClearPendingCandidates();
+            string exactName = click.Groups[1].Value.Trim().Trim('"', '\'', '„', '”', '»', '«', ' ');
+            exactName = Regex.Replace(exactName, @"^(?:(?:przycisk|hiperłącze|link|button|the button|the link)\s+)+", "", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+            exactName = Regex.Replace(exactName, @"\s+(?:przycisk|hiperłącze|link|button)$", "", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant).Trim();
+            if (exactName.Length is 0 or > 160)
+                return ToolboxCommandResult.HandledWith("Podaj krótką, dokładną etykietę widocznego przycisku lub linku.");
+            DesktopTarget? target = desktopAutomation.GetFreshTarget();
+            if (target == null)
+                return ToolboxCommandResult.HandledWith("Nie mam świeżego kontekstu okna. Uaktywnij docelową aplikację, wróć do Sentinela i ponów polecenie.");
+            IReadOnlyList<DesktopControlCandidate> candidates = desktopAutomation.FindClickableControls(exactName, out string scanError);
+            if (scanError.Length != 0)
+                return ToolboxCommandResult.HandledWith("Nie udało się bezpiecznie odczytać przycisków. Niczego nie kliknięto. " + scanError);
+            DesktopTarget? afterScan = desktopAutomation.GetFreshTarget();
+            if (afterScan == null || afterScan.Handle != target.Handle || afterScan.ProcessId != target.ProcessId)
+                return ToolboxCommandResult.HandledWith("Okno zmieniło się podczas wyszukiwania kontrolki. Nie kliknięto niczego; ponów polecenie przy właściwym oknie.");
+            if (candidates.Count == 0)
+                return ToolboxCommandResult.HandledWith($"Nie znaleziono widocznego, aktywnego przycisku ani hiperłącza o dokładnej nazwie „{exactName}” w {target.ProcessName}. Niczego nie kliknięto.");
+            if (candidates.Count == 1) return RequestDesktopInvoke(command, target, candidates[0]);
+
+            desktopAutomation.SetPendingCandidates(target, candidates);
+            string choices = string.Join("\n", candidates.Select((candidate, index) =>
+                $"{index + 1}. {candidate.ControlType.Replace("ControlType.", "", StringComparison.Ordinal)} „{SensitiveDataRedactor.Redact(candidate.Name)}”" +
+                (candidate.AutomationId.Length == 0 ? "" : $" (ID: {SensitiveDataRedactor.Redact(candidate.AutomationId)})")));
+            return ToolboxCommandResult.HandledWith("Znaleziono kilka pasujących kontrolek. Nie kliknięto niczego. Wskaż numer:\n" + choices);
+        }
+
+        private ToolboxCommandResult RequestDesktopInvoke(string command, DesktopTarget target, DesktopControlCandidate candidate, int choiceNumber = 0, int choiceCount = 0)
+        {
+            DesktopTarget? current = desktopAutomation.GetFreshTarget();
+            if (current == null || current.Handle != target.Handle || current.ProcessId != target.ProcessId)
+                return ToolboxCommandResult.HandledWith("Okno docelowe wygasło lub zmieniło się. Nie poproszono o zgodę i nie kliknięto kontrolki.");
+            string safeCommand = SensitiveDataRedactor.Redact(command);
+            string actionId = actionHistory.CreateActionId();
+            string description = SensitiveDataRedactor.Redact($"Wywołać {candidate.ControlType.Replace("ControlType.", "", StringComparison.Ordinal)} „{candidate.Name}”" +
+                (candidate.AutomationId.Length == 0 ? "" : $" (ID: {candidate.AutomationId})") +
+                (choiceNumber > 0 ? $" — wybrana pozycja {choiceNumber} z {choiceCount}" : "") +
+                $" w {target.ProcessName}" + (target.Title.Length == 0 ? "" : $" — {target.Title}") +
+                "? Skutek aplikacyjny nie jest gwarantowany; potwierdź tylko, jeśli to właściwa kontrolka.");
+            var action = new PendingPermissionAction
+            {
+                ActionId = actionId, ActionType = "UI_AUTOMATION_INVOKE", OriginalCommand = safeCommand,
+                Description = description, RiskLevel = "HIGH",
+                CancellableExecutor = _ => Task.FromResult(InvokeDesktopCandidate(actionId, safeCommand, target, candidate))
+            };
+            bool accepted = permissionCenter.TryRequest(action, out string response);
+            if (accepted) actionHistory.AddPending(actionId, action.ActionType, safeCommand, description);
+            return ToolboxCommandResult.HandledWith(response);
+        }
+
+        private ActionExecutionResult InvokeDesktopCandidate(string actionId, string command, DesktopTarget target, DesktopControlCandidate candidate)
+        {
+            ActionExecutionResult result = desktopAutomation.InvokeButtonAfterApproval(target, candidate);
+            actionHistory.AddResult(actionId, "UI_AUTOMATION_INVOKE", command, result);
+            return result;
+        }
 
         private async Task<ToolboxCommandResult?> TryContextualSearchAsync(string command, CancellationToken token)
         {

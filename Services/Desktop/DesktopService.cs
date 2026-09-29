@@ -1,6 +1,8 @@
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Threading;
+using SentinelX;
 using System.Windows.Media;
 using Microsoft.Win32;
 using SentinelX.Core;
@@ -15,10 +17,11 @@ namespace SentinelX.Services.Desktop;
 
 /// <summary>Owns Windows interop and UI lifetime; no business logic in window code-behind.</summary>
 public sealed class DesktopService(ISettingsService settings, IActionEngine engine, IVoiceService voice,
-    ISystemMonitorService monitor, IUiDispatcher dispatcher, OverlayViewModel overlayVm) : IDesktopService, IDisposable
+    ISystemMonitorService monitor, IUiDispatcher dispatcher, OverlayViewModel overlayVm, DesktopAutomationTool desktopAutomation) : IDesktopService, IDisposable
 {
     private Window? window;
     private TrayService? tray;
+    private DispatcherTimer? foregroundTracker;
     private GlobalHotkeyService? hotkeys;
     private OverlayWindow? overlay;
     private bool exiting;
@@ -72,6 +75,9 @@ public sealed class DesktopService(ISettingsService settings, IActionEngine engi
         }
         catch (Exception ex) { SetStatus("Zasobnik niedostępny; zamknięcie zakończy aplikację. " + ex.Message); }
         monitor.Start();
+        foregroundTracker = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromMilliseconds(250) };
+        foregroundTracker.Tick += (_, _) => desktopAutomation.RememberForegroundWindow();
+        foregroundTracker.Start();
         if (settings.Current.Startup.StartMinimized && tray != null) window.Hide();
         if (settings.Current.Startup.StartVoiceOnLaunch)
         {
@@ -168,6 +174,7 @@ public sealed class DesktopService(ISettingsService settings, IActionEngine engi
         settings.Changed -= ApplySettings; monitor.Updated -= MetricsUpdated; engine.Changed -= StateChanged; voice.Changed -= StateChanged;
         SystemEvents.UserPreferenceChanged -= PreferencesChanged;
         if (window != null) { window.Closing -= Closing; window.SourceInitialized -= SourceInitialized; window.Loaded -= Loaded; window.StateChanged -= WindowStateChanged; }
+        foregroundTracker?.Stop();
         hotkeys?.Dispose(); tray?.Dispose(); overlay?.Close();
     }
 }
