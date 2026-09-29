@@ -4,7 +4,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using SentinelX;
 using SentinelX.Core;
-using SentinelX.Core.Verification;
 using SentinelX.Services.AI;
 using SentinelX.Services.Phone;
 using SentinelX.Services.Settings;
