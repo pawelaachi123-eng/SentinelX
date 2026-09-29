@@ -93,7 +93,7 @@ internal static class BrainRoundsRegression
         string readiness = Read("Services", "Readiness", "ReadinessService.cs");
         Check(readiness.Contains("EngineLedger") && readiness.Contains("TopUnverifiedTypes"),
             "karta zaufania łączy księgę sesji i TOP typy bez dowodu");
-        Check(readiness.Contains("najczęściej bez dowodu"), "detal karty nazywa winowajców wprost");
+        Check(readiness.Contains("Najczęściej bez dowodu"), "detal karty nazywa winowajców wprost");
 
         // ————— R6/R7: UI — toast błędu z radą + pasek statusu z procentem —————
         string mainVm = Read("ViewModels", "MainViewModel.cs");
