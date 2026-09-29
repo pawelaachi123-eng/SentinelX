@@ -447,6 +447,12 @@ usuwanie, dobór do zadania i licencje doszły w drugim przyroście — sekcja 1
   PLAN/PRÓBA/CHECK/NAPRAWA w rekordzie, 3 nowe reguły sądu rodzin narzędzi,
   księga zdrowia silnika (zaufanie na żywo w pasku statusu), dokument mózgu
   (docs/MOZG-SENTINELA.md). **45 zestaw** regresji.
+- **PHONECALL TOOL (0.99)**: telefon jako zwykłe narzędzie głównego AI (bez zakładki):
+  prawdziwe rozmowy z karty SIM/eSIM przez most Android (companion/android), STT→LLM→TTS,
+  czujnik zmiany materialnej (termin/cena/opłata) z decyzją właściciela i ponownym połączeniem
+  z kontekstem, dowód OFFHOOK + reguła sądu 9 + rada CALL_, historia „rozmowy historia” /
+  /rozmowy, transkrypty lokalne (zero nagrań), uczciwe odmowy bez mostu/STT/numeru
+  (docs/TELEFON-SENTINELA.md). **46 zestaw** regresji.
 - **Roblox mega (0.99)**: 4 jajka (nowe LODOWE z Królową Zimy ×1,60), 14 dni nagród,
   5 typów losowanych eventów globalnych (do MEGADARU 500 dla wszystkich), 4 oferty
   limitowane (weteran/pakiety sezonowe), sezon 40 poziomów, offline 10 h, 24 nowe

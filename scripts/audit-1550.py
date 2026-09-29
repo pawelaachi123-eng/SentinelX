@@ -50,7 +50,7 @@ MODULES = [
     ("gamedev/ (pełna gra + Blender)", "—", "Mega Obby: 120 etapów z kodu + modele/animacje", "poza 20 sekcjami listy"),
     ("gamedev/ (GameForge)", "—", "Generator gier: 6 gatunków z jednej linijki GameSpec", "poza 20 sekcjami listy"),
     ("gamedev/ (różnorodność)", "—", "10 gatunków (z wędkowaniem Fisch-style), zbiory-indeks, osiągnięcia, pogoda, 3. jajko, losowane eventy", "poza 20 sekcjami listy"),
-    ("gamedev/ (UI 2.0)", "—", "UiKit: szkło/sprężyny/toasty/konfetti; HUD i sklep od zera; SentinelX: UiToastHost (pasek życia) + pasek statusu + paleta z licznikiem; UiSmoke v2 (toasty/status/a11y); redesign 2 nocny iris (dark-first, iris, szkło, TileIn/Bob, sans; WCAG); mózg ×10 rund: RecoveryAdvisor + ReasoningTrace + reguły rodzin + EngineLedger (zaufanie live) + toast z radą + MOZG-SENTINELA.md + PLAYBOOK-GIER.md; Roblox: 4 jajka, 14 dni nagród, 5 eventów, 4 oferty, sezon 40, offline 10 h, +24 aliasy — 45. zestaw", "poza 20 sekcjami listy"),
+    ("gamedev/ (UI 2.0)", "—", "UiKit: szkło/sprężyny/toasty/konfetti; HUD i sklep od zera; SentinelX: UiToastHost (pasek życia) + pasek statusu + paleta z licznikiem; UiSmoke v2 (toasty/status/a11y); redesign 2 nocny iris (dark-first, iris, szkło, TileIn/Bob, sans; WCAG); mózg ×10 rund: RecoveryAdvisor + ReasoningTrace + reguły rodzin + EngineLedger (zaufanie live) + toast z radą + MOZG-SENTINELA.md + PLAYBOOK-GIER.md; Roblox: 4 jajka, 14 dni nagród, 5 eventów, 4 oferty, sezon 40, offline 10 h, +24 aliasy — 45. zestaw; PhoneCallTool: SIM przez most Android, STT→LLM→TTS, decyzje właściciela, dowód OFFHOOK, transkrypty — 46. zestaw", "poza 20 sekcjami listy"),
 ]
 
 # Sekcje bez modułu obsługi poleceń — z jawnym powodem, żeby brak był widoczny.

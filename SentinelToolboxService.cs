@@ -30,7 +30,8 @@ namespace SentinelX
             Services.Permissions.IPermissionService? permissions = null, Services.Apps.IAppLauncherService? launcher = null,
             ProcessToolService? processes = null, Services.Network.INetworkService? network = null,
             PcDiagnosticService? diagnostics = null, ActionTaskRegistry? tasks = null, ConversationMemoryService? memory = null,
-            Services.History.HistoryExportService? historyExport = null, Services.Memory.MemoryActionService? memoryActionService = null)
+            Services.History.HistoryExportService? historyExport = null, Services.Memory.MemoryActionService? memoryActionService = null,
+            Services.Phone.PhoneCallTool? phone = null)
         {
             actionHistory = history ?? new ActionHistoryService();
             permissionCenter = permissions ?? new PermissionCenterService();
@@ -41,7 +42,10 @@ namespace SentinelX
             this.tasks = tasks ?? new ActionTaskRegistry();
             memoryActions = memoryActionService ?? new(memory ?? new ConversationMemoryService(), permissionCenter, actionHistory);
             this.historyExport = historyExport ?? new(actionHistory);
+            this.phone = phone;
         }
+
+        private readonly Services.Phone.PhoneCallTool? phone;
 
         // =========================================================
         // MAIN TOOL ROUTER
@@ -53,6 +57,13 @@ namespace SentinelX
         {
             cancellationToken.ThrowIfCancellationRequested();
             string query = Core.CommandText.Normalize(command ?? "");
+            // 0.99 · TELEFON: narzędzie głównego AI (bez zakładki) — decyzje „tak/nie”, historia rozmów
+            // i sama rozmowa przechodzą tędy zanim cokolwiek innego zechce przechwycić polecenie.
+            if (phone != null)
+            {
+                string? phoneResponse = await phone.TryHandleAsync(command ?? "", query, cancellationToken);
+                if (phoneResponse != null) return ToolboxCommandResult.HandledWith(phoneResponse);
+            }
             string? memoryResponse = memoryActions.TryRequest(command ?? "");
             if (memoryResponse != null) return ToolboxCommandResult.HandledWith(memoryResponse);
             if (query is "eksportuj historie json" or "eksportuj historie csv")

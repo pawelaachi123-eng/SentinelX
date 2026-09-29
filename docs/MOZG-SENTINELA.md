@@ -100,6 +100,10 @@ na żywo z księgi.
 
 ## 7. JAK ROZSZERZAĆ MÓZG — przepisy
 
+**Wzorzec rodziny CALL_ (0.99, telefon):** dowód = prawdziwy sygnał z telefonu (OFFHOOK)
+plus numer plus potwierdzenie celu; rada naprawy mówi o moście/aplikacji pomocniczej;
+„Gotowe” tylko po faktach — pełna specyfikacja: docs/TELEFON-SENTINELA.md.
+
 **Nowa rodzina narzędzi:** 1) dodaj regułę post-kondycyjną (sekcja 2),
 2) dopisz rodzinę w `RecoveryAdvisor.ByFamily`, 3) jeśli błędy bywają chwilowe —
 sygnały do `RetryAdvisor`, 4) kotwice w `tests/BrainRoundsRegression.cs`, 5) update tego pliku.

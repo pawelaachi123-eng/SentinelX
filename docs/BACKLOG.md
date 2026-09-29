@@ -379,6 +379,10 @@ Stan na 2026-09-27 (0.97). Zasada: każda pojedyncza pozycja znika z listy dopie
   jako fallback + „najczęściej bez dowodu: …” · R6 toast FAILED z radą · R7 pasek
   statusu „Zaufanie: N%” · R8 smoke na żywo · R9 docs/MOZG-SENTINELA.md (spec mózgu) ·
   R10 BrainRoundsRegression (45. zestaw).
+- **PHONECALL TOOL (0.99)**: „zadzwoń do…” jako narzędzie głównego AI — SIM przez most Android
+  (companion/android), STT/LLM/TTS w pętli rozmowy, decyzje właściciela przy zmianie materialnej,
+  dowód OFFHOOK + reguła CALL_ w sądzie, transkrypty + „/rozmowy” (46. zestaw; doc:
+  TELEFON-SENTINELA.md).
 - **ROBLOX MEGA (0.99)**: 4. jajko LODOWE (9000 monet, 6 zwierzaków, legendarna
   Królowa Zimy ×1,60 w3), tor nagród 14 DNI (dzień 10/14 ze spinami i zwierzakiem),
   5 typów globalnych eventów (x2 8-minutowe / x3 / x5 / DAR 250 / MEGADAR 500),

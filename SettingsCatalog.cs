@@ -76,6 +76,17 @@ public static class SettingsCatalog
         Toggle("Głos", "Odpowiedzi głosowe", "Synteza lokalna Windows dla poleceń głosowych.", () => S().Voice.SpeakResponses, x => S().Voice.SpeakResponses = x);
         Toggle("Developer", "Tryb deweloperski", "Diagnostyka; nie daje modelowi zgody na modyfikowanie kodu.", () => S().Developer.DeveloperMode, x => S().Developer.DeveloperMode = x);
         Toggle("Developer", "Zapis próbek audio", "Prywatne nagrania lokalne. Wyłącz domyślnie.", () => S().Voice.SaveVoiceSamples, x => { S().Developer.SaveVoiceSamples = x; S().Voice.SaveVoiceSamples = x; });
+        // 0.99 · TELEFON — narzędzie rozmów (bez osobnej zakładki; pola żyją w istniejących ustawieniach)
+        fields.Add(new("Telefon", "Numer kontaktowy", "Sentinel podaje go rozmówcom, gdy o to poprosą — nie pyta ponownie.",
+            () => S().Phone.CallbackNumber, value => { string v = value.Trim(); if (v.Length > 20) return "Maksymalnie 20 znaków."; S().Phone.CallbackNumber = v; return null; }));
+        fields.Add(new("Telefon", "Imię do rozmów", "Jak Sentinel przedstawia się podczas rozmowy.",
+            () => S().Phone.OwnerName, value => { S().Phone.OwnerName = value.Trim(); return null; }));
+        Number("Telefon", "Port mostu", "Port nasłuchu mostu komputer–telefon (LAN, tylko po wyraźnym włączeniu).",
+            () => S().Phone.BridgePort, x => S().Phone.BridgePort = (int)x, 1024, 65535, true);
+        fields.Add(new("Telefon", "Token mostu", "Token parowania aplikacji pomocniczej. Generuje go Sentinel przy pierwszym włączeniu mostu.",
+            () => S().Phone.BridgeToken, value => { S().Phone.BridgeToken = value.Trim(); return null; }));
+        Toggle("Telefon", "Zgoda na własny głos", "Zezwalam na użycie moich próbek głosu (klon cudzego głosu bez zgody jest zablokowany).",
+            () => S().Phone.AllowOwnVoiceClone, x => S().Phone.AllowOwnVoiceClone = x);
         return fields;
     }
 }

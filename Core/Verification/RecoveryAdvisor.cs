@@ -17,6 +17,7 @@ public static class RecoveryAdvisor
         ("FILE_", "Podaj pełną ścieżkę pliku i sprawdź, czy nie otwierasz go w innym programie — zamknięcie blokady zwykle wystarcza."),
         ("SMARTHOME_", "Sprawdź, czy urządzenie odpowiada w aplikacji producenta; dopiero potem ponawiaj polecenie — nie powtarzam poleceń na ślepo."),
         ("MEMORY_", "Wypisz notatkę jeszcze raz krócej — długie notatki tną się przy zapisie; sprawdź ją potem na stronie Pamięć."),
+        ("CALL_", "Uruchom aplikację pomocniczą na telefonie i połącz most („włącz most telefoniczny”); sprawdź zasięg karty SIM. Rozmowa idzie przez GŁOŚNIK telefonu — nie przykładaj go do ucha, gdy Sentinel rozmawia."),
     ];
 
     /// <summary>Wykonywalna rada naprawy; nigdy pusta — zawsze coś konkretnego.</summary>

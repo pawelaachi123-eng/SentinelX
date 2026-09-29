@@ -49,6 +49,7 @@ public static class SlashCatalog
         new("backup", "Backup", "kopię danych z SHA-256", SlashKind.Command, "backup"),
         new("archiwa", "Archiwa", "miesięczne archiwa rozmów", SlashKind.Command, "archiwa"),
         new("archiwizuj", "Archiwizuj rozmowy", "przenieś stare miesiące do archiwum", SlashKind.Command, "archiwizuj rozmowy"),
+        new("rozmowy", "Historia rozmów telefonicznych", "połączenia i transkrypcje · tylko tekst, bez nagrań", SlashKind.Command, "rozmowy historia"),
         // Sentinel about Sentinel
         new("samokontrola", "Samokontrola", "spójność plików i magazynów", SlashKind.Command, "samokontrola"),
         new("propozycje", "Propozycje", "co warto zrobić — decyzja należy do Ciebie", SlashKind.Command, "propozycje"),

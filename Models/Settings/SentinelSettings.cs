@@ -12,6 +12,7 @@ public sealed class SentinelSettings
     public DeveloperSettings Developer { get; set; } = new();
     public ResourceSettings Resources { get; set; } = new();
     public MemorySettings Memory { get; set; } = new();
+    public PhoneSettings Phone { get; set; } = new();
 
     // Backward-compatible properties for existing code and old settings.json files.
     [JsonIgnore] public bool CloseToTray { get => Ui.CloseToTray; set => Ui.CloseToTray = value; }

@@ -65,12 +65,17 @@ public static class ServiceLocator
             systemMonitor: sp.GetRequiredService<SystemMonitor>(), aiSettingsProvider: () => sp.GetRequiredService<ISettingsService>().Current.Ai));
         services.AddSingleton<IAiService, AiService>();
         services.AddSingleton<CommandRouter>();
+        services.AddSingleton<Services.Phone.PhoneCallStore>(sp => new(System.IO.Path.Combine(AppPaths.HistoryDirectory, "PhoneCalls")));
+        services.AddSingleton<Services.Phone.IPhoneBridge, Services.Phone.PhoneBridgeService>();
+        services.AddSingleton<Services.Phone.PhoneCallTool>(sp => new(sp.GetRequiredService<ISettingsService>(), WebAccessService.Shared,
+            sp.GetRequiredService<IAiService>(), sp.GetRequiredService<Services.Phone.IPhoneBridge>(),
+            sp.GetRequiredService<Services.Phone.PhoneCallStore>(), sp.GetRequiredService<ActionHistoryService>()));
         services.AddSingleton<SentinelToolboxService>(sp => new(() => sp.GetRequiredService<ISettingsService>().Current.Ui.DefaultBrowserPreference, sp.GetRequiredService<ActionHistoryService>(),
             sp.GetRequiredService<Services.Permissions.IPermissionService>(), sp.GetRequiredService<Services.Apps.IAppLauncherService>(),
             sp.GetRequiredService<ProcessToolService>(), sp.GetRequiredService<Services.Network.INetworkService>(),
             sp.GetRequiredService<PcDiagnosticService>(), sp.GetRequiredService<ActionTaskRegistry>(),
             sp.GetRequiredService<ConversationMemoryService>(), sp.GetRequiredService<HistoryExportService>(),
-            sp.GetRequiredService<Services.Memory.MemoryActionService>()));
+            sp.GetRequiredService<Services.Memory.MemoryActionService>(), sp.GetRequiredService<Services.Phone.PhoneCallTool>()));
         services.AddSingleton<FileWorkspaceService>(sp => new(history: sp.GetRequiredService<ActionHistoryService>()));
         services.AddSingleton<Services.Files.IFileService>(sp => sp.GetRequiredService<FileWorkspaceService>());
         services.AddSingleton<Services.Files.FileCleanupService>(sp => new(history: sp.GetRequiredService<ActionHistoryService>()));

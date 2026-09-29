@@ -92,7 +92,14 @@ public sealed class IntentRouter : IIntentRouter
         // 0.95: nauczone wzorce (z poprawek i akceptacji) rozpoznaję od razu, bez ponownego zgadywania.
         string effective = input;
         string note = "";
-        if (learned != null && learned.TryGet(input, out string learnedTarget))
+        // 0.99 · TELEFON: pełne zdania typu „zadzwoń do restauracji…” idą w całości do PhoneCallTool —
+        // katalog nie „poprawia” ich na znane polecenia, bo to nowe, legalne intencje.
+        if (Services.Phone.PhoneCallTool.IsPhoneIntent(CommandText.Normalize(input)))
+        {
+            var phoneResult = await toolbox.ProcessAsync(input, token);
+            if (phoneResult.Handled) return phoneResult.Response;
+        }
+        else if (learned != null && learned.TryGet(input, out string learnedTarget))
         {
             effective = learnedTarget;
             note = "Zrozumiałem jako: „" + learnedTarget + "” (nauczone z Twojej poprawki).\n\n";

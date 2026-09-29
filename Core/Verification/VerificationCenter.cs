@@ -152,5 +152,14 @@ public sealed class VerificationCenter
                 .Select(x => x.ActionId).ToList();
             return vague.Count == 0 ? null : "sprzątanie bez liczby uwolnionych danych: " + string.Join(", ", vague);
         });
+        // 9. TELEFON BEZ SYGNAŁU: CALL_ VERIFIED wymaga OFFHOOK (prawdziwy stan z telefonu) i numeru w dowodzie.
+        Register("CALL_", (_, _, entries) =>
+        {
+            List<string> blind = entries
+                .Where(x => x.Status == "VERIFIED" && (!x.Evidence.Contains("OFFHOOK", StringComparison.Ordinal)
+                    || !System.Text.RegularExpressions.Regex.IsMatch(x.Evidence, @"\d{9,}")))
+                .Select(x => x.ActionId).ToList();
+            return blind.Count == 0 ? null : "rozmowa VERIFIED bez sygnału OFFHOOK/numeru z telefonu (połączenie niepotwierdzone): " + string.Join(", ", blind);
+        });
     }
 }
