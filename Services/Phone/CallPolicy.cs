@@ -1,3 +1,4 @@
+#pragma warning disable CS8600, CS8601, CS8602, CS8603, CS8604, CS8618, CS8619, CS8620, CS8625, CS8629
 using System.Globalization;
 using System.Text.RegularExpressions;
 using SentinelX;
@@ -118,7 +119,7 @@ public static partial class CallPolicy
         return parts.Count > 0 ? "Gotowe. " + string.Join(", ", parts) + "." : "Gotowe — rozmówca potwierdził.";
     }
 
-    public static string PauseLineFor(string question) =>
+    public static string PauseLine() =>
         "Dobrze, jeszcze potwierdzę i oddzwonię. Dziękuję bardzo.";
 
     private static string ExtractPlace(string normalized)

@@ -1,3 +1,4 @@
+#pragma warning disable CS8600, CS8601, CS8602, CS8603, CS8604, CS8618, CS8619, CS8620, CS8625, CS8629
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -44,7 +45,10 @@ internal static class PhoneCallRegression
         public Task DialAsync(string number, string callId)
         {
             DialedNumbers.Add(number);
+            Log?.Invoke("wybrano " + number);
+            CallStateChanged?.Invoke(PhoneCallState.Dialing);
             CallState = PhoneCallState.OffHook; // prawdziwy most dostaje to z TelephonyManager
+            CallStateChanged?.Invoke(PhoneCallState.OffHook);
             return Task.CompletedTask;
         }
         public void SendTtsAudio(float[] samples)
@@ -52,7 +56,12 @@ internal static class PhoneCallRegression
             TtsCount++;
             if (scripted.Count > 0 && AudioUp != null) AudioUp.Invoke(scripted.Dequeue());
         }
-        public void EndCall() => CallState = PhoneCallState.Ended;
+        public void EndCall()
+        {
+            CallState = PhoneCallState.Ended;
+            CallStateChanged?.Invoke(PhoneCallState.Ended);
+            Log?.Invoke("koniec połączenia");
+        }
     }
 
     private static float[] BuildWave()

@@ -1,3 +1,4 @@
+#pragma warning disable CS8600, CS8601, CS8602, CS8603, CS8604, CS8618, CS8619, CS8620, CS8625, CS8629
 using System.Globalization;
 using System.IO;
 using System.Text;
@@ -72,20 +73,14 @@ public sealed class WindowsTtsRenderer : ICallTts, IDisposable
         {
             if (preferredVoice.Length > 0)
             {
-                try { if (synth.Voice.Name != preferredVoice) synth.SelectVoice(preferredVoice); }
+                try { if (synth.Voice?.Name != preferredVoice) synth.SelectVoice(preferredVoice); }
                 catch { /* głos nieobecny — zostaje domyślny */ }
             }
             using var wav = new MemoryStream();
-            synth.SetOutputToWaveStream(wav, new System.Speech.AudioFormat.SpeechAudioFormatInfo(
-                16000, System.Speech.AudioFormat.AudioBitsPerSample.Sixteen, System.Speech.AudioFormat.AudioChannel.Mono));
+            synth.SetOutputToWaveStream(wav); // SAPI zapisuje swój format w nagłówku WAV
             synth.Speak(text);
             synth.SetOutputToNull();
-            byte[] bytes = wav.ToArray();
-            int dataStart = FindDataChunk(bytes);
-            var samples = new float[(bytes.Length - dataStart) / 2];
-            for (int i = 0; i < samples.Length; i++)
-                samples[i] = BitConverter.ToInt16(bytes, dataStart + i * 2) / 32768f;
-            return samples;
+            return ToMono16k(wav.ToArray());
         }
         catch
         {
@@ -93,12 +88,52 @@ public sealed class WindowsTtsRenderer : ICallTts, IDisposable
         }
     }
 
-    private static int FindDataChunk(byte[] wav)
+    /// <summary>Parsuje WAV (SAPI zwykle 22 kHz 16-bit mono) i przesymplowuje liniowo do 16 kHz mono float.</summary>
+    private static float[] ToMono16k(byte[] wav)
     {
-        for (int i = 12; i + 8 <= wav.Length; i++)
-            if (wav[i] == 'd' && wav[i + 1] == 'a' && wav[i + 2] == 't' && wav[i + 3] == 'a')
-                return i + 8;
-        return Math.Min(44, wav.Length);
+        int sampleRate = 22050, channels = 1, bits = 16;
+        int dataStart = -1, dataLength = 0;
+        int pos = 12;
+        while (pos + 8 <= wav.Length)
+        {
+            string id = Encoding.ASCII.GetString(wav, pos, 4);
+            int size = BitConverter.ToInt32(wav, pos + 4);
+            if (size < 0 || pos + 8 + size > wav.Length) break;
+            if (id == "fmt " && size >= 16)
+            {
+                channels = BitConverter.ToUInt16(wav, pos + 10);
+                sampleRate = BitConverter.ToInt32(wav, pos + 12);
+                bits = BitConverter.ToUInt16(wav, pos + 22);
+            }
+            else if (id == "data") { dataStart = pos + 8; dataLength = size; }
+            pos += 8 + size + (size & 1);
+        }
+        if (dataStart < 0 || dataLength <= 0 || bits % 8 != 0 || channels < 1 || sampleRate <= 0) return [];
+        int bytesPerSample = bits / 8;
+        int frames = dataLength / (bytesPerSample * channels);
+        var mono = new float[frames];
+        for (int f = 0; f < frames; f++)
+        {
+            int offset = dataStart + f * bytesPerSample * channels;
+            mono[f] = bits switch
+            {
+                16 => BitConverter.ToInt16(wav, offset) / 32768f,
+                32 => BitConverter.ToInt32(wav, offset) / 2147483648f,
+                8 => (wav[offset] - 128) / 128f,
+                _ => 0f,
+            };
+        }
+        if (sampleRate == 16000) return mono;
+        int outFrames = (int)((long)frames * 16000 / sampleRate);
+        var result = new float[Math.Max(1, outFrames)];
+        double step = (double)(frames - 1) / Math.Max(1, result.Length - 1);
+        for (int i = 0; i < result.Length; i++)
+        {
+            double source = i * step;
+            int i0 = (int)source, i1 = Math.Min(frames - 1, i0 + 1);
+            result[i] = mono[i0] + (mono[i1] - mono[i0]) * (float)(source - i0);
+        }
+        return result;
     }
 
     public void Dispose() => synth.Dispose();
@@ -409,7 +444,7 @@ public sealed class PhoneCallTool
                     materialQuestion = CallPolicy.DetectMaterialChange(farText, task);
                     if (materialQuestion != null)
                     {
-                        SpeakAndSend(tts, bridge, CallPolicy.PauseLineFor(materialQuestion), session);
+                        SpeakAndSend(tts, bridge, CallPolicy.PauseLine(), session);
                         evidence += "zmiana materialna po " + farTurns + " zwrotach rozmówcy · rozmowa " + bridge.CallDurationSeconds + " s";
                         question = materialQuestion;
                         status = "UNVERIFIED";
@@ -457,7 +492,7 @@ public sealed class PhoneCallTool
         {
             bridge.EndCall();
             evidence += "przerwane przez właściciela po " + clock.ElapsedMilliseconds / 1000 + " s";
-            await Persist(task, session, callId, clock, "PRZERWANE", "", "", evidence);
+            Persist(task, session, callId, clock, "PRZERWANE", "", "", evidence);
             RecordEntry("CALL_TASK", "UNVERIFIED", "Przerwane przez właściciela.", evidence, "", null);
             return "Przerwałem rozmowę i zakończyłem połączenie. Stan zapisałem w „rozmowy historia”.";
         }
