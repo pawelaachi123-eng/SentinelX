@@ -20,7 +20,7 @@ public sealed class FileWorkspaceService : Services.Files.IFileService
     private static readonly HashSet<string> NeverShellOpenExtensions = new(StringComparer.OrdinalIgnoreCase)
         { ".exe", ".com", ".bat", ".cmd", ".ps1", ".psm1", ".msi", ".msp", ".scr", ".vbs", ".js", ".lnk", ".url" };
     private static readonly HashSet<string> SearchStopWords = new(StringComparer.Ordinal)
-        { "plik", "pliku", "plikach", "z", "ze", "w", "we", "na", "do", "ten", "ta", "to", "ktory", "ktora", "ktore", "moj", "moja", "moje", "o", "i", "oraz", "dla", "jest", "byl", "byla", "bylo" };
+        { "plik", "pliku", "plikach", "z", "ze", "w", "we", "na", "do", "ten", "ta", "to", "ktory", "ktora", "ktore", "moj", "moja", "moje", "o", "i", "oraz", "dla", "jest", "byl", "byla", "bylo", "wczoraj", "dzis", "dzisiaj", "ostatnio", "pobrany", "pobrane", "zmieniony", "zmieniona", "zmienione" };
 
     private readonly string workspace;
     private readonly string desktop;
@@ -31,6 +31,20 @@ public sealed class FileWorkspaceService : Services.Files.IFileService
 
     /// <summary>Last file created, found, opened, or moved by this service in this process.</summary>
     public string? LastFile { get; private set; }
+
+    public bool TrySelectContextFile(string path, out string error)
+    {
+        try
+        {
+            string full = Path.GetFullPath(path);
+            EnsureSafeUserFile(full);
+            LastFile = full;
+            error = string.Empty;
+            return true;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        { error = ex.Message; return false; }
+    }
 
     public FileWorkspaceService(string? root = null, string? desktop = null, ActionHistoryService? history = null,
         string? documents = null, string? downloads = null)
@@ -66,6 +80,11 @@ public sealed class FileWorkspaceService : Services.Files.IFileService
             @"^(?:znajdź|znajdz|wyszukaj|szukaj)(?: mi)?\s+(?:plik|dokument|prezentację|prezentacje|arkusz)(?:\s+(?:o|z|na temat|który zawiera|ktory zawiera|zawiera|zawierający|zawierająca|zawierajacy|zawierajaca))?\s+(.+)$",
             RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
         if (describedSearch.Success) return await SearchFilesAsync(describedSearch.Groups[1].Value, raw, token);
+
+        var naturalFileSearch = Regex.Match(raw,
+            @"^(?:znajdź|znajdz|wyszukaj|szukaj)(?: mi)?\s+(?<query>.+\b(?:plik|dokument|zdjęcie|zdjecie|screenshot|zrzut ekranu|pdf|cfg|docx|xlsx|txt|png|jpe?g|webp)\b.*)$",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        if (naturalFileSearch.Success) return await SearchFilesAsync(naturalFileSearch.Groups["query"].Value, raw, token);
 
         var search = Regex.Match(raw, @"^(?:znajdź|znajdz|wyszukaj|szukaj)(?: mi)?\s+plik\s+(.+)$", RegexOptions.IgnoreCase);
         if (search.Success) return await SearchFilesAsync(search.Groups[1].Value, raw, token);
@@ -200,9 +219,12 @@ public sealed class FileWorkspaceService : Services.Files.IFileService
     private List<(string Path, int Score)> Search(IReadOnlyList<string> roots, string query, CancellationToken token)
     {
         string normalizedQuery = ConversationMemoryService.Normalize(query);
+        bool yesterday = normalizedQuery.Split(' ').Contains("wczoraj", StringComparer.Ordinal);
+        bool today = normalizedQuery.Split(' ').Any(x => x is "dzis" or "dzisiaj");
         string[] terms = normalizedQuery.Split(' ', StringSplitOptions.RemoveEmptyEntries)
             .Where(x => x.Length > 1 && !SearchStopWords.Contains(x)).Distinct().ToArray();
-        if (terms.Length == 0) terms = [normalizedQuery];
+        if (terms.Length == 0 && !yesterday && !today) terms = [normalizedQuery];
+        DateTime targetDate = yesterday ? DateTime.Today.AddDays(-1) : DateTime.Today;
         var results = new List<(string Path, int Score)>();
         int scanned = 0;
         foreach (string root in roots)
@@ -218,12 +240,17 @@ public sealed class FileWorkspaceService : Services.Files.IFileService
                     try
                     {
                         var info = new FileInfo(path);
-                        if ((info.Attributes & FileAttributes.ReparsePoint) != 0) continue;
+                        FileAttributes attributes = info.Attributes;
+                        if ((attributes & (FileAttributes.ReparsePoint | FileAttributes.Directory)) != 0) continue;
+                        if ((yesterday || today) && info.LastWriteTime.Date != targetDate && info.CreationTime.Date != targetDate) continue;
                         string name = ConversationMemoryService.Normalize(Path.GetFileNameWithoutExtension(path));
-                        int score = string.Equals(name, normalizedQuery, StringComparison.Ordinal) ? 100 : name.Contains(normalizedQuery, StringComparison.Ordinal) ? 70 : 0;
+                        int score = yesterday || today ? 22 : 0;
+                        string extension = info.Extension.TrimStart('.');
+                        if (terms.Contains(extension, StringComparer.OrdinalIgnoreCase)) score += 40;
+                        score += string.Equals(name, normalizedQuery, StringComparison.Ordinal) ? 100 : name.Contains(normalizedQuery, StringComparison.Ordinal) ? 70 : 0;
                         foreach (string term in terms)
                             if (name.Contains(term, StringComparison.Ordinal)) score += 18;
-                        if (score < 18 && TextExtensions.Contains(info.Extension) && info.Length <= MaxReadableTextBytes)
+                        if (score < 18 && (attributes & FileAttributes.Offline) == 0 && TextExtensions.Contains(info.Extension) && info.Length <= MaxReadableTextBytes)
                         {
                             try
                             {

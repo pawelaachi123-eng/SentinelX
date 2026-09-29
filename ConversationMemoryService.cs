@@ -144,6 +144,7 @@ public sealed class ConversationMemoryService : Services.Memory.IConversationMem
     private void AddMessage(string role, string text, string source)
     {
         if (string.IsNullOrWhiteSpace(text)) return;
+        text = SensitiveDataRedactor.Redact(text);
         bool fire = false;
         lock (syncRoot)
         {
@@ -205,6 +206,7 @@ public sealed class ConversationMemoryService : Services.Memory.IConversationMem
             var privacy = Privacy;
             if (!privacy.SaveMemories) { LastStorageError = "Zapisywanie wspomnień jest wyłączone (Ustawienia → Pamięć i prywatność)."; return NoteAddResult.Disabled; }
             text = (text ?? "").Trim();
+            if (SensitiveDataRedactor.ContainsLikelySecret(text)) { LastStorageError = "Wspomnienie wygląda na zawierające hasło, token lub kod; sekret nie został zapisany."; return NoteAddResult.Invalid; }
             if (text.Length == 0 || text.Length > 4000) { LastStorageError = "Wspomnienie może mieć najwyżej 4000 znaków."; return NoteAddResult.Invalid; }
             string key = Normalize(text);
             var existing = state.Notes.FirstOrDefault(n => Normalize(n.Text) == key);
@@ -249,7 +251,7 @@ public sealed class ConversationMemoryService : Services.Memory.IConversationMem
         {
             var note = state.Notes.FirstOrDefault(x => x.Id == id);
             newText = (newText ?? "").Trim();
-            if (note == null || newText.Length == 0 || newText.Length > 4000) return false;
+            if (note == null || newText.Length == 0 || newText.Length > 4000 || SensitiveDataRedactor.ContainsLikelySecret(newText)) return false;
             var duplicate = state.Notes.FirstOrDefault(x => x.Id != id && Normalize(x.Text) == Normalize(newText));
             if (duplicate != null) { LastStorageError = "Inne wspomnienie ma już identyczną treść. Edycję przerwano."; return false; }
             string old = note.Text;

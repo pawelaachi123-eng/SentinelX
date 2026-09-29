@@ -8,6 +8,8 @@ namespace SentinelX
     public sealed class SentinelToolboxService
     {
         private readonly PcDiagnosticService diagnostics;
+        private readonly DiagnosticsTool diagnosticsTool;
+        private readonly GameFocusModeService gameFocusMode;
         private readonly ActionTaskRegistry tasks;
         private string lastVerifiedApplication = "";
         public IReadOnlyList<ActionTaskSnapshot> GetTasks() => tasks.GetTasks();
@@ -17,6 +19,7 @@ namespace SentinelX
         public string PendingSummary => permissionCenter.GetPendingSummary();
         private readonly ActionHistoryService actionHistory;
         private readonly Services.Memory.MemoryActionService memoryActions;
+        private readonly ConversationMemoryService conversationMemory;
         private readonly Services.History.HistoryExportService historyExport;
 
         private readonly Services.Permissions.IPermissionService permissionCenter;
@@ -27,6 +30,7 @@ namespace SentinelX
 
         private readonly Services.Network.INetworkService networkTools;
         private readonly PhoneCallTool phoneCalls;
+        private readonly AudioControlTool audioControl;
         private readonly WebResearchTool webResearch;
 
 
@@ -35,7 +39,9 @@ namespace SentinelX
             ProcessToolService? processes = null, Services.Network.INetworkService? network = null,
             PcDiagnosticService? diagnostics = null, ActionTaskRegistry? tasks = null, ConversationMemoryService? memory = null,
             Services.History.HistoryExportService? historyExport = null, Services.Memory.MemoryActionService? memoryActionService = null,
-            PhoneCallTool? phoneCallTool = null, WebResearchTool? webResearchTool = null)
+            PhoneCallTool? phoneCallTool = null, WebResearchTool? webResearchTool = null,
+            SystemMonitor? systemMonitor = null, PerformanceHistoryService? performanceHistory = null,
+            GameFocusModeService? gameFocusMode = null)
         {
             actionHistory = history ?? new ActionHistoryService();
             permissionCenter = permissions ?? new PermissionCenterService();
@@ -44,10 +50,16 @@ namespace SentinelX
             networkTools = network ?? new NetworkDiagnosticService();
             this.diagnostics = diagnostics ?? new PcDiagnosticService();
             this.tasks = tasks ?? new ActionTaskRegistry();
-            memoryActions = memoryActionService ?? new(memory ?? new ConversationMemoryService(), permissionCenter, actionHistory);
+            conversationMemory = memory ?? new ConversationMemoryService();
+            memoryActions = memoryActionService ?? new(conversationMemory, permissionCenter, actionHistory);
             this.historyExport = historyExport ?? new(actionHistory);
             phoneCalls = phoneCallTool ?? new PhoneCallTool();
+            audioControl = new AudioControlTool();
             webResearch = webResearchTool ?? new WebResearchTool();
+            var metricSource = systemMonitor ?? new SystemMonitor();
+            var performanceBuffer = performanceHistory ?? new PerformanceHistoryService(metricSource);
+            diagnosticsTool = new DiagnosticsTool(processTools, networkTools, performanceBuffer);
+            this.gameFocusMode = gameFocusMode ?? new GameFocusModeService();
         }
 
         // =========================================================
@@ -61,16 +73,32 @@ namespace SentinelX
             cancellationToken.ThrowIfCancellationRequested();
             string? phoneResponse = await phoneCalls.TryProcessAsync(command ?? "", cancellationToken);
             if (phoneResponse != null) return ToolboxCommandResult.HandledWith(phoneResponse);
+            string? audioResponse = audioControl.TryProcess(command ?? "", actionHistory, cancellationToken);
+            if (audioResponse != null) return ToolboxCommandResult.HandledWith(audioResponse);
+            ToolboxCommandResult? contextualSearch = await TryContextualSearchAsync(command ?? "", cancellationToken);
+            if (contextualSearch != null) return contextualSearch;
             if (webResearch.TryExtractOpenUrl(command ?? "", out string explicitWebUrl))
                 return await ExecuteImmediateAsync("OPEN_WEB_RESULT", command ?? "", () => appLauncher.LaunchAsync(explicitWebUrl, cancellationToken), concise: true);
             string? webResponse = await webResearch.TryProcessAsync(command ?? "", cancellationToken);
-            if (webResponse != null) return ToolboxCommandResult.HandledWith(webResponse);
+            if (webResponse != null) return ToolboxCommandResult.HandledWith(RecordReadOnlyResult("WEB_RESEARCH", command ?? "", webResponse));
             if (webResearch.TryResolveRecentResult(command ?? "", out string resultUrl, out bool readResult, out bool summarizeResult))
             {
-                if (readResult) return ToolboxCommandResult.HandledWith(await webResearch.ReadPageAsync(resultUrl, summarizeResult, cancellationToken));
+                if (readResult)
+                {
+                    string page = await webResearch.ReadPageAsync(resultUrl, summarizeResult, cancellationToken);
+                    return ToolboxCommandResult.HandledWith(RecordReadOnlyResult("WEB_READ", command ?? "", page));
+                }
                 return await ExecuteImmediateAsync("OPEN_WEB_RESULT", command ?? "", () => appLauncher.LaunchAsync(resultUrl, cancellationToken), concise: true);
             }
             string query = Core.CommandText.Normalize(command ?? "");
+            if (query is "wlacz tryb gry" or "wlacz profil gry" or "wlacz tryb grania")
+                return ToolboxCommandResult.HandledWith(gameFocusMode.Enable());
+            if (query is "wylacz tryb gry" or "wylacz profil gry" or "wylacz tryb grania")
+                return ToolboxCommandResult.HandledWith(gameFocusMode.Disable());
+            if (query is "status trybu gry" or "tryb gry")
+                return ToolboxCommandResult.HandledWith(gameFocusMode.IsActive ? "Profil gry Sentinel jest aktywny; nie zmienia ustawień Windows." : "Profil gry Sentinel jest wyłączony.");
+            string? diagnosticToolResponse = await diagnosticsTool.TryProcessAsync(command ?? "", cancellationToken);
+            if (diagnosticToolResponse != null) return ToolboxCommandResult.HandledWith(RecordReadOnlyResult("PC_DIAGNOSTICS", command ?? "", diagnosticToolResponse));
             string? memoryResponse = memoryActions.TryRequest(command ?? "");
             if (memoryResponse != null) return ToolboxCommandResult.HandledWith(memoryResponse);
             if (query is "eksportuj historie json" or "eksportuj historie csv")
@@ -152,6 +180,20 @@ namespace SentinelX
                     actionHistory
                         .GetRecentSummary(
                             10));
+            }
+
+            if (normalized is "co robiles przed chwila" or "co robiles" or "ostatnie polecenia" or "pokaz ostatnie dzialania")
+                return ToolboxCommandResult.HandledWith(actionHistory.GetRecentSummary(5));
+
+            if (normalized is "dlaczego to robisz" or "dlaczego to robisz teraz" or "co robisz teraz")
+            {
+                var activeTask = tasks.GetTasks().FirstOrDefault(x => x.Status is "RUNNING" or "CANCELLING");
+                if (activeTask != null)
+                    return ToolboxCommandResult.HandledWith($"Wykonuję: {activeTask.Description}. Krok: {activeTask.CurrentStep}. Powód: kontynuuję zadanie, które zleciłeś.");
+                var activeAction = actionHistory.GetRecentEntries().FirstOrDefault(x => x.Status == "RUNNING");
+                if (activeAction != null)
+                    return ToolboxCommandResult.HandledWith($"Trwa akcja {activeAction.ActionType} dla polecenia „{activeAction.Command}”. Sprawdzam wynik przed zgłoszeniem sukcesu.");
+                return ToolboxCommandResult.HandledWith("Nie wykonuję teraz żadnego działania w tle. Ostatnie wykonane kroki: \n" + actionHistory.GetRecentSummary(3));
             }
 
 
@@ -450,6 +492,43 @@ namespace SentinelX
         // =========================================================
         // IMMEDIATE ACTION
         // =========================================================
+
+        private async Task<ToolboxCommandResult?> TryContextualSearchAsync(string command, CancellationToken token)
+        {
+            string current = ConversationMemoryService.Normalize(command).Trim().TrimEnd('.', '?', '!');
+            if (current is not ("znajdz mi to" or "znajdz to" or "wyszukaj to" or "poszukaj tego" or "znajdz tamto")) return null;
+            var prior = conversationMemory.GetRecentEntries(20).LastOrDefault(x =>
+                x.Role == "user" && ConversationMemoryService.Normalize(x.Text).Trim().TrimEnd('.', '?', '!') != current &&
+                x.Text.Trim().Length >= 8 && !IsSearchInstruction(x.Text));
+            if (prior == null)
+                return ToolboxCommandResult.HandledWith("Nie widzę wcześniejszego tematu do wyszukania w tej rozmowie. Podaj krótki opis; fraza trafi do DuckDuckGo.");
+            if (SensitiveDataRedactor.ContainsLikelySecret(prior.Text))
+                return ToolboxCommandResult.HandledWith("Poprzednia wiadomość wygląda na zawierającą sekret. Nie wysyłam jej do wyszukiwarki; podaj publiczną frazę bez danych poufnych.");
+            string query = prior.Text.Trim();
+            if (query.Length > 180) query = query[..180];
+            string result = await webResearch.SearchAsync(query, token: token);
+            string response = "Szukam na podstawie ostatniego tematu rozmowy („" + query + "”):\n\n" + result;
+            return ToolboxCommandResult.HandledWith(RecordReadOnlyResult("WEB_CONTEXT_SEARCH", command, response));
+        }
+
+        private string RecordReadOnlyResult(string type, string command, string response)
+        {
+            string id = actionHistory.CreateActionId();
+            string evidence = response.Length > 4000 ? response[..4000] + "… [ucięto w historii]" : response;
+            bool failure = response.StartsWith("Nie udało", StringComparison.Ordinal) || response.StartsWith("Odrzucono", StringComparison.Ordinal);
+            ActionExecutionResult result = failure
+                ? ActionExecutionResult.Failure("Narzędzie zgłosiło błąd odczytu.", evidence)
+                : ActionExecutionResult.VerifiedSuccess("Odczyt narzędzia zakończony; treść źródeł nie jest niezależnie zweryfikowana.", evidence);
+            actionHistory.AddResult(id, type, command, result);
+            return response;
+        }
+
+        private static bool IsSearchInstruction(string value)
+        {
+            string normalized = ConversationMemoryService.Normalize(value).Trim();
+            return normalized.StartsWith("znajdz ", StringComparison.Ordinal) || normalized.StartsWith("wyszukaj ", StringComparison.Ordinal) ||
+                normalized.StartsWith("szukaj ", StringComparison.Ordinal) || normalized.StartsWith("poszukaj ", StringComparison.Ordinal);
+        }
 
         private async Task<ToolboxCommandResult>
             ExecuteImmediateAsync(
