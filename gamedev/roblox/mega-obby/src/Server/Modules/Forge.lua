@@ -45,6 +45,16 @@ Forge.GenreAliases = {
 	farm = "farma", rolnik = "farma", sadzenie = "farma", ogrod = "farma", plony = "farma",
 	wave = "fale", obrona = "fale", zombie = "fale", krysztal = "fale",
 	ryby = "ryby", fish = "ryby", wedkowanie = "ryby", lowienie = "ryby", wedka = "ryby",
+	trening = "symulator", sila = "symulator", prestiz = "symulator",
+	kasa = "tycoon", firma = "tycoon", restauracja = "tycoon", hotel = "tycoon",
+	duchy = "horror", piwnica = "horror", ucieczka = "horror",
+	arena = "shooter",
+	f1 = "wyscigi", motory = "wyscigi", przejazd = "wyscigi",
+	maraton = "biegacz", sprint = "biegacz",
+	zniwa = "farma",
+	horda = "fale",
+	karp = "ryby", rekin = "ryby", morze = "ryby",
+	wieze = "obby", platformy = "obby",
 }
 
 -- Klasyczna ścieżka Mega Obby — kolejność bez zmian + nowe usługi monetyzacji PRO

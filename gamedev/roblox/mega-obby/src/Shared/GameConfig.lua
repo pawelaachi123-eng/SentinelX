@@ -136,6 +136,16 @@ GameConfig.Eggs = {
 			{ id = "pet_fenikspro", name = "Protopan Feniks", rarity = "Legendarny", weight = 3,  bonus = 1.55, magnetRadius = 16, color = { 255, 220, 60 } },
 		},
 	},
+	{ id = "egg_lodowe", name = "Lodowe Jajko", price = 9000, currency = "Coins",
+		pets = {
+			{ id = "pet_pingwin",   name = "Lodowy Pingwin",     rarity = "Częsty",     weight = 30, bonus = 1.12, magnetRadius = 4,  color = { 170, 220, 255 } },
+			{ id = "pet_foka",      name = "Morska Foka",        rarity = "Częsty",     weight = 26, bonus = 1.14, magnetRadius = 5,  color = { 200, 230, 245 } },
+			{ id = "pet_lodowlis",  name = "Lodowy Lis",         rarity = "Rzadki",     weight = 20, bonus = 1.20, magnetRadius = 8,  color = { 140, 200, 240 } },
+			{ id = "pet_niedzwiedz", name = "Niedźwiedź Polarny", rarity = "Rzadki",    weight = 14, bonus = 1.22, magnetRadius = 9,  color = { 225, 235, 245 } },
+			{ id = "pet_kraken",    name = "Kraken Lodu",        rarity = "Epicki",     weight = 7,  bonus = 1.34, magnetRadius = 12, color = { 90, 160, 220 } },
+			{ id = "pet_krolowazimy", name = "Królowa Zimy",     rarity = "Legendarny", weight = 3,  bonus = 1.60, magnetRadius = 16, color = { 240, 250, 255 } },
+		},
+	},
 }
 
 -- ————————————————————————————————————————————————
@@ -183,6 +193,13 @@ GameConfig.DailyRewards = {
 	{ day = 5, coins = 850, spins = 1 },
 	{ day = 6, coins = 1200 },
 	{ day = 7, coins = 2000, spins = 2, pet = true },
+	{ day = 8, coins = 2400 },
+	{ day = 9, coins = 2700 },
+	{ day = 10, coins = 3000, spins = 1 },
+	{ day = 11, coins = 3300 },
+	{ day = 12, coins = 3700 },
+	{ day = 13, coins = 4300, spins = 1 },
+	{ day = 14, coins = 5000, spins = 2, pet = true },
 }
 
 -- ————————————————————————————————————————————————
@@ -238,6 +255,14 @@ GameConfig.Offers = {
 		coins = 6000, spins = 8, label = "DLA SZYBKICH",
 		expireHoursFromJoin = 168,
 		description = "6000 monet + 8 spinów. Znika po tygodniu gry." },
+	{ id = "weteran", name = "POWROT WETERANA", robuxProductId = 0,
+		coins = 9000, spins = 10, label = "DLO WIELKICH",
+		expireHoursFromJoin = 120, -- widać go od 7. doby gry, znika 5 h po otwarciu
+		description = "9000 monet + 10 spinów. Nagroda za wierność — tylko dla graczy z stażem 7+ dni." },
+	{ id = "sezonowy", name = "PAKIET SEZONOWY", robuxProductId = 0,
+		coins = 12000, spins = 14, label = "PELNY SEZON",
+		expireHoursFromJoin = 96, -- od 14. doby, okno 4 dni
+		description = "12000 monet + 14 spinów. Ostatnie wielkie okno sezonu — od 14. dnia gry." },
 }
 
 GameConfig.Spin = {
@@ -254,7 +279,7 @@ GameConfig.Spin = {
 }
 
 GameConfig.BattlePass = {
-	Tiers = 30,
+	Tiers = 40, -- dłuższy sezon: więcej celu dla graczy
 	XpPerTier = 250,
 	PremiumProductId = 0,   -- produkt: premium track na sezon
 	PremiumGamepassId = 0,  -- alternatywnie przepustka
@@ -262,7 +287,7 @@ GameConfig.BattlePass = {
 }
 
 GameConfig.Offline = {
-	MaxHours = 8,        -- tyle maksymalnie liczymy (uczciwy limit)
+	MaxHours = 10,       -- tyle maksymalnie liczymy (uczciwy limit)
 	BasePerHour = 40,    -- gatunek może nadpisać (Pack.OfflineRatePerHour)
 	DoubleProductId = 0, -- produkt: „podwój zarobek offline” (raz na dobę)
 }
@@ -272,9 +297,11 @@ GameConfig.Group = { Id = 0, BonusPercent = 10 } -- 0 = wyłączone
 GameConfig.GlobalBoost = {
 	IntervalSeconds = 900, -- co 15 min losowany event serwerowy
 	Rotations = {
-		{ kind = "coins", multiplier = 3, duration = 180, weight = 50 },
-		{ kind = "coins", multiplier = 5, duration = 60, weight = 25 },
-		{ kind = "gift", amount = 250, weight = 25 },
+		{ kind = "coins", multiplier = 3, duration = 180, weight = 35 },
+		{ kind = "coins", multiplier = 5, duration = 60, weight = 20 },
+		{ kind = "gift", amount = 250, weight = 20 },
+		{ kind = "coins", multiplier = 2, duration = 480, weight = 15 },
+		{ kind = "gift", amount = 500, weight = 10 },
 	},
 }
 

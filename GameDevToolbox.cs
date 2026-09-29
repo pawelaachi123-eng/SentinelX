@@ -72,12 +72,12 @@ public static class GameDevToolbox
             || flat.Contains("broni") || flat.Contains("arena")) return ("shooter", "STRZELANKA (arena, cele, szybkostrzelność)");
         if (flat.Contains("wyscig") || flat.Contains("racing") || flat.Contains("samochod")
             || flat.Contains("tor wyscig") || flat.Contains("sciaganie")) return ("wyscigi", "WYŚCIGI (tor, checkpointy, okrążenia)");
-        if (flat.Contains("bieg") || flat.Contains("runner") || flat.Contains("dystans")) return ("biegacz", "BIEGACZ (endless runner: przeszkody, rekord dystansu)");
+        if (flat.Contains("bieg") || flat.Contains("runner") || flat.Contains("dystans") || flat.Contains("maraton") || flat.Contains("sprint")) return ("biegacz", "BIEGACZ (endless runner: przeszkody, rekord dystansu)");
         if (flat.Contains("farma") || flat.Contains("rolnik") || flat.Contains("sadzenie")
             || flat.Contains("ogrod") || flat.Contains("plony")) return ("farma", "FARMA (nasiona, uprawy, zbiory)");
         if (flat.Contains("fale") || flat.Contains("wave") || flat.Contains("obrona")
-            || flat.Contains("zombie") || flat.Contains("krysztal")) return ("fale", "PRZETRWANIE FAL (broń kryształu)");
-        if (flat.Contains("ryb") || flat.Contains("lowi") || flat.Contains("wedk") || flat.Contains("fish"))
+            || flat.Contains("zombie") || flat.Contains("krysztal") || flat.Contains("horda")) return ("fale", "PRZETRWANIE FAL (broń kryształu)");
+        if (flat.Contains("ryb") || flat.Contains("lowi") || flat.Contains("wedk") || flat.Contains("fish") || flat.Contains("karp") || flat.Contains("rekin") || flat.Contains("morze"))
             return ("ryby", "RYBY (wędkowanie: rzadkie ryby, indeks, pogoda)");
         if (flat.Contains("obby") || flat.Contains("parkour") || flat.Contains("przeszkod")) return ("obby", "OBBY (120 etapów toru przeszkód)");
         return null;

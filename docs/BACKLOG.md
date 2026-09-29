@@ -379,6 +379,14 @@ Stan na 2026-09-27 (0.97). Zasada: każda pojedyncza pozycja znika z listy dopie
   jako fallback + „najczęściej bez dowodu: …” · R6 toast FAILED z radą · R7 pasek
   statusu „Zaufanie: N%” · R8 smoke na żywo · R9 docs/MOZG-SENTINELA.md (spec mózgu) ·
   R10 BrainRoundsRegression (45. zestaw).
+- **ROBLOX MEGA (0.99)**: 4. jajko LODOWE (9000 monet, 6 zwierzaków, legendarna
+  Królowa Zimy ×1,60 w3), tor nagród 14 DNI (dzień 10/14 ze spinami i zwierzakiem),
+  5 typów globalnych eventów (x2 8-minutowe / x3 / x5 / DAR 250 / MEGADAR 500),
+  4 oferty limitowane (+weteran 7+ dni, +pakiety sezonowy 14+ dni), sezon 40 poziomów,
+  offline do 10 h, +24 aliasy gatunków w Forge (trening/sila/prestiz, kasa/firma/
+  restauracja/hotel, duchy/piwnica/ucieczka, arena, f1/motory/przejazd, maraton/sprint,
+  zniwa, horda, karp/rekin/morze, wieze/platformy) + rozszerzone wzorce toolboxa.
+  Playbook: PLAYBOOK-GIER.md.
 - **DUŻA GRA (0.99, Fisch-style)**: gatunek `ryby` — 12 ryb w 5 rzadkościach
   (wagi w configu), mutacje Błyszczący ×2 / Ogromny ×3, łódka na GŁĘBINY (×1,6),
   POGODA rotująca na serwerze (szczęście do ×2, ogłaszana wszystkim), ZBIORY/INDEKS

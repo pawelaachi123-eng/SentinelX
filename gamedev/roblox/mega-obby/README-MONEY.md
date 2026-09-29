@@ -13,9 +13,9 @@ ukrytych szans (to i tak banują na Roblox).
 |---|---|---|
 | **Zestawy limitowane** (STARTER 72 h / MEGA 7 dni) | `OfferService` + zakładka OFERTY | Najwyższa konwersja: jednorazowe pakiety z REALNYM licznikiem od pierwszego wejścia. Klasyczny „starter pack” to zwykle 30–50% przychodu gry. |
 | **Koło fortuny** (1 darmowy/dzień + extra za Robux) | `SpinService` + zakładka SPIN | Codzienny powrót (retencja D1/D7) + **jawne szanse** w UI (wymóg Roblox dla płatnych losowań — masz to z głowy). |
-| **SEZON (battle pass)** 30 poziomów, darmowy + premium tor | `BattlePassService` + zakładka SEZON | XP leci samo za granie; premium tor kupuje najwierniejsza grupa. Stabilny, przewidywalny przychód co sezon. |
+| **SEZON (battle pass)** 40 poziomów, darmowy + premium tor | `BattlePassService` + zakładka SEZON | XP leci samo za granie; premium tor kupuje najwierniejsza grupa. Stabilny, przewidywalny przychód co sezon. |
 | **Zarobki offline** + „podwój za Robux” (raz/dobę) | `OfflineEarningsService` | Powód, by wrócić („dopisało mi monety!”) + mikropłatność bez FOMO. Stawka rośnie z postępem gatunku (hook `OfflineRatePerHour`). |
-| **Boosty ×2 i GLOBALNE eventy ×3** | `BoostService` | Event serwerowy co 15 min = gracze wzywają znajomych (organiczny zasięg). Boost osobisty ze spinów/questów/sezonu. |
+| **Boosty ×2/×3/×5 i GLOBALNE eventy (5 typów: x2 długie, x3, x5 krótkie, DAR 250, MEGADAR 500)** | `BoostService` | Event serwerowy losowany z jawnych wag = gracze wzywają znajomych (organiczny zasięg). Boost osobisty ze spinów/questów/sezonu. |
 | **Bonus grupy +10%** | `GroupBonusService` | Rosnąca grupa = darmowy marketing każdej aktualizacji (ogłoszenia do członków). |
 | **Onboarding 5 kroków** z nagrodami | `OnboardingService` | Uczy sklepu w pierwszych 10 minutach — gracz, który kupi raz, kupi znów. |
 | **Przepustki i produkty bazowe** (x2, VIP, pakiety monet) | `MonetizationService` | Fundament — opis w README-GRA.md (sekcja monetyzacja). |
@@ -50,7 +50,7 @@ Roblox to 30% — `roblox monetyzacja: 35000` w SentinelX przeliczy to za ciebie
 
 1. **Minuta 0–10**: onboarding (5 kroków z nagrodami) → gracz rozumie grę i sklep.
 2. **Dzień 1**: darmowy spin + questa + offline → 3 powody wrócić.
-3. **Dzień 2–7**: nagroda dzienna (streak ×7), sezon leci samo, eventy ×3 co 15 min.
+3. **Dzień 2–14**: nagroda dzienna (14-dniowy tor: dzień 10 +spin, dzień 14 +2 spiny i zwierzak), sezon leci samo, eventy globalne co 15 min.
 4. **Tydzień 2+**: sezon premium kupują najmocniej zaangażowani — i to im dajesz
    najwięcej wartości (tor premium, spin w L5/L10/…).
 

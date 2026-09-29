@@ -411,7 +411,7 @@ usuwanie, dobór do zadania i licencje doszły w drugim przyroście — sekcja 1
   Razem **41 zestawów** (doszły GameAssetsRegression, GameForgeRegression i MoneySystemsRegression).
 - **Monetyzacja PRO (0.99)**: zestawy limitowane (STARTER 72 h z REALNYM licznikiem od
   pierwszego wejścia), koło fortuny z jawnymi szansami (wymóg Roblox dla płatnych losowań),
-  SEZON — battle pass 30 poziomów z torem premium, zarobki offline z podwojeniem raz/dobę,
+  SEZON — battle pass 40 poziomów z torem premium, zarobki offline z podwojeniem raz/dobę,
   globalne eventy x3 co 15 minut, bonus grupy +10%, onboarding 5 kroków. Wszystko przez
   ten sam idempotentny ProcessReceipt; playbook: `gamedev/roblox/mega-obby/README-MONEY.md`.
 - **Różnorodność (0.99)**: generator gier ma teraz **9 gatunków** — doszły `biegacz`
@@ -447,6 +447,10 @@ usuwanie, dobór do zadania i licencje doszły w drugim przyroście — sekcja 1
   PLAN/PRÓBA/CHECK/NAPRAWA w rekordzie, 3 nowe reguły sądu rodzin narzędzi,
   księga zdrowia silnika (zaufanie na żywo w pasku statusu), dokument mózgu
   (docs/MOZG-SENTINELA.md). **45 zestaw** regresji.
+- **Roblox mega (0.99)**: 4 jajka (nowe LODOWE z Królową Zimy ×1,60), 14 dni nagród,
+  5 typów losowanych eventów globalnych (do MEGADARU 500 dla wszystkich), 4 oferty
+  limitowane (weteran/pakiety sezonowe), sezon 40 poziomów, offline 10 h, 24 nowe
+  aliasy gatunków. Księga generatora: **PLAYBOOK-GIER.md**.
 - **Duża gra (0.99, Fisch-style)**: **10. gatunek generatora — `ryby`**: brania
   losowane wagami rzadkości (wspólne → legendarna, wagi jawne w configu), mutacje
   ×2/×3, łódka na GŁĘBINY, **pogoda** rotująca na serwerze ze „szczęściem” do ×2,
