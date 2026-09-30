@@ -26,11 +26,18 @@ jobs:
           Invoke-WebRequest 'https://dot.net/v1/dotnet-install.ps1' -OutFile $installer
           & $installer -Runtime dotnet -Channel 10.0 -InstallDir $runtimeRoot -NoPath
           & $installer -Runtime windowsdesktop -Channel 10.0 -InstallDir $runtimeRoot -NoPath
-          if (-not (Test-Path (Join-Path $runtimeRoot 'shared/Microsoft.WindowsDesktop.App'))) {
-            throw 'The .NET 10 Windows Desktop runtime was not installed.'
+          $corePath = Join-Path $runtimeRoot 'shared/Microsoft.NETCore.App'
+          $desktopPath = Join-Path $runtimeRoot 'shared/Microsoft.WindowsDesktop.App'
+          $coreVersions = @(Get-ChildItem $corePath -Directory -ErrorAction SilentlyContinue | ForEach-Object Name)
+          $desktopVersions = @(Get-ChildItem $desktopPath -Directory -ErrorAction SilentlyContinue | ForEach-Object Name)
+          Write-Output "::notice title=.NET root::$runtimeRoot"
+          Write-Output "::notice title=.NET Core runtimes::$($coreVersions -join ', ')"
+          Write-Output "::notice title=Windows Desktop runtimes::$($desktopVersions -join ', ')"
+          if (-not ($coreVersions | Where-Object { $_ -match '^10\.' })) {
+            throw 'The .NET 10 core runtime was not installed.'
           }
-          if (-not (Test-Path (Join-Path $runtimeRoot 'shared/Microsoft.NETCore.App'))) {
-            throw 'The .NET 10 core runtime was not installed with Windows Desktop runtime.'
+          if (-not ($desktopVersions | Where-Object { $_ -match '^10\.' })) {
+            throw 'The .NET 10 Windows Desktop runtime was not installed.'
           }
           "DOTNET_ROOT=$runtimeRoot" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
           "DOTNET_ROOT_X64=$runtimeRoot" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
