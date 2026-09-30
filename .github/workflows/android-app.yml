@@ -17,13 +17,8 @@ on:
         required: true
         type: string
         default: My Sentinel App
-  pull_request:
-    paths:
-      - '.github/workflows/android-app.yml'
-      - 'scripts/create_mobile_app.py'
-      - 'scripts/mobile-app-templates/**'
   push:
-    branches: [main]
+    branches: [main, 'arena/**']
     paths:
       - '.github/workflows/android-app.yml'
       - 'scripts/create_mobile_app.py'
