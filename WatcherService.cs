@@ -219,7 +219,7 @@ public sealed class WatcherService : IDisposable
         }
 
         goals.Finish(goal.Id, "VERIFIED", verification, "Plik nie został otwarty ani uruchomiony. Możesz poprosić o sprawdzenie typu lub dalszy bezpieczny krok.");
-        RaiseNotice("Pobieranie zakończone i plik zweryfikowany: " + fileName + " („ + length.ToString("N0") + " B). Niczego nie otworzyłem.");
+        RaiseNotice("Pobieranie zakończone i plik zweryfikowany: " + fileName + " („" + length.ToString("N0") + " B). Niczego nie otworzyłem.");
     }
 
     private static string ExtractRequestedName(string goal)

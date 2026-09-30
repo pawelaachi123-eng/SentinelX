@@ -28,8 +28,9 @@ public sealed class MemoryActionService(ConversationMemoryService memory, IPermi
             if (candidates.Length != 1)
                 return candidates.Length == 0 ? "Nie znalazłem trwałego wspomnienia z poprzedniej wypowiedzi. Podaj temat lub dokładny fragment; niczego nie usunąłem."
                     : "Poprzednia wypowiedź pasuje do kilku trwałych wspomnień. Podaj dokładniejszy temat, żebym nie wskazał niewłaściwego wpisu.";
+            string preview = candidates[0].Text.Length <= 100 ? candidates[0].Text : candidates[0].Text[..97] + "…";
             mutation = (mutation.Type, candidates[0].Text,
-                $"Usunąć trwałe wspomnienie wskazane w poprzedniej wypowiedzi: „{(candidates[0].Text.Length <= 100 ? candidates[0].Text : candidates[0].Text[..97] + "…")}"? Usunięcie wymaga potwierdzenia.");
+                $"Usunąć trwałe wspomnienie wskazane w poprzedniej wypowiedzi: „{preview}”? Usunięcie wymaga potwierdzenia.");
         }
         if (mutation.Type == "MEMORY_FORGET" && (mutation.Argument.Length == 0 || mutation.Argument.Length > 500))
             return "Podaj fragment wspomnienia (1–500 znaków).";
