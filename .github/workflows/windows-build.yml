@@ -19,7 +19,10 @@ jobs:
         with:
           dotnet-version: 10.0.x
       - name: .NET runtime inventory
-        run: dotnet --list-runtimes
+        shell: pwsh
+        run: |
+          $runtimes = dotnet --list-runtimes
+          $runtimes | ForEach-Object { Write-Output "::notice title=.NET runtime::$($_)" }
       - name: Portable architecture checks
         run: python scripts/check-architecture.py
       - name: Restore
@@ -46,10 +49,11 @@ jobs:
           $finished = $p.WaitForExit(120000)
           if (-not $finished) { $p.Kill(); $p.WaitForExit() }
           if (-not $finished -or $p.ExitCode -ne 0 -or -not (Test-Path "$output/ui-smoke.txt")) {
-            Get-ChildItem $output -Recurse -Include FAILED.txt,errors.log,bindings.log,ui-smoke-progress.log,dotnet-runtimes.log,app.stdout.log,app.stderr.log | ForEach-Object {
+            Get-ChildItem -Path $output -Recurse -File | Where-Object { $_.Extension -in '.txt', '.log' } | ForEach-Object {
               $detail = (Get-Content $_.FullName -Raw).Replace("`r", '').Replace("`n", '%0A')
-              Write-Output "::error::$detail"
+              Write-Output "::error title=UI smoke diagnostic: $($_.Name)::$detail"
             }
+            if (-not $finished) { throw 'UI smoke timeout' }
             throw "UI smoke failed: exit $($p.ExitCode)"
           }
           Get-Content "$output/ui-smoke.txt"

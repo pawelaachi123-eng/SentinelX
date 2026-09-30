@@ -9,13 +9,22 @@ public partial class App : Application
     private SingleInstanceService? instance;
     private ServiceProvider? provider;
     public static IServiceProvider Services { get; private set; } = null!;
+    private static void RecordUiSmokeProgress(string output, string stage)
+    {
+        if (output.Length == 0) return;
+        Directory.CreateDirectory(output);
+        File.AppendAllText(Path.Combine(output, "ui-smoke-progress.log"),
+            $"{DateTimeOffset.UtcNow:O} {stage}{Environment.NewLine}");
+    }
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
         Utilities.CrashLogger.Initialize(this);
         bool selfTest = e.Args.Length == 2 && e.Args[0] is "--self-test" or "--asr-test" or "--ai-test" or "--builder-test";
         bool uiTest = e.Args.Length == 2 && e.Args[0] == "--ui-smoke";
+        string uiOutput = uiTest ? Path.GetFullPath(e.Args[1]) : "";
         if (selfTest || uiTest) Environment.SetEnvironmentVariable("SENTINEL_DATA_DIR", Path.Combine(Path.GetFullPath(e.Args[1]), "data"));
+        RecordUiSmokeProgress(uiOutput, "entered App.OnStartup");
         if (uiTest) Environment.SetEnvironmentVariable("SENTINEL_UI_SMOKE", "1");
         if (!selfTest && !uiTest)
         {
@@ -40,14 +49,18 @@ public partial class App : Application
                 }
                 return;
             }
+            RecordUiSmokeProgress(uiOutput, "building service provider");
             provider = ServiceLocator.Build(Dispatcher); Services = provider;
+            RecordUiSmokeProgress(uiOutput, "service provider ready");
             provider.GetRequiredService<WatcherService>().Start();
             var shell = provider.GetRequiredService<Views.MainWindow>();
             MainWindow = shell; shell.Show();
+            RecordUiSmokeProgress(uiOutput, "main window shown");
             instance?.Listen(provider.GetRequiredService<IDesktopService>().ShowWindow);
             if (uiTest)
             {
-                await UiSmokeTestRunner.RunAsync(provider, shell, Path.GetFullPath(e.Args[1]));
+                RecordUiSmokeProgress(uiOutput, "starting UI smoke runner");
+                await UiSmokeTestRunner.RunAsync(provider, shell, uiOutput);
                 provider.GetRequiredService<IDesktopService>().Exit();
             }
         }
