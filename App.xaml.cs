@@ -55,9 +55,21 @@ public partial class App : Application
             RecordUiSmokeProgress(uiOutput, "building service provider");
             provider = ServiceLocator.Build(Dispatcher); Services = provider;
             RecordUiSmokeProgress(uiOutput, "service provider ready");
-            provider.GetRequiredService<WatcherService>().Start();
+            if (uiTest)
+            {
+                RecordUiSmokeProgress(uiOutput, "watchers skipped in UI smoke");
+            }
+            else
+            {
+                RecordUiSmokeProgress(uiOutput, "starting watchers");
+                provider.GetRequiredService<WatcherService>().Start();
+                RecordUiSmokeProgress(uiOutput, "watchers started");
+            }
+            RecordUiSmokeProgress(uiOutput, "resolving main window");
             var shell = provider.GetRequiredService<Views.MainWindow>();
-            MainWindow = shell; shell.Show();
+            RecordUiSmokeProgress(uiOutput, "main window constructed");
+            MainWindow = shell;
+            shell.Show();
             RecordUiSmokeProgress(uiOutput, "main window shown");
             instance?.Listen(provider.GetRequiredService<IDesktopService>().ShowWindow);
             if (uiTest)
