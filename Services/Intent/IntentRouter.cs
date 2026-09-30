@@ -1,4 +1,6 @@
 using SentinelX.Core;
+using SentinelX.Services.AI;
+using System.Text.RegularExpressions;
 
 namespace SentinelX.Services.Intent;
 
@@ -15,13 +17,15 @@ public sealed class IntentRouter : IIntentRouter
     private readonly Services.Monitoring.ReadOnlyCommandService reads;
     private readonly UnderstandingJournal? journal;
     private readonly Services.Files.FileCleanupService? cleanup;
+    private readonly IAiService? ai;
     private string? pendingSuggestion;
+    private DateTime lastDesktopContextAt;
 
     public IntentRouter(SentinelToolboxService toolbox, Services.Files.IFileService files,
         CommandRouter router, Services.Monitoring.ReadOnlyCommandService reads, UnderstandingJournal? journal = null,
-        Services.Files.FileCleanupService? cleanup = null)
+        Services.Files.FileCleanupService? cleanup = null, IAiService? ai = null)
     {
-        this.toolbox = toolbox; this.files = files; this.router = router; this.reads = reads; this.journal = journal; this.cleanup = cleanup;
+        this.toolbox = toolbox; this.files = files; this.router = router; this.reads = reads; this.journal = journal; this.cleanup = cleanup; this.ai = ai;
         // The router raises this exactly when it would otherwise hand the input to the AI model.
         router.SuggestionPending += suggestion => pendingSuggestion = suggestion;
     }
@@ -33,6 +37,29 @@ public sealed class IntentRouter : IIntentRouter
         token.ThrowIfCancellationRequested();
         input = CommandText.StripWakeWord(input);
         if (input.Length == 0) return "Słucham. Wpisz polecenie.";
+
+        // Interrupts bypass ordinary tool routing so a stop request reaches active work immediately.
+        string control = CommandText.Normalize(input).Trim().TrimEnd('.', '!', '?', ',');
+        if (control is "anuluj wszystko" or "stop sentinel" or "zatrzymaj sentinela" or "nie rob tego")
+        {
+            ai?.Cancel();
+            string taskResult = toolbox.CancelActiveTask(all: true);
+            return taskResult.StartsWith("Nie ma", StringComparison.Ordinal)
+                ? "Przerwano bieżące zapytanie AI. " + taskResult
+                : taskResult + " Bieżące zapytanie AI również zostało przerwane.";
+        }
+        Match taskCancel = Regex.Match(control, @"^(?:anuluj|przerwij|stop)\s+(?<id>[a-z0-9-]+)$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        if (taskCancel.Success) return toolbox.CancelActiveTask(taskId: taskCancel.Groups["id"].Value);
+        if (control is "anuluj" or "przerwij" or "stop")
+        {
+            int activeTasks = toolbox.GetTasks().Count(x => x.Status is "RUNNING" or "CANCELLING");
+            if (activeTasks > 1) return toolbox.CancelActiveTask();
+            ai?.Cancel();
+            string taskResult = toolbox.CancelActiveTask();
+            return taskResult == "Nie ma aktywnego zadania do przerwania."
+                ? "Nie ma aktywnego zadania. Wysłano sygnał przerwania bieżącego zapytania AI."
+                : taskResult;
+        }
 
         // „//” palette resolution: a typed shortcut becomes the real command before anything else runs.
         string trimmed = input.Trim();
@@ -63,6 +90,24 @@ public sealed class IntentRouter : IIntentRouter
             : "";
         if (repair.Success) journal?.Append(input.Trim(), repair.Canonical, repair.Summary);
 
+        bool desktopQuestion = IsDesktopContextQuestion(effective);
+        bool desktopFollowUp = !desktopQuestion && DateTime.Now - lastDesktopContextAt <= TimeSpan.FromMinutes(3) && IsDesktopContextFollowUp(effective);
+        if (desktopQuestion || desktopFollowUp)
+        {
+            string visibleControls = toolbox.ReadDesktopContext(effective);
+            if (visibleControls.StartsWith("Nie mam świeżego", StringComparison.OrdinalIgnoreCase) ||
+                visibleControls.StartsWith("Nie udało", StringComparison.OrdinalIgnoreCase) ||
+                visibleControls.StartsWith("Nie można", StringComparison.OrdinalIgnoreCase) ||
+                visibleControls.StartsWith("UI Automation", StringComparison.OrdinalIgnoreCase) ||
+                visibleControls.StartsWith("Okno ", StringComparison.OrdinalIgnoreCase) && visibleControls.Contains("nie udostępnia tekstowych kontrolek", StringComparison.OrdinalIgnoreCase))
+            { lastDesktopContextAt = default; return note + visibleControls; }
+            if (desktopQuestion) lastDesktopContextAt = DateTime.Now;
+            if (IsDirectScreenRead(effective) || ai == null) return note + visibleControls;
+            string guidance = "Odpowiadaj po polsku wyłącznie na podstawie ograniczonego tekstowego kontekstu UI Automation poniżej. To NIE jest zrzut ekranu: nie twierdź, że widzisz piksele, obrazy, układ ani treść niewymienioną w kontekście. Jeśli etykiety nie wystarczają, powiedz to wprost. Nie wykonuj żadnych działań; możesz tylko wyjaśnić widoczny komunikat i zaproponować bezpieczny następny krok.\n\nKontekst UI Automation:\n" + visibleControls;
+            return note + await ai.AskAsync(effective, guidance, token);
+        }
+        lastDesktopContextAt = default;
+
         string? read = reads.Process(effective, token);
         if (read != null) return note + read;
         string? file = await files.ProcessAsync(effective, token);
@@ -70,6 +115,33 @@ public sealed class IntentRouter : IIntentRouter
         string? cleanupResult = cleanup is null ? null : await cleanup.ProcessAsync(effective, token);
         if (cleanupResult != null) return note + cleanupResult;
         var result = await toolbox.ProcessAsync(effective, token);
-        return result.Handled ? note + result.Response : note + await router.ProcessAsync(effective, token, onDelta);
+        return result.Handled ? note + result.Response : note + await router.ProcessAsync(effective, token, onDelta, toolbox.GetWorkingContext());
+    }
+
+    private static bool IsDesktopContextQuestion(string input)
+    {
+        string query = CommandText.Normalize(input).Trim().TrimEnd('.', '!', '?', ',');
+        return query is "co jest na ekranie" or "co widzisz na ekranie" or "odczytaj ekran" or "przeczytaj ekran" or
+            "pokaz tekst z ekranu" or "co jest w tym oknie" or "opisz to okno" or "pomoz z tym oknem" or
+            "co to za blad" or "wyjasnij ten blad" or "co oznacza ten komunikat" or "wyjasnij ten komunikat" or
+            "jaki komunikat widzisz" or "co jest napisane na ekranie" or "przeczytaj komunikat na ekranie" or
+            "what is on screen" or "what do you see on screen" or "read the screen" or "what is in this window" or
+            "what is this error" or "explain this error" or "help with this window" ||
+            Regex.IsMatch(query, @"^(?:co to za|wyjasnij|co oznacza) (?:blad|komunikat)(?: na ekranie| w oknie)?$");
+    }
+
+    private static bool IsDesktopContextFollowUp(string input)
+    {
+        string query = CommandText.Normalize(input).Trim().TrimEnd('.', '!', '?', ',');
+        return query is "jak to naprawic" or "co mam kliknac" or "co kliknac" or "co dalej" or "co teraz" or
+            "jaki nastepny krok" or "co powinienem zrobic" or "jak przejsc dalej" or "wyjasnij to dokladniej" or
+            "how do i fix this" or "what should i click" or "what next" or "what should i do now" or "explain that further";
+    }
+
+    private static bool IsDirectScreenRead(string input)
+    {
+        string query = CommandText.Normalize(input).Trim().TrimEnd('.', '!', '?', ',');
+        return query is "odczytaj ekran" or "przeczytaj ekran" or "pokaz tekst z ekranu" or "co jest na ekranie" or "co widzisz na ekranie" or
+            "read the screen" or "what is on screen" or "what do you see on screen";
     }
 }

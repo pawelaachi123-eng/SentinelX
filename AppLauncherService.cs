@@ -9,7 +9,14 @@ namespace SentinelX;
 public sealed class AppLauncherService : Services.Apps.IAppLauncherService
 {
     private readonly Func<string> browserPreference;
-    public AppLauncherService(Func<string>? browserPreference = null) => this.browserPreference = browserPreference ?? (() => "Brave");
+    private readonly Func<bool> externalNetworkAllowed;
+    private static readonly HashSet<string> OfflineSafeTargets = new(StringComparer.OrdinalIgnoreCase)
+        { "notatnik", "kalkulator", "menedzer zadan", "paint" };
+    public AppLauncherService(Func<string>? browserPreference = null, Func<bool>? externalNetworkAllowed = null)
+    {
+        this.browserPreference = browserPreference ?? (() => "Brave");
+        this.externalNetworkAllowed = externalNetworkAllowed ?? (() => true);
+    }
     private static readonly Dictionary<string, string> aliases = new(StringComparer.OrdinalIgnoreCase)
     {
         ["discorda"] = "discord", ["dyskorda"] = "discord", ["dyskord"] = "discord", ["disc"] = "discord", ["disa"] = "discord", ["dc"] = "discord",
@@ -75,6 +82,9 @@ public sealed class AppLauncherService : Services.Apps.IAppLauncherService
     {
         cancellationToken.ThrowIfCancellationRequested();
         string normalized = CanonicalizeLaunchTarget(target);
+        if (!externalNetworkAllowed() && !OfflineSafeTargets.Contains(normalized))
+            return ActionExecutionResult.Failure("Tryb tylko lokalnie zablokował uruchomienie: aplikacja lub adres może komunikować się poza komputerem. Wyłącz blokadę w Settings → Pamięć, jeśli akceptujesz ruch zewnętrzny.",
+                "Nie uruchomiono aplikacji, strony ani przekazanego URI.");
         if (IsSafeWebUrl(target)) return OpenWebsite(target.Trim(), target.Trim());
         if (Uri.TryCreate(target, UriKind.Absolute, out _) || target.Contains('\\') || target.Contains('/'))
             return ActionExecutionResult.Failure("Dozwolone są nazwy aplikacji i adresy HTTP/HTTPS.", "Nie wykonano przekazanego URI ani ścieżki.");
@@ -162,6 +172,7 @@ public sealed class AppLauncherService : Services.Apps.IAppLauncherService
     public Task<ActionExecutionResult> OpenFolderAsync(string folder, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        if (!externalNetworkAllowed()) return Task.FromResult(ActionExecutionResult.Failure("Tryb tylko lokalnie zablokował przekazanie folderu do Eksploratora Windows.", "Nie uruchomiono Explorer ani nie przekazano ścieżki."));
         string? path = Normalize(folder) switch
         {
             "pulpit" => Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),
@@ -234,6 +245,7 @@ public sealed class AppLauncherService : Services.Apps.IAppLauncherService
     }
     private ActionExecutionResult OpenWebsite(string url, string description)
     {
+        if (!externalNetworkAllowed()) return ActionExecutionResult.Failure("Nie otworzyłem strony: aktywny jest tryb tylko lokalnie.", "Nie uruchomiono przeglądarki ani nie wysłano URL.");
         if (!IsSafeWebUrl(url)) return ActionExecutionResult.Failure("Odrzucono nieprawidłowy adres. Dozwolone jest tylko HTTP/HTTPS.");
         try
         {

@@ -1,133 +1,78 @@
-<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:u="clr-namespace:SentinelX.Utilities" xmlns:controls="clr-namespace:SentinelX.Views.Controls" xmlns:vm="clr-namespace:SentinelX.ViewModels" xmlns:pages="clr-namespace:SentinelX.Views.Pages" x:Class="SentinelX.Views.MainWindow" Title="Sentinel X" Width="1400" Height="900" MinWidth="1100" MinHeight="700" WindowStartupLocation="CenterScreen" Background="{DynamicResource SxBackground}" Foreground="{DynamicResource SxTextPrimary}" FontFamily="{StaticResource SxFontFamily}" ThemeMode="Dark" Icon="/Assets/sentinel.ico" u:UiInteraction.LoadedCommand="{Binding InitializeCommand}">
-    <Window.InputBindings><KeyBinding Key="K" Modifiers="Control" Command="{Binding OpenPaletteCommand}"/></Window.InputBindings>
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:u="clr-namespace:SentinelX.Utilities"
+        xmlns:controls="clr-namespace:SentinelX.Views.Controls"
+        xmlns:vm="clr-namespace:SentinelX.ViewModels"
+        xmlns:pages="clr-namespace:SentinelX.Views.Pages"
+        x:Class="SentinelX.Views.MainWindow"
+        Title="Sentinel X" Width="1400" Height="900" MinWidth="960" MinHeight="660"
+        WindowStartupLocation="CenterScreen" Background="{DynamicResource SxBackground}"
+        Foreground="{DynamicResource SxTextPrimary}" FontFamily="{StaticResource SxFontFamily}"
+        ThemeMode="Dark" Icon="/Assets/sentinel.ico"
+        u:UiInteraction.LoadedCommand="{Binding InitializeCommand}">
+    <Window.InputBindings>
+        <KeyBinding Key="K" Modifiers="Control" Command="{Binding OpenPaletteCommand}"/>
+        <KeyBinding Key="X" Modifiers="Control+Shift" Command="{Binding EmergencyStopCommand}"/>
+        <KeyBinding Key="R" Modifiers="Control+Shift" Command="{Binding OpenReadinessCommand}"/>
+        <KeyBinding Key="Escape" Command="{Binding CloseOverlayCommand}"/>
+    </Window.InputBindings>
     <Window.Resources>
         <DataTemplate DataType="{x:Type vm:CommandCenterViewModel}">
-            <pages:CommandCenterPage/>
+            <pages:SentinelHomePage/>
         </DataTemplate>
-        <DataTemplate DataType="{x:Type vm:SystemViewModel}">
-            <pages:SystemPage/>
-        </DataTemplate>
-        <DataTemplate DataType="{x:Type vm:GamingViewModel}">
-            <pages:GamingPage/>
-        </DataTemplate>
-        <DataTemplate DataType="{x:Type vm:VoiceViewModel}">
-            <pages:VoicePage/>
-        </DataTemplate>
-        <DataTemplate DataType="{x:Type vm:AiViewModel}">
-            <pages:AiPage/>
-        </DataTemplate>
-        <DataTemplate DataType="{x:Type vm:ActionsViewModel}">
-            <pages:ActionsPage/>
-        </DataTemplate>
-        <DataTemplate DataType="{x:Type vm:HistoryViewModel}">
-            <pages:HistoryPage/>
-        </DataTemplate>
-        <DataTemplate DataType="{x:Type vm:MemoryViewModel}">
-            <pages:MemoryPage/>
-        </DataTemplate>
-        <DataTemplate DataType="{x:Type vm:ProjectViewModel}">
-            <pages:ProjectsPage/>
-        </DataTemplate>
-        <DataTemplate DataType="{x:Type vm:TaskViewModel}">
-            <pages:TasksPage/>
-        </DataTemplate>
-        <DataTemplate DataType="{x:Type vm:DiagnosticViewModel}">
-            <pages:DiagnosticsPage/>
-        </DataTemplate>
-        <DataTemplate DataType="{x:Type vm:SettingsViewModel}">
-            <pages:SettingsPage/>
-        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:SystemViewModel}"><pages:SystemPage/></DataTemplate>
+        <DataTemplate DataType="{x:Type vm:GamingViewModel}"><pages:GamingPage/></DataTemplate>
+        <DataTemplate DataType="{x:Type vm:VoiceViewModel}"><pages:VoicePage/></DataTemplate>
+        <DataTemplate DataType="{x:Type vm:AiViewModel}"><pages:AiPage/></DataTemplate>
+        <DataTemplate DataType="{x:Type vm:ActionsViewModel}"><pages:ActionsPage/></DataTemplate>
+        <DataTemplate DataType="{x:Type vm:HistoryViewModel}"><pages:HistoryPage/></DataTemplate>
+        <DataTemplate DataType="{x:Type vm:MemoryViewModel}"><pages:MemoryPage/></DataTemplate>
+        <DataTemplate DataType="{x:Type vm:ProjectViewModel}"><pages:ProjectsPage/></DataTemplate>
+        <DataTemplate DataType="{x:Type vm:TaskViewModel}"><pages:TasksPage/></DataTemplate>
+        <DataTemplate DataType="{x:Type vm:DiagnosticViewModel}"><pages:DiagnosticsPage/></DataTemplate>
+        <DataTemplate DataType="{x:Type vm:SettingsViewModel}"><pages:SettingsPage/></DataTemplate>
     </Window.Resources>
+
     <Grid Background="{StaticResource SxShellGradient}">
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="268"/>
-            <ColumnDefinition Width="*"/>
-        </Grid.ColumnDefinitions>
+        <ContentControl Content="{Binding CurrentPage}" Focusable="False"/>
 
-        <!-- ============================ SIDEBAR ============================ -->
-        <Border Background="{StaticResource SxSidebarGradient}" BorderBrush="{DynamicResource SxBorderSubtle}" BorderThickness="0,0,1,0">
-            <DockPanel>
-                <StackPanel DockPanel.Dock="Top" Margin="20,26,18,18">
-                    <!-- Marka: świecąca kula + gradient nazwy + wersja. -->
-                    <Grid Margin="4,0,0,18">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <ContentControl Style="{StaticResource SxCrest}" Width="46" Height="46" Margin="0,0,12,0" AutomationProperties.Name="Herb Sentinel X"/>
-                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                            <TextBlock Text="SENTINEL X" FontFamily="{StaticResource SxFontDisplay}" FontSize="{StaticResource SxFontHeading3}" FontWeight="Bold" Foreground="{StaticResource SxRoyalGradient}"/>
-                            <TextBlock Text="{Binding Version}" Style="{StaticResource SxMuted}" Margin="0,3,0,0"/>
-                        </StackPanel>
-                    </Grid>
-                    <Button Command="{Binding OpenPaletteCommand}" Style="{StaticResource SxPillButton}" HorizontalContentAlignment="Left" Margin="0,0,0,14" AutomationProperties.Name="Otwórz paletę poleceń" ToolTip="Ctrl+K · szukaj po polsku: strony, polecenia, ustawienia">
-                        <DockPanel>
-                            <Border DockPanel.Dock="Right" Style="{StaticResource SxBadge}" Padding="7,2">
-                                <TextBlock Text="Ctrl K" Style="{StaticResource SxMuted}"/>
-                            </Border>
-                            <TextBlock Text="⌕  Szukaj i polecenia" Style="{StaticResource SxBadgeText}" Foreground="{DynamicResource SxTextSecondary}" VerticalAlignment="Center"/>
-                        </DockPanel>
-                    </Button>
-                    <TextBlock Text="LOKALNA INTELIGENCJA" Style="{StaticResource SxEyebrow}" Foreground="{DynamicResource SxAccentCyan}"/>
-                    <Border Style="{StaticResource SxDividerAccent}" Margin="0,6,0,14"/>
-                </StackPanel>
+        <TextBlock Text="{Binding Version, StringFormat=Sentinel X  •  v{0}}" HorizontalAlignment="Left" VerticalAlignment="Bottom"
+                   Margin="20,0,0,12" FontSize="10" Foreground="{DynamicResource SxTextMuted}" Opacity="0.2"
+                   IsHitTestVisible="False" AutomationProperties.Name="Wersja aplikacji"/>
 
-                <StackPanel DockPanel.Dock="Bottom" Margin="16,0,16,18">
-                    <!-- Stan głosu: tekst + kolor + pulsująca kropka (nie sam kolor). -->
-                    <Border Style="{StaticResource SxBadge}" Margin="0,0,0,10" Padding="12,9">
-                        <StackPanel>
-                            <DockPanel>
-                                <Ellipse DockPanel.Dock="Left" Style="{StaticResource SxStatusDot}" Fill="{Binding Voice.State, Converter={StaticResource VoiceBrush}}" Margin="0,0,8,0" u:Motion.Pulse="True"/>
-                                <TextBlock Text="{Binding Voice.State, StringFormat=VOICE · {0}}" Foreground="{Binding Voice.State, Converter={StaticResource VoiceBrush}}" Style="{StaticResource SxBadgeText}"/>
-                            </DockPanel>
-                            <TextBlock Text="{Binding Voice.Status}" Style="{StaticResource SxMuted}" Margin="17,5,0,0" MaxHeight="52" TextTrimming="CharacterEllipsis"/>
-                        </StackPanel>
+        <!-- A single, dismissible panel hosts settings, memory, history and requested tool views. -->
+        <Grid Panel.ZIndex="5" Background="{DynamicResource SxScrim}"
+              Visibility="{Binding IsOverlayOpen, Converter={StaticResource BoolToVisibility}}">
+            <Border Background="{StaticResource SxShellGradient}" BorderBrush="{DynamicResource SxBorderStrong}"
+                    BorderThickness="1" CornerRadius="18" Margin="36,30" MaxWidth="1220" MaxHeight="800"
+                    MinWidth="650" MinHeight="500" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                    Effect="{StaticResource SxShadowSoft}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <DockPanel Margin="24,17,18,12">
+                        <Button DockPanel.Dock="Right" Content="×" Command="{Binding CloseOverlayCommand}"
+                                Style="{StaticResource SxIconButton}" Width="34" Height="34" MinHeight="34"
+                                Padding="0" ToolTip="Zamknij panel" AutomationProperties.Name="Zamknij panel"/>
+                        <TextBlock Text="{Binding OverlayTitle}" Style="{StaticResource SxSectionTitle}" VerticalAlignment="Center"/>
+                    </DockPanel>
+                    <Border Grid.Row="1" BorderBrush="{DynamicResource SxBorderSubtle}" BorderThickness="0,1,0,0" ClipToBounds="True">
+                        <ContentControl Content="{Binding OverlayPage}" Focusable="False"/>
                     </Border>
-                    <Button Content="◇  Konfiguracja i gotowość" Command="{Binding OpenReadinessCommand}" Style="{StaticResource SxGhostButton}" FontSize="{StaticResource SxFontCaption}" Margin="0,0,0,8"/>
-                    <TextBlock Text="{Binding DesktopStatus}" Foreground="{DynamicResource SxWarning}" FontSize="{StaticResource SxFontSmall}" TextWrapping="Wrap" Margin="2,0,0,10"/>
-                    <Button Command="{Binding EmergencyStopCommand}" Style="{StaticResource SxDangerButton}" FontSize="{StaticResource SxFontCaption}" MinHeight="38" ToolTip="Ctrl+Shift+X · blokuje nowe akcje i wyłącza głos" AutomationProperties.Name="Stop awaryjny">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="ϟ" FontSize="{StaticResource SxFontHeading3}" Margin="0,0,8,0" VerticalAlignment="Center"/>
-                            <TextBlock Text="STOP AWARYJNY" VerticalAlignment="Center"/>
-                        </StackPanel>
-                    </Button>
-                    <Button Content="Wznów Sentinel" Command="{Binding ResumeCommand}" Style="{StaticResource SxSuccessButton}" Visibility="{Binding IsStopped, Converter={StaticResource BoolToVisibility}}" Margin="0,8,0,0"/>
-                    <Button Content="Wyjdź z aplikacji" Command="{Binding ExitCommand}" Style="{StaticResource SxGhostButton}" FontSize="{StaticResource SxFontSmall}" Margin="0,8,0,0"/>
-                </StackPanel>
-
-                <ListBox ItemsSource="{Binding NavItems}" SelectedItem="{Binding SelectedItem}" ItemContainerStyle="{StaticResource SxSidebarItem}" Margin="10,0" VerticalAlignment="Top" AutomationProperties.Name="Nawigacja główna">
-                    <ListBox.ItemTemplate>
-                        <DataTemplate>
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="{Binding Icon}" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Width="30" FontSize="{StaticResource SxFontHeading2}" VerticalAlignment="Center"/>
-                                <TextBlock Text="{Binding Label}" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" FontSize="{StaticResource SxFontSubheading}" VerticalAlignment="Center" Margin="4,0,0,0"/>
-                            </StackPanel>
-                        </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
-            </DockPanel>
-        </Border>
-
-        <!-- ============================ AURORA (dekoracja, nie przechwytuje myszy) ============================ -->
-        <Grid Grid.Column="1" IsHitTestVisible="False" ClipToBounds="True">
-            <Ellipse Width="820" Height="820" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-280,-220,0" Opacity="0.30" Fill="{StaticResource SxAuroraCyanBrush}" u:Motion.Aurora="0"/>
-            <Ellipse Width="900" Height="900" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="-320,0,0,-380" Opacity="0.22" Fill="{StaticResource SxAuroraVioletBrush}" u:Motion.Aurora="1"/>
-            <Ellipse Width="620" Height="620" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="180,120,0,0" Opacity="0.14" Fill="{StaticResource SxAuroraPinkBrush}" u:Motion.Aurora="2"/>
+                </Grid>
+            </Border>
         </Grid>
 
-        <!-- ============================ TREŚĆ ============================ -->
-        <ContentControl Grid.Column="1" Content="{Binding CurrentPage}" Focusable="False"/>
-
-        <!-- Paleta poleceń Ctrl+K -->
-        <Grid Grid.ColumnSpan="2" Panel.ZIndex="10" Background="{DynamicResource SxScrim}" Visibility="{Binding Palette.IsOpen, Converter={StaticResource BoolToVisibility}}">
+        <!-- Palette remains a quick command surface, not a navigation bar. -->
+        <Grid Panel.ZIndex="10" Background="{DynamicResource SxScrim}"
+              Visibility="{Binding Palette.IsOpen, Converter={StaticResource BoolToVisibility}}">
             <Grid.Style>
                 <Style TargetType="Grid">
                     <Style.Triggers>
-                        <!-- Scrim wchodzi przy każdym otwarciu; storyboard animuje ten Grid, więc bez TargetName. -->
                         <DataTrigger Binding="{Binding Palette.IsOpen}" Value="True">
-                            <DataTrigger.EnterActions>
-                                <BeginStoryboard Storyboard="{StaticResource SxScrimIn}"/>
-                            </DataTrigger.EnterActions>
+                            <DataTrigger.EnterActions><BeginStoryboard Storyboard="{StaticResource SxScrimIn}"/></DataTrigger.EnterActions>
                         </DataTrigger>
                     </Style.Triggers>
                 </Style>
@@ -135,16 +80,13 @@
             <controls:CommandPalette DataContext="{Binding Palette}" VerticalAlignment="Center" HorizontalAlignment="Center"/>
         </Grid>
 
-        <!-- Panel gotowości -->
-        <Grid Grid.ColumnSpan="2" Panel.ZIndex="11" Background="{DynamicResource SxScrim}" Visibility="{Binding Readiness.IsOpen, Converter={StaticResource BoolToVisibility}}">
+        <Grid Panel.ZIndex="11" Background="{DynamicResource SxScrim}"
+              Visibility="{Binding Readiness.IsOpen, Converter={StaticResource BoolToVisibility}}">
             <Grid.Style>
                 <Style TargetType="Grid">
                     <Style.Triggers>
-                        <!-- Scrim wchodzi przy każdym otwarciu; storyboard animuje ten Grid, więc bez TargetName. -->
                         <DataTrigger Binding="{Binding Readiness.IsOpen}" Value="True">
-                            <DataTrigger.EnterActions>
-                                <BeginStoryboard Storyboard="{StaticResource SxScrimIn}"/>
-                            </DataTrigger.EnterActions>
+                            <DataTrigger.EnterActions><BeginStoryboard Storyboard="{StaticResource SxScrimIn}"/></DataTrigger.EnterActions>
                         </DataTrigger>
                     </Style.Triggers>
                 </Style>

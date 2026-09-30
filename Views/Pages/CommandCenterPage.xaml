@@ -35,6 +35,15 @@
                 <Border Style="{StaticResource SxBadgeAccent}" VerticalAlignment="Center">
                     <TextBlock Text="{Binding Voice.State, StringFormat=VOICE · {0}}" Foreground="{DynamicResource SxAccentCyan}" Style="{StaticResource SxBadgeText}"/>
                 </Border>
+                <Border Style="{StaticResource SxBadgeWarning}" Margin="8,0,0,0" VerticalAlignment="Center" Visibility="{Binding ExternalNetworkBlocked, Converter={StaticResource BoolToVisibility}}" ToolTip="Blokuje połączenia zewnętrzne inicjowane przez Sentinel. Ollama na localhost i lokalne narzędzia pozostają dostępne. Nie blokuje sieci Windows ani innych uruchomionych aplikacji.">
+                    <TextBlock Text="🔒 TYLKO LOKALNIE" Foreground="{DynamicResource SxWarning}" Style="{StaticResource SxBadgeText}"/>
+                </Border>
+                <Border Style="{StaticResource SxBadgeWarning}" Margin="8,0,0,0" VerticalAlignment="Center" Visibility="{Binding ExternalNetworkAllowed, Converter={StaticResource BoolToVisibility}}" ToolTip="Ruch zewnętrzny Sentinela jest dozwolony. Usługi online mogą otrzymać i zapisywać zapytania; aplikacja nie konfiguruje ani nie weryfikuje VPN/łańcucha proxy.">
+                    <TextBlock Text="ONLINE · RUCH ZEWNĘTRZNY DOZWOLONY" Foreground="{DynamicResource SxWarning}" Style="{StaticResource SxBadgeText}"/>
+                </Border>
+                <Border Style="{StaticResource SxBadgeWarning}" Margin="8,0,0,0" VerticalAlignment="Center" Visibility="{Binding IsPrivateOnline, Converter={StaticResource BoolToVisibility}}" ToolTip="Tekst rozmowy nie trafia do lokalnej historii/audytu, ale usługi online mogą otrzymać i logować temat. Jawnie zlecone pliki są osobnym lokalnym zapisem.">
+                    <TextBlock Text="ONLINE · MOŻLIWE LOGOWANIE ZDALNE" Foreground="{DynamicResource SxWarning}" Style="{StaticResource SxBadgeText}"/>
+                </Border>
                 <Border Style="{StaticResource SxBadgeWarning}" Margin="8,0,0,0" VerticalAlignment="Center" Visibility="{Binding IsPrivateMode, Converter={StaticResource BoolToVisibility}}">
                     <TextBlock Text="🔒 ROZMOWA PRYWATNA" Foreground="{DynamicResource SxWarning}" Style="{StaticResource SxBadgeText}"/>
                 </Border>
@@ -45,7 +54,7 @@
                     <TextBlock Text="CENTRUM DOWODZENIA" Style="{StaticResource SxEyebrow}" Foreground="{DynamicResource SxAccentCyan}"/>
                     <TextBlock Text="Centrum" Style="{StaticResource SxHeading}" Margin="0"/>
                     <DockPanel Margin="0,4,0,0">
-                        <Button Content="Tryb prywatny" Command="{Binding TogglePrivateModeCommand}" DockPanel.Dock="Right" Style="{StaticResource SxGhostButton}" FontSize="{StaticResource SxFontSmall}" Margin="12,0,0,0" Padding="8,2" ToolTip="Rozmowa prywatna nie jest nigdzie zapisywana"/>
+                        <Button Content="Tryb prywatny" Command="{Binding TogglePrivateModeCommand}" DockPanel.Dock="Right" Style="{StaticResource SxGhostButton}" FontSize="{StaticResource SxFontSmall}" Margin="12,0,0,0" Padding="8,2" ToolTip="Nie zapisuje tekstu rozmowy w lokalnej historii/audycie. Jawnie zlecone pliki są osobnym zapisem. Gdy Tryb tylko lokalnie jest wyłączony, usługi online mogą otrzymać i zapisywać temat."/>
                         <TextBlock Text="{Binding ConversationTitle, StringFormat=Rozmowa: {0}}" Style="{StaticResource SxCaption}" VerticalAlignment="Center"/>
                     </DockPanel>
                 </StackPanel>

@@ -18,6 +18,7 @@ public sealed class AiService : IAiService, IDisposable
     public bool IsStreaming => local.IsStreaming;
     public string PartialAnswer => local.LastPartialAnswer;
     public string RoutingReason => local.LastRoutingReason;
+    public bool LastResponseSucceeded => local.LastResponseSucceeded;
     public void Cancel() => local.CancelCurrentRequest();
     public void Dispose() { ((IDisposable)client).Dispose(); http.Dispose(); }
 }

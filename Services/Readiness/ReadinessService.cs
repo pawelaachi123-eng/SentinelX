@@ -6,7 +6,8 @@ using SentinelX.Services.Voice;
 namespace SentinelX.Services.Readiness;
 
 /// <summary>Read-only probes. Never captures audio, downloads models, launches Ollama or changes settings.</summary>
-public sealed class ReadinessService(ISettingsService settings, IHistoryService history, IVoiceService voice, IAiService ai) : IReadinessService
+public sealed class ReadinessService(ISettingsService settings, IHistoryService history, IVoiceService voice, IAiService ai,
+    SentinelX.ConversationMemoryService? memory = null, SentinelX.TaskService? tasks = null) : IReadinessService
 {
     public async Task<IReadOnlyList<ReadinessCheck>> CheckAsync(CancellationToken token)
     {
@@ -17,6 +18,18 @@ public sealed class ReadinessService(ISettingsService settings, IHistoryService 
             string? error = settings.LastError ?? history.StorageError;
             checks.Add(new("storage", "Ustawienia i historia", error == null ? ReadinessState.Ready : ReadinessState.Unavailable,
                 error ?? "Wczytano konfigurację. Zapis jest sprawdzany przy każdej zmianie. Dane pozostają w %LOCALAPPDATA%\\SentinelX.", "settings", "Otwórz ustawienia"));
+            if (memory != null)
+            {
+                string? memoryError = memory.LastStorageError;
+                checks.Add(new("memory", "Pamięć rozmów", memoryError == null ? ReadinessState.Ready : ReadinessState.Unavailable,
+                    memoryError ?? "Magazyn lokalny działa; zakres zapisu i użycia przez AI zależy od ustawień prywatności.", "memory", "Sprawdź Pamięć i prywatność"));
+            }
+            if (tasks != null)
+            {
+                string? taskError = tasks.LastStorageError;
+                checks.Add(new("tasks", "Zadania i przypomnienia", taskError == null ? ReadinessState.Ready : ReadinessState.Unavailable,
+                    taskError ?? "Lokalny magazyn zadań odpowiada; przypomnienia powiadamiają tylko przy uruchomionej aplikacji.", "tasks", "Otwórz Zadania"));
+            }
             token.ThrowIfCancellationRequested();
             try
             {

@@ -41,6 +41,7 @@ public partial class App : Application
                 return;
             }
             provider = ServiceLocator.Build(Dispatcher); Services = provider;
+            provider.GetRequiredService<WatcherService>().Start();
             var shell = provider.GetRequiredService<Views.MainWindow>();
             MainWindow = shell; shell.Show();
             instance?.Listen(provider.GetRequiredService<IDesktopService>().ShowWindow);

@@ -14,7 +14,10 @@ internal static class ProgramBuilderTestRunner
             var result = await builder.BuildAsync(template, null, CancellationToken.None);
             results.Add(result);
             await File.WriteAllTextAsync(Path.Combine(directory, "builder-results.json"), JsonSerializer.Serialize(results, new JsonSerializerOptions { WriteIndented = true }));
-            if (result.Status != "VERIFIED") throw new InvalidOperationException(template + ": " + result.Message + "\n" + result.Evidence);
+            if (result.Status != "SOURCE_READY" || result.Executable != null ||
+                Directory.EnumerateFiles(result.ProjectDirectory, "*.exe", SearchOption.AllDirectories).Any() ||
+                !File.Exists(Path.Combine(result.ProjectDirectory, "source-manifest.json")))
+                throw new InvalidOperationException(template + ": " + result.Message + "\n" + result.Evidence);
         }
     }
 }

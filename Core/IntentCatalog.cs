@@ -55,8 +55,15 @@ public static class IntentCatalog
             "top procesy", "co zjada ram", "test internetu", "status sieci", "historia akcji",
             "diagnostyka komputera", "raport komputera", "eksportuj raport", "status zabezpieczen",
             "zdarzenia windows", "programy autostartu", "lista uslug",
-            // ai
+            // ai and bounded learning skills
             "modele ai", "status ai", "test ai", "lista modeli", "sprawdz ai", "model ai auto",
+            "naucz sie", "naucz mnie", "ucz sie", "poznaj", "umiejetnosci",
+            "napraw cs2", "ogarnij cs2", "dlaczego internet laguje", "internet laguje",
+            "zbuduj program notatnik", "zbuduj program kalkulator", "zbuduj program pomodoro",
+            "sprawdz dlaczego internet laguje", "sprawdz wysoki ping", "dlaczego komputer jest wolny", "komputer laguje",
+            "przed chwila mi scielo", "przed chwila mi scinalo",
+            "anuluj", "anuluj wszystko", "przerwij", "stop", "stop sentinel", "nie rob tego",
+            "wznow ostatni cel", "kontynuuj przerwane zadanie", "wznow diagnostyke",
             // memory and conversations
             "co pamietasz", "status pamieci", "ile pamietasz", "pokaz rozmowy", "lista rozmow", "moje rozmowy",
             "nowa rozmowa", "nowa sesja", "co poszlo do modelu", "co powiedzialem wczesniej",

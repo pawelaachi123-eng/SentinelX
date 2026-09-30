@@ -92,7 +92,7 @@ public partial class MemoryViewModel : ObservableObject, IDisposable
         else Trace.Add("Podgląd kontekstu jest wyłączony lub aktywny jest tryb prywatny. Źródła kontekstu nie są rejestrowane.");
         IsPrivateMode = memory.PrivateMode;
         var s = settings.Current.Memory;
-        PrivacyLine = $"Zapis rozmów: {On(s.SaveConversations)} · AI czyta historię: {On(s.UseHistoryForAi)} · Zapis wspomnień: {On(s.SaveMemories)} · AI czyta wspomnienia: {On(s.UseMemoriesForAi)} · Retencja: {(s.RetentionDays > 0 ? s.RetentionDays + " dni" : "bezterminowa")}";
+        PrivacyLine = $"Ruch zewnętrzny Sentinel: {(memory.ExternalNetworkAllowed ? "DOZWOLONY" : "ZABLOKOWANY · tylko lokalnie") } · Zapis rozmów: {On(s.SaveConversations)} · AI czyta historię: {On(s.UseHistoryForAi)} · Zapis wspomnień: {On(s.SaveMemories)} · AI czyta wspomnienia: {On(s.UseMemoriesForAi)} · Retencja: {(s.RetentionDays > 0 ? s.RetentionDays + " dni" : "bezterminowa")}";
         UpdateConflicts();
         Status = memory.LastStorageError ?? $"Wspomnienia: {Items.Count} · Rozmowy: {conversations.Length} · Zmiany konfiguracji działają od razu, bez restartu.";
     }
@@ -107,7 +107,7 @@ public partial class MemoryViewModel : ObservableObject, IDisposable
         var items = source.Select(x => new MemoryItemViewModel
         {
             Id = x.Id, Category = string.IsNullOrEmpty(x.Category) ? "notatka" : x.Category, Text = x.Text, Source = x.Source, Pinned = x.Pinned, Stale = x.SupersededAt != null,
-            MetaText = $"{(x.Pinned ? "📌 " : "")}{(x.SupersededAt != null ? "nieaktualne · " : "")}{x.Category} · utworzone {x.Timestamp:dd.MM.yyyy HH:mm}{(x.UpdatedAt != null ? $" · zmienione {x.UpdatedAt:dd.MM.yyyy HH:mm}" : "")} · źródło: {x.Source}"
+            MetaText = $"{(x.Pinned ? "📌 " : "")}{(x.SupersededAt != null ? "nieaktualne · " : "")}{x.Category} · utworzone {x.Timestamp:dd.MM.yyyy HH:mm}{(x.UpdatedAt != null ? $" · zmienione {x.UpdatedAt:dd.MM.yyyy HH:mm}" : "")} · ostatnio potwierdzone: {(x.LastConfirmedAt?.ToString("dd.MM.yyyy HH:mm") ?? "brak")} · pewność źródła {Math.Clamp(x.Confidence, 0, 1):P0} · źródło: {x.Source}"
         }).ToArray();
         Items.Clear(); foreach (var item in items) Items.Add(item);
         if (SelectedItem != null && items.All(x => x.Id != SelectedItem.Id)) SelectedItem = null;

@@ -13,6 +13,9 @@ public sealed record CommandRepair(bool Success, string Text, string Canonical, 
 /// deliberately absent from the catalogue so a typo cannot trigger them.</summary>
 public static class CommandUnderstanding
 {
+    private static readonly Regex FreeformLearningRequest = new(
+        @"^(?:naucz(?: sie| mnie(?: sie)?)|ucz(?: mnie)? sie|poznaj(?: i zapamietaj)?|dowiedz sie o|learn(?: about)?|study)\s+.+$",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
     /// <summary>Minimum similarity for a whole-phrase repair.</summary>
     public const double MinConfidence = 0.80;
     /// <summary>Minimum similarity for repairing a single word.</summary>
@@ -84,6 +87,8 @@ public static class CommandUnderstanding
     {
         string normalized = ConversationMemoryService.Normalize(input ?? "").TrimEnd('?', '!', '.', ' ');
         if (normalized.Length == 0 || normalized.Contains('\n')) return CommandRepair.None;
+        // Learning commands carry a user-supplied free-form topic; never typo-rewrite the topic itself.
+        if (FreeformLearningRequest.IsMatch(normalized)) return CommandRepair.None;
 
         // Documented abbreviations win: deterministic, listed by „skróty”. They are short by design.
         if (IntentCatalog.Abbreviations.TryGetValue(normalized, out string? expanded))

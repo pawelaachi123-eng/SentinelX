@@ -13,7 +13,7 @@
                         <StackPanel>
                             <TextBlock Text="WSPOMNIENIA · ROZMOWY · PRYWATNOŚĆ" Style="{StaticResource SxEyebrow}" Foreground="{DynamicResource SxAccentViolet}"/>
                             <TextBlock Text="Pamięć" Style="{StaticResource SxHeading}" Margin="0"/>
-                            <TextBlock Text="Trwałe wspomnienia, rozmowy i prywatność · wszystko lokalnie, pod Twoją kontrolą." Style="{StaticResource SxCaption}" Margin="0,6,0,0"/>
+                            <TextBlock Text="Pamięć lokalna jest pod Twoją kontrolą; briefy z polecenia „naucz się …” znajdziesz w kategorii „umiejętność”, możesz je edytować lub usuwać. Przy włączonych funkcjach online dostawcy zewnętrzni mogą logować zapytania." Style="{StaticResource SxCaption}" Margin="0,6,0,0"/>
                         </StackPanel>
                     </StackPanel>
                 </DockPanel>
@@ -183,10 +183,10 @@
                         <TextBlock Text="Prywatność" Style="{StaticResource SxSectionTitle}"/>
                         <TextBlock Text="{Binding PrivacyLine}" Style="{StaticResource SxCaption}" Margin="0,0,0,12"/>
                         <WrapPanel>
-                            <Button Content="Przełącz tryb prywatny" Command="{Binding TogglePrivateModeCommand}" Style="{StaticResource SxDangerButton}" Margin="0,0,8,8" ToolTip="Rozmowa prywatna nie jest nigdzie zapisywana"/>
+                            <Button Content="Przełącz tryb prywatny" Command="{Binding TogglePrivateModeCommand}" Style="{StaticResource SxDangerButton}" Margin="0,0,8,8" ToolTip="Nie zapisuje tekstu rozmowy w lokalnej historii/audycie; jawnie zlecone pliki to osobny zapis. Przy wyłączonej blokadzie usługi online mogą otrzymać i zapisywać temat."/>
                             <TextBlock Text="{Binding IsPrivateMode, StringFormat=Tryb prywatny: {0}}" Foreground="{DynamicResource SxWarning}" VerticalAlignment="Center"/>
                         </WrapPanel>
-                        <TextBlock Text="Cztery przełączniki zapisu i podglądu kontekstu oraz retencję zmienisz w Settings → Pamięć. Usuwanie całej pamięci lub historia rozmowy odbywa się wyłącznie przez zgodę HIGH w Centrum." Style="{StaticResource SxCaption}" Margin="0,12,0,0"/>
+                        <TextBlock Text="Tryb tylko lokalnie zmienisz w Settings → Pamięć. Blokuje on web research, pobieranie stron i modeli, zewnętrzne testy sieciowe, otwieranie stron, kopiowanie odpowiedzi do schowka, sterowanie zewnętrznymi aplikacjami/procesami oraz kompilację, która może pobierać pakiety. Ollama na localhost i lokalne narzędzia pozostają dostępne. Sentinel nie konfiguruje VPN ani łańcucha kilku proxy. Wyłączenie blokady pozwala na funkcje online, ale treść zapytań może trafić do usług zewnętrznych, które mogą ją zapisywać; Private Mode wyłącza zapis lokalny, nie zdalny. Windows i inne programy nie są izolowane. Ustawienia pamięci i retencję zmienisz w tym samym panelu. Usuwanie całej pamięci lub historia rozmowy odbywa się wyłącznie przez zgodę HIGH w Centrum." Style="{StaticResource SxCaption}" Margin="0,12,0,0"/>
                     </StackPanel>
                 </Border>
             </StackPanel>

@@ -40,9 +40,11 @@ namespace SentinelX
     public sealed class ActionHistoryService
     {
         private static readonly string sessionId = Guid.NewGuid().ToString("N");
+        public static string CurrentSessionId => sessionId;
         public string? LastStorageError { get; private set; }
         public string? LastReadError { get; private set; }
         public string HistoryPath => historyPath;
+        public Func<bool>? PersistenceAllowedProvider { get; set; }
         private readonly object syncRoot =
             new object();
 
@@ -58,8 +60,9 @@ namespace SentinelX
             };
 
 
-        public ActionHistoryService(string? dataDirectory = null)
+        public ActionHistoryService(string? dataDirectory = null, Func<bool>? persistenceAllowedProvider = null)
         {
+            PersistenceAllowedProvider = persistenceAllowedProvider;
             historyDirectory =
                 Path.Combine(dataDirectory ?? AppPaths.Root,
                     "History");
@@ -71,9 +74,12 @@ namespace SentinelX
                     "actions.jsonl");
 
 
-            Directory.CreateDirectory(
-                historyDirectory);
-            RecoverInterruptedActions();
+            if (CanPersist())
+            {
+                Directory.CreateDirectory(
+                    historyDirectory);
+                RecoverInterruptedActions();
+            }
         }
 
         public void AddRunning(string actionId, string actionType, string command, string parentActionId = "") => AddEntry(new()
@@ -228,9 +234,17 @@ namespace SentinelX
         }
 
 
+        private bool CanPersist()
+        {
+            try { return PersistenceAllowedProvider?.Invoke() ?? true; }
+            catch (Exception ex) { LastStorageError = "Nie udało się sprawdzić uprawnień historii: " + ex.Message; return false; }
+        }
+
+
         private void AddEntry(
             ActionHistoryEntry entry)
         {
+            if (!CanPersist()) return;
             lock (syncRoot)
             {
                 try
@@ -244,6 +258,7 @@ namespace SentinelX
                             jsonOptions);
 
 
+                    Directory.CreateDirectory(historyDirectory);
                     File.AppendAllText(
                         historyPath,
                         json +

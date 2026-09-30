@@ -11,5 +11,6 @@ public interface IAiService
     /// <summary>Text produced before a generation was stopped — never silently discarded.</summary>
     string PartialAnswer => "";
     string RoutingReason { get; }
+    bool LastResponseSucceeded => true;
     void Cancel();
 }

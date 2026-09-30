@@ -20,6 +20,17 @@ public sealed class MemoryActionService(ConversationMemoryService memory, IPermi
     {
         var mutation = Parse(input);
         if (mutation.Type == null) return null;
+        if (mutation.Type == "MEMORY_FORGET" && IsContextualReference(mutation.Argument))
+        {
+            if (!memory.TryGetPreviousUserMessage(input, out string previous))
+                return "Nie umiem wskazać, którą informację zapomnieć. Podaj jej temat albo dokładny fragment.";
+            var candidates = memory.FindRelevantNotes(previous, 3).ToArray();
+            if (candidates.Length != 1)
+                return candidates.Length == 0 ? "Nie znalazłem trwałego wspomnienia z poprzedniej wypowiedzi. Podaj temat lub dokładny fragment; niczego nie usunąłem."
+                    : "Poprzednia wypowiedź pasuje do kilku trwałych wspomnień. Podaj dokładniejszy temat, żebym nie wskazał niewłaściwego wpisu.";
+            mutation = (mutation.Type, candidates[0].Text,
+                $"Usunąć trwałe wspomnienie wskazane w poprzedniej wypowiedzi: „{(candidates[0].Text.Length <= 100 ? candidates[0].Text : candidates[0].Text[..97] + "…")}"? Usunięcie wymaga potwierdzenia.");
+        }
         if (mutation.Type == "MEMORY_FORGET" && (mutation.Argument.Length == 0 || mutation.Argument.Length > 500))
             return "Podaj fragment wspomnienia (1–500 znaków).";
         string id = history.CreateActionId();
@@ -42,6 +53,14 @@ public sealed class MemoryActionService(ConversationMemoryService memory, IPermi
         };
         if (permissions.TryRequest(action, out string response)) history.AddPending(id, action.ActionType, input, action.Description);
         return response;
+    }
+
+    private static bool IsContextualReference(string argument)
+    {
+        string normalized = Core.CommandText.Normalize(argument).Trim().Trim('?', '.', '!', '"', '„', '”');
+        return normalized is "to" or "to wspomnienie" or "te informacje" or "ta informacja" or
+            "te wspomnienie" or "tamto" or "tamta informacja" or "this" or "that" or "this information" or "that information" or
+            "this info" or "that info" or "this memory";
     }
 
     /// <summary>Deleting one explicit memory by stable ID is still HIGH risk and goes through the same approval flow.</summary>
@@ -80,6 +99,7 @@ public sealed class MemoryActionService(ConversationMemoryService memory, IPermi
         {
             NoteAddResult.Added => Audited(id, "MEMORY_ADD", "dodaj wspomnienie", true, "Zapisano wspomnienie.", VerifiedEvidence()),
             NoteAddResult.StaleDuplicate => Audited(id, "MEMORY_ADD", "dodaj wspomnienie", true, "Takie wspomnienie istniało jako nieaktualne — przywrócono je zamiast tworzyć duplikat.", VerifiedEvidence()),
+            NoteAddResult.Updated => Audited(id, "MEMORY_EDIT", "zaktualizuj wspomnienie", true, "Zaktualizowano bieżącą wartość wspomnienia; stara wartość pozostała w dzienniku zmian.", VerifiedEvidence()),
             NoteAddResult.Duplicate => "Takie wspomnienie już istnieje. Nic nie dodano (ochrona przed duplikatami).",
             NoteAddResult.Disabled => memory.LastStorageError ?? "Zapisywanie wspomnień jest wyłączone w ustawieniach prywatności.",
             _ => memory.LastStorageError ?? "Nie zapisano wspomnienia."

@@ -18,6 +18,7 @@ public sealed class VoiceService : IVoiceService, IDisposable
     private int generation;
     private bool disposed;
     public bool HasLocalModels => capture.HasLocalModels;
+    public bool IsSpeaking => speech.IsSpeaking;
     public VoiceState State { get; private set; }
     public string Status { get; private set; } = "Mikrofon wyłączony";
     public event Action? Changed;
@@ -32,6 +33,7 @@ public sealed class VoiceService : IVoiceService, IDisposable
         capture.ErrorOccurred += SetStatus;
         settings.Changed += ApplySettings;
         engine.Changed += EngineChanged;
+        speech.Started += SpeechStarted;
         speech.Completed += SpeechCompleted;
         timer.Tick += Tick;
     }
@@ -82,13 +84,13 @@ public sealed class VoiceService : IVoiceService, IDisposable
         if (State == VoiceState.Active && DateTime.Now > activeUntil && !engine.IsBusy)
         { State = VoiceState.Standby; capture.SetWakeOnlyMode(true); SetStatus("STANDBY · powiedz Sentinel"); }
         MetricsUpdated?.Invoke(new(State, capture.CurrentRawAudioLevel * 100, capture.CurrentEnhancedRms * 100,
-            capture.CurrentNoiseFloor, capture.CurrentSnrDb, capture.CurrentGain, capture.SpeechDetected, capture.LastTranscript));
+            capture.CurrentPlaybackRms * 100, capture.CurrentNoiseFloor, capture.CurrentSnrDb, capture.CurrentGain, capture.SpeechDetected, capture.LastTranscript));
     }
     public void Stop()
     {
         generation++; starting?.Cancel(); capture.StopListening(); speech.Stop(); timer.Stop();
         State = VoiceState.Off; SetStatus("Mikrofon wyłączony");
-        MetricsUpdated?.Invoke(new(State, 0, 0, 0, 0, 0, false, ""));
+        MetricsUpdated?.Invoke(new(State, 0, 0, 0, 0, 0, 0, false, ""));
     }
     public void Calibrate() { if (capture.IsListening) capture.CalibrateNoise(); else SetStatus("Najpierw włącz mikrofon."); }
     public void Speak(string text)
@@ -98,13 +100,18 @@ public sealed class VoiceService : IVoiceService, IDisposable
         speech.Speak(text, settings.Current.Voice.SpeechVoice, settings.Current.Voice.SpeechRate, settings.Current.Voice.SpeechVolume);
         if (!speech.IsSpeaking) capture.RecognitionSuppressed = false;
     }
-    private void SpeechCompleted() => capture.RecognitionSuppressed = false;
+    private void SpeechStarted() => dispatcher.Post(() => { if (!disposed) Changed?.Invoke(); });
+    private void SpeechCompleted()
+    {
+        capture.RecognitionSuppressed = false;
+        dispatcher.Post(() => { if (!disposed) Changed?.Invoke(); });
+    }
     public void Dispose()
     {
         if (disposed) return;
         Stop(); disposed = true;
         timer.Tick -= Tick; capture.SpeechRecognized -= Recognized; capture.StatusChanged -= SetStatus;
         capture.ErrorOccurred -= SetStatus; settings.Changed -= ApplySettings; engine.Changed -= EngineChanged;
-        speech.Completed -= SpeechCompleted;
+        speech.Started -= SpeechStarted; speech.Completed -= SpeechCompleted;
     }
 }

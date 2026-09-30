@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text.RegularExpressions;
 using SentinelX.Core;
 using SentinelX.Models;
 using SentinelX.Services.Intent;
@@ -33,7 +34,17 @@ public sealed class ActionEngine(IIntentRouter router, SentinelToolboxService to
         if (input.Length > 16000) return new("Polecenie przekracza limit 16 000 znaków.");
         string normalized = CommandText.Normalize(input);
         if (normalized is "awaryjny stop" or "emergency stop") { EmergencyStop(); return new("STOP awaryjny aktywny."); }
-        if (normalized is "anuluj" or "przerwij" or "anuluj akcje") { Cancel(); return new("Przerwano. Ukończone kroki nie są cofane."); }
+        if (normalized is "anuluj wszystko" or "stop sentinel" or "zatrzymaj sentinela" or "nie rob tego")
+        { Cancel(); return new("Wysłano żądanie przerwania bieżącego polecenia, wszystkich aktywnych zadań i oczekujących zgód. Ukończone kroki nie są cofane."); }
+        Match taskCancel = Regex.Match(normalized, @"^(?:anuluj|przerwij|stop)\s+(?<id>[a-z0-9-]+)$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        if (taskCancel.Success) return new(toolbox.CancelActiveTask(taskId: taskCancel.Groups["id"].Value));
+        if (normalized is "anuluj" or "przerwij" or "anuluj akcje" or "stop")
+        {
+            if (toolbox.GetTasks().Count(x => x.Status is "RUNNING" or "CANCELLING") > 1)
+                return new(toolbox.CancelActiveTask());
+            Cancel();
+            return new("Przerwano bieżące polecenie lub zadanie. Ukończone kroki nie są cofane.");
+        }
         // Check after the SAME normalization used by routing: wake words must not bypass approval.
         if (fromVoice && CommandText.IsApproval(normalized))
             return new("Potwierdzenie jest możliwe wyłącznie przyciskiem lub klawiaturą.");
@@ -73,6 +84,8 @@ public sealed class ActionEngine(IIntentRouter router, SentinelToolboxService to
                 using var scope = ActionEvidenceCapture.Begin(record.ActionId);
                 capture = scope;
                 var text = await router.ProcessAsync(input, source.Token, onDelta == null ? null : Publish);
+                string memoryNotice = toolbox.TakeAutomaticMemoryNotice();
+                if (memoryNotice.Length > 0) text += "\n\n" + memoryNotice;
                 source.Token.ThrowIfCancellationRequested();
                 memory.AddAssistantMessage(text);
                 return text;
@@ -86,6 +99,7 @@ public sealed class ActionEngine(IIntentRouter router, SentinelToolboxService to
         }
         catch (OperationCanceledException)
         {
+            string memoryNotice = toolbox.TakeAutomaticMemoryNotice();
             record.ToolResults = capture?.Snapshot() ?? [];
             record.Status = ActionStatus.Cancelled;
             record.Evidence = "Przerwano oczekiwanie i dalsze kroki. Ukończone operacje NIE zostały cofnięte." + FormatProof(record.ToolResults);
@@ -95,17 +109,20 @@ public sealed class ActionEngine(IIntentRouter router, SentinelToolboxService to
             {
                 response = partial + "\n\n[Przerwano generowanie po " + partial.Length +
                     " znakach. Powyższy tekst może urywać się w połowie zdania — to wszystko, co model zdążył wygenerować.]";
+                if (memoryNotice.Length > 0) response += "\n\n" + memoryNotice;
                 memory.AddAssistantMessage(response);
             }
-            else response = record.Evidence;
+            else response = record.Evidence + (memoryNotice.Length == 0 ? "" : "\n\n" + memoryNotice);
             return new(response, record);
         }
         catch (Exception ex)
         {
+            string memoryNotice = toolbox.TakeAutomaticMemoryNotice();
             AppLog.Write(ex); record.Status = ActionStatus.Failed; record.Error = ex.Message;
             record.ToolResults = capture?.Snapshot() ?? [];
             record.Evidence = "Polecenie zakończone błędem. Sprawdź ukończone kroki przed ponowieniem." + FormatProof(record.ToolResults);
-            response = "Nie udało się wykonać polecenia: " + ex.Message;
+            response = "Nie udało się wykonać polecenia: " + ex.Message + (memoryNotice.Length == 0 ? "" : "\n\n" + memoryNotice);
+            if (memoryNotice.Length > 0) memory.AddAssistantMessage(response);
             return new(response, record);
         }
         finally
@@ -172,20 +189,21 @@ public sealed class ActionEngine(IIntentRouter router, SentinelToolboxService to
         "\n\n" + string.Join("\n\n", entries.Select(x => $"{x.ActionId} [{x.Status}]\n{x.Message}\n{x.Evidence}"));
     private void Persist(ActionRecord record, string response)
     {
-        if (record.Status == ActionStatus.WaitingPermission)
-        { history.AddPending(record.ActionId, "REQUEST", AuditText(record.UserRequest), record.Evidence); return; }
         bool ephemeral = memory.IsEphemeral;
+        string auditEvidence = ephemeral ? "[dowód lokalny niezapisany — rozmowa prywatna lub zapis wyłączony]" : record.Evidence;
+        if (record.Status == ActionStatus.WaitingPermission)
+        { history.AddPending(record.ActionId, "REQUEST", AuditText(record.UserRequest), auditEvidence); return; }
         var result = record.Status switch
         {
-            // A private session must not persist the command text or the reply text anywhere, including the audit file.
-            ActionStatus.Verified => ActionExecutionResult.VerifiedSuccess(ephemeral ? "[treść niezapisana]" : response, record.Evidence),
-            ActionStatus.Cancelled => ActionExecutionResult.Cancelled(record.Evidence),
-            ActionStatus.Failed => ActionExecutionResult.Failure(ephemeral ? "[treść niezapisana]" : record.Error, record.Evidence),
-            _ => ActionExecutionResult.UnverifiedSuccess(ephemeral ? "[treść niezapisana]" : response, record.Evidence)
+            // A private session must not persist command text, reply text, or tool evidence in the audit file.
+            ActionStatus.Verified => ActionExecutionResult.VerifiedSuccess(ephemeral ? "[treść niezapisana]" : response, auditEvidence),
+            ActionStatus.Cancelled => ActionExecutionResult.Cancelled(auditEvidence),
+            ActionStatus.Failed => ActionExecutionResult.Failure(ephemeral ? "[treść niezapisana]" : record.Error, auditEvidence),
+            _ => ActionExecutionResult.UnverifiedSuccess(ephemeral ? "[treść niezapisana]" : response, auditEvidence)
         };
         history.AddResult(record.ActionId, "REQUEST", AuditText(record.UserRequest), result, record.ElapsedMilliseconds);
     }
-    private string AuditText(string text) => memory.IsEphemeral ? "[rozmowa prywatna lub zapis wyłączony — treść niezapisana]" : text;
+    private string AuditText(string text) => memory.IsEphemeral ? "[rozmowa prywatna lub zapis wyłączony — treść niezapisana]" : SensitiveDataRedactor.Redact(text);
     private void UpdateWaitingRequests(IReadOnlyList<ActionHistoryEntry> proof)
     {
         ActionRecord[] waiting;

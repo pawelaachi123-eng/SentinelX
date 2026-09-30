@@ -20,6 +20,31 @@
                 </DockPanel>
 
                 <Border Style="{StaticResource SxCard}" Padding="{StaticResource SxSpaceLg}" Margin="0,0,0,14">
+                    <StackPanel>
+                        <TextBlock Text="SENTINEL BRIDGE · TELEFON ↔ PC" Style="{StaticResource SxEyebrow}" Foreground="{DynamicResource SxAccentCyan}"/>
+                        <TextBlock Text="{Binding BridgeStatus}" Style="{StaticResource SxCaption}" Margin="0,6,0,12" TextWrapping="Wrap"/>
+                        <TextBlock Text="Bridge jest domyślnie wyłączony. Uruchom go tylko w zaufanej sieci lokalnej. Nie konfiguruj przekierowania portu routera." Style="{StaticResource SxCaption}" TextWrapping="Wrap" Margin="0,0,0,12"/>
+                        <DockPanel Margin="0,0,0,8">
+                            <Button Content="Uruchom Bridge" Command="{Binding StartPhoneBridgeCommand}" DockPanel.Dock="Right" Style="{StaticResource SxPrimaryButton}" Margin="12,0,0,0"/>
+                            <Button Content="Zatrzymaj" Command="{Binding StopPhoneBridgeCommand}" DockPanel.Dock="Right" Style="{StaticResource SxSecondaryButton}" Margin="0,0,8,0"/>
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Text="Adresy" Style="{StaticResource SxCaption}"/>
+                                <TextBlock Text="{Binding BridgeEndpoints}" Style="{StaticResource SxCaption}" TextWrapping="Wrap"/>
+                            </StackPanel>
+                        </DockPanel>
+                        <TextBlock Text="Kod jednorazowego parowania (10 min)" Style="{StaticResource SxCaption}"/>
+                        <TextBox Text="{Binding BridgePairingCode}" IsReadOnly="True" FontSize="20" FontWeight="Bold" Margin="0,4,0,8" AutomationProperties.Name="Kod parowania Sentinel Bridge"/>
+                        <TextBlock Text="Odcisk certyfikatu SHA-256 — zweryfikuj i przepisz do aplikacji telefonu" Style="{StaticResource SxCaption}" TextWrapping="Wrap"/>
+                        <TextBox Text="{Binding BridgeCertificateFingerprint}" IsReadOnly="True" TextWrapping="Wrap" Margin="0,4,0,8" AutomationProperties.Name="Odcisk certyfikatu Bridge"/>
+                        <StackPanel Margin="0,0,0,8">
+                            <TextBlock Text="Sparowane telefony" Style="{StaticResource SxCaption}"/>
+                            <TextBlock Text="{Binding BridgePairedPhones}" Style="{StaticResource SxCaption}" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <Button Content="Cofnij dostęp wszystkim telefonom…" Command="{Binding RevokePhoneBridgeDevicesCommand}" Style="{StaticResource SxDangerButton}" HorizontalAlignment="Left"/>
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource SxCard}" Padding="{StaticResource SxSpaceLg}" Margin="0,0,0,14">
                     <DockPanel>
                         <TextBlock Text="SZUKAJ" DockPanel.Dock="Right" VerticalAlignment="Center" Margin="12,0,0,0" Style="{StaticResource SxEyebrow}" Foreground="{DynamicResource SxAccentCyan}"/>
                         <TextBox x:Name="SettingsSearch" Text="{Binding Search, UpdateSourceTrigger=PropertyChanged}" u:InputHint.Text="Szukaj ustawienia po nazwie lub opisie…" AutomationProperties.Name="Szukaj ustawień"/>

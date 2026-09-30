@@ -1,0 +1,133 @@
+<UserControl xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:u="clr-namespace:SentinelX.Utilities"
+             xmlns:controls="clr-namespace:SentinelX.Views.Controls"
+             x:Class="SentinelX.Views.Pages.SentinelHomePage"
+             Background="{DynamicResource SxBackground}">
+    <Grid Background="{StaticResource SxShellGradient}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <Grid Margin="34,20,34,0" Height="54">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <StackPanel VerticalAlignment="Center">
+                <TextBlock Text="SENTINEL X" FontFamily="{StaticResource SxFontDisplay}" FontSize="{StaticResource SxFontSubheading}" FontWeight="Bold" Foreground="{StaticResource SxRoyalGradient}"/>
+                <TextBlock Text="LOCAL INTELLIGENCE" Style="{StaticResource SxEyebrow}" Foreground="{DynamicResource SxTextMuted}" Margin="1,3,0,0"/>
+            </StackPanel>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                <Button Command="{Binding DataContext.OpenHistoryCommand, RelativeSource={RelativeSource AncestorType=Window}}" Style="{StaticResource SxIconButton}" Margin="0,0,5,0" ToolTip="Historia lokalna" AutomationProperties.Name="Otwórz historię">
+                    <TextBlock Text="◷" FontSize="22"/>
+                </Button>
+                <Button Command="{Binding ToggleVoiceCommand}" Style="{StaticResource SxIconButton}" Margin="0,0,5,0" ToolTip="Włącz lub wyłącz mikrofon" AutomationProperties.Name="Włącz lub wyłącz mikrofon">
+                    <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE720;" FontSize="19" Foreground="{Binding Voice.State, Converter={StaticResource VoiceBrush}}"/>
+                </Button>
+                <Button Command="{Binding DataContext.OpenSettingsCommand, RelativeSource={RelativeSource AncestorType=Window}}" Style="{StaticResource SxIconButton}" ToolTip="Ustawienia Sentinel X" AutomationProperties.Name="Otwórz ustawienia">
+                    <TextBlock Text="⚙" FontSize="19"/>
+                </Button>
+                <Button Command="{Binding DataContext.ResumeCommand, RelativeSource={RelativeSource AncestorType=Window}}" Style="{StaticResource SxChipButton}" Padding="12,6" Margin="10,0,0,0" Content="Wznów" ToolTip="Przywróć działanie po awaryjnym zatrzymaniu" Visibility="{Binding IsStopped, Converter={StaticResource BoolToVisibility}}"/>
+            </StackPanel>
+        </Grid>
+
+        <Grid Grid.Row="1" Margin="26,0,26,26">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <Grid Grid.Row="0" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="0,0,0,8">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <Viewbox Grid.Row="0" MaxWidth="490" MaxHeight="490" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <controls:SentinelCoreControl Width="490" Height="490"
+                        CoreState="{Binding CoreState}"
+                        AudioLevel="{Binding CoreAudioLevel}"
+                        AccentColor="{DynamicResource SxAccentCyanColor}"
+                        SecondaryColor="{DynamicResource SxAccentVioletColor}"
+                        ErrorColor="{DynamicResource SxErrorColor}"/>
+                </Viewbox>
+                <StackPanel Grid.Row="1" HorizontalAlignment="Center" Margin="0,-9,0,0">
+                    <TextBlock Text="{Binding CoreState}" HorizontalAlignment="Center" FontFamily="{StaticResource SxFontMono}" FontSize="{StaticResource SxFontCaption}" FontWeight="SemiBold">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="{DynamicResource SxAccentCyan}"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding CoreState}" Value="WORKING"><Setter Property="Foreground" Value="{DynamicResource SxAccentViolet}"/></DataTrigger>
+                                    <DataTrigger Binding="{Binding CoreState}" Value="ERROR"><Setter Property="Foreground" Value="{DynamicResource SxError}"/></DataTrigger>
+                                    <DataTrigger Binding="{Binding CoreState}" Value="SPEAKING"><Setter Property="Foreground" Value="{DynamicResource SxAccentTeal}"/></DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                    <TextBlock Text="{Binding CoreActivity}" HorizontalAlignment="Center" Margin="0,8,0,0" Foreground="{DynamicResource SxTextPrimary}" FontSize="{StaticResource SxFontSubheading}"/>
+                    <TextBlock Text="{Binding CoreDetail}" HorizontalAlignment="Center" MaxWidth="580" Margin="0,7,0,0" Foreground="{DynamicResource SxTextSecondary}" FontSize="{StaticResource SxFontCaption}" TextAlignment="Center" TextWrapping="Wrap" MaxHeight="48" TextTrimming="CharacterEllipsis"/>
+                    <TextBlock Text="ROZMOWA PRYWATNA" HorizontalAlignment="Center" Margin="0,9,0,0" Foreground="{DynamicResource SxWarning}" Style="{StaticResource SxEyebrow}" Visibility="{Binding IsPrivateMode, Converter={StaticResource BoolToVisibility}}"/>
+                </StackPanel>
+                <Border Grid.Row="2" Style="{StaticResource SxCardElevated}" Width="470" MaxHeight="180" Padding="16,13" Margin="0,14,0,0" HorizontalAlignment="Center" Visibility="{Binding HasCoreCard, Converter={StaticResource BoolToVisibility}}" AutomationProperties.Name="Aktywność Sentinela">
+                    <StackPanel>
+                    <DockPanel Margin="0,0,0,7">
+                        <Button Content="Zatrzymaj" Command="{Binding StopGenerationCommand}" DockPanel.Dock="Right" Style="{StaticResource SxGhostButton}" Padding="8,2" MinHeight="26" Margin="8,0,0,0" ToolTip="Zatrzymaj bieżące zadanie" Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}"/>
+                        <TextBlock Text="{Binding CurrentAction.Phase}" DockPanel.Dock="Right" Foreground="{DynamicResource SxAccentCyan}" Style="{StaticResource SxMuted}" Margin="8,0,0,0" Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}"/>
+                        <TextBlock Text="{Binding CoreActivity}" Foreground="{DynamicResource SxTextPrimary}" FontWeight="SemiBold"/>
+                    </DockPanel>
+                        <TextBlock Text="{Binding CoreDetail}" Foreground="{DynamicResource SxTextSecondary}" FontSize="{StaticResource SxFontCaption}" TextWrapping="Wrap" MaxHeight="74" TextTrimming="CharacterEllipsis"/>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0" Visibility="{Binding HasPermission, Converter={StaticResource BoolToVisibility}}">
+                            <Button Content="Anuluj" Command="{Binding CancelCommand}" Style="{StaticResource SxGhostButton}" Margin="0,0,8,0"/>
+                            <Button Content="Zatwierdź" Command="{Binding ApproveCommand}" Style="{StaticResource SxPrimaryButton}" Padding="16,6"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <Border x:Name="ResponseToast" Grid.Row="1" Visibility="Collapsed" Style="{StaticResource SxCardElevated}" MaxWidth="800" MaxHeight="108" HorizontalAlignment="Center" Margin="0,0,0,14" Padding="16,12" BorderBrush="{DynamicResource SxAccentCyanSoft}" AutomationProperties.Name="Powiadomienie Sentinel">
+                <DockPanel LastChildFill="True">
+                    <Button DockPanel.Dock="Right" Content="×" Click="DismissToast_Click" Style="{StaticResource SxIconButton}" Width="30" Height="30" MinHeight="30" Padding="0" Margin="12,0,0,0" ToolTip="Zamknij powiadomienie"/>
+                    <TextBlock x:Name="ToastText" TextWrapping="Wrap" MaxHeight="78" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Foreground="{DynamicResource SxTextPrimary}"/>
+                </DockPanel>
+            </Border>
+
+            <StackPanel Grid.Row="2" HorizontalAlignment="Center" MaxWidth="850" Width="850">
+                <Border Visibility="{Binding SlashOpen, Converter={StaticResource BoolToVisibility}}" Style="{StaticResource SxCardElevated}" Margin="0,0,0,10" Padding="12,10" MaxHeight="130">
+                    <ListBox ItemsSource="{Binding SlashItems}" SelectedIndex="{Binding SlashIndex}" BorderThickness="0" Background="{DynamicResource SxTransparent}" ScrollViewer.HorizontalScrollBarVisibility="Disabled" AutomationProperties.Name="Polecenia">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal" Margin="2,3">
+                                    <TextBlock Text="{Binding Display}" FontFamily="{StaticResource SxFontMono}" Foreground="{DynamicResource SxAccentCyan}" Margin="0,0,12,0"/>
+                                    <TextBlock Text="{Binding Entry.Label}" Foreground="{DynamicResource SxTextPrimary}"/>
+                                    <TextBlock Text="{Binding Entry.Hint}" Foreground="{DynamicResource SxTextMuted}" Margin="10,0,0,0"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Border>
+                <Border Background="{DynamicResource SxSurfaceGlass}" BorderBrush="{DynamicResource SxBorderStrong}" BorderThickness="1" CornerRadius="26" Padding="7" Opacity="0.96">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBox Grid.Column="0" Text="{Binding UserInput, UpdateSourceTrigger=PropertyChanged}" u:UiInteraction.FocusVersion="{Binding InputFocusVersion}" u:SlashKeys.Enabled="True" u:InputHint.Text="Wpisz polecenie lub powiedz Sentinel…" BorderThickness="0" Background="{DynamicResource SxTransparent}" MinHeight="44" VerticalContentAlignment="Center" Padding="10,0" FontSize="{StaticResource SxFontSubheading}" ToolTip="Wpisz polecenie, Enter wysyła" AutomationProperties.Name="Polecenie dla Sentinel X">
+                            <TextBox.InputBindings>
+                                <KeyBinding Key="Enter" Command="{Binding SendMessageCommand}"/>
+                            </TextBox.InputBindings>
+                        </TextBox>
+                        <Grid Grid.Column="1" VerticalAlignment="Center">
+                            <Button Command="{Binding SendMessageCommand}" Style="{StaticResource SxPrimaryButton}" Width="44" Height="42" MinHeight="42" Padding="0" ToolTip="Wyślij polecenie" AutomationProperties.Name="Wyślij polecenie">
+                                <TextBlock Text="↗" FontSize="20"/>
+                            </Button>
+                        </Grid>
+                    </Grid>
+                </Border>
+                <TextBlock Text="GŁOS PRIORYTETEM  ·  ENTER WYSYŁA  ·  // POLECENIA" HorizontalAlignment="Center" Foreground="{DynamicResource SxTextMuted}" FontSize="{StaticResource SxFontSmall}" Margin="0,9,0,0" Opacity="0.72"/>
+            </StackPanel>
+        </Grid>
+    </Grid>
+</UserControl>

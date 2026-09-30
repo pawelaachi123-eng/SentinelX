@@ -294,7 +294,25 @@ public static class UiSmokeTestRunner
             await shell.Dispatcher.InvokeAsync(shell.UpdateLayout, DispatcherPriority.ContextIdle);
             Capture(shell, Path.Combine(output, "palette.png"));
             vm.Palette.ChooseCommand.Execute(null);
-            if (vm.SelectedItem?.Key != "settings") throw new InvalidOperationException("Palette navigation not wired.");
+            if (!vm.IsOverlayOpen || vm.OverlayPage is not SettingsViewModel || vm.OverlayTitle != "Ustawienia")
+                throw new InvalidOperationException("Palette must open settings as a transient panel over the Sentinel Core.");
+            await shell.Dispatcher.InvokeAsync(shell.UpdateLayout, DispatcherPriority.ContextIdle);
+            vm.CloseOverlayCommand.Execute(null);
+            chat.UserInput = "Pokaż historię";
+            await chat.SendMessageCommand.ExecuteAsync(null);
+            if (!vm.IsOverlayOpen || vm.OverlayPage is not HistoryViewModel)
+                throw new InvalidOperationException("‘Pokaż historię’ must open the local history panel.");
+            vm.CloseOverlayCommand.Execute(null);
+            chat.UserInput = "/rozmowy historia";
+            await chat.SendMessageCommand.ExecuteAsync(null);
+            if (!vm.IsOverlayOpen || vm.OverlayPage is not HistoryViewModel)
+                throw new InvalidOperationException("/rozmowy historia must open the local history panel.");
+            vm.CloseOverlayCommand.Execute(null);
+            chat.UserInput = "Pokaż ostatnią rozmowę";
+            await chat.SendMessageCommand.ExecuteAsync(null);
+            if (!vm.IsOverlayOpen || vm.OverlayPage is not HistoryViewModel)
+                throw new InvalidOperationException("‘Pokaż ostatnią rozmowę’ must open the conversation history panel.");
+            vm.CloseOverlayCommand.Execute(null);
             vm.OpenPaletteCommand.Execute(null); vm.Palette.Query = "użycie CPU";
             vm.Palette.ChooseCommand.Execute(null);
             if (chat.UserInput != "użycie CPU") throw new InvalidOperationException("Palette must stage a command.");
@@ -318,7 +336,9 @@ public static class UiSmokeTestRunner
             vm.OpenReadinessCommand.Execute(null);
             await vm.Readiness.RefreshCommand.ExecuteAsync(null);
             await shell.Dispatcher.InvokeAsync(shell.UpdateLayout, DispatcherPriority.ContextIdle);
-            if (vm.Readiness.Checks.Count != 4) throw new InvalidOperationException("Readiness cards not populated.");
+            if (vm.Readiness.Checks.Count < 4 || !vm.Readiness.Checks.Any(x => x.Key == "ollama") ||
+                !vm.Readiness.Checks.Any(x => x.Key == "memory") || !vm.Readiness.Checks.Any(x => x.Key == "tasks"))
+                throw new InvalidOperationException("Readiness cards not populated for the registered modules.");
             Capture(shell, Path.Combine(output, "readiness.png"));
             vm.Readiness.CloseCommand.Execute(null);
             foreach (string theme in new[] { "Deep Dark", "System", "Dark" })
@@ -379,7 +399,7 @@ public static class UiSmokeTestRunner
             string errors = buffer.ToString();
             File.WriteAllText(Path.Combine(output, "bindings.log"), errors);
             if (errors.Length != 0) throw new InvalidOperationException("WPF binding errors: " + errors);
-            File.WriteAllText(Path.Combine(output, "ui-smoke.txt"), "PASS\nPages: " + string.Join(", ", visited) + "\nCentrum tabs, // palette and voice default verified\nDark/DeepDark/System themes rendered\nSTOP/Resume/voice approval passed\nPalette, readiness, draft preservation and execution-scoped evidence passed\nTypo repair, grey-zone questions, lessons, self-check, offline tools, archives, insights and unified search passed\n");
+            File.WriteAllText(Path.Combine(output, "ui-smoke.txt"), "PASS\nPages: " + string.Join(", ", visited) + "\nSentinel Core shell, contextual settings panel, // palette and voice default verified\nDark/DeepDark/System themes rendered\nSTOP/Resume/voice approval passed\nPalette, readiness, draft preservation and execution-scoped evidence passed\nTypo repair, grey-zone questions, lessons, self-check, offline tools, archives, insights and unified search passed\n");
         }
         finally { PresentationTraceSources.DataBindingSource.Listeners.Remove(listener); }
     }

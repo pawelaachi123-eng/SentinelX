@@ -146,6 +146,11 @@ internal static class ProductRegression
         var checks = await readiness.CheckAsync(CancellationToken.None);
         Check(checks.Count == 4 && checks.Single(x => x.Key == "ollama").State == ReadinessState.NeedsSetup, "Offline Ollama must be actionable, not a false Ready.");
         Check(voice.StartCalls == 0 && voice.SpeakCalls == 0, "Readiness must never capture or speak.");
+        var healthToolbox = new SentinelToolboxService(history: history, memory: memory, readinessService: readiness);
+        var healthResponse = await healthToolbox.ProcessAsync("samokontrola");
+        Check(healthResponse.Handled && healthResponse.Response.Contains("tylko odczyt", StringComparison.Ordinal) &&
+              healthResponse.Response.Contains("Ollama · tylko lokalnie: DO KONFIGURACJI", StringComparison.Ordinal),
+            "The main tool router should expose isolated readiness results without converting an unavailable model into a healthy state.");
         var readyVm = new ReadinessViewModel(readiness);
         await readyVm.RefreshCommand.ExecuteAsync(null);
         Check(readyVm.Checks.Count == 4, "Readiness results must reach the ViewModel.");
@@ -175,6 +180,7 @@ internal static class ProductRegression
         public VoiceState State => VoiceState.Off;
         public string Status => "test";
         public bool HasLocalModels => false;
+        public bool IsSpeaking => false;
         public event Action? Changed { add { } remove { } }
         public event Action<Services.Voice.VoiceMetrics>? MetricsUpdated { add { } remove { } }
         public event Action<string>? CommandRecognized { add { } remove { } }
