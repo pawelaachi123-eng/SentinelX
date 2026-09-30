@@ -62,12 +62,15 @@ jobs:
           }
           Get-ChildItem $output
       - name: Publish portable Windows application
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         run: dotnet publish SENTINEL-X.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=false -o bin/portable
       - name: Portable package checksums
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         shell: pwsh
         run: |
           Get-ChildItem 'bin/portable' -File | ForEach-Object { "$((Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant())  $($_.Name)" } | Set-Content 'bin/portable/SHA256SUMS.txt'
       - name: Verify portable package
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         shell: pwsh
         run: |
           if (-not (Test-Path 'bin/portable/coreclr.dll')) { throw 'Missing self-contained .NET runtime' }
@@ -83,6 +86,7 @@ jobs:
             throw "Portable smoke failed: exit $($p.ExitCode)"
           }
       - name: Build per-user EXE installer
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         shell: pwsh
         run: |
           $compiler = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
@@ -100,6 +104,7 @@ jobs:
           "PORTABLE_EXE_SHA256=$exeHash" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
           Write-Output "::notice title=SHA256 portable::bin/portable/z SHA256SUMS.txt · $exeHash  SentinelX.exe"
       - name: Install EXE and smoke-test installed application
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         shell: pwsh
         run: |
           $installer = Get-ChildItem 'bin/installer/*.exe' | Select-Object -First 1
@@ -129,6 +134,7 @@ jobs:
           path: test-results/
           retention-days: 2
       - uses: actions/upload-artifact@v4
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         continue-on-error: true  # limit magazynu artefaktów nie może zamieniać wyników testów na czerwone
         with:
           name: SentinelX-windows-x64
@@ -136,6 +142,7 @@ jobs:
           retention-days: 2
 
       - uses: actions/upload-artifact@v4
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         continue-on-error: true  # limit magazynu artefaktów nie może zamieniać wyników testów na czerwone
         with:
           name: SentinelX-Portable-win-x64
@@ -143,6 +150,7 @@ jobs:
           retention-days: 2
 
       - uses: actions/upload-artifact@v4
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         continue-on-error: true  # limit magazynu artefaktów nie może zamieniać wyników testów na czerwone
         with:
           name: SentinelX-Setup-win-x64
