@@ -18,7 +18,7 @@ on:
         type: string
         default: My Sentinel App
   push:
-    branches: [main, 'arena/**']
+    branches: [main]
     paths:
       - '.github/workflows/android-app.yml'
       - 'scripts/create_mobile_app.py'
