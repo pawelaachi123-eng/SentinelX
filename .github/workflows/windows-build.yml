@@ -21,26 +21,17 @@ jobs:
       - name: Install .NET 10 Windows Desktop runtime for WPF smoke
         shell: pwsh
         run: |
-          $runtimeRoot = Split-Path (Get-Command dotnet).Source
-          $installer = Join-Path $env:RUNNER_TEMP 'dotnet-install.ps1'
-          Invoke-WebRequest 'https://dot.net/v1/dotnet-install.ps1' -OutFile $installer
-          & $installer -Runtime dotnet -Channel 10.0 -InstallDir $runtimeRoot -NoPath
-          & $installer -Runtime windowsdesktop -Channel 10.0 -InstallDir $runtimeRoot -NoPath
-          $corePath = Join-Path $runtimeRoot 'shared/Microsoft.NETCore.App'
-          $desktopPath = Join-Path $runtimeRoot 'shared/Microsoft.WindowsDesktop.App'
-          $coreVersions = @(Get-ChildItem $corePath -Directory -ErrorAction SilentlyContinue | ForEach-Object Name)
-          $desktopVersions = @(Get-ChildItem $desktopPath -Directory -ErrorAction SilentlyContinue | ForEach-Object Name)
-          Write-Output "::notice title=.NET root::$runtimeRoot"
-          Write-Output "::notice title=.NET Core runtimes::$($coreVersions -join ', ')"
-          Write-Output "::notice title=Windows Desktop runtimes::$($desktopVersions -join ', ')"
-          if (-not ($coreVersions | Where-Object { $_ -match '^10\.' })) {
-            throw 'The .NET 10 core runtime was not installed.'
-          }
-          if (-not ($desktopVersions | Where-Object { $_ -match '^10\.' })) {
-            throw 'The .NET 10 Windows Desktop runtime was not installed.'
-          }
-          "DOTNET_ROOT=$runtimeRoot" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-          "DOTNET_ROOT_X64=$runtimeRoot" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          $release = Invoke-RestMethod 'https://dotnetcli.blob.core.windows.net/dotnet/release-metadata/10.0/releases.json'
+          $version = $release.'latest-release'
+          $installer = Join-Path $env:RUNNER_TEMP "windowsdesktop-runtime-$version-win-x64.exe"
+          $uri = "https://builds.dotnet.microsoft.com/dotnet/WindowsDesktop/$version/windowsdesktop-runtime-$version-win-x64.exe"
+          Invoke-WebRequest $uri -OutFile $installer
+          $setup = Start-Process -FilePath $installer -ArgumentList '/install', '/quiet', '/norestart' -Wait -PassThru
+          if ($setup.ExitCode -notin 0, 3010) { throw ".NET Desktop runtime installer failed: $($setup.ExitCode)" }
+          $runtimes = dotnet --list-runtimes
+          $runtimes | ForEach-Object { Write-Output "::notice title=.NET runtime::$($_)" }
+          if (-not ($runtimes -match '^Microsoft.NETCore.App 10\.')) { throw 'The .NET 10 core runtime is unavailable after installation.' }
+          if (-not ($runtimes -match '^Microsoft.WindowsDesktop.App 10\.')) { throw 'The .NET 10 Windows Desktop runtime is unavailable after installation.' }
       - name: .NET runtime inventory
         shell: pwsh
         run: |
