@@ -144,4 +144,31 @@ public sealed class IntentRouter : IIntentRouter
         return query is "odczytaj ekran" or "przeczytaj ekran" or "pokaz tekst z ekranu" or "co jest na ekranie" or "co widzisz na ekranie" or
             "read the screen" or "what is on screen" or "what do you see on screen";
     }
+
+    private static bool IsDesktopContextQuestion(string input)
+    {
+        string query = CommandText.Normalize(input).Trim().TrimEnd('.', '!', '?', ',');
+        return query is "co jest na ekranie" or "co widzisz na ekranie" or "odczytaj ekran" or "przeczytaj ekran" or
+            "pokaz tekst z ekranu" or "co jest w tym oknie" or "opisz to okno" or "pomoz z tym oknem" or
+            "co to za blad" or "wyjasnij ten blad" or "co oznacza ten komunikat" or "wyjasnij ten komunikat" or
+            "jaki komunikat widzisz" or "co jest napisane na ekranie" or "przeczytaj komunikat na ekranie" or
+            "what is on screen" or "what do you see on screen" or "read the screen" or "what is in this window" or
+            "what is this error" or "explain this error" or "help with this window" ||
+            Regex.IsMatch(query, @"^(?:co to za|wyjasnij|co oznacza) (?:blad|komunikat)(?: na ekranie| w oknie)?$");
+    }
+
+    private static bool IsDesktopContextFollowUp(string input)
+    {
+        string query = CommandText.Normalize(input).Trim().TrimEnd('.', '!', '?', ',');
+        return query is "jak to naprawic" or "co mam kliknac" or "co kliknac" or "co dalej" or "co teraz" or
+            "jaki nastepny krok" or "co powinienem zrobic" or "jak przejsc dalej" or "wyjasnij to dokladniej" or
+            "how do i fix this" or "what should i click" or "what next" or "what should i do now" or "explain that further";
+    }
+
+    private static bool IsDirectScreenRead(string input)
+    {
+        string query = CommandText.Normalize(input).Trim().TrimEnd('.', '!', '?', ',');
+        return query is "odczytaj ekran" or "przeczytaj ekran" or "pokaz tekst z ekranu" or "co jest na ekranie" or "co widzisz na ekranie" or
+            "read the screen" or "what is on screen" or "what do you see on screen";
+    }
 }
