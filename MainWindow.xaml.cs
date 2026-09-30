@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Globalization;
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -16,6 +17,8 @@ public partial class MainWindow : Window
     private readonly SystemMonitor monitor = new();
     private readonly SystemInfoService systemInfo = new();
     private readonly GamingModeService gaming = new();
+    private readonly PerformanceHistoryService performance;
+    private readonly GameFocusModeService gameFocusMode = new();
     private readonly ConversationMemoryService memory = new();
     private readonly LocalAiService ai;
     private readonly CommandRouter router;
@@ -23,7 +26,10 @@ public partial class MainWindow : Window
     private readonly VoiceRecognitionService voice;
     private readonly ResourceGuardService resourceGuard = new();
     private readonly FileWorkspaceService files;
-    private readonly ProgramBuilderService programBuilder = new();
+    private readonly DownloadContextService downloadContext;
+    private readonly DownloadAssistantTool downloadAssistant;
+    private readonly ReminderService reminders;
+    private readonly ProgramBuilderService programBuilder;
     private SettingsEditorView? settingsEditor;
     private bool applyingSettings;
     private readonly SpeechOutputService speech = new();
@@ -35,7 +41,8 @@ public partial class MainWindow : Window
     private TrayService? tray;
     private GlobalHotkeyService? hotkeys;
     private MetricOverlay? overlay;
-    private bool ready, busy, installing, exiting, emergency, speaking;
+    private bool ready, busy, installing, exiting, emergency, speaking, waitingForDownload;
+    private DateTimeOffset downloadWaitStarted;
     private string currentPage = "Chat", overlayMetric = "ram", lastVoiceStatus = "Mikrofon wyłączony";
     private DateTime activeUntil, lastTick, highUsageSince, lastWatchAlert;
     private readonly bool smokeMode;
@@ -44,15 +51,27 @@ public partial class MainWindow : Window
     public MainWindow(bool smokeMode)
     {
         this.smokeMode = smokeMode;
+        performance = new PerformanceHistoryService(monitor, gaming);
+        downloadContext = new DownloadContextService(smokeMode ? System.IO.Path.Combine(AppPaths.Root, "TestDownloads") : null);
+        reminders = new ReminderService(smokeMode ? System.IO.Path.Combine(System.IO.Path.GetTempPath(), "SentinelX-Smoke-" + Guid.NewGuid().ToString("N"), "reminders.json") : null);
         // The compatibility UI honors the same memory privacy toggles as the MVVM shell.
         memory.PrivacyProvider = () => new(settings.Settings.Memory.SaveConversations, settings.Settings.Memory.UseHistoryForAi,
             settings.Settings.Memory.SaveMemories, settings.Settings.Memory.UseMemoriesForAi,
             settings.Settings.Memory.RetentionDays, settings.Settings.Memory.ContextPreviewEnabled);
-        files = new FileWorkspaceService(desktop: smokeMode ? System.IO.Path.Combine(AppPaths.Root, "TestDesktop") : null);
-        toolbox = new SentinelToolboxService(() => settings.Settings.Ui.DefaultBrowserPreference, memory: memory);
-        InitializeComponent();
+        memory.ExternalNetworkAllowedProvider = () => !settings.Settings.Memory.LocalOnlyMode;
+        programBuilder = new ProgramBuilderService(externalNetworkAllowed: () => memory.ExternalNetworkAllowed);
+        var actionHistory = new ActionHistoryService(persistenceAllowedProvider: () => !memory.IsEphemeral);
+        var permissionCenter = new PermissionCenterService();
+        files = new FileWorkspaceService(desktop: smokeMode ? System.IO.Path.Combine(AppPaths.Root, "TestDesktop") : null,
+            history: actionHistory, externalNetworkAllowed: () => memory.ExternalNetworkAllowed, permissions: permissionCenter);
+        downloadAssistant = new DownloadAssistantTool(downloadContext, files);
         ai = new LocalAiService(gaming, systemMonitor: monitor, aiSettingsProvider: () => settings.Settings.Ai);
-        voice = new VoiceRecognitionService(() => settings.Settings.Voice);
+        toolbox = new SentinelToolboxService(() => settings.Settings.Ui.DefaultBrowserPreference, history: actionHistory, permissions: permissionCenter, memory: memory,
+            systemMonitor: monitor, performanceHistory: performance, gameFocusMode: gameFocusMode,
+            localAiAsk: (input, context, token) => ai.AskAsync(input, context, token),
+            localAiLastResponseSucceeded: () => ai.LastResponseSucceeded);
+        InitializeComponent();
+        voice = new VoiceRecognitionService(() => settings.Settings.Voice, () => memory.ExternalNetworkAllowed);
         router = new CommandRouter(monitor, systemInfo, ai, memory);
         ChatItems.ItemsSource = messages;
         LoadChat(); ApplySettings();
@@ -114,6 +133,10 @@ public partial class MainWindow : Window
         try
         {
         var s = settings.Settings;
+        PrivacyStatusText.Text = memory.ExternalNetworkAllowed
+            ? "ZEWNĘTRZNE POŁĄCZENIA SENTINELA: DOZWOLONE"
+            : "🔒 TYLKO LOKALNIE · RUCH SENTINELA ZABLOKOWANY";
+        PrivacyStatusText.Foreground = memory.ExternalNetworkAllowed ? Brushes.LightGreen : Brushes.Goldenrod;
         TrayCheck.IsChecked = s.CloseToTray; MinimizeCheck.IsChecked = s.MinimizeToTray;
         StartMinimizedCheck.IsChecked = s.StartMinimized; StartVoiceCheck.IsChecked = s.StartVoiceOnLaunch;
         SpeakCheck.IsChecked = s.SpeakResponses; WatchCheck.IsChecked = s.WatchEnabled;
@@ -144,6 +167,21 @@ public partial class MainWindow : Window
     private void Tick()
     {
         if (exiting) return;
+        if (!smokeMode) performance.SampleIfDue();
+        downloadContext.Sample();
+        if (waitingForDownload && downloadContext.GetMostRecent() is { } recentDownload && recentDownload.CompletedAt > downloadWaitStarted)
+        {
+            waitingForDownload = false;
+            string completedMessage = "Wykryłem nowy stabilny plik w Pobranych (prawdopodobnie koniec pobierania): " + Path.GetFileName(recentDownload.Path);
+            AddMessage("SENTINEL", completedMessage, persist: false);
+            tray?.ShowInfo("Pobieranie ukończone", completedMessage);
+        }
+        foreach (var reminder in reminders.TakeDue())
+        {
+            string message = "Przypomnienie: " + reminder.Text;
+            AddMessage("SENTINEL", message, persist: false);
+            tray?.ShowInfo("Sentinel X", message);
+        }
         VoiceMeter.Value = voice.CurrentAudioLevel * 100;
         EnhancedVoiceMeter.Value = AudioEnhancementService.RmsToMeter(voice.CurrentEnhancedRms) * 100;
         LastTranscriptText.Text = "Ostatnia wypowiedź: " + (voice.LastTranscript.Length > 0 ? voice.LastTranscript : "—") + "\n" + voice.LastDecision;
@@ -171,7 +209,7 @@ public partial class MainWindow : Window
         overlay?.Update(overlayMetric.ToUpperInvariant(), overlayMetric == "ram" ? Format(monitor.GetUsedRamGB(), " GB", 1) : Format(cpu, "%"));
         if (voice.IsListening && !voice.IsWakeOnlyMode && !busy && !speaking && DateTime.Now > activeUntil) SetStandby();
         tray?.UpdateState(voice.IsListening, emergency, game.Length > 0); UpdatePermission();
-        if (settings.Settings.WatchEnabled &&
+        if (settings.Settings.WatchEnabled && !gameFocusMode.IsActive &&
             ((float.IsFinite(cpu) && cpu >= settings.Settings.Watch.CpuAlertPercent) ||
              (double.IsFinite(ram) && ram >= settings.Settings.Watch.RamAlertPercent)))
         {
@@ -227,7 +265,7 @@ public partial class MainWindow : Window
         if (exiting) return;
         if (!smokeMode) { settings.Settings.Ui.WindowWidth = RestoreBounds.Width; settings.Settings.Ui.WindowHeight = RestoreBounds.Height; settings.Settings.Ui.SelectedPage = currentPage; settings.Save(); }
         exiting = true; timer.Stop(); lifetime.Cancel(); currentTask?.Cancel(); ai.CancelCurrentRequest();
-        toolbox.CancelAllTasks(); settings.Changed -= ApplyLiveSettings; resourceGuard.Dispose();
+        toolbox.CancelAllTasks(); settings.Changed -= ApplyLiveSettings; resourceGuard.Dispose(); downloadContext.Dispose();
         speech.Dispose(); voice.Dispose(); overlay?.Close(); hotkeys?.Dispose(); tray?.Dispose(); monitor.Dispose(); ai.Dispose();
     }
     internal void SelectTestPage(string page) => ShowPage(page);

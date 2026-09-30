@@ -2,9 +2,8 @@ namespace SentinelX.Core;
 
 public enum SlashKind { Command, Tab, Page }
 
-/// <summary>One entry of the „//” palette in the chat box. Entries either run a chat command,
-/// switch a Centrum tab, or open a top-level page. Nothing here executes on its own —
-/// the user still picks the entry explicitly (Tab + Enter or click).</summary>
+/// <summary>One entry of the „//” palette. Entries either run a chat command or open a transient
+/// context panel over the Sentinel Core. Nothing executes until the user picks it explicitly.</summary>
 public sealed record SlashEntry(string Trigger, string Label, string Hint, SlashKind Kind, string Target);
 
 public static class SlashCatalog
@@ -51,15 +50,16 @@ public static class SlashCatalog
         new("porzadki", "Raport porządkowy", "co zajmuje miejsce w folderze, tylko odczyt", SlashKind.Command, "porzadki: "),
         new("sprzatanie", "Usuń duplikaty", "zostawia 1 plik w grupie, reszta do Kosza po zgodzie", SlashKind.Command, "usuń duplikaty: "),
         new("nazwy", "Zmień nazwy plików", "podgląd zmian, wykonanie dopiero po zgodzie", SlashKind.Command, "zmien nazwy: "),
-        // panels inside Centrum and pages
-        new("rozmowa", "Rozmowa", "wróć do czatu", SlashKind.Tab, "rozmowa"),
-        new("historia", "Historia", "zakładka Historii", SlashKind.Tab, "historia"),
-        new("glos", "Głos", "zakładka Głosu", SlashKind.Tab, "glos"),
-        new("system", "System", "zakładka Systemu", SlashKind.Tab, "system"),
-        new("gry", "Gaming", "zakładka Gier", SlashKind.Tab, "gry"),
-        new("ai", "AI", "zakładka AI", SlashKind.Tab, "ai"),
-        new("akcje", "Akcje", "zakładka Akcji", SlashKind.Tab, "akcje"),
-        new("ustawienia", "Ustawienia", "strona Ustawień", SlashKind.Page, "settings"),
+        // Context panels over the Core; none are permanent navigation tabs.
+        new("rozmowa", "Sentinel Core", "wróć do głównego ekranu", SlashKind.Page, "command"),
+        new("historia", "Historia", "otwórz lokalną historię", SlashKind.Page, "history"),
+        new("glos", "Głos", "ustawienia głosu i mikrofonu", SlashKind.Page, "voice"),
+        new("system", "System", "otwórz odczyty systemowe", SlashKind.Page, "system"),
+        new("gry", "Gaming", "ustawienia i stan gier", SlashKind.Page, "gaming"),
+        new("ai", "AI", "ustawienia lokalnego modelu", SlashKind.Page, "ai"),
+        new("akcje", "Aktywność", "audytowane działania", SlashKind.Page, "actions"),
+        new("wspomnienia", "Pamięć lokalna", "przegląd i kontrola wspomnień", SlashKind.Page, "memory"),
+        new("ustawienia", "Ustawienia", "wszystkie ustawienia Sentinel X", SlashKind.Page, "settings"),
     ];
 
     /// <summary>Exact-match resolution for a typed „//trigger” (without the slashes).</summary>

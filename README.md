@@ -1,6 +1,23 @@
 # SENTINEL X 0.91 · CENTRUM — Windows / MVVM
 
-Lokalny asystent Windows 10/11, C# 13, .NET 9, WPF. Nowe GUI jest domyślnym interfejsem. Poprzedni interfejs i jego funkcje nadal są dostępne przez `--legacy`.
+Lokalny asystent Windows 10/11, C# 14, .NET 10, WPF. Nowe GUI jest domyślnym interfejsem. Poprzedni interfejs i jego funkcje nadal są dostępne przez `--legacy`.
+
+## Narzędzia bez dodatkowego UI
+
+Główny router dobiera lokalne narzędzia przed odpowiedzią modelu — uruchamianie aplikacji i znanych URL-i, odczyty systemowe, operacje na plikach, wyszukiwanie internetowe, odczyt stron i bezpieczne żądanie zamknięcia programu. Przykładowo „Uruchom Brave i YouTube” jest planem dwóch kolejnych uruchomień, a „Znajdź dokument o budżecie wakacyjnym” przeszukuje pliki użytkownika; po jednoznacznym trafieniu „przenieś go do Dokumentów” używa zapamiętanego celu. Nieznane polecenia nie dają modelowi uprawnień do dowolnego kodu.
+
+- **Obliczenia i aktualne informacje:** proste działania trafiają do ograniczonego parsera arytmetycznego (bez ewaluacji kodu); mnożenie liczb całkowitych dostaje dodatkową kontrolę `BigInteger`. Pytania pogodowe oraz rozpoznane prośby o aktualne ceny, specyfikacje i instrukcje automatycznie uruchamiają research z cytowanymi adresami źródeł. Skróty stron są ekstrakcyjne, mogą być niepełne i nie są niezależnym potwierdzeniem; aktualny research wymaga dozwolonego dostępu do internetu.
+- **Urządzenia (opcjonalnie):** po skonfigurowaniu oficjalnego Home Assistant Sentinel odkrywa wyłącznie encje z tej integracji. Właściciel musi jawnie sparować alias do `light`, `media_player` lub `remote`; włącz/wyłącz, jasność, głośność, wyciszenie i wejście są ograniczone do obsługiwanych encji, a wynik jest weryfikowany odczytem stanu. Przełączniki i sceny są celowo wykluczone. Konfiguracja używa `SENTINELX_HOME_ASSISTANT_URL` i `SENTINELX_HOME_ASSISTANT_TOKEN` poza czatem; Sentinel nie skanuje LAN-u i nie zapisuje tokenu. Nie skonfigurowano żadnego urządzenia domyślnie.
+- **Telefon:** opcjonalny Bridge jest wyłączony domyślnie; po ręcznym uruchomieniu w **Ustawienia** nasłuchuje wyłącznie na konkretnych prywatnych IPv4, używa TLS z przypięciem certyfikatu, jednorazowego parowania i DPAPI/Android Keystore. Dostępne teraz: status PC, lista dozwolonych aplikacji, blokowanie ekranu (wynik jawnie niezweryfikowany), ostatnie pobranie, podstawowe akcje TV/światła przez sparowany Home Assistant oraz ograniczone makra JSON; klient Android ze skrótami/widgetem i jawnie uruchamianym rozpoznawaniem mowy znajduje się w `phone-android/`. WOL wymaga ręcznej konfiguracji MAC i nie potwierdza obudzenia. Screenshot/transfer plików, zamykanie, restart/wyłączanie i iOS nie są dostępne. Szczegóły, protokół i ograniczenia: [docs/PHONE-BRIDGE.md](docs/PHONE-BRIDGE.md). Nie otwieraj portu w routerze.
+- **Pliki:** wyszukiwanie nazw/tekstu, rozszerzeń i metadanych daty w Pulpicie, Dokumentach, Pobranych, Obrazach, OneDrive i `CreatedFiles` (do 20 tys. plików, bez podążania za dowiązaniami i bez pobierania plików chmurowych); tworzenie plików/folderów, odczyt małych plików tekstowych, otwieranie nie-wykonywalnych plików, zmiana nazwy i przenoszenie do znanych folderów. Wyszukiwanie opisowe jest dopasowaniem leksykalnym, nie semantycznym. Wieloznaczne trafienia wymagają wyboru. Operacje nie nadpisują; ważne dane nie są usuwane.
+- **Web:** `wyszukaj ...` zwraca wyniki ze źródłami, `zbadaj temat ...` szuka i próbuje odczytać do trzech stron, `otwórz drugą stronę` / `podsumuj pierwszy wynik` używa kontekstu ostatniego wyszukania, a `znajdź oficjalny numer telefonu firmy X` zwraca kandydatów do ręcznej weryfikacji. `otwórz stronę https://...` otwiera adres w domyślnej przeglądarce; `czytaj stronę https://...` odczytuje tekst, a `podsumuj stronę ...` robi krótkie podsumowanie ekstrakcyjne. Wyszukiwane frazy trafiają do publicznej wyszukiwarki DuckDuckGo; odczyt stron jest tylko GET, ma limity rozmiaru, blokuje loopback/sieci prywatne i nie wysyła formularzy, płatności ani treści w imieniu użytkownika. Wyniki nie są gwarancją aktualności ani oficjalności.
+- **Diagnostyka/wydajność:** „CS2 mi ścina”, „co spowodowało tego laga” i „dlaczego mam wysoki ping” kierują do pomiarów CPU/RAM/licznika GPU/procesów i punktowych testów sieci. Bufor próbek działa tylko podczas uruchomienia Sentinela, jest w RAM (do ok. 6 min) i nie dowodzi przyczyny. Progi, czas utrzymania i cooldown automatycznych alertów Watch są konfigurowalne w ustawieniach; profil skupienia wstrzymuje alerty Sentinela, nie zmienia Windows. Temperatury, VRAM, taktowania, aktywność dysku, sterowniki i FPS/frametime nie są obecnie mierzone; brak odczytu jest jawny.
+- **Pobrane/schowek/przypomnienia:** podczas sesji obserwowane są stabilne nowe pliki w domyślnym folderze Pobrane; „otwórz to, co przed chwilą pobrałem” używa ostatniego wykrytego celu, ale nie uruchamia instalatorów ani skryptów. Schowek jest czytany wyłącznie po jawnym poleceniu; objaśnienie/tłumaczenie trafia wyłącznie do lokalnej Ollamy na `127.0.0.1`, bez sieciowego wysyłania surowego tekstu. Oczywiste sekrety są blokowane, a obrazów Sentinel nie czyta. Przypomnienia czasowe są przechowywane lokalnie. „Daj mi znać, kiedy pobieranie się skończy” obserwuje nowe stabilne pliki i po restarcie sprawdza dopasowane pliki zmienione od checkpointu; nie otwiera ani nie uruchamia pobrań. Wykrywanie powrotu użytkownika do komputera nie jest obsługiwane.
+- **Aplikacje/PC:** plan uruchomienia może łączyć do sześciu znanych programów i stron; „Zamknij program, który się zawiesił” wykrywa nieodpowiadające okno, pyta przy niejednoznaczności i nadal wymaga potwierdzenia. Procesów nie zabija na siłę. Pierwszy etap UI Automation odczytuje wyłącznie ograniczoną listę nazw widocznych kontrolek z ostatniego aktywnego okna spoza Sentinela; nigdy nie pobiera wartości pól edycji. „Kliknij [dokładna etykieta]” wyszukuje tylko przycisk/hiperłącze o dokładnej nazwie i wymaga osobnego potwierdzenia HIGH przez Permission Center; przed wykonaniem ponownie sprawdza okno i identyfikator kontrolki. Wynik Invoke jest jawnie niezweryfikowany — nie potwierdza skutku w aplikacji. Nie wpisuje tekstu, nie klika współrzędnych ani nie wykonuje formularzy. UIA nie działa ze wszystkimi aplikacjami i może być blokowane przez różne poziomy uprawnień. Przełączanie urządzeń audio i przenoszenie okien między monitorami nadal nie są obsługiwane. Głośność master Windows można odczytać i ustawić przez Core Audio; przełączenie wyjścia na słuchawki nie jest obsługiwane.
+- **Ekran/obraz:** pytania „co jest na ekranie?”, „co to za błąd?” i podobne używają lokalnie dostępnych tekstowych nazw kontrolek UI Automation; wyjaśnienie trafia do lokalnej Ollamy. To nie jest zrzut ekranu, OCR ani analiza obrazu: Sentinel nie widzi pikseli, grafiki, układu ani treści, której aplikacja nie ujawnia jako nazwę kontrolki. Kontekst jest pobierany jawnie na żądanie, a same etykiety nie są utrwalane w audycie akcji. Brak dostępnych kontrolek lub dostępu jest raportowany zamiast zgadywania.
+- **Kodowanie / aplikacje mobilne:** „zbuduj program notatnik/kalkulator/pomodoro” tworzy lokalny projekt źródłowy i manifest SHA-256; Sentinel nie uruchamia lokalnego kompilatora ani nie generuje EXE. Dla Androida generator tworzy bezpieczne szablony Counter/Notes/Checklist, a GitHub Actions buduje debug APK i paczkę źródeł na żądanie. Instrukcja instalacji: [docs/MOBILE-APP-GENERATOR.md](docs/MOBILE-APP-GENERATOR.md). To nie jest dowolne uruchamianie promptowego kodu ani edycja istniejącego repo.
+- **Pozostałe integracje:** nie ma jeszcze nasłuchu powiadomień Windows, zdarzeniowych automatyzacji, uwierzytelnionego kanału telefon↔PC, odczytu aktywnego projektu/aplikacji ani globalnego cofania wszystkich zmian.
+- **Telefon:** `PhoneCallTool` i komendy `historia rozmów` / `/rozmowy historia` są wpięte do toolboksa, ale repo nie zawiera działającego providera/companion Android. Aplikacja WPF nie może sama użyć SIM/eSIM ani niezawodnie otrzymać obu kanałów audio komórkowego. Dlatego nie wykonuje połączeń, nie wyszukuje numeru do połączenia i jawnie odmawia zamiast symulować. Kolejne próby, IVR, poczta głosowa i wielojęzyczna rozmowa będą możliwe dopiero po rzeczywistej integracji telefonicznej.
 
 ## Nowe w 0.91 — CENTRUM: jeden hub, paleta `//`, głos od startu i ~50 nowych narzędzi
 
@@ -11,7 +28,8 @@ Lokalny asystent Windows 10/11, C# 13, .NET 9, WPF. Nowe GUI jest domyślnym int
 - **`lekcje` — uczenie się na poprawkach**: każda naprawiona literówka trafia do lokalnego `Memory/Lessons.jsonl`; `lekcje` pokazuje najczęstsze korekty. Deterministycznie, lokalnie, bez modelu.
 - **`zrob zadanie: treść`** dodaje zadanie wprost do zakładki 📓 (nie tylko odpowiedź w czacie); `notatka:` to szybki alias „zapamiętaj”; `szukaj w zadaniach:` przeszukuje zadania.
 - **`samokontrola`** (spójność własnych plików, tylko odczyt) i **`propozycje`** (lista porządków z „wpisz: …” — nic nie wykona się samo).
-- **Uczciwe odmowy wbudowane**: modele 3D, modyfikacja własnego kodu, automatyczne skanowanie dysku — Sentinel wyjaśnia, czego nie robi i dlaczego.
+- **Generator aplikacji Android:** bezpieczne, jawne szablony Counter/Notes/Checklist, generator źródeł i ręcznie uruchamiany GitHub Actions build APK; Sentinel nie wykonuje dowolnego kodu wygenerowanego z promptu. Instrukcja: [docs/MOBILE-APP-GENERATOR.md](docs/MOBILE-APP-GENERATOR.md).
+- **Uczciwe odmowy wbudowane**: modele 3D, dowolne samomodyfikowanie aplikacji i automatyczne skanowanie dysku — Sentinel wyjaśnia, czego nie robi i dlaczego.
 - **~50 nowych narzędzi offline**: `pierwiastek` · `silnia` · `nwd`/`nww` · `czy pierwsza` · `dzielniki` · `fibonacci` · `srednia/mediana/suma/min/max` · `zaokraglij` · `zmiana z A do B` · `ile znakow` · `ile zdan` · `palindrom` · `anagram` · `rot13` · `tytul` · `morse`/`dekoduj morse` · `binarnie`/`dekoduj binarnie` · `hex`/`dekoduj hex` · `pesel:` (suma kontrolna + data + płeć) · `nip:` · `iban:` · `rgb R G B` · `tydzien roku` · `dzien roku` · `ile dni do konca roku` · `wiek:` · `dni robocze A do B` · `wielkanoc ROK` · `czas w toki/londyn/…` · `nazwa komputera` · `ile rdzeni` · `architektura` · `moje ip` · `rzut moneta` · `lotto` · `pin N`. Wszystkie bez sieci; `pomoc` pokazuje pełną listę.
 - **Zakres spoza 0.91** (uczciwie): brak samomodyfikacji kodu (zaprojektowana odmowa), brak modeli 3D, brak integracji GitHub/Gmail (odłożone), okno nie jest przezroczyste (aurora to warstwa dekoracyjna), ~50 poleceń zamiast 100 — reszta w [docs/BACKLOG.md](docs/BACKLOG.md). Szczegóły: [docs/RELEASE-0.91.md](docs/RELEASE-0.91.md).
 
@@ -24,7 +42,7 @@ Lokalny asystent Windows 10/11, C# 13, .NET 9, WPF. Nowe GUI jest domyślnym int
 - **24 narzędzia działające offline, bez sieci i bez modelu**: `policz 12,5*4` · `procent 15 z 240` · `ile to procent 30 z 240` · `vat 100 [brutto]` · `przelicz 5 km na mile` (długość, masa, objętość, dane, prędkość, °C/°F/K) · `ile dni do 24.12` · `ile dni od 1.1.2020` · `jaki dzien tygodnia 1.1.2030` · `ile zostalo do 18:00` · `haslo 20` (generacja stockowym RNG, nigdzie nie zapisywana) · `uuid` · `ile slow: tekst` · `base64: tekst` i `dekoduj base64: …` · `hash tekstu: …` (SHA-256) · `json: {…}` · `slug: ZaŻółć Gęślą Jaźń` · `transliteruj: …` · `wielkie litery: …` · `male litery: …` · `odwroc tekst: …` · `losuj 1-100` · `rzuc kostka` · `wybierz losowo: pizza, sushi` · `bmi 80 180` · `rzymskie 2026` i `z rzymskich MMXXVI` · `kolor 1fa2c3` (RGB, HSL, kontrast WCAG). Kalkulator to własny parser wyrażeń — nie wykonuje kodu.
 - **5 funkcji przekrojowych**: `plan dnia` (przeterminowane, dzisiejsze, najbliższe przypomnienia, przypięte wspomnienia, aktywny projekt), `szukaj wszystkiego: fraza` (wspomnienia + aktywna rozmowa + zadania + projekty + odczyty diagnostyczne), `statystyki` (ile czego jest i ile to zajmuje na dysku), `backup` (kopia magazynów do `Backups/<data>/` z manifestem, hashami i odczytem zwrotnym), `pomoc` / `co umiesz`.
 - **Własny folder i comiesięczne archiwum pamięci**: `Memory/Archives/RRRR-MM/` z plikiem JSON i czytelnym Markdownem; hash i odczyt zwrotny są sprawdzane **zanim** cokolwiek zostanie usunięte z aktywnego magazynu. Ustawienie „Archiwum rozmów (miesiące)” (domyślnie 1, 0 = wyłączone): rozmowy starsze niż okno są archiwizowane przy starcie i usuwane z magazynu, a fakt ten jest zgłaszany w czacie. **Wspomnienia i profil nie są archiwizowane ani kasowane.** Komendy: `archiwizuj rozmowy`, `archiwa`, `usuń archiwum RRRR-MM`. W trybie prywatnym archiwizacja odmawia, bo nie ma czego zapisywać.
-- **Pliki do pobrania z GitHub** — wydania milowe: <https://github.com/pawelaachi123-eng/SentinelX/releases> (np. `v0.90.0`, `v0.91.2`). Każde zawiera `SentinelX-<wersja>-win-x64-portable.zip` (własny runtime .NET 9), `SentinelX-<wersja>-win-x64-setup.exe` (instalator per-user), `SHA256SUMS.txt` i `BUILD.txt`. Publikuje je workflow `release.yml` po pełnej walidacji, tylko dla tagów `v*.*.*` albo na ręczne żądanie; zwykły push na gałąź nic nie publikuje (decyzja z 2026-09-25). Pliki **nie są podpisane cyfrowo** — SmartScreen pokaże ostrzeżenie „nieznany wydawca”.
+- **Pliki do pobrania z GitHub** — wydania milowe: <https://github.com/pawelaachi123-eng/SentinelX/releases> (np. `v0.90.0`, `v0.91.2`). Każde zawiera `SentinelX-<wersja>-win-x64-portable.zip` (własny runtime .NET 10), `SentinelX-<wersja>-win-x64-setup.exe` (instalator per-user), `SHA256SUMS.txt` i `BUILD.txt`. Publikuje je workflow `release.yml` po pełnej walidacji, tylko dla tagów `v*.*.*` albo na ręczne żądanie; zwykły push na gałąź nic nie publikuje (decyzja z 2026-09-25). Pliki **nie są podpisane cyfrowo** — SmartScreen pokaże ostrzeżenie „nieznany wydawca”.
 - **Znane ograniczenia 0.90** (bez owijania): naprawa literówek to dopasowanie tekstu do katalogu — bez modelu językowego i bez pełnej odmiany; `przelicz` nie przelicza walut (potrzebny byłby kurs z sieci); zrzuty ekranu i sterowanie głośnością nie zostały dodane, bo nie da się ich uczciwie dostarczyć w tym przyroście; VAT liczy wyłącznie stawkę 23%; archiwum rozmów jest kopią do odczytu i nie ma przywracania do aktywnej rozmowy; wyszukiwanie „wszystkiego” jest dopasowaniem po normalizacji, bez literówek i synonimów.
 
 ## Nowe w 0.89 — strumieniowanie AI, odczyty diagnostyczne i narzędzia rozmowy
@@ -69,7 +87,7 @@ Pozostały zakres (zadania i przypomnienia, streaming AI, snapshoty diagnostyczn
 - **Nowa strona „Pamięć”:** trwałe wspomnienia ze stabilnym identyfikatorem, kategorią (`notatka/preferencja/fakt/decyzja/zadanie/narzędzie`), źródłem, datami utworzenia i zmiany. Dodawanie z podpowiedzią o podobnych wpisach, edycja, usuwanie pojedynczego wpisu po ID przez zgodę HIGH (podobne teksty nie giną), przypinanie (zawsze w budżecie kontekstu) i oznaczanie „nieaktualne” (zostaje w panelu, znika z kontekstu AI). Dziennik zmian ważnych ustaleń, wykrywanie duplikatów i sprzecznych wpisów jako wskazówka do decyzji — asystent nigdy sam nie rozstrzyga konfliktu.
 - **Nazwane, wznawiane rozmowy:** każda sesja ma tytuł z pierwszej wiadomości (można zmienić), listę i daty. `pokaż rozmowy` / `wznów rozmowę N` albo przyciski w panelu. Przełączenie przeładowuje Command Center i izoluje kontekst — rozmowy nie mieszają się.
 - **Cztery niezależne przełączniki prywatności** (Settings → Pamięć): zapis rozmów, czytanie historii przez AI, zapis wspomnień, czytanie wspomnień przez AI — plus retencja rozmów w dniach (wspomnienia nie są kasowane automatycznie) i przełącznik podglądu kontekstu.
-- **Tryb prywatny** (przycisk w Command Center / komenda `tryb prywatny`): treść rozmowy nie trafia nigdzie na dysk — ani do rozmów, ani do audytu (audyt zapisuje marker „treść niezapisana”), ani szkic. Sesyjny, nigdy auto-włączany po restarcie.
+- **Tryb prywatny** (przycisk w Command Center / komenda `tryb prywatny`): tekst rozmowy i treść audytu nie są utrwalane w historii (audyt może zachować jedynie marker/stan bez tekstu); szkic również jest pomijany. Wyniki plikowe, które użytkownik jawnie zleci utworzyć, są osobnym zapisem lokalnym. Sesyjny, nigdy auto-włączany po restarcie. Nie blokuje sieci samodzielnie — `Tryb tylko lokalnie` kontroluje ruch wychodzący.
 - **Podgląd „co trafiło do modelu i dlaczego”:** panel pokazuje etykiety i powody źródeł kontekstu ostatniego zapytania (komenda `co poszło do modelu`). Pełne prompty nie są rejestrowane.
 - **Szkic niewysłanej wiadomości** przeżywa restart aplikacji (poza trybem prywatnym, zapis dławiony do co 2 s).
 - **Import pamięci** z podglądem liczebności, walidacją pliku, ochroną przed duplikatami i — celowo — bez importowania historii rozmów. Eksport był; format opisany w [docs/MEMORY.md](docs/MEMORY.md).
@@ -110,7 +128,7 @@ Instalator: w najnowszym udanym przebiegu [Windows build and WPF smoke](https://
 
 Bez instalacji: w najnowszym udanym przebiegu [Windows build and WPF smoke](https://github.com/pawelaachi123-eng/SentinelX/actions/workflows/windows-build.yml) pobierz **SentinelX-Portable-win-x64**, wypakuj cały ZIP i uruchom `SentinelX.exe`. Modele AI/ASR nie są częścią ZIP-a — konfigurujesz je osobno.
 
-Wymagania: **Windows x64**. Paczka Portable ma runtime w zestawie. Starsza paczka `SentinelX-windows-x64` nadal wymaga .NET **9 Desktop Runtime**; do budowania źródeł potrzebny jest **.NET 9 SDK**. Nie uruchamiaj WPF na Linuxie ani przez przeglądarkę.
+Wymagania: **Windows x64**. Paczka Portable ma runtime w zestawie. Starsza paczka `SentinelX-windows-x64` nadal wymaga .NET **9 Desktop Runtime**; do budowania źródeł potrzebny jest **.NET 10 SDK**. Nie uruchamiaj WPF na Linuxie ani przez przeglądarkę.
 
 ```powershell
 dotnet restore SENTINEL-X.csproj
@@ -128,7 +146,7 @@ dotnet publish SENTINEL-X.csproj -c Release -r win-x64 --self-contained true -o 
 Zachowany interfejs zgodności:
 
 ```powershell
-.\bin\Release\net9.0-windows\SentinelX.exe --legacy
+.\bin\Release\net10.0-windows\SentinelX.exe --legacy
 ```
 
 Najpierw zakończ działającą instancję przez **Wyjdź z aplikacji** / menu zasobnika. Aplikacja jest pojedynczą instancją; drugie uruchomienie aktywuje pierwsze okno. Zwykły przycisk X domyślnie chowa je do zasobnika.
@@ -142,6 +160,26 @@ Najpierw zakończ działającą instancję przez **Wyjdź z aplikacji** / menu z
 5. **Gaming**: wykrywanie gry działa automatycznie. Overlay włączysz przyciskiem. Możesz przeciągać go myszą. Nie zmieniamy trybu gry Windows ani priorytetów procesów.
 6. **Ctrl+Shift+X** lub czerwony **EMERGENCY STOP** anuluje zadania, wyłącza głos i blokuje nowe akcje. **Wznów Sentinel** odblokowuje akcje, ale nie włącza mikrofonu. **Ctrl+Shift+S** pokazuje okno.
 
+### Nauka tematów i umiejętności
+
+Polecenie `naucz się Kung Fu` (także `ucz się o ...`, `learn about ...`) uruchamia ograniczony przepływ: jeśli zezwala na to Tryb tylko lokalnie, pobiera wyniki i do trzech stron przez istniejące narzędzie tylko do odczytu, następnie lokalny Ollama układa z nich brief, bezpieczny plan nauki i listę niepewności. `umiejętności` pokazuje zapisane tematy; briefy trafiają do kategorii `umiejętność` w panelu Pamięć, skąd można je edytować, oznaczyć jako nieaktualne albo usunąć. Gdy sieć jest zablokowana, może powstać jedynie szkic z lokalnego modelu i jest on wyraźnie oznaczony jako nieweryfikowany.
+
+To zapisane, ograniczone notatki kontekstowe — **nie trening modelu ani gwarancja eksperckiej wiedzy**. Model nie zmienia wag i może się mylić; ekstrakcja stron nie jest niezależną weryfikacją. Trwały zapis respektuje ustawienie zapisu wspomnień; tryb prywatny przechowuje nowy brief wyłącznie w ograniczonym RAM-ie do zamknięcia aplikacji. Treści źródeł są traktowane jako niezaufane i nie mogą same uruchamiać działań.
+
+### Pewność pamięci i trafność kontekstu
+
+W formacie pamięci v4 trwałe wpisy niosą źródło, datę utworzenia, ostatnie potwierdzenie i konserwatywną ocenę confidence. Trafność jest obliczana względem konkretnego zapytania, nie jako globalny fakt o wpisie. W kontekście AI Sentinel pokazuje te metadane i ostrzega przy starszych faktach sprzętowych lub briefach umiejętności; ręczne oznaczenie jako nieaktualne obniża confidence. Migracja starszych wspomnień nadaje ostrożne wartości domyślne. Confidence opisuje jakość/pochodzenie, nie matematyczną gwarancję prawdy; gdy istnieje deterministyczny odczyt bieżącego stanu, ma on pierwszeństwo przed starą notatką.
+
+### Autopilot i Watcher w Core
+
+Polecenia przykładowe: `CS2 mi ścina` (historia Black Box, bieżące CPU/RAM/GPU, procesy, punktowy test Internetu), `dlaczego internet laguje` (lokalny kontekst, punktowy ping/DNS/HTTPS i migawka procesów), `napraw CS2` (zaczyna od bezpiecznej diagnostyki; nie zmienia ustawień bez potwierdzonej przyczyny), `monitoruj wydajność gry`, `monitoruj czy CS2 się zamknie`, `monitoruj pobieranie <fragment nazwy>`, `status Autopilota`, `status obserwatorów` i `pamięć zdarzeń`. `Anuluj` zatrzymuje pojedyncze aktywne zadanie lub pyta, jeśli wybór jest niejednoznaczny; `anuluj wszystko` sygnalizuje przerwanie wszystkich aktywnych zadań i bieżącego zapytania AI. Checkpoint oczekiwania na pobranie może przetrwać restart tylko wtedy, gdy lokalna pamięć celów jest włączona; po ponownym uruchomieniu Sentinel czeka na nowe zdarzenie systemu plików i nie odtwarza zakończeń, które nastąpiły przy zamkniętej aplikacji. Po stabilnym zapisie weryfikuje istnienie i czytelność metadanych, ale niczego nie otwiera. Historia wydajności i wzorce zdarzeń są ograniczone do RAM. Dostępne są CPU/RAM i licznik GPU Windows; brak FPS/frametime, temperatur, VRAM, taktowań, aktywności dysku i pomiaru strat do serwera gry jest zgłaszany wprost. Alert o wysokim użyciu zasobów wymaga kilku kolejnych próbek; wyniki są korelacją, nie dowodem przyczyny.
+
+### Tryb tylko lokalnie i prywatność online
+
+Nowa konfiguracja włącza `Tryb tylko lokalnie` domyślnie (Settings → Pamięć); stan jest pokazany jako `TYLKO LOKALNIE` w nagłówku Centrum. Przy blokadzie Sentinel nie wysyła wyszukiwań ani odczytów stron, nie wykonuje zewnętrznych testów DNS/ICMP/HTTPS, nie pobiera modeli głosowych, nie otwiera stron w przeglądarce i nie przekazuje żądań do innych aplikacji przez otwieranie plików/folderów lub UI Automation, nie kopiuje odpowiedzi do schowka Windows ani nie zamyka zewnętrznych procesów. Generowanie szablonu tworzy wyłącznie pliki źródłowe; żadne EXE nie jest kompilowane w tej funkcji. Każda zablokowana operacja informuje o blokadzie; ustawienie działa bez restartu. Lokalny Ollama przez `127.0.0.1` oraz lokalne narzędzia/odczyty pozostają dostępne.
+
+Aby użyć internetu, użytkownik musi wyłączyć blokadę. Przy włączonym `Trybie prywatnym` treść rozmowy nie jest zapisywana lokalnie, ale po wyłączeniu blokady zapytania są wysyłane do wybranych usług online i te usługi, dostawca VPN/proxy lub operator sieci mogą je rejestrować. Sentinel nie zarządza VPN, nie buduje łańcucha kilku proxy ani nie może zagwarantować anonimowości lub braku logów. Aplikacja korzysta z domyślnej konfiguracji sieci systemu; proxy niekoniecznie obejmuje DNS/ICMP, a sama aplikacja nie może zagwarantować, że cały ruch przechodzi przez VPN. Windows i inne procesy pozostają poza kontrolą Sentinela. Zgody i ograniczenia bezpieczeństwa dla akcji wysokiego ryzyka pozostają bez zmian.
+
 ### Przykłady pracy z plikami
 
 ```text
@@ -151,9 +189,13 @@ pokaż ten plik
 skopiuj ten plik jako kopia.txt
 przenieś ten plik jako nowa-nazwa.txt
 znajdź plik notatka
+znajdź dokument o budżecie wakacyjnym
+przenieś go do folderu Dokumenty
+zmień jego nazwę na plan.txt
+utwórz folder Raporty na pulpicie
 ```
 
-Edycja, kopiowanie i zmiana nazwy dotyczą ostatniego pliku utworzonego przez asystenta. Nie nadpisują istniejących celów. Edycja zachowuje `.bak`; zapis/kopia mają weryfikację treści i SHA-256. Wyszukiwanie jest ograniczone do katalogu `CreatedFiles`, a nie całego komputera. Anulowanie **nie cofa** ukończonych operacji.
+Ostatnio jednoznacznie wybrany plik pozostaje celem dla kolejnych powiązanych poleceń w bieżącej instancji; lista wieloznacznych trafień jest porzucana przy następnym innym poleceniu. Przy wielu wynikach Sentinel prosi o numer. Przeszukiwanie jest ograniczone do typowych folderów użytkownika, ma limit i nie wchodzi w dowiązania. Nie nadpisuje istniejących celów; zmiana tekstu zachowuje kopię `.bak`, a zapis jest sprawdzany po odczycie. Przeniesienie/anulowanie nie cofa operacji, która już się zakończyła.
 
 ## Architektura i dane
 
@@ -161,11 +203,11 @@ Edycja, kopiowanie i zmiana nazwy dotyczą ostatniego pliku utworzonego przez as
 - `ViewModels/`: `ObservableObject`, `[ObservableProperty]`, `[RelayCommand]`. Brak operacji plikowych, zapytań systemowych i `Process.Start` w ViewModelach.
 - `Views/`: osiem stron, shell i overlay. Code-behind ograniczony do inicjalizacji widoku i przeciągania okna.
 - `Services/`: interfejsy oraz integracja z istniejącymi, sprawdzanymi regresyjnie serwisami. Routing najpierw wybiera deterministyczne narzędzia, potem istniejący adaptacyjny transport AI.
-- `Themes/`: zasoby kolorów, własne style kontrolek i Fluent .NET 9; Dark, Deep Dark i paleta systemowa. Animacje przejść są wyłączone podczas gry.
+- `Themes/`: pełny system tokenów designu `Sx*` (kolory, gradienty, promienie, odstępy, typografia, style kontrolek, storyboardy) na Fluent .NET 10; motywy Dark, Deep Dark i Light generuje `python3 scripts/generate-themes.py` (z wbudowaną kontrolą kontrastu WCAG `--check`), a kolor akcentu i bramka animacji są nadpisywane w trakcie działania. `Themes/Animations.xaml` jest scalany przed `Themes/Controls.xaml`, bo szablony sięgają po storyboardy przez `StaticResource` (kolejność sprawdza bramka „resource order”). Animacje są wyłączane ustawieniem Windows, przełącznikiem „Animacje” oraz automatycznie podczas gry.
 - `Models/Settings/`: istniejący format ustawień zachowany bez duplikowania schematu. Migracja starego JSON, walidacja, zapis przez plik tymczasowy i kopia zapasowa.
 - Starsze pliki w katalogu głównym są celowo zachowane: część to współdzielone serwisy, część to interfejs zgodności.
 
-Dane pozostają w `%LOCALAPPDATA%\SentinelX\`: `Settings`, `History`, `Memory`, `Logs`, `CreatedFiles` oraz katalogi modeli używane przez istniejący manager. Testy używają odizolowanego `SENTINEL_DATA_DIR`.
+Dane pozostają w `%LOCALAPPDATA%\SentinelX\`: `Settings`, `History`, `Memory`, `Autopilot` (wyłącznie krótkie checkpointy celów; bez telemetrii), `Logs`, `CreatedFiles` oraz katalogi modeli używane przez istniejący manager. Bufor Black Box i Event Memory pozostają tylko w RAM. Testy używają odizolowanego `SENTINEL_DATA_DIR`.
 
 ### Świadome odstępstwa od master prompta
 
@@ -187,7 +229,7 @@ Dane pozostają w `%LOCALAPPDATA%\SentinelX\`: `Settings`, `History`, `Memory`, 
 | Akcje | Jedna kolejka wykonawcza, zgody na zamknięcie aplikacji, anulowanie, historia, dowody; tekst modelu `VERIFIED` nie daje statusu Verified |
 | Pliki | Bezpieczny workspace, create/edit/copy/move/search, kopie przed edycją; brak ogólnego edytora dowolnych ścieżek i automatycznego rollbacku |
 | Gaming | Wykrywanie istniejącej listy gier, wolniejsze pomiary, lżejszy model, overlay; bez udawanego pomiaru FPS/latencji gry |
-| Watch | Alerty długotrwałego CPU/RAM z czasem oczekiwania i cooldownem |
+| Autopilot + Watcher | W głównym Core: wieloetapowa, tylko-odczytowa diagnoza ścinek z dowodami; RAM-only Black Box (maks. 6 min); jawne obserwowanie wydajności gry, zakończenia CS2 i stabilnych pobrań. Alerty progowe są rzadkie i kontekstowe. Temperatury oraz utrata pakietów do serwera gry pozostają niedostępne bez providerów. |
 | Tray/autostart | Natywna integracja, close-to-tray, rejestr HKCU, hotkeys; wymagają ręcznego sprawdzenia na desktopie użytkownika |
 | Zaawansowane funkcje starego GUI | Kreator programów, dodatkowe komendy `..`, timery i szczegółowe panele diagnostyczne pozostają w `--legacy`; nie wszystkie mają odpowiednik w nowym shellu |
 | Modyfikacja źródeł przez AI | **Niezaimplementowana**, domyślnie niedozwolona; nie wystawiamy pozornego działającego przełącznika |
@@ -196,14 +238,14 @@ Dane pozostają w `%LOCALAPPDATA%\SentinelX\`: `Settings`, `History`, `Memory`, 
 
 ```powershell
 # Windows: prawdziwe widoki, bindingi, motywy, backend i PNG wszystkich stron
-.\bin\Release\net9.0-windows\SentinelX.exe --ui-smoke "$PWD\test-results\ui"
+.\bin\Release\net10.0-windows\SentinelX.exe --ui-smoke "$PWD\test-results\ui"
 # Dotychczasowy zestaw testów regresji, nie korzysta z prawdziwej Ollama
-.\bin\Release\net9.0-windows\SentinelX.exe --self-test "$PWD\test-results\regression"
+.\bin\Release\net10.0-windows\SentinelX.exe --self-test "$PWD\test-results\regression"
 # Ręcznie, po instalacji modeli i polskiego głosu Windows
-.\bin\Release\net9.0-windows\SentinelX.exe --asr-test "$PWD\test-results\asr"
+.\bin\Release\net10.0-windows\SentinelX.exe --asr-test "$PWD\test-results\asr"
 ```
 
-`--ui-smoke` nie modyfikuje autostartu, nie rejestruje skrótów, nie instaluje modeli i nie uruchamia mikrofonu. Sprawdza renderowanie stron i błędy bindingów, paletę, panel gotowości, izolację dowodów między zadaniami, mieszane wyniki wielu kroków, zachowanie dowodów po anulowaniu, STOP/resume, zakaz potwierdzania głosem (także z wybudzeniem i interpunkcją), konkurencję/anulowanie zadań, odrzucenie fałszywego „VERIFIED”, zapis ustawień i bezpieczeństwo plików.
+`--ui-smoke` nie modyfikuje autostartu, nie rejestruje skrótów, nie instaluje modeli i nie uruchamia mikrofonu. Sprawdza renderowanie stron i błędy bindingów, paletę, panel gotowości, izolację dowodów między zadaniami, mieszane wyniki wielu kroków, zachowanie dowodów po anulowaniu, STOP/resume, zakaz potwierdzania głosem (także z wybudzeniem i interpunkcją), konkurencję/anulowanie zadań, odrzucenie fałszywego „VERIFIED”, zapis ustawień i bezpieczeństwo plików. Od 0.93 sprawdza też warstwę wizualną: ~120 zasobów (kolory po przełączeniu motywu, promienie i odstępy, style, storyboardy, gradienty, efekty) musi być osiągalnych z `App.Resources` **i mieć właściwy typ** (`Color`, `CornerRadius`/`Thickness`, `Style`, `Storyboard`, `Brush`, `Effect`), a wszystkie konwertery widoków — `ReadinessBrush`, `StatusBrush`, `VoiceBrush`, `RiskBrush`, `BoolToVisibility`, `StringNotEmptyToVisibility`, `SafePercent`, `FiniteToVisibility` — muszą być `IValueConverter`.
 
 Workflow **Windows build and WPF smoke** w `.github/workflows/windows-build.yml` uruchamia restore, build, nowy smoke test i istniejący zestaw regresji. Zachowuje raporty/PNG w `sentinel-validation` oraz aplikacje w `SentinelX-windows-x64` i `SentinelX-Portable-win-x64`. Ta druga paczka jest publikowana jako self-contained i przechodzi osobny smoke test. Wynik bieżącego workflow jest źródłem prawdy o kompilacji — nie sama obecność plików.
 

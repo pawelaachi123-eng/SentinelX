@@ -1,106 +1,96 @@
-<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:u="clr-namespace:SentinelX.Utilities" xmlns:controls="clr-namespace:SentinelX.Views.Controls" xmlns:vm="clr-namespace:SentinelX.ViewModels" xmlns:pages="clr-namespace:SentinelX.Views.Pages" x:Class="SentinelX.Views.MainWindow" Title="Sentinel X" Width="1400" Height="900" MinWidth="1100" MinHeight="700" WindowStartupLocation="CenterScreen" Background="{DynamicResource SxBackground}" FontFamily="{StaticResource SxFontFamily}" ThemeMode="Dark" Icon="/Assets/sentinel.ico" u:UiInteraction.LoadedCommand="{Binding InitializeCommand}">
-    <Window.InputBindings><KeyBinding Key="K" Modifiers="Control" Command="{Binding OpenPaletteCommand}"/></Window.InputBindings>
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:u="clr-namespace:SentinelX.Utilities"
+        xmlns:controls="clr-namespace:SentinelX.Views.Controls"
+        xmlns:vm="clr-namespace:SentinelX.ViewModels"
+        xmlns:pages="clr-namespace:SentinelX.Views.Pages"
+        x:Class="SentinelX.Views.MainWindow"
+        Title="Sentinel X" Width="1400" Height="900" MinWidth="960" MinHeight="660"
+        WindowStartupLocation="CenterScreen" Background="{DynamicResource SxBackground}"
+        Foreground="{DynamicResource SxTextPrimary}" FontFamily="{StaticResource SxFontFamily}"
+        ThemeMode="Dark" Icon="/Assets/sentinel.ico"
+        u:UiInteraction.LoadedCommand="{Binding InitializeCommand}">
+    <Window.InputBindings>
+        <KeyBinding Key="K" Modifiers="Control" Command="{Binding OpenPaletteCommand}"/>
+        <KeyBinding Key="X" Modifiers="Control+Shift" Command="{Binding EmergencyStopCommand}"/>
+        <KeyBinding Key="R" Modifiers="Control+Shift" Command="{Binding OpenReadinessCommand}"/>
+        <KeyBinding Key="Escape" Command="{Binding CloseOverlayCommand}"/>
+    </Window.InputBindings>
     <Window.Resources>
         <DataTemplate DataType="{x:Type vm:CommandCenterViewModel}">
-            <pages:CommandCenterPage/>
+            <pages:SentinelHomePage/>
         </DataTemplate>
-        <DataTemplate DataType="{x:Type vm:SystemViewModel}">
-            <pages:SystemPage/>
-        </DataTemplate>
-        <DataTemplate DataType="{x:Type vm:GamingViewModel}">
-            <pages:GamingPage/>
-        </DataTemplate>
-        <DataTemplate DataType="{x:Type vm:VoiceViewModel}">
-            <pages:VoicePage/>
-        </DataTemplate>
-        <DataTemplate DataType="{x:Type vm:AiViewModel}">
-            <pages:AiPage/>
-        </DataTemplate>
-        <DataTemplate DataType="{x:Type vm:ActionsViewModel}">
-            <pages:ActionsPage/>
-        </DataTemplate>
-        <DataTemplate DataType="{x:Type vm:HistoryViewModel}">
-            <pages:HistoryPage/>
-        </DataTemplate>
-        <DataTemplate DataType="{x:Type vm:MemoryViewModel}">
-            <pages:MemoryPage/>
-        </DataTemplate>
-        <DataTemplate DataType="{x:Type vm:ProjectViewModel}">
-            <pages:ProjectsPage/>
-        </DataTemplate>
-        <DataTemplate DataType="{x:Type vm:TaskViewModel}">
-            <pages:TasksPage/>
-        </DataTemplate>
-        <DataTemplate DataType="{x:Type vm:DiagnosticViewModel}">
-            <pages:DiagnosticsPage/>
-        </DataTemplate>
-        <DataTemplate DataType="{x:Type vm:SettingsViewModel}">
-            <pages:SettingsPage/>
-        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:SystemViewModel}"><pages:SystemPage/></DataTemplate>
+        <DataTemplate DataType="{x:Type vm:GamingViewModel}"><pages:GamingPage/></DataTemplate>
+        <DataTemplate DataType="{x:Type vm:VoiceViewModel}"><pages:VoicePage/></DataTemplate>
+        <DataTemplate DataType="{x:Type vm:AiViewModel}"><pages:AiPage/></DataTemplate>
+        <DataTemplate DataType="{x:Type vm:ActionsViewModel}"><pages:ActionsPage/></DataTemplate>
+        <DataTemplate DataType="{x:Type vm:HistoryViewModel}"><pages:HistoryPage/></DataTemplate>
+        <DataTemplate DataType="{x:Type vm:MemoryViewModel}"><pages:MemoryPage/></DataTemplate>
+        <DataTemplate DataType="{x:Type vm:ProjectViewModel}"><pages:ProjectsPage/></DataTemplate>
+        <DataTemplate DataType="{x:Type vm:TaskViewModel}"><pages:TasksPage/></DataTemplate>
+        <DataTemplate DataType="{x:Type vm:DiagnosticViewModel}"><pages:DiagnosticsPage/></DataTemplate>
+        <DataTemplate DataType="{x:Type vm:SettingsViewModel}"><pages:SettingsPage/></DataTemplate>
     </Window.Resources>
-    <Grid>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="240"/>
-            <ColumnDefinition Width="*"/>
-        </Grid.ColumnDefinitions>
-        <Border Background="{DynamicResource SxSidebar}" BorderBrush="{DynamicResource SxBorderSubtle}" BorderThickness="0,0,1,0">
-            <DockPanel>
-                <StackPanel DockPanel.Dock="Top" Margin="24,28,20,24">
-                    <TextBlock Text="◈  SENTINEL X" Foreground="{DynamicResource SxAccentCyan}" FontSize="18" FontWeight="Bold"/>
-                    <TextBlock Text="{Binding Version}" Style="{StaticResource SxCaption}" Margin="26,6,0,24"/>
-                    <Button Content="⌕  Szukaj · Ctrl+K" Command="{Binding OpenPaletteCommand}" FontSize="12" Margin="0,0,0,16" AutomationProperties.Name="Otwórz paletę poleceń"/>
-                    <TextBlock Text="LOCAL INTELLIGENCE" FontSize="10" Foreground="{DynamicResource SxTextMuted}"/>
-                    <Border Height="1" Background="{DynamicResource SxBorderSubtle}" Margin="0,16,0,0"/>
-                </StackPanel>
-                <StackPanel DockPanel.Dock="Bottom" Margin="16,0,16,20">
-                    <Button Content="◇  Konfiguracja i gotowość" Command="{Binding OpenReadinessCommand}" Style="{StaticResource SxGhostButton}" FontSize="12" Margin="0,0,0,8"/>
-                    <TextBlock Text="{Binding DesktopStatus}" Foreground="{DynamicResource SxWarning}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,12"/>
-                    <Border Style="{StaticResource SxBadge}" Margin="0,0,0,12">
-                        <StackPanel>
-                            <TextBlock Text="{Binding Voice.State, StringFormat=●  VOICE · {0}}" Foreground="{Binding Voice.State, Converter={StaticResource VoiceBrush}}" FontSize="12"/>
-                            <TextBlock Text="{Binding Voice.Status}" Style="{StaticResource SxCaption}" Margin="0,6,0,0" MaxHeight="60" TextTrimming="CharacterEllipsis"/>
-                        </StackPanel>
+
+    <Grid Background="{StaticResource SxShellGradient}">
+        <ContentControl Content="{Binding CurrentPage}" Focusable="False"/>
+
+        <TextBlock Text="{Binding Version, StringFormat=Sentinel X  •  v{0}}" HorizontalAlignment="Left" VerticalAlignment="Bottom"
+                   Margin="20,0,0,12" FontSize="10" Foreground="{DynamicResource SxTextMuted}" Opacity="0.2"
+                   IsHitTestVisible="False" AutomationProperties.Name="Wersja aplikacji"/>
+
+        <!-- A single, dismissible panel hosts settings, memory, history and requested tool views. -->
+        <Grid Panel.ZIndex="5" Background="{DynamicResource SxScrim}"
+              Visibility="{Binding IsOverlayOpen, Converter={StaticResource BoolToVisibility}}">
+            <Border Background="{StaticResource SxShellGradient}" BorderBrush="{DynamicResource SxBorderStrong}"
+                    BorderThickness="1" CornerRadius="18" Margin="36,30" MaxWidth="1220" MaxHeight="800"
+                    MinWidth="650" MinHeight="500" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                    Effect="{StaticResource SxShadowSoft}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <DockPanel Margin="24,17,18,12">
+                        <Button DockPanel.Dock="Right" Content="×" Command="{Binding CloseOverlayCommand}"
+                                Style="{StaticResource SxIconButton}" Width="34" Height="34" MinHeight="34"
+                                Padding="0" ToolTip="Zamknij panel" AutomationProperties.Name="Zamknij panel"/>
+                        <TextBlock Text="{Binding OverlayTitle}" Style="{StaticResource SxSectionTitle}" VerticalAlignment="Center"/>
+                    </DockPanel>
+                    <Border Grid.Row="1" BorderBrush="{DynamicResource SxBorderSubtle}" BorderThickness="0,1,0,0" ClipToBounds="True">
+                        <ContentControl Content="{Binding OverlayPage}" Focusable="False"/>
                     </Border>
-                    <Button Content="ϟ  EMERGENCY STOP" Command="{Binding EmergencyStopCommand}" Style="{StaticResource SxDangerButton}" FontSize="12" ToolTip="Ctrl+Shift+X · blokuje nowe akcje i wyłącza głos"/>
-                    <Button Content="Wznów Sentinel" Command="{Binding ResumeCommand}" Visibility="{Binding IsStopped, Converter={StaticResource BoolToVisibility}}" Margin="0,8,0,0"/>
-                    <Button Content="Wyjdź z aplikacji" Command="{Binding ExitCommand}" Style="{StaticResource SxGhostButton}" FontSize="11" Margin="0,8,0,0"/>
-                </StackPanel>
-                <ListBox ItemsSource="{Binding NavItems}" SelectedItem="{Binding SelectedItem}" ItemContainerStyle="{StaticResource SxSidebarItem}" Margin="8,0" VerticalAlignment="Top">
-                    <ListBox.ItemTemplate>
-                        <DataTemplate>
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="{Binding Icon}" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Width="28" FontSize="20"/>
-                                <TextBlock Text="{Binding Label}" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Margin="12,0,0,0" VerticalAlignment="Center"/>
-                            </StackPanel>
-                        </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
-            </DockPanel>
-        </Border>
-        <!-- 0.91 · CENTRUM: aurora glow behind the pages — decorative only, never intercepts input -->
-        <Grid Grid.Column="1" IsHitTestVisible="False" ClipToBounds="True">
-            <Ellipse Width="760" Height="760" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-260,-200,0" Opacity="0.16">
-                <Ellipse.Fill>
-                    <RadialGradientBrush>
-                        <GradientStop Color="{DynamicResource SxAccentCyanColor}" Offset="0"/>
-                        <GradientStop Color="Transparent" Offset="1"/>
-                    </RadialGradientBrush>
-                </Ellipse.Fill>
-            </Ellipse>
-            <Ellipse Width="860" Height="860" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="-300,0,0,-360" Opacity="0.10">
-                <Ellipse.Fill>
-                    <RadialGradientBrush>
-                        <GradientStop Color="{DynamicResource SxAccentVioletColor}" Offset="0"/>
-                        <GradientStop Color="Transparent" Offset="1"/>
-                    </RadialGradientBrush>
-                </Ellipse.Fill>
-            </Ellipse>
+                </Grid>
+            </Border>
         </Grid>
-        <ContentControl Grid.Column="1" Content="{Binding CurrentPage}"/>
-        <Grid Grid.ColumnSpan="2" Panel.ZIndex="10" Background="{DynamicResource SxScrim}" Visibility="{Binding Palette.IsOpen, Converter={StaticResource BoolToVisibility}}">
+
+        <!-- Palette remains a quick command surface, not a navigation bar. -->
+        <Grid Panel.ZIndex="10" Background="{DynamicResource SxScrim}"
+              Visibility="{Binding Palette.IsOpen, Converter={StaticResource BoolToVisibility}}">
+            <Grid.Style>
+                <Style TargetType="Grid">
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding Palette.IsOpen}" Value="True">
+                            <DataTrigger.EnterActions><BeginStoryboard Storyboard="{StaticResource SxScrimIn}"/></DataTrigger.EnterActions>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Grid.Style>
             <controls:CommandPalette DataContext="{Binding Palette}" VerticalAlignment="Center" HorizontalAlignment="Center"/>
         </Grid>
-        <Grid Grid.ColumnSpan="2" Panel.ZIndex="11" Background="{DynamicResource SxScrim}" Visibility="{Binding Readiness.IsOpen, Converter={StaticResource BoolToVisibility}}">
+
+        <Grid Panel.ZIndex="11" Background="{DynamicResource SxScrim}"
+              Visibility="{Binding Readiness.IsOpen, Converter={StaticResource BoolToVisibility}}">
+            <Grid.Style>
+                <Style TargetType="Grid">
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding Readiness.IsOpen}" Value="True">
+                            <DataTrigger.EnterActions><BeginStoryboard Storyboard="{StaticResource SxScrimIn}"/></DataTrigger.EnterActions>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Grid.Style>
             <controls:ReadinessPanel DataContext="{Binding Readiness}" VerticalAlignment="Center" HorizontalAlignment="Center"/>
         </Grid>
     </Grid>

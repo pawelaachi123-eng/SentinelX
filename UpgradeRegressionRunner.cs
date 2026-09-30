@@ -62,14 +62,14 @@ internal static class UpgradeRegressionRunner
         using (var secondary = new SingleInstanceService(instanceId))
             Check(primary.IsPrimary && !secondary.IsPrimary, "Tylko jedna instancja dla danego katalogu danych");
         var files = new FileWorkspaceService(Path.Combine(directory, "files"), Path.Combine(directory, "desktop"));
-        Check((await files.ProcessAsync("stwórz plik notatka.txt na pulpicie", default))!.StartsWith("VERIFIED"), "Tworzenie pliku w wskazanym pulpicie testowym");
-        Check((await files.ProcessAsync("wpisz do niego pierwsza", default))!.StartsWith("VERIFIED"), "Edycja ostatnio utworzonego pliku");
+        Check((await files.ProcessAsync("stwórz plik notatka.txt na pulpicie", default))!.StartsWith("Gotowe", StringComparison.Ordinal), "Tworzenie pliku w wskazanym pulpicie testowym");
+        Check((await files.ProcessAsync("wpisz do niego pierwsza", default))!.StartsWith("Gotowe", StringComparison.Ordinal), "Edycja ostatnio utworzonego pliku");
         await files.ProcessAsync("dopisz do niego druga", default);
         Check(File.ReadAllText(files.LastFile!).Contains("druga") && Directory.GetFiles(Path.GetDirectoryName(files.LastFile!)!, "*.bak").Length == 2, "Dopisywanie zachowuje treść i kopie poprzednich wersji");
         await files.ProcessAsync("zmien 2 linie na poprawiona", default);
         Check(File.ReadAllText(files.LastFile!).Contains("poprawiona"), "Edycja wskazanej linii pliku");
-        Check((await files.ProcessAsync("stwórz plik ../escape.txt na pulpicie", default))!.StartsWith("FAILED"), "Polecenie plikowe nie opuszcza katalogu docelowego");
-        Check((await files.ProcessAsync("stwórz plik notatka.txt na pulpicie", default))!.StartsWith("FAILED"), "Tworzenie nie nadpisuje istniejącego pliku");
+        Check((await files.ProcessAsync("stwórz plik ../escape.txt na pulpicie", default))!.StartsWith("Nie udało się", StringComparison.Ordinal), "Polecenie plikowe nie opuszcza katalogu docelowego");
+        Check((await files.ProcessAsync("stwórz plik notatka.txt na pulpicie", default))!.StartsWith("Nie udało się", StringComparison.Ordinal), "Tworzenie nie nadpisuje istniejącego pliku");
         return checks;
     }
 }

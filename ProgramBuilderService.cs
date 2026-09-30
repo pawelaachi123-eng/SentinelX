@@ -1,5 +1,5 @@
-using System.Diagnostics;
 using System.IO;
+using System.Security.Cryptography;
 using System.Text.Json;
 
 namespace SentinelX;
@@ -11,47 +11,49 @@ public sealed class ProgramBuilderService
 {
     private readonly string root;
     public static string[] Templates => ["Notatnik", "Kalkulator", "Pomodoro"];
-    public ProgramBuilderService(string? root = null) => this.root = root ?? Path.Combine(AppPaths.Root, "Programs");
+    public ProgramBuilderService(string? root = null, Func<bool>? externalNetworkAllowed = null)
+    {
+        this.root = root ?? Path.Combine(AppPaths.Root, "Programs");
+        // Retain the constructor shape for older callers. Source generation is local and performs no network access.
+        _ = externalNetworkAllowed;
+    }
     public async Task<ProgramBuildResult> BuildAsync(string template, IProgress<string>? progress, CancellationToken token)
     {
         if (!Templates.Contains(template)) return new("FAILED", "Wybierz Notatnik, Kalkulator albo Pomodoro. Inne programy nie są jeszcze obsługiwane przez ten kreator.", "", null, "Nie utworzono plików.");
         string directory = Path.Combine(root, template + "-" + DateTime.Now.ToString("yyyyMMdd-HHmmss") + "-" + Guid.NewGuid().ToString("N")[..6]);
-        Directory.CreateDirectory(directory);
         try
         {
-            progress?.Report("Tworzę projekt: " + template);
-            await File.WriteAllTextAsync(Path.Combine(directory, "Program.csproj"), Project, token);
-            await File.WriteAllTextAsync(Path.Combine(directory, "Program.cs"), GenerateSource(template), token);
-            await File.WriteAllTextAsync(Path.Combine(directory, "README.txt"), $"{template} — lokalny szablon Sentinel X.\nŹródła: Program.cs.\nArtefakt: publish\\SentinelProgram.exe.\nKompilacja i test zapisane w build.log oraz build-proof.json.\n", token);
-            progress?.Report("Kompiluję projekt do Windows x64…");
-            var result = await RunAsync("dotnet", ["publish", "Program.csproj", "-c", "Release", "-r", "win-x64", "--self-contained", "true", "-o", "publish", "-v:minimal"], directory, token);
-            await File.WriteAllTextAsync(Path.Combine(directory, "build.log"), result.Output, token);
-            if (result.ExitCode != 0) return new("FAILED", "Kompilacja nie powiodła się. Zapisano źródła i build.log.", directory, null, result.Output[^Math.Min(2500, result.Output.Length)..]);
-            string exe = Path.Combine(directory, "publish", "SentinelProgram.exe");
-            if (!File.Exists(exe)) throw new IOException("Kompilator nie utworzył pliku .exe.");
-            progress?.Report("Uruchamiam izolowany test wygenerowanego programu…");
-            var test = await RunAsync(exe, ["--self-test"], directory, token);
-            string proofPath = Path.Combine(directory, "program-test.json");
-            if (test.ExitCode != 0 || !File.Exists(proofPath)) return new("FAILED", "Program skompilował się, ale test nie został potwierdzony.", directory, exe, test.Output);
-            using var proof = JsonDocument.Parse(await File.ReadAllTextAsync(proofPath, token));
-            if (!proof.RootElement.GetProperty("passed").GetBoolean()) throw new InvalidOperationException("Test programu nie przeszedł.");
-            var output = new ProgramBuildResult("VERIFIED", "Program zbudowany; test jego logiki i startu WPF przeszedł.", directory, exe, "build.log + program-test.json; test nie zastępuje ręcznej oceny wszystkich interakcji.");
-            await File.WriteAllTextAsync(Path.Combine(directory, "build-proof.json"), JsonSerializer.Serialize(output, new JsonSerializerOptions { WriteIndented = true }), token);
-            progress?.Report("VERIFIED • " + exe); return output;
+            token.ThrowIfCancellationRequested();
+            Directory.CreateDirectory(directory);
+            progress?.Report("Tworzę źródła projektu: " + template);
+            string projectPath = Path.Combine(directory, "Program.csproj");
+            string sourcePath = Path.Combine(directory, "Program.cs");
+            string readmePath = Path.Combine(directory, "README.txt");
+            await File.WriteAllTextAsync(projectPath, Project, token);
+            await File.WriteAllTextAsync(sourcePath, GenerateSource(template), token);
+            await File.WriteAllTextAsync(readmePath,
+                $"{template} — lokalne źródła projektu Sentinel X.\nPliki: Program.csproj i Program.cs.\nNie uruchomiono kompilatora, testów ani procesów potomnych; Sentinel nie wygenerował pliku EXE.\n",
+                token);
+            var files = new[] { projectPath, sourcePath, readmePath };
+            if (files.Any(path => !File.Exists(path) || new FileInfo(path).Length == 0))
+                throw new IOException("Nie udało się zweryfikować kompletu niepustych plików źródłowych.");
+            var manifest = new List<object>();
+            foreach (string path in files)
+                manifest.Add(new
+                {
+                    File = Path.GetFileName(path),
+                    Length = new FileInfo(path).Length,
+                    Sha256 = Convert.ToHexString(SHA256.HashData(await File.ReadAllBytesAsync(path, token)))
+                });
+            string evidence = JsonSerializer.Serialize(manifest, new JsonSerializerOptions { WriteIndented = true });
+            await File.WriteAllTextAsync(Path.Combine(directory, "source-manifest.json"), evidence, token);
+            progress?.Report("SOURCE_READY • źródła zapisane; kompilacja wyłączona");
+            return new("SOURCE_READY", "Utworzyłem i sprawdziłem pliki źródłowe. Nie uruchomiłem kompilatora ani testów i nie wygenerowałem pliku EXE.",
+                directory, null, "Lokalny odczyt zwrotny i SHA-256: source-manifest.json. Wygenerowane źródła nie są zweryfikowanym działającym programem.");
         }
-        catch (OperationCanceledException) { progress?.Report("CANCELLED • źródła pozostały w " + directory); throw; }
-        catch (Exception ex) { AppLog.Write(ex); return new("FAILED", ex.Message, directory, null, "Nie zgłoszono gotowego programu."); }
-    }
-    private static async Task<(int ExitCode, string Output)> RunAsync(string exe, string[] arguments, string directory, CancellationToken token)
-    {
-        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(token); timeout.CancelAfter(TimeSpan.FromMinutes(5));
-        var start = new ProcessStartInfo(exe) { WorkingDirectory = directory, UseShellExecute = false, CreateNoWindow = true, RedirectStandardError = true, RedirectStandardOutput = true };
-        foreach (string argument in arguments) start.ArgumentList.Add(argument);
-        using var process = Process.Start(start) ?? throw new IOException("Nie udało się uruchomić procesu kompilacji.");
-        Task<string> stdout = process.StandardOutput.ReadToEndAsync(), stderr = process.StandardError.ReadToEndAsync();
-        try { await process.WaitForExitAsync(timeout.Token); }
-        catch { if (!process.HasExited) process.Kill(true); throw; }
-        return (process.ExitCode, await stdout + "\n" + await stderr);
+        catch (OperationCanceledException) { progress?.Report("CANCELLED • nie uruchomiono kompilacji; pliki źródłowe mogły pozostać w " + directory); throw; }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or ArgumentException)
+        { AppLog.Write(ex); return new("FAILED", ex.Message, directory, null, "Nie zgłoszono gotowego programu ani wygenerowanego EXE."); }
     }
     private const string Project = """
         <Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>WinExe</OutputType><TargetFramework>net9.0-windows</TargetFramework><UseWPF>true</UseWPF><Nullable>enable</Nullable><AssemblyName>SentinelProgram</AssemblyName></PropertyGroup></Project>

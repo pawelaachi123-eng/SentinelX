@@ -1,0 +1,4 @@
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="210dp" android:minHeight="110dp" android:updatePeriodMillis="0"
+    android:initialLayout="@layout/sentinel_widget" android:resizeMode="horizontal|vertical"
+    android:widgetCategory="home_screen" />

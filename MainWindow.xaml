@@ -46,6 +46,7 @@
                     <StackPanel>
                         <TextBlock x:Name="PageTitle" Text="Rozmowa" Style="{StaticResource Title}"/>
                         <TextBlock x:Name="AiStatusText" Text="Sprawdzanie lokalnego AI…" Foreground="{DynamicResource Muted}" FontSize="12"/>
+                        <TextBlock x:Name="PrivacyStatusText" Foreground="#FFC86B" FontSize="10" FontWeight="Bold" Margin="0,4,0,0" ToolTip="Blokuje ruch zewnętrzny inicjowany przez Sentinel; nie izoluje Windows ani innych aplikacji."/>
                     </StackPanel>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                         <Button x:Name="StopButton" Content="■  Przerwij" Click="Stop_Click" ToolTip="Przerwij bieżące zadanie (Esc)"/>

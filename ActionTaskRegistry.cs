@@ -32,6 +32,15 @@ public sealed class ActionTaskRegistry
         return tasks.Length;
     }
 
+    public bool Cancel(string id)
+    {
+        ActionTaskHandle? task;
+        lock (gate) active.TryGetValue(id, out task);
+        if (task == null) return false;
+        task.Cancel();
+        return true;
+    }
+
     internal void Finish(ActionTaskHandle task)
     {
         lock (gate)

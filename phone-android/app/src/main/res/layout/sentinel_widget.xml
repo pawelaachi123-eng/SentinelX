@@ -1,0 +1,13 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical"
+    android:padding="8dp" android:background="#EE17212D">
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="SENTINEL" android:textColor="#FFFFFF" android:textStyle="bold" android:gravity="center" />
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+        <Button android:id="@+id/widget_pc_on" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="PC ON" android:textSize="10sp" />
+        <Button android:id="@+id/widget_pc_status" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="STATUS" android:textSize="10sp" />
+    </LinearLayout>
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+        <Button android:id="@+id/widget_tv_on" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="TV ON" android:textSize="10sp" />
+        <Button android:id="@+id/widget_tv_mute" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="MUTE" android:textSize="10sp" />
+    </LinearLayout>
+</LinearLayout>

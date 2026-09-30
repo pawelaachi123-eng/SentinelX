@@ -40,8 +40,11 @@ internal static class SelfTestRunner
         var reloaded = new ConversationMemoryService();
         Check(reloaded.UserName == "Testowy", "Pamięć odtwarzana z dysku");
         string fixture = "test-" + Guid.NewGuid().ToString("N") + ".txt";
-        Check((await window.ExecuteAsync($"utwórz plik {fixture}: Zażółć gęślą jaźń")).Contains("sprawdzono"), "Tworzenie i weryfikacja pliku UTF-8");
-        Check((await window.ExecuteAsync($"utwórz plik {fixture}: inny tekst")).Contains("już istnieje"), "Ochrona istniejących plików");
+        string fixturePath = Path.Combine(AppPaths.Root, "CreatedFiles", fixture);
+        string createFixture = await window.ExecuteAsync($"utwórz plik {fixture}: Zażółć gęślą jaźń");
+        Check(createFixture.Contains("zweryfikowano", StringComparison.OrdinalIgnoreCase) && File.ReadAllText(fixturePath) == "Zażółć gęślą jaźń", "Tworzenie i weryfikacja pliku UTF-8");
+        string duplicateFixture = await window.ExecuteAsync($"utwórz plik {fixture}: inny tekst");
+        Check(duplicateFixture.StartsWith("Nie udało się", StringComparison.Ordinal) && File.ReadAllText(fixturePath) == "Zażółć gęślą jaźń", "Ochrona istniejących plików bez nadpisania");
         Check((await LocalFileService.CreateAsync("../outside.txt", "x")).Contains("zwykłą nazwę"), "Ochrona przed wyjściem ze wskazanego katalogu");
         Check((await LocalFileService.CreateAsync("CON.txt", "x")).Contains("zwykłą nazwę"), "Nazwy urządzeń Windows są odrzucane");
         await window.ExecuteAsync("zamknij notatnik");

@@ -7,7 +7,7 @@ using SentinelX.Services.Intent;
 
 namespace SentinelX.Tests;
 
-/// <summary>Durable memory v3: persistence, identity-based edits, privacy gates, migration, retention, import.</summary>
+/// <summary>Durable memory v4: confidence metadata, persistence, identity-based edits, privacy gates, migration, retention, import.</summary>
 internal static class MemoryRegression
 {
     private static void Check(bool condition, string message) { if (!condition) throw new InvalidOperationException(message); }
@@ -28,8 +28,14 @@ internal static class MemoryRegression
         Check(reloaded.UserName == "Ada", "Profile must survive reload.");
         Check(reloaded.GetNotes().Single().Id.Length == 12, "Notes must carry stable identities.");
         Check(reloaded.GetNotes().Single().Category == "notatka", "Plain notes must default to the note category.");
+        Check(reloaded.GetNotes().Single().Confidence >= 0.9 && reloaded.GetNotes().Single().LastConfirmedAt != null,
+            "Explicit user memories must retain source confidence and last-confirmed metadata.");
         Check(reloaded.AddNote("wolę krótkie odpowiedzi") == NoteAddResult.Added, "A second note must be stored.");
         Check(reloaded.GetNotes().Any(x => x.Category == "preferencja"), "Preference wording must be categorized.");
+        reloaded.AddUserMessage("Wolę krótkie odpowiedzi", "test");
+        string profileContext = reloaded.GetRelevantContext("Odpowiedz zgodnie z moim stylem", includeRecent: false);
+        Check(profileContext.Contains("explicit user preference", StringComparison.Ordinal) && profileContext.Contains("confidence: 95%", StringComparison.Ordinal),
+            "Explicit response preferences must keep their source, confirmation and confidence metadata in profile context.");
         reloaded.DeleteNote(reloaded.GetNotes().Single(x => x.Category == "preferencja").Id);
 
         // --- identity-based edit/pin/stale/delete ---
@@ -41,6 +47,7 @@ internal static class MemoryRegression
         Check(reloaded.GetChanges().Any(x => x.Kind == "edytowane" && x.NoteId == id), "Edit must be recorded in the change log.");
         Check(reloaded.SetPinned(id, true) && reloaded.GetNotes().First().Pinned, "Pinned note must sort first.");
         Check(reloaded.SetStale(id, true), "Marking stale must work.");
+        Check(reloaded.FindNote(id)!.Confidence <= 0.25, "Marking a memory stale must lower its effective source confidence.");
         Check(!reloaded.GetStableContext().Contains("Preferuję"), "Stale note must stay out of the AI context.");
         Check(!reloaded.DeleteNote(id + "x"), "Unknown ID must not delete anything.");
         Check(reloaded.DeleteNote(id), "Delete by ID must work.");
@@ -51,6 +58,55 @@ internal static class MemoryRegression
         reloaded.AddNote("Zażółć gęślą jaźń to pangram");
         Check(reloaded.SearchNotes("zazolc gesla").Count == 1, "Search must ignore Polish diacritics.");
         Check(reloaded.SearchNotes("GEŚLĄ").Count == 1, "Search must ignore case and diacritics.");
+
+        // --- bounded, query-relevant retrieval and high-confidence durable fact upserts ---
+        string autoDir = Path.Combine(directory, "automatic-facts");
+        var automatic = new ConversationMemoryService(autoDir);
+        automatic.AddUserMessage("Mam 32 GB RAM", "test");
+        Check(automatic.GetNotes().Single().Text == "RAM: 32 GB" && automatic.GetNotes().Single().FactKey == "hardware.ram",
+            "An affirmative, unambiguous RAM declaration must become one structured local fact.");
+        Check(automatic.GetNotes().Single().Confidence >= 0.8 && automatic.GetNotes().Single().LastConfirmedAt != null,
+            "Automatically extracted user facts must carry conservative confidence and confirmation timestamps.");
+        Check(automatic.TakeAutomaticMemoryNotice().Contains("Zapisałem lokalnie", StringComparison.Ordinal),
+            "Automatic durable capture must be disclosed to the user.");
+        automatic.AddNote("Ulubiony kolor to niebieski");
+        string computerContext = automatic.GetRelevantContext("Co pamiętasz o moim komputerze?", includeRecent: false);
+        Check(computerContext.Contains("RAM: 32 GB", StringComparison.Ordinal) && !computerContext.Contains("Ulubiony kolor", StringComparison.Ordinal),
+            "A computer query must retrieve matching memory only, not the whole note database.");
+        Check(computerContext.Contains("confidence:", StringComparison.Ordinal) && computerContext.Contains("trafność zapytania:", StringComparison.Ordinal) &&
+              computerContext.Contains("ostatnie potwierdzenie:", StringComparison.Ordinal),
+            "Retrieved memory context must disclose source confidence, query relevance and last confirmation rather than presenting stale facts as certain.");
+        automatic.AddUserMessage("Mój komputer ma 64 GB RAM", "test");
+        Check(automatic.GetNotes().Count(x => x.FactKey == "hardware.ram" && x.SupersededAt == null) == 1 &&
+              automatic.GetNotes().Single(x => x.FactKey == "hardware.ram").Text == "RAM: 64 GB",
+            "A changed stable fact must replace the current value rather than leave conflicting active values.");
+        Check(automatic.GetChanges().Any(x => x.Kind == "zaktualizowane" && x.OldText == "RAM: 32 GB" && x.NewText == "RAM: 64 GB"),
+            "Superseded RAM values must remain inspectable in the change log.");
+        automatic.AddUserMessage("Czy mam 16 GB RAM?", "test");
+        Check(automatic.GetNotes().Single(x => x.FactKey == "hardware.ram").Text == "RAM: 64 GB",
+            "A question must not be treated as a durable factual assertion.");
+        var reloadedAutomatic = new ConversationMemoryService(autoDir);
+        Check(reloadedAutomatic.GetNotes().Single(x => x.FactKey == "hardware.ram").Text == "RAM: 64 GB",
+            "Structured durable facts must survive a service restart.");
+        var privateAutomatic = new ConversationMemoryService(Path.Combine(directory, "private-automatic"));
+        privateAutomatic.SetPrivateMode(true);
+        privateAutomatic.AddUserMessage("Mam 32 GB RAM", "test");
+        Check(privateAutomatic.GetNotes().Count == 0, "Private mode must block automatic durable capture.");
+        var secretAutomatic = new ConversationMemoryService(Path.Combine(directory, "secret-automatic"));
+        secretAutomatic.AddUserMessage("Mam 128 GB RAM, hasło: SecretValue123", "test");
+        Check(secretAutomatic.GetNotes().Count == 0, "An utterance containing a redacted secret must not trigger automatic durable capture.");
+
+        // --- contextual "forget this information" resolves only a unique recent memory and stays approval-gated ---
+        string contextualDir = Path.Combine(directory, "contextual-forget");
+        var contextualMemory = new ConversationMemoryService(contextualDir);
+        contextualMemory.AddNote("RAM: 32 GB", "fakt", "test");
+        contextualMemory.AddUserMessage("Mam 32 GB RAM", "test");
+        contextualMemory.AddUserMessage("Zapomnij tę informację", "test");
+        var contextualPermissions = new PermissionCenterService();
+        var contextualAction = new SentinelX.Services.Memory.MemoryActionService(contextualMemory, contextualPermissions, new ActionHistoryService(Path.Combine(contextualDir, "audit")));
+        string contextualResponse = contextualAction.TryRequest("Zapomnij tę informację") ?? "";
+        Check(contextualPermissions.HasPendingAction && contextualResponse.Contains("RAM: 32 GB", StringComparison.Ordinal),
+            "A contextual memory deletion must resolve the unique recent fact but still wait for explicit approval.");
 
         // --- conflict detection is a hint, never a merge ---
         reloaded.AddNote("Ulubiony kolor: niebieski");
@@ -135,7 +191,31 @@ internal static class MemoryRegression
         Check(migrated.GetNotes().Single().Id.Length == 12 && migrated.GetNotes().Single().Category == "notatka", "Migration must stamp identity and defaults.");
         Check(migrated.GetConversations().Any(x => x.Id == "legacy-session"), "Migration must rebuild the conversation index.");
         Check(Directory.GetFiles(fifth, "*.v2-backup-*").Length == 1, "Migration must keep a backup of the original file.");
-        Check(new ConversationMemoryService(fifth).GetNotes().Count == 1, "Migrated file must load cleanly as v3.");
+        Check(new ConversationMemoryService(fifth).GetNotes().Count == 1 && new ConversationMemoryService(fifth).GetNotes().Single().Confidence > 0,
+            "Migrated file must load cleanly with conservative v4 confidence metadata.");
+
+        // A v4 reload must preserve intentional confidence and confirmation metadata exactly.
+        string v4Dir = Path.Combine(directory, "v4-preservation");
+        Directory.CreateDirectory(v4Dir);
+        DateTime confirmedAt = DateTime.Now.AddDays(-4);
+        var v4State = new ConversationMemoryState
+        {
+            Version = 4,
+            Notes = [new ConversationMemoryEntry { Id = "v4-note", Role = "note", Text = "imported fact", Source = "import: archive.json", Timestamp = confirmedAt.AddDays(-2), LastConfirmedAt = confirmedAt, Confidence = 0.37 }],
+            Profile = new Dictionary<string, string> { ["responseStyle"] = "short" },
+            ProfileMetadata = new Dictionary<string, MemoryProfileMetadata>
+            {
+                ["responseStyle"] = new("import: archive.json", confirmedAt.AddDays(-2), null, 0.50)
+            }
+        };
+        File.WriteAllText(Path.Combine(v4Dir, "conversation-memory.json"), JsonSerializer.Serialize(v4State));
+        var preservedV4 = new ConversationMemoryService(v4Dir);
+        var preservedNote = preservedV4.GetNotes().Single();
+        Check(Math.Abs(preservedNote.Confidence - 0.37) < 0.0001 && preservedNote.LastConfirmedAt == confirmedAt,
+            "Loading v4 data must not rewrite valid confidence or confirmation metadata.");
+        string preservedProfile = preservedV4.GetRelevantContext("Use my preferred response style", includeRecent: false);
+        Check(preservedProfile.Contains("import: archive.json", StringComparison.Ordinal) && preservedProfile.Contains("confidence: 50%", StringComparison.Ordinal),
+            "Profile provenance and confidence must survive v4 persistence too.");
 
         // --- retention prunes conversation history but never explicit memories ---
         string sixth = Path.Combine(directory, "retention");

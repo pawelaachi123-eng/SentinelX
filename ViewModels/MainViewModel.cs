@@ -4,30 +4,32 @@ using SentinelX.Core;
 using SentinelX.Services.Actions;
 using SentinelX.Services.Desktop;
 namespace SentinelX.ViewModels;
+
 public sealed record NavItem(string Key, string Icon, string Label, object ViewModel);
+
+/// <summary>The single-window shell. Feature pages are opened only as transient panels over the Core.</summary>
 public partial class MainViewModel : ObservableObject, IDisposable
 {
     private readonly IActionEngine engine;
     private readonly IDesktopService desktop;
     private readonly IUiDispatcher dispatcher;
+    private readonly CommandCenterViewModel commandCenter;
+    private readonly IReadOnlyDictionary<string, (string Title, object Page)> panels;
+
     public string Version => AppConstants.Version;
     public IReadOnlyList<NavItem> NavItems { get; }
     public VoiceViewModel Voice { get; }
+    public CommandCenterViewModel Center => commandCenter;
     public CommandPaletteViewModel Palette { get; }
     public ReadinessViewModel Readiness { get; }
-    private readonly CommandCenterViewModel commandCenter;
+
     [ObservableProperty] private NavItem? selectedItem;
     [ObservableProperty] private object? currentPage;
+    [ObservableProperty] private object? overlayPage;
+    [ObservableProperty] private string overlayTitle = "";
+    [ObservableProperty] private bool isOverlayOpen;
     [ObservableProperty] private bool isStopped;
     [ObservableProperty] private string desktopStatus = "";
-
-    /// <summary>0.91 · CENTRUM: every former top-level page key now lives as an icon tab inside Centrum.
-    /// Palette entries, readiness cards and legacy navigation keep working through this map.</summary>
-    private static readonly Dictionary<string, string> CenterTabByLegacyKey = new(StringComparer.Ordinal)
-    {
-        ["command"] = "rozmowa", ["tasks"] = "zadania", ["history"] = "historia", ["voice"] = "glos",
-        ["system"] = "system", ["gaming"] = "gry", ["ai"] = "ai", ["actions"] = "akcje", ["diagnostics"] = "diagnostyka"
-    };
 
     public MainViewModel(IActionEngine engine, IDesktopService desktop, IUiDispatcher dispatcher,
         CommandCenterViewModel command, SystemViewModel system, GamingViewModel gaming,
@@ -35,47 +37,125 @@ public partial class MainViewModel : ObservableObject, IDisposable
         CommandPaletteViewModel palette, ReadinessViewModel readiness, MemoryViewModel memory, ProjectViewModel projects, TaskViewModel tasks,
         DiagnosticViewModel diagnostics)
     {
-        this.engine = engine; this.desktop = desktop; this.dispatcher = dispatcher; Voice = voice; Palette = palette; Readiness = readiness; commandCenter = command;
-        Palette.Chosen += PaletteChosen; Readiness.OpenSectionRequested += Navigate; commandCenter.NavigationRequested += Navigate;
-        NavItems =
-        [
-            new NavItem("command", "⌘", "Centrum", command),
-            new NavItem("memory", "▤", "Pamięć", memory),
-            new NavItem("projects", "▣", "Projekty", projects),
-            new NavItem("settings", "⚙", "Ustawienia", settings)
-        ];
-        SelectedItem = NavItems[0]; Readiness.IsOpen = command.Messages.Count == 0; engine.Changed += Sync; desktop.StatusChanged += DesktopChanged;
-        // Referenced so DI keeps constructing the cached page VMs (they live inside Centrum's tabs now).
-        _ = system; _ = gaming; _ = ai; _ = actions; _ = history; _ = tasks; _ = diagnostics;
+        this.engine = engine;
+        this.desktop = desktop;
+        this.dispatcher = dispatcher;
+        commandCenter = command;
+        Voice = voice;
+        Palette = palette;
+        Readiness = readiness;
+
+        // There is one permanent destination. Tools and settings are contextual panels, never top-level tabs.
+        NavItems = [new NavItem("command", "◉", "Sentinel Core", command)];
+        CurrentPage = command;
+        SelectedItem = NavItems[0];
+        Readiness.IsOpen = false;
+
+        panels = new Dictionary<string, (string, object)>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["settings"] = ("Ustawienia", settings),
+            ["history"] = ("Historia", history),
+            ["memory"] = ("Pamięć lokalna", memory),
+            ["projects"] = ("Projekty", projects),
+            ["tasks"] = ("Przypomnienia", tasks),
+            ["system"] = ("System", system),
+            ["gaming"] = ("Gry", gaming),
+            ["voice"] = ("Głos i mikrofon", voice),
+            ["ai"] = ("Model AI", ai),
+            ["actions"] = ("Aktywność", actions),
+            ["diagnostics"] = ("Diagnostyka", diagnostics)
+        };
+
+        Palette.Chosen += PaletteChosen;
+        Readiness.OpenSectionRequested += Navigate;
+        commandCenter.NavigationRequested += Navigate;
+        engine.Changed += Sync;
+        desktop.StatusChanged += DesktopChanged;
     }
+
     partial void OnSelectedItemChanged(NavItem? value)
     {
-        if (value == null) return;
-        CurrentPage = value.ViewModel;
-        if (value.ViewModel is HistoryViewModel history && !history.RefreshCommand.IsRunning) history.RefreshCommand.Execute(null);
+        if (value != null) CurrentPage = value.ViewModel;
     }
+
     private void Navigate(string key)
     {
-        if (CenterTabByLegacyKey.TryGetValue(key, out string? tab))
+        if (string.Equals(key, "command", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(key, "home", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(key, "rozmowa", StringComparison.OrdinalIgnoreCase))
         {
-            SelectedItem = NavItems[0]; // Centrum
-            commandCenter.SelectTabCommand.Execute(tab);
+            CloseOverlay();
             return;
         }
-        SelectedItem = NavItems.FirstOrDefault(x => x.Key == key) ?? SelectedItem;
+
+        // Accept the short keys used by command/slash routing and map them to the same transient surface.
+        string normalized = key.ToLowerInvariant() switch
+        {
+            "glos" => "voice",
+            "gry" => "gaming",
+            "zadania" => "tasks",
+            "akcje" => "actions",
+            "diagnostyka" => "diagnostics",
+            "historia rozmow" => "history",
+            _ => key
+        };
+        if (!panels.TryGetValue(normalized, out var panel)) return;
+
+        OverlayTitle = panel.Title;
+        OverlayPage = panel.Page;
+        IsOverlayOpen = true;
     }
+
     private void PaletteChosen(Models.PaletteEntry entry)
     {
         if (entry.PageKey != null) Navigate(entry.PageKey);
-        else if (entry.CommandText != null) { Navigate("command"); commandCenter.StageCommand(entry.CommandText); }
+        else if (entry.CommandText != null) { CloseOverlay(); commandCenter.StageCommand(entry.CommandText); }
     }
-    [RelayCommand] private void OpenPalette() { Readiness.IsOpen = false; Palette.Open(); }
-    [RelayCommand] private void OpenReadiness() { Palette.CloseCommand.Execute(null); Readiness.IsOpen = true; }
+
+    [RelayCommand]
+    private void OpenSettings() => Navigate("settings");
+
+    [RelayCommand]
+    private void OpenHistory() => Navigate("history");
+
+    [RelayCommand]
+    private void CloseOverlay()
+    {
+        IsOverlayOpen = false;
+        OverlayPage = null;
+        OverlayTitle = "";
+    }
+
+    [RelayCommand]
+    private void OpenPalette()
+    {
+        CloseOverlay();
+        Readiness.IsOpen = false;
+        Palette.Open();
+    }
+
+    [RelayCommand]
+    private void OpenReadiness()
+    {
+        CloseOverlay();
+        Palette.CloseCommand.Execute(null);
+        Readiness.IsOpen = true;
+    }
+
     [RelayCommand] private Task InitializeAsync() => Readiness.RefreshCommand.ExecuteAsync(null);
     private void Sync() => dispatcher.Post(() => IsStopped = engine.IsStopped);
     private void DesktopChanged() => dispatcher.Post(() => DesktopStatus = desktop.Status);
     [RelayCommand] private void EmergencyStop() => engine.EmergencyStop();
     [RelayCommand] private void Resume() => engine.Resume();
     [RelayCommand] private void Exit() => desktop.Exit();
-    public void Dispose() { engine.Changed -= Sync; desktop.StatusChanged -= DesktopChanged; Palette.Chosen -= PaletteChosen; Readiness.OpenSectionRequested -= Navigate; commandCenter.NavigationRequested -= Navigate; Readiness.RefreshCommand.Cancel(); }
+
+    public void Dispose()
+    {
+        engine.Changed -= Sync;
+        desktop.StatusChanged -= DesktopChanged;
+        Palette.Chosen -= PaletteChosen;
+        Readiness.OpenSectionRequested -= Navigate;
+        commandCenter.NavigationRequested -= Navigate;
+        Readiness.RefreshCommand.Cancel();
+    }
 }

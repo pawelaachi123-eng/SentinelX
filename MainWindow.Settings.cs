@@ -39,6 +39,7 @@ public partial class MainWindow
     }
     private void CopyMessage_Click(object sender, RoutedEventArgs e)
     {
+        if (!memory.ExternalNetworkAllowed) { StatusText.Text = "Tryb tylko lokalnie zablokował przekazanie tekstu do schowka Windows/innych aplikacji."; return; }
         try { if (sender is Button { Tag: string text }) { Clipboard.SetText(text); StatusText.Text = "Skopiowano odpowiedź."; } }
         catch (Exception ex) { StatusText.Text = "Schowek jest chwilowo niedostępny."; AppLog.Write(ex); }
     }

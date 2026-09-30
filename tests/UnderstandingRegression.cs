@@ -102,6 +102,7 @@ internal static class UnderstandingRegression
         Check(IntentCatalog.Phrases.Count >= 180, "the catalogue must cover the real command surface, got " + IntentCatalog.Phrases.Count);
         Check(IntentCatalog.Phrases.All(x => x.Length > 1 && x == x.Trim() && !x.Contains("  ")), "phrases must be clean normalized text");
         Check(IntentCatalog.Vocabulary.Contains("kalkulator") && IntentCatalog.Vocabulary.Contains("ramu"), "vocabulary must contain the repair targets");
+        Check(IntentCatalog.Phrases.Contains("wznow ostatni cel") && IntentCatalog.Phrases.Contains("kontynuuj przerwane zadanie"), "safe interrupted-goal resume phrases must be repairable");
         Check(!IntentCatalog.Phrases.Contains("szukaj"), "a bare search stem must not be repairable into a web search");
         return Task.CompletedTask;
     }

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -9,6 +9,9 @@ namespace SentinelX
 {
     public sealed class ProcessToolService
     {
+        private readonly Func<bool> externalNetworkAllowed;
+        public ProcessToolService(Func<bool>? externalNetworkAllowed = null) => this.externalNetworkAllowed = externalNetworkAllowed ?? (() => true);
+
         private static readonly Dictionary<string, string[]> AllowedApps =
             new Dictionary<string, string[]>(
                 StringComparer.OrdinalIgnoreCase)
@@ -130,11 +133,33 @@ namespace SentinelX
         }
 
 
+        /// <summary>Read-only detection of visible GUI processes that currently do not respond.</summary>
+        public IReadOnlyList<(string Name, int ProcessId)> GetUnresponsiveApps(int limit = 10)
+        {
+            var result = new List<(string Name, int ProcessId)>();
+            foreach (Process process in Process.GetProcesses())
+            {
+                try
+                {
+                    if (process.MainWindowHandle != IntPtr.Zero && !process.Responding)
+                        result.Add((process.ProcessName, process.Id));
+                }
+                catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or NotSupportedException) { }
+                finally { process.Dispose(); }
+                if (result.Count >= Math.Clamp(limit, 1, 50)) break;
+            }
+            return result;
+        }
+
+        public bool CanCloseSafely(string target) => AllowedApps.ContainsKey(AppLauncherService.CanonicalizeLaunchTarget(target));
+
         public async Task<ActionExecutionResult>
             CloseAppAsync(
                 string target, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            if (!externalNetworkAllowed())
+                return ActionExecutionResult.Failure("Tryb tylko lokalnie zablokował sterowanie zamykaniem innej aplikacji.", "Nie wysłano żądania zamknięcia procesu.");
             string normalized = AppLauncherService.CanonicalizeLaunchTarget(target);
 
 

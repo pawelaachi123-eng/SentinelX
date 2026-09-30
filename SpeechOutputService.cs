@@ -11,6 +11,7 @@ public sealed class SpeechOutputService : IDisposable
     public string Status { get; private set; } = "Brak głosu syntezy Windows.";
     public bool Available => synthesizer != null && Voices.Count > 0;
     public bool IsSpeaking => activePrompt != null;
+    public event Action? Started;
     public event Action? Completed;
     public event Action<string>? Failed;
     public SpeechOutputService()
@@ -47,7 +48,9 @@ public sealed class SpeechOutputService : IDisposable
             text = text.Replace("**", "").Replace("`", "");
             if (text.Length > 360) text = text[..360] + ". Dalsze szczegóły są w oknie.";
             if (string.IsNullOrWhiteSpace(text)) { Completed?.Invoke(); return; }
-            activePrompt = new Prompt(text); synthesizer.SpeakAsync(activePrompt);
+            activePrompt = new Prompt(text);
+            synthesizer.SpeakAsync(activePrompt);
+            Started?.Invoke();
         }
         catch (Exception ex) { activePrompt = null; Failed?.Invoke("Nie udało się odczytać odpowiedzi: " + ex.Message); }
     }

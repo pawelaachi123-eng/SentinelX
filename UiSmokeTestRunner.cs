@@ -3,6 +3,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Threading;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using Microsoft.Extensions.DependencyInjection;
 using SentinelX.Services.Actions;
@@ -18,6 +19,10 @@ public static class UiSmokeTestRunner
         bitmap.Render(shell); var png = new PngBitmapEncoder(); png.Frames.Add(BitmapFrame.Create(bitmap));
         using var stream = File.Create(path); png.Save(stream);
     }
+
+    private static void RecordProgress(string output, string stage) =>
+        File.AppendAllText(Path.Combine(output, "ui-smoke-progress.log"),
+            $"{DateTimeOffset.UtcNow:O} {stage}{Environment.NewLine}");
     public static async Task RunAsync(IServiceProvider services, Window shell, string output)
     {
         Directory.CreateDirectory(output);
@@ -27,18 +32,32 @@ public static class UiSmokeTestRunner
         PresentationTraceSources.DataBindingSource.Switch.Level = SourceLevels.Error;
         try
         {
+            RecordProgress(output, "started regression suites");
             await Tests.BackendRegression.RunAsync(Path.Combine(output, "backend"));
+            RecordProgress(output, "passed BackendRegression");
             await Tests.ProductRegression.RunAsync(Path.Combine(output, "product"));
+            RecordProgress(output, "passed ProductRegression");
             await Tests.ReleaseRegression.RunAsync(Path.Combine(output, "release"));
+            RecordProgress(output, "passed ReleaseRegression");
             await Tests.MemoryRegression.RunAsync(Path.Combine(output, "memory"));
+            RecordProgress(output, "passed MemoryRegression");
             await Tests.ProjectRegression.RunAsync(Path.Combine(output, "projects"));
+            RecordProgress(output, "passed ProjectRegression");
             await Tests.TaskRegression.RunAsync(Path.Combine(output, "tasks"));
+            RecordProgress(output, "passed TaskRegression");
             await Tests.DiagnosticSnapshotRegression.RunAsync(Path.Combine(output, "snapshots"));
+            RecordProgress(output, "passed DiagnosticSnapshotRegression");
             await Tests.AiStreamRegression.RunAsync(Path.Combine(output, "ai-stream"));
+            RecordProgress(output, "passed AiStreamRegression");
             await Tests.UnderstandingRegression.RunAsync(Path.Combine(output, "understanding"));
+            RecordProgress(output, "passed UnderstandingRegression");
             await Tests.UtilityRegression.RunAsync(Path.Combine(output, "utility"));
+            RecordProgress(output, "passed UtilityRegression");
             await Tests.FileCleanupRegression.RunAsync(Path.Combine(output, "file-cleanup"));
+            RecordProgress(output, "passed FileCleanupRegression");
             await Tests.MemoryArchiveRegression.RunAsync(Path.Combine(output, "archives"));
+            RecordProgress(output, "passed MemoryArchiveRegression");
+            RecordProgress(output, "started live UI assertions");
             var vm = services.GetRequiredService<MainViewModel>();
             vm.Readiness.IsOpen = false;
             if (vm.InitializeCommand.IsRunning) await vm.InitializeCommand.ExecutionTask!;
@@ -293,7 +312,25 @@ public static class UiSmokeTestRunner
             await shell.Dispatcher.InvokeAsync(shell.UpdateLayout, DispatcherPriority.ContextIdle);
             Capture(shell, Path.Combine(output, "palette.png"));
             vm.Palette.ChooseCommand.Execute(null);
-            if (vm.SelectedItem?.Key != "settings") throw new InvalidOperationException("Palette navigation not wired.");
+            if (!vm.IsOverlayOpen || vm.OverlayPage is not SettingsViewModel || vm.OverlayTitle != "Ustawienia")
+                throw new InvalidOperationException("Palette must open settings as a transient panel over the Sentinel Core.");
+            await shell.Dispatcher.InvokeAsync(shell.UpdateLayout, DispatcherPriority.ContextIdle);
+            vm.CloseOverlayCommand.Execute(null);
+            chat.UserInput = "Pokaż historię";
+            await chat.SendMessageCommand.ExecuteAsync(null);
+            if (!vm.IsOverlayOpen || vm.OverlayPage is not HistoryViewModel)
+                throw new InvalidOperationException("‘Pokaż historię’ must open the local history panel.");
+            vm.CloseOverlayCommand.Execute(null);
+            chat.UserInput = "/rozmowy historia";
+            await chat.SendMessageCommand.ExecuteAsync(null);
+            if (!vm.IsOverlayOpen || vm.OverlayPage is not HistoryViewModel)
+                throw new InvalidOperationException("/rozmowy historia must open the local history panel.");
+            vm.CloseOverlayCommand.Execute(null);
+            chat.UserInput = "Pokaż ostatnią rozmowę";
+            await chat.SendMessageCommand.ExecuteAsync(null);
+            if (!vm.IsOverlayOpen || vm.OverlayPage is not HistoryViewModel)
+                throw new InvalidOperationException("‘Pokaż ostatnią rozmowę’ must open the conversation history panel.");
+            vm.CloseOverlayCommand.Execute(null);
             vm.OpenPaletteCommand.Execute(null); vm.Palette.Query = "użycie CPU";
             vm.Palette.ChooseCommand.Execute(null);
             if (chat.UserInput != "użycie CPU") throw new InvalidOperationException("Palette must stage a command.");
@@ -317,7 +354,9 @@ public static class UiSmokeTestRunner
             vm.OpenReadinessCommand.Execute(null);
             await vm.Readiness.RefreshCommand.ExecuteAsync(null);
             await shell.Dispatcher.InvokeAsync(shell.UpdateLayout, DispatcherPriority.ContextIdle);
-            if (vm.Readiness.Checks.Count != 4) throw new InvalidOperationException("Readiness cards not populated.");
+            if (vm.Readiness.Checks.Count < 4 || !vm.Readiness.Checks.Any(x => x.Key == "ollama") ||
+                !vm.Readiness.Checks.Any(x => x.Key == "memory") || !vm.Readiness.Checks.Any(x => x.Key == "tasks"))
+                throw new InvalidOperationException("Readiness cards not populated for the registered modules.");
             Capture(shell, Path.Combine(output, "readiness.png"));
             vm.Readiness.CloseCommand.Execute(null);
             foreach (string theme in new[] { "Deep Dark", "System", "Dark" })
@@ -326,6 +365,44 @@ public static class UiSmokeTestRunner
                 store.Settings.Ui.Theme = theme; store.Save();
                 shell.UpdateLayout();
             }
+            // 0.93 · NOWOCZESNE GUI: asercje warstwy wizualnej.
+            // Motyw po zastosowaniu musi dalej zawierać komplet tokenów koloru,
+            // a tokeny układu i animacje muszą być osiągalne z App.Resources.
+            string[] tokenColors = ["SxBackgroundColor", "SxSurfaceColor", "SxSurfaceSunkenColor", "SxSurfaceActiveColor",
+                "SxTextPrimaryColor", "SxTextSecondaryColor", "SxTextMutedColor", "SxAccentCyanColor", "SxAccentVioletColor",
+                "SxAccentTealColor", "SxAccentLimeColor", "SxAccentPinkColor", "SxAccentBlueColor", "SxSuccessColor", "SxWarningColor",
+                "SxErrorColor", "SxBorderColor", "SxBorderSubtleColor", "SxBorderStrongColor", "SxScrimColor", "SxOverlayBgColor"];
+            foreach (string token in tokenColors)
+                if (Application.Current.TryFindResource(token) is not Color) throw new InvalidOperationException("Theme token missing after theme switch: " + token);
+            string[] tokenLayout = ["SxRadiusXs", "SxRadiusSm", "SxRadiusMd", "SxRadiusLg", "SxRadiusCircle", "SxRadiusModalTop",
+                "SxRadiusCardEdge", "SxSpaceXs", "SxSpaceSm", "SxSpaceMd", "SxSpaceLg", "SxSpaceXl", "SxSpaceCard", "SxSpacePage",
+                "SxHairlineThickness", "SxEdgeThickness"];
+            foreach (string token in tokenLayout)
+                if (Application.Current.TryFindResource(token) is not (CornerRadius or Thickness)) throw new InvalidOperationException("Layout token missing: " + token);
+            string[] tokenStyles = ["SxPrimaryButton", "SxSecondaryButton", "SxDangerButton", "SxGhostButton", "SxChipButton", "SxPillButton",
+                "SxNavTile", "SxSidebarItem", "SxListItem", "SxTabItem", "SxIconChip", "SxIconChipAccent", "SxPageWash", "SxCard",
+                "SxCardElevated", "SxCardInteractive", "SxMetricCard", "SxAccentCard", "SxPanelSunken", "SxModalCard", "SxBadge",
+                "SxBadgeAccent", "SxBadgeSuccess", "SxBadgeWarning", "SxBadgeError", "SxBadgeInfo", "SxEmptyState", "SxHeaderAccentBar",
+                "SxDivider", "SxDividerAccent", "SxTextBox", "SxProgressBar", "SxProgressBarSlim", "SxStatusDot", "SxShimmerBar",
+                "SxBubbleAssistant", "SxBubbleUser", "SxBubbleStreaming", "SxGradientTitle", "SxEyebrow", "SxMetricValue", "SxMono"];
+            foreach (string token in tokenStyles)
+                if (Application.Current.TryFindResource(token) is not Style) throw new InvalidOperationException("Design token style missing: " + token);
+            foreach (string token in new[] { "ReadinessBrush", "StatusBrush", "VoiceBrush", "RiskBrush", "BoolToVisibility", "StringNotEmptyToVisibility", "SafePercent", "FiniteToVisibility" })
+                if (Application.Current.TryFindResource(token) is not System.Windows.Data.IValueConverter) throw new InvalidOperationException("Converter missing: " + token);
+            string[] tokenBoards = ["SxPageIn", "SxModalIn", "SxScrimIn", "SxFadeIn", "SxFadeOut", "SxHoverIn", "SxHoverOut", "SxPressIn",
+                "SxPressOut", "SxGlowIn", "SxGlowOut", "SxSheenIn", "SxLiftIn", "SxLiftOut", "SxNavBarGrow", "SxNavBarShrink", "SxLineGrow",
+                "SxLineShrink", "SxPulse", "SxPulseSoft", "SxBreathe", "SxShimmerSlide", "SxStripeSlide", "SxAuroraDriftA", "SxAuroraDriftB", "SxAuroraDriftC", "SxFadeSlideIn"];
+            foreach (string token in tokenBoards)
+                if (Application.Current.TryFindResource(token) is not Storyboard) throw new InvalidOperationException("Animation storyboard missing: " + token);
+            if (Application.Current.TryFindResource("SxAnimationsEnabled") is not bool) throw new InvalidOperationException("Animation gate token missing.");
+            string[] tokenBrushes = ["SxAccentGradient", "SxVioletPinkGradient", "SxTealLimeGradient", "SxBlueCyanGradient",
+                "SxDangerGradient", "SxSuccessGradient", "SxWarningGradient", "SxShimmerGradient", "SxRevealBrush",
+                "SxAuroraCyanBrush", "SxAuroraVioletBrush", "SxAuroraPinkBrush"];
+            foreach (string token in tokenBrushes)
+                if (Application.Current.TryFindResource(token) is not Brush) throw new InvalidOperationException("Gradient token missing: " + token);
+            foreach (string token in new[] { "SxShadowSoft", "SxShadowRaised", "SxShadowModal", "SxGlowAccent" })
+                if (Application.Current.TryFindResource(token) is not System.Windows.Media.Effects.Effect) throw new InvalidOperationException("Effect token missing: " + token);
+
             services.GetRequiredService<Services.Desktop.IDesktopService>().ToggleOverlay();
             await shell.Dispatcher.InvokeAsync(shell.UpdateLayout, DispatcherPriority.ContextIdle);
             services.GetRequiredService<Services.Desktop.IDesktopService>().ToggleOverlay();
@@ -340,7 +417,7 @@ public static class UiSmokeTestRunner
             string errors = buffer.ToString();
             File.WriteAllText(Path.Combine(output, "bindings.log"), errors);
             if (errors.Length != 0) throw new InvalidOperationException("WPF binding errors: " + errors);
-            File.WriteAllText(Path.Combine(output, "ui-smoke.txt"), "PASS\nPages: " + string.Join(", ", visited) + "\nCentrum tabs, // palette and voice default verified\nDark/DeepDark/System themes rendered\nSTOP/Resume/voice approval passed\nPalette, readiness, draft preservation and execution-scoped evidence passed\nTypo repair, grey-zone questions, lessons, self-check, offline tools, archives, insights and unified search passed\n");
+            File.WriteAllText(Path.Combine(output, "ui-smoke.txt"), "PASS\nPages: " + string.Join(", ", visited) + "\nSentinel Core shell, contextual settings panel, // palette and voice default verified\nDark/DeepDark/System themes rendered\nSTOP/Resume/voice approval passed\nPalette, readiness, draft preservation and execution-scoped evidence passed\nTypo repair, grey-zone questions, lessons, self-check, offline tools, archives, insights and unified search passed\n");
         }
         finally { PresentationTraceSources.DataBindingSource.Listeners.Remove(listener); }
     }

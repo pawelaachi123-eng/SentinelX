@@ -7,10 +7,10 @@ using SentinelX.Models;
 using SentinelX.Services.Actions;
 using SentinelX.Services.History;
 using SentinelX.Services.Voice;
+using SentinelX.Services.Settings;
 namespace SentinelX.ViewModels;
 
-/// <summary>One tab of the Centrum hub: an emoji icon (no text label, per the 0.91 design),
-/// a tooltip and the page view-model shown when the icon is selected.</summary>
+/// <summary>Legacy feature-page metadata retained for command routing and compatibility; the active shell opens these as transient panels.</summary>
 public sealed record CenterTab(string Key, string Icon, string Label, object ViewModel);
 
 /// <summary>One row of the „//” palette above the chat input.</summary>
@@ -26,7 +26,7 @@ public partial class CommandCenterViewModel : ObservableObject, IDisposable
     private readonly TaskService tasks;
     public SystemViewModel System { get; }
     public VoiceViewModel Voice { get; }
-    /// <summary>Raised when a slash entry needs a top-level page (e.g. Ustawienia); MainViewModel routes it.</summary>
+    /// <summary>Raised when a selected command needs a transient context panel; MainViewModel routes it.</summary>
     public event Action<string>? NavigationRequested;
     public ObservableCollection<ConversationMessage> Messages { get; } = [];
     [ObservableProperty] private int inputFocusVersion;
@@ -39,18 +39,36 @@ public partial class CommandCenterViewModel : ObservableObject, IDisposable
     [ObservableProperty] private string status = "Lokalny asystent · gotowy na polecenie";
     [ObservableProperty] private string conversationTitle = "";
     [ObservableProperty] private bool isPrivateMode;
+    [ObservableProperty] private bool externalNetworkBlocked = true;
+    [ObservableProperty] private bool externalNetworkAllowed;
+    public bool IsPrivateOnline => IsPrivateMode && ExternalNetworkAllowed;
+    partial void OnIsPrivateModeChanged(bool value) => OnPropertyChanged(nameof(IsPrivateOnline));
+    partial void OnExternalNetworkAllowedChanged(bool value) => OnPropertyChanged(nameof(IsPrivateOnline));
     [ObservableProperty] private bool isStreaming;
     [ObservableProperty] private string streamingText = "";
     [ObservableProperty] private bool slashOpen;
     [ObservableProperty] private int slashIndex;
     [ObservableProperty] private IReadOnlyList<SlashItem> slashItems = [];
     [ObservableProperty] private bool voiceActive;
+    [ObservableProperty] private string coreState = "IDLE";
+    [ObservableProperty] private string coreActivity = "";
+    [ObservableProperty] private string coreDetail = "";
+    [ObservableProperty] private double coreAudioLevel;
+    [ObservableProperty] private bool hasCoreCard;
     private readonly StringBuilder pendingChunks = new();
     private readonly object streamGate = new();
     private bool streamPending;
     private string lastUserInput = "";
+    private string? lastErrorActionId;
+    private DateTime errorPulseUntil = DateTime.MinValue;
+    private readonly AutopilotService? autopilot;
+    private readonly ISettingsService? settings;
+    private string watcherNotice = "";
+    private DateTimeOffset watcherNoticeUntil;
+    private long watcherNoticeSequence;
+    private string autopilotProgress = "";
 
-    /// <summary>Centrum tabs: chat plus every panel that used to be a top-level page. Icons only.</summary>
+    /// <summary>Cached feature surfaces; the active Sentinel Core shell does not render this collection as tabs.</summary>
     public IReadOnlyList<CenterTab> Sections { get; }
     [ObservableProperty] private CenterTab? selectedTab;
     public bool IsChatTab => SelectedTab?.Key == "rozmowa";
@@ -71,9 +89,9 @@ public partial class CommandCenterViewModel : ObservableObject, IDisposable
         SystemViewModel system, VoiceViewModel voiceViewModel, IHistoryService history, ConversationMemoryService memory, TaskService tasks,
         TaskViewModel taskPage, HistoryViewModel historyPage, GamingViewModel gamingPage, AiViewModel aiPage,
         ActionsViewModel actionsPage, DiagnosticViewModel diagnosticsPage,
-        MemoryArchiveService? archives = null)
+        MemoryArchiveService? archives = null, AutopilotService? autopilot = null, ISettingsService? settings = null)
     {
-        this.engine = engine; this.voice = voice; this.dispatcher = dispatcher; this.history = history; this.memory = memory; this.tasks = tasks; System = system; Voice = voiceViewModel;
+        this.engine = engine; this.voice = voice; this.dispatcher = dispatcher; this.history = history; this.memory = memory; this.tasks = tasks; this.autopilot = autopilot; this.settings = settings; System = system; Voice = voiceViewModel;
         Sections =
         [
             new CenterTab("rozmowa", "💬", "Rozmowa", this),
@@ -88,13 +106,21 @@ public partial class CommandCenterViewModel : ObservableObject, IDisposable
         ];
         SelectedTab = Sections[0];
         VoiceActive = Voice.State != VoiceState.Off;
-        Voice.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(Voice.State)) VoiceActive = Voice.State != VoiceState.Off; };
+        Voice.PropertyChanged += VoiceChanged;
+        RefreshCorePresentation();
         foreach (var entry in history.ReadConversation().TakeLast(100)) Messages.Add(new(entry.Role, entry.Text, entry.Timestamp));
         ConversationTitle = memory.ActiveConversationTitle; IsPrivateMode = memory.PrivateMode;
+        RefreshExternalNetworkStatus();
         if (!memory.PrivateMode && memory.GetDraft().Length > 0) UserInput = memory.GetDraft();
         engine.Changed += Sync; voice.CommandRecognized += Recognized;
         memory.Changed += MemorySync; memory.SessionChanged += SessionSync;
+        if (settings != null) settings.Changed += SettingsChanged;
         tasks.ReminderFired += ReminderFired;
+        if (autopilot != null)
+        {
+            autopilot.NoticeRaised += WatcherNoticeReceived;
+            autopilot.ProgressRaised += AutopilotProgressReceived;
+        }
         foreach (var archived in archives?.ArchiveDue() ?? [])
             Messages.Add(new("assistant", $"📦 Rozmowy z {archived.Month} przeniesione do archiwum ({archived.Conversations} rozmów, {archived.Turns} wypowiedzi) i usunięte z aktywnego magazynu. Folder: {archived.JsonPath}. Wspomnienia są nietknięte. Polecenie „archiwa” pokazuje listę.", DateTime.Now));
         var missed = tasks.CheckDue(atStartup: true);
@@ -104,17 +130,172 @@ public partial class CommandCenterViewModel : ObservableObject, IDisposable
                 : $"⏰ Przegapione przypomnienia (aplikacja była zamknięta), najnowsze: {missed[^1].Text}. Pełna lista: panel Zadania. Terminy: {string.Join(", ", missed.Take(3).Select(x => x.RemindAt.ToString("dd.MM HH:mm")))}.", DateTime.Now));
     }
     private void ReminderFired(string line) => dispatcher.Post(() => Messages.Add(new("assistant", line + " (przypomnienie działa tylko, gdy aplikacja jest uruchomiona)", DateTime.Now)));
+
+    private void AutopilotProgressReceived(string step) => dispatcher.Post(() =>
+    {
+        autopilotProgress = step;
+        RefreshCorePresentation();
+    });
+
+    private void WatcherNoticeReceived(string notice) => dispatcher.Post(() =>
+    {
+        watcherNotice = notice;
+        watcherNoticeUntil = DateTimeOffset.Now.AddSeconds(20);
+        long sequence = ++watcherNoticeSequence;
+        RefreshCorePresentation();
+        _ = ClearWatcherNoticeAsync(sequence);
+    });
+
+    private async Task ClearWatcherNoticeAsync(long sequence)
+    {
+        await Task.Delay(TimeSpan.FromSeconds(20)).ConfigureAwait(false);
+        dispatcher.Post(() =>
+        {
+            if (sequence != watcherNoticeSequence) return;
+            watcherNotice = "";
+            watcherNoticeUntil = DateTimeOffset.MinValue;
+            RefreshCorePresentation();
+        });
+    }
+
+    private void VoiceChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e) => dispatcher.Post(() =>
+    {
+        VoiceActive = Voice.State != VoiceState.Off;
+        RefreshCorePresentation();
+    });
+
+    partial void OnIsBusyChanged(bool value) => RefreshCorePresentation();
+    partial void OnIsStoppedChanged(bool value) => RefreshCorePresentation();
+    partial void OnHasPermissionChanged(bool value) => RefreshCorePresentation();
+    partial void OnIsStreamingChanged(bool value) => RefreshCorePresentation();
+    partial void OnCurrentActionChanged(ActionRecord? value) => RefreshCorePresentation();
+    partial void OnPermissionSummaryChanged(string value) => RefreshCorePresentation();
+
+    private void RefreshCorePresentation()
+    {
+        // The loopback RMS is sampled from the actual output device while SAPI is speaking;
+        // otherwise the enhanced microphone RMS drives the listening visualization.
+        double liveAudio = Voice.IsSpeaking ? Voice.Metrics.Playback : Voice.Metrics.Enhanced;
+        CoreAudioLevel = Math.Clamp(liveAudio / 100d, 0d, 1d);
+        bool recentFailure = CurrentAction?.Status == ActionStatus.Failed && DateTime.UtcNow < errorPulseUntil;
+        bool voiceStarting = Voice.State == VoiceState.Off &&
+            (Voice.Status.StartsWith("Ładowanie", StringComparison.OrdinalIgnoreCase)
+             || Voice.Status.StartsWith("Pobieranie", StringComparison.OrdinalIgnoreCase));
+        bool voiceUnavailable = Voice.State == VoiceState.Off && !voiceStarting
+            && !string.Equals(Voice.Status, "Mikrofon wyłączony", StringComparison.Ordinal);
+        if (IsStopped)
+        {
+            CoreState = "ERROR";
+            CoreActivity = "Sentinel zatrzymany";
+            CoreDetail = "Użyj Wznów, aby ponownie zezwolić na akcje.";
+        }
+        else if (Voice.IsSpeaking)
+        {
+            CoreState = "SPEAKING";
+            CoreActivity = "Sentinel odpowiada głosem";
+            CoreDetail = "";
+        }
+        else if (recentFailure)
+        {
+            CoreState = "ERROR";
+            CoreActivity = "Ostatnie zadanie nie powiodło się";
+            CoreDetail = CurrentAction?.Error ?? CurrentAction?.Evidence ?? "Szczegóły są dostępne w historii.";
+        }
+        else if (voiceUnavailable)
+        {
+            CoreState = "ERROR";
+            CoreActivity = "Mikrofon niedostępny";
+            CoreDetail = Voice.Status;
+        }
+        else if (HasPermission)
+        {
+            CoreState = "WORKING";
+            CoreActivity = "Wymaga Twojej zgody";
+            CoreDetail = PermissionSummary;
+        }
+        else if (IsBusy)
+        {
+            bool readingScreen = IsScreenAwarenessRequest(CurrentAction?.UserRequest ?? "");
+            if (autopilotProgress.Length > 0)
+            {
+                CoreState = "WORKING";
+                CoreActivity = "Autopilot · " + autopilotProgress;
+                CoreDetail = "Zbieram lokalne dowody; bez zmian w systemie.";
+            }
+            else
+            {
+                CoreState = IsStreaming ? "THINKING" : "WORKING";
+                CoreActivity = readingScreen
+                    ? (IsStreaming ? "Wyjaśniam treść aktywnego okna" : "Odczytuję tekst aktywnego okna")
+                    : (IsStreaming ? "Przygotowuję odpowiedź" : "Wykonuję zadanie");
+                CoreDetail = readingScreen
+                    ? "Odczyt ograniczony do tekstu udostępnionego przez UI Automation."
+                    : CurrentAction?.UserRequest ?? CurrentAction?.Phase ?? "";
+            }
+        }
+        else if (watcherNotice.Length > 0 && DateTimeOffset.Now < watcherNoticeUntil)
+        {
+            CoreState = "WORKING";
+            CoreActivity = "Watcher — powiadomienie";
+            CoreDetail = watcherNotice;
+        }
+        else if (voiceStarting)
+        {
+            CoreState = "WORKING";
+            CoreActivity = Voice.Status;
+            CoreDetail = "";
+        }
+        else if (Voice.State != VoiceState.Off)
+        {
+            CoreState = "LISTENING";
+            CoreActivity = "Nasłuchuje";
+            CoreDetail = Voice.Status;
+        }
+        else
+        {
+            CoreState = "IDLE";
+            CoreActivity = "";
+            CoreDetail = "";
+        }
+        HasCoreCard = IsBusy || HasPermission || IsStopped || recentFailure || voiceStarting || voiceUnavailable ||
+            (watcherNotice.Length > 0 && DateTimeOffset.Now < watcherNoticeUntil);
+    }
+
     private void Sync() => dispatcher.Post(() =>
     {
-        CurrentAction = engine.CurrentAction; IsBusy = engine.IsBusy; IsStopped = engine.IsStopped;
+        CurrentAction = engine.CurrentAction;
+        if (CurrentAction is { Status: ActionStatus.Failed } failed && failed.ActionId != lastErrorActionId)
+        {
+            lastErrorActionId = failed.ActionId;
+            errorPulseUntil = DateTime.UtcNow.AddSeconds(4);
+            _ = ClearErrorPulseAsync(failed.ActionId);
+        }
+        IsBusy = engine.IsBusy; IsStopped = engine.IsStopped;
         HasPermission = engine.HasPendingPermission; PermissionSummary = engine.PermissionSummary;
+        RefreshCorePresentation();
     });
-    private void MemorySync() => dispatcher.Post(() => { ConversationTitle = memory.ActiveConversationTitle; IsPrivateMode = memory.PrivateMode; });
+
+    private async Task ClearErrorPulseAsync(string actionId)
+    {
+        await Task.Delay(TimeSpan.FromSeconds(4)).ConfigureAwait(false);
+        dispatcher.Post(() =>
+        {
+            if (lastErrorActionId == actionId) RefreshCorePresentation();
+        });
+    }
+    private void MemorySync() => dispatcher.Post(() => { ConversationTitle = memory.ActiveConversationTitle; IsPrivateMode = memory.PrivateMode; RefreshExternalNetworkStatus(); });
+    private void SettingsChanged() => dispatcher.Post(RefreshExternalNetworkStatus);
+    private void RefreshExternalNetworkStatus()
+    {
+        ExternalNetworkAllowed = memory.ExternalNetworkAllowed;
+        ExternalNetworkBlocked = !ExternalNetworkAllowed;
+    }
     private void SessionSync() => dispatcher.Post(() =>
     {
         Messages.Clear();
         foreach (var entry in history.ReadConversation().TakeLast(100)) Messages.Add(new(entry.Role, entry.Text, entry.Timestamp));
         ConversationTitle = memory.ActiveConversationTitle;
+        RefreshExternalNetworkStatus();
         Status = "Przełączono rozmowę — kontekst poniżej dotyczy wyłącznie wybranej rozmowy.";
     });
     partial void OnUserInputChanged(string value)
@@ -156,8 +337,7 @@ public partial class CommandCenterViewModel : ObservableObject, IDisposable
         if (UserInput.StartsWith("//", StringComparison.Ordinal)) UserInput = "";
     }
 
-    /// <summary>Executes the highlighted // entry. Commands run through the normal engine path,
-    /// tabs switch inside Centrum, pages raise a navigation event — nothing runs on its own.</summary>
+    /// <summary>Executes the highlighted // entry. Commands use the normal engine path; panels open only after explicit selection.</summary>
     [RelayCommand]
     private async Task SlashChooseAsync()
     {
@@ -242,12 +422,44 @@ public partial class CommandCenterViewModel : ObservableObject, IDisposable
     private void TogglePrivateMode()
     {
         memory.SetPrivateMode(!memory.PrivateMode);
+        RefreshExternalNetworkStatus();
         Status = memory.PrivateMode
-            ? "Tryb prywatny WŁĄCZONY. Treść rozmowy nie jest zapisywana — po restarcie nie będzie czego przywrócić."
+            ? (memory.ExternalNetworkAllowed
+                ? "Tryb prywatny WŁĄCZONY: tekst rozmowy nie jest zapisywany w lokalnej historii/audycie. Funkcje online mogą przekazać temat usługom, które mogą go logować; jawnie zlecone pliki są osobnym lokalnym zapisem."
+                : "Tryb prywatny WŁĄCZONY: tekst rozmowy nie jest zapisywany w lokalnej historii/audycie. Jawnie zlecone pliki są osobnym lokalnym zapisem; Tryb tylko lokalnie blokuje internet Sentinela.")
             : "Tryb prywatny WYŁĄCZONY. Zapis rozmów zgodny z ustawieniami prywatności.";
     }
+    private static bool IsScreenAwarenessRequest(string input)
+    {
+        string normalized = CommandText.Normalize(input).TrimEnd('.', '!', '?', ',');
+        return normalized is "co jest na ekranie" or "co widzisz na ekranie" or "odczytaj ekran"
+            or "przeczytaj ekran" or "pokaz tekst z ekranu" or "co jest w tym oknie" or "opisz to okno"
+            or "pomoz z tym oknem" or "co to za blad" or "wyjasnij ten blad" or "co oznacza ten komunikat"
+            or "wyjasnij ten komunikat" or "jaki komunikat widzisz" or "co jest napisane na ekranie"
+            or "przeczytaj komunikat na ekranie" or "what is on screen" or "what do you see on screen"
+            or "read the screen" or "what is in this window" or "what is this error" or "explain this error"
+            || normalized.EndsWith("na ekranie", StringComparison.Ordinal)
+            || normalized.EndsWith("w oknie", StringComparison.Ordinal);
+    }
+
+    private static bool IsHistoryPanelRequest(string input)
+    {
+        string normalized = CommandText.Normalize(input.Trim().TrimStart('/').Trim());
+        return normalized is "pokaz historie" or "historia" or "historia rozmow" or "rozmowy historia"
+            or "pokaz rozmowy" or "pokaz ostatnia rozmowe" or "ostatnia rozmowa";
+    }
+
     private async Task SubmitAsync(string input, bool fromVoice = false, bool isRetry = false, string? displayText = null)
     {
+        if (IsHistoryPanelRequest(input))
+        {
+            Messages.Add(new("user", displayText ?? input, DateTime.Now));
+            Status = "Otwieram lokalną historię.";
+            NavigationRequested?.Invoke("history");
+            if (fromVoice) voice.Speak("Otwieram lokalną historię.");
+            return;
+        }
+
         lastUserInput = input;
         Messages.Add(new("user", (displayText ?? input) + (isRetry ? "  (ponowione)" : ""), DateTime.Now));
         Status = "Przetwarzanie polecenia…";
@@ -261,9 +473,15 @@ public partial class CommandCenterViewModel : ObservableObject, IDisposable
     }
     public void Dispose()
     {
-        engine.Changed -= Sync; voice.CommandRecognized -= Recognized;
+        engine.Changed -= Sync; voice.CommandRecognized -= Recognized; Voice.PropertyChanged -= VoiceChanged;
         memory.Changed -= MemorySync; memory.SessionChanged -= SessionSync;
+        if (settings != null) settings.Changed -= SettingsChanged;
         tasks.ReminderFired -= ReminderFired;
+        if (autopilot != null)
+        {
+            autopilot.NoticeRaised -= WatcherNoticeReceived;
+            autopilot.ProgressRaised -= AutopilotProgressReceived;
+        }
         lock (streamGate) { pendingChunks.Clear(); streamPending = false; }
         memory.FlushDraft();
     }

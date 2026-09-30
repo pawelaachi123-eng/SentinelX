@@ -11,7 +11,8 @@ namespace SentinelX;
 
 public sealed class VoiceRecognitionService : IDisposable
 {
-    private readonly VoiceModelManager modelManager = new();
+    private readonly VoiceModelManager modelManager;
+    private readonly Func<bool> externalNetworkAllowed;
     private readonly AudioEnhancementService audioEnhancer = new();
     private readonly object audioLock = new();
     private readonly SemaphoreSlim initializeLock = new(1, 1);
@@ -54,9 +55,11 @@ public sealed class VoiceRecognitionService : IDisposable
         public CancellationToken Token => Session.Token;
     }
 
-    public VoiceRecognitionService(Func<VoiceSettings>? settingsProvider = null)
+    public VoiceRecognitionService(Func<VoiceSettings>? settingsProvider = null, Func<bool>? externalNetworkAllowed = null)
     {
         this.settingsProvider = settingsProvider;
+        this.externalNetworkAllowed = externalNetworkAllowed ?? (() => true);
+        modelManager = new VoiceModelManager(() => this.externalNetworkAllowed());
         ApplySettings();
         worker = Task.Run(ProcessQueueAsync);
     }
@@ -69,6 +72,7 @@ public sealed class VoiceRecognitionService : IDisposable
     public float CurrentAudioLevel { get; private set; }
     public float CurrentRawAudioLevel { get; private set; }
     public float CurrentEnhancedRms { get; private set; }
+    public float CurrentPlaybackRms => systemAudioLevel;
     public float CurrentRawPeak { get; private set; }
     public float CurrentEnhancedPeak { get; private set; }
     public float CurrentSnrDb => AudioSignalMath.EstimateSnrDb(CurrentRawAudioLevel, CurrentNoiseFloor);

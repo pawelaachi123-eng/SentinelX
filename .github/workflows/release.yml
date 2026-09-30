@@ -33,7 +33,7 @@ jobs:
       - uses: actions/checkout@v5
       - uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: 9.0.x
+          dotnet-version: 10.0.x
       - name: Portable architecture checks
         run: python scripts/check-architecture.py
       - name: Restore
@@ -43,9 +43,9 @@ jobs:
       - name: MVVM UI smoke (all pages and binding validation)
         shell: pwsh
         run: |
-          $exe = Resolve-Path 'bin/Release/net9.0-windows/SentinelX.exe'
+          $exe = Resolve-Path 'bin/Release/net10.0-windows/SentinelX.exe'
           $output = Join-Path $PWD 'test-results/ui'
-          $p = Start-Process $exe -ArgumentList '--ui-smoke', $output -PassThru
+          $p = Start-Process $exe -ArgumentList "--ui-smoke `"$output`"" -PassThru
           if (-not $p.WaitForExit(120000)) { $p.Kill(); throw 'UI smoke timeout' }
           if ($p.ExitCode -ne 0 -or -not (Test-Path "$output/ui-smoke.txt")) {
             Get-ChildItem $output -Recurse -Include FAILED.txt,errors.log,bindings.log | ForEach-Object {
@@ -58,9 +58,9 @@ jobs:
       - name: Existing regression suite
         shell: pwsh
         run: |
-          $exe = Resolve-Path 'bin/Release/net9.0-windows/SentinelX.exe'
+          $exe = Resolve-Path 'bin/Release/net10.0-windows/SentinelX.exe'
           $output = Join-Path $PWD 'test-results/regression'
-          $p = Start-Process $exe -ArgumentList '--self-test', $output -PassThru
+          $p = Start-Process $exe -ArgumentList "--self-test `"$output`"" -PassThru
           if (-not $p.WaitForExit(300000)) { $p.Kill(); throw 'Regression timeout' }
           if ($p.ExitCode -ne 0) {
             Get-ChildItem $output -Recurse -Include FAILED.txt,errors.log | ForEach-Object {
@@ -78,7 +78,7 @@ jobs:
           if (-not (Test-Path 'bin/portable/coreclr.dll')) { throw 'Missing self-contained .NET runtime' }
           $exe = Resolve-Path 'bin/portable/SentinelX.exe'
           $output = Join-Path $PWD 'test-results/portable'
-          $p = Start-Process $exe -ArgumentList '--ui-smoke', $output -PassThru
+          $p = Start-Process $exe -ArgumentList "--ui-smoke `"$output`"" -PassThru
           if (-not $p.WaitForExit(120000)) { $p.Kill(); throw 'Portable smoke timeout' }
           if ($p.ExitCode -ne 0 -or -not (Test-Path "$output/ui-smoke.txt")) {
             Get-ChildItem $output -Recurse -Include FAILED.txt,errors.log,bindings.log | ForEach-Object {
@@ -109,7 +109,7 @@ jobs:
           @(
             "SENTINEL X $version",
             "commit: $commit",
-            "runtime: .NET 9 Desktop (wbudowany w paczce portable)",
+            "runtime: .NET 10 Desktop (wbudowany w paczce portable)",
             "platforma: Windows 10/11 x64",
             "podpis: BRAK — pliki nie są podpisane cyfrowo, SmartScreen pokaże ostrzeżenie",
             "dane: wszystko zostaje lokalnie w %LocalAppData%\SentinelX (rozmowy, wspomnienia, raporty, archiwa)",
@@ -133,7 +133,7 @@ jobs:
 
             | Plik | Co to jest |
             | --- | --- |
-            | `SentinelX-*-win-x64-portable.zip` | Przenośna wersja: rozpakuj i uruchom `SentinelX.exe`. Zawiera własny runtime .NET 9. |
+            | `SentinelX-*-win-x64-portable.zip` | Przenośna wersja: rozpakuj i uruchom `SentinelX.exe`. Zawiera własny runtime .NET 10. |
             | `SentinelX-*-win-x64-setup.exe` | Instalator per-user (Inno Setup). Nie wymaga uprawnień administratora. |
             | `SHA256SUMS.txt` | Sumy kontrolne wszystkich plików. |
             | `BUILD.txt` | Wersja, commit, platforma, status podpisu. |
@@ -168,7 +168,7 @@ jobs:
             '',
             '| Plik | Co to jest |',
             '| --- | --- |',
-            "| ``SentinelX-$version-win-x64-portable.zip`` | Portable: rozpakuj i uruchom ``SentinelX.exe`` (własny runtime .NET 9). |",
+            "| ``SentinelX-$version-win-x64-portable.zip`` | Portable: rozpakuj i uruchom ``SentinelX.exe`` (własny runtime .NET 10). |",
             "| ``SentinelX-$version-win-x64-setup.exe`` | Instalator per-user (bez uprawnień administratora). |",
             '| ``SHA256SUMS.txt`` / ``BUILD.txt`` | Sumy kontrolne i metryka buildu. |',
             '',

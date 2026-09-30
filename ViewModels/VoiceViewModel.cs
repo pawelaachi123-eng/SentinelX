@@ -15,7 +15,8 @@ public partial class VoiceViewModel : ObservableObject, IDisposable
     [ObservableProperty] private int selectedMicrophone;
     [ObservableProperty] private string status = "Mikrofon wyłączony";
     [ObservableProperty] private VoiceState state;
-    [ObservableProperty] private VoiceMetrics metrics = new(VoiceState.Off, 0, 0, 0, 0, 0, false, "");
+    [ObservableProperty] private bool isSpeaking;
+    [ObservableProperty] private VoiceMetrics metrics = new(VoiceState.Off, 0, 0, 0, 0, 0, 0, false, "");
     public VoiceViewModel(IVoiceService voice, ISettingsService settings, IUiDispatcher dispatcher)
     {
         this.voice = voice; this.settings = settings; this.dispatcher = dispatcher;
@@ -23,7 +24,7 @@ public partial class VoiceViewModel : ObservableObject, IDisposable
         SelectedMicrophone = settings.Current.Voice.SelectedMicrophoneDevice;
         RefreshMicrophones();
     }
-    private void Sync() => dispatcher.Post(() => { State = voice.State; Status = voice.Status; });
+    private void Sync() => dispatcher.Post(() => { State = voice.State; Status = voice.Status; IsSpeaking = voice.IsSpeaking; });
     private void Update(VoiceMetrics value) => dispatcher.Post(() => Metrics = value);
     [RelayCommand] private void RefreshMicrophones()
     {

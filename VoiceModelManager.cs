@@ -41,6 +41,7 @@ namespace SentinelX
         // =========================================================
 
         private readonly HttpClient httpClient;
+        private readonly Func<bool> externalNetworkAllowed;
 
 
         // =========================================================
@@ -87,8 +88,9 @@ namespace SentinelX
         // CONSTRUCTOR
         // =========================================================
 
-        public VoiceModelManager()
+        public VoiceModelManager(Func<bool>? externalNetworkAllowed = null)
         {
+            this.externalNetworkAllowed = externalNetworkAllowed ?? (() => true);
             modelsDirectory =
                 Path.Combine(AppPaths.Root,
                     "Models");
@@ -161,6 +163,8 @@ namespace SentinelX
             }
 
 
+            ThrowIfExternalNetworkBlocked();
+
             status?.Invoke(
                 "Pobieranie Silero VAD...");
 
@@ -212,6 +216,7 @@ namespace SentinelX
         public async Task EnsureWhisperAsync(Action<string>? status = null, CancellationToken cancellationToken = default)
         {
             if (IsWhisperReady()) { status?.Invoke("Whisper Small • gotowy lokalnie"); return; }
+            ThrowIfExternalNetworkBlocked();
             status?.Invoke("Pobieranie Whisper Small (około 488 MB), rozpoznawanie lokalne...");
             await DownloadFileAsync(new Uri("https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin"),
                 WhisperModelPath, status, cancellationToken);
@@ -251,6 +256,7 @@ namespace SentinelX
                     archivePath,
                     10_000_000))
             {
+                ThrowIfExternalNetworkBlocked();
                 TryDeleteFile(
                     archivePath);
 
@@ -724,12 +730,20 @@ namespace SentinelX
                 && IsFileValid(Path.Combine(QwenTokenizerPath, "merges.txt"), 1000);
         }
 
+        private void ThrowIfExternalNetworkBlocked()
+        {
+            if (!externalNetworkAllowed())
+                throw new InvalidOperationException("Tryb tylko lokalnie zablokował pobieranie modelu. Wyłącz blokadę w Settings → Pamięć tylko wtedy, gdy akceptujesz pobranie z Internetu.");
+        }
+
         private async Task DownloadFileAsync(
             Uri url,
             string destination,
             Action<string>? status,
             CancellationToken cancellationToken)
         {
+            if (!externalNetworkAllowed())
+                throw new InvalidOperationException("Tryb tylko lokalnie zablokował pobieranie modelu. Wyłącz blokadę w Settings → Pamięć tylko wtedy, gdy akceptujesz pobranie z Internetu.");
             string temporary =
                 destination +
                 ".download";

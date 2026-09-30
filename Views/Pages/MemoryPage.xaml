@@ -1,140 +1,195 @@
 <UserControl xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:u="clr-namespace:SentinelX.Utilities" x:Class="SentinelX.Views.Pages.MemoryPage" u:PageTransitions.Enabled="True" u:UiInteraction.LoadedCommand="{Binding RefreshDataCommand}">
-    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-        <StackPanel Margin="28">
-            <TextBlock Text="Pamięć" Style="{StaticResource SxHeading}"/>
-            <TextBlock Text="Trwałe wspomnienia, rozmowy i prywatność · wszystko lokalnie, pod Twoją kontrolą" Style="{StaticResource SxCaption}" Margin="0,0,0,24"/>
+    <!-- 0.93 · NOWOCZESNE GUI: wspomnienia jako karty z paskiem kategorii i chipami
+         stanu (przypięte / nieaktualne), rozmowy jako lista z zaznaczeniem, prywatność
+         jako karta ostrzegawcza. Usuwanie pamięci zawsze przez zgodę HIGH w Centrum. -->
+    <Grid ClipToBounds="True">
+        <Border Style="{StaticResource SxPageWash}" Opacity="0.15"/>
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Margin="28,24,28,20">
+                <DockPanel Margin="0,0,0,18">
+                    <Button Content="Odśwież" Command="{Binding RefreshDataCommand}" DockPanel.Dock="Right" Style="{StaticResource SxChipButton}" Margin="12,0,0,0" VerticalAlignment="Top"/>
+                    <StackPanel Orientation="Horizontal">
+                        <Border Style="{StaticResource SxHeaderAccentBar}" Background="{StaticResource SxVioletPinkGradient}"/>
+                        <StackPanel>
+                            <TextBlock Text="WSPOMNIENIA · ROZMOWY · PRYWATNOŚĆ" Style="{StaticResource SxEyebrow}" Foreground="{DynamicResource SxAccentViolet}"/>
+                            <TextBlock Text="Pamięć" Style="{StaticResource SxHeading}" Margin="0"/>
+                            <TextBlock Text="Pamięć lokalna jest pod Twoją kontrolą; briefy z polecenia „naucz się …” znajdziesz w kategorii „umiejętność”, możesz je edytować lub usuwać. Przy włączonych funkcjach online dostawcy zewnętrzni mogą logować zapytania." Style="{StaticResource SxCaption}" Margin="0,6,0,0"/>
+                        </StackPanel>
+                    </StackPanel>
+                </DockPanel>
 
-            <DockPanel Margin="0,0,0,12">
-                <Button Content="Odśwież" Command="{Binding RefreshDataCommand}" DockPanel.Dock="Right" Margin="12,0,0,0"/>
-                <CheckBox Content="Tylko przypięte" IsChecked="{Binding PinnedOnly}" VerticalAlignment="Center" DockPanel.Dock="Right" Margin="12,0,0,0" AutomationProperties.Name="Pokaż tylko przypięte wspomnienia"/>
-                <ComboBox ItemsSource="{Binding FilterOptions}" SelectedItem="{Binding CategoryFilter}" Width="170" DockPanel.Dock="Right" Margin="12,0,0,0" AutomationProperties.Name="Filtr kategorii wspomnień"/>
-                <TextBox Text="{Binding Search, UpdateSourceTrigger=PropertyChanged}" u:InputHint.Text="Szukaj we wspomnieniach…" AutomationProperties.Name="Szukaj we wspomnieniach"/>
-            </DockPanel>
-            <TextBlock Text="{Binding Status}" Style="{StaticResource SxCaption}" Margin="0,0,0,16"/>
-            <TextBlock Text="{Binding ConflictHint}" Foreground="{DynamicResource SxWarning}" TextWrapping="Wrap" FontSize="12" Margin="0,0,0,16"/>
-
-            <Border Style="{StaticResource SxCard}" Margin="0,0,0,16">
-                <StackPanel>
-                    <TextBlock Text="Dodaj wspomnienie" Style="{StaticResource SxSectionTitle}"/>
-                    <TextBox Text="{Binding NewText, UpdateSourceTrigger=PropertyChanged}" u:InputHint.Text="Krótkie, konkretne ustalenie — np. Decyzja: API w wersji 2" TextWrapping="Wrap" MaxHeight="90" VerticalScrollBarVisibility="Auto" Margin="0,12,0,12" AutomationProperties.Name="Treść nowego wspomnienia"/>
+                <Border Style="{StaticResource SxCard}" Padding="16" Margin="0,0,0,14">
                     <DockPanel>
-                        <Button Content="Zapisz wspomnienie" Command="{Binding AddNoteCommand}" Style="{StaticResource SxPrimaryButton}" DockPanel.Dock="Right"/>
-                        <ComboBox ItemsSource="{Binding CategoryOptions}" SelectedItem="{Binding NewCategory}" Width="170" HorizontalAlignment="Left" AutomationProperties.Name="Kategoria nowego wspomnienia"/>
+                        <CheckBox Content="Tylko przypięte" IsChecked="{Binding PinnedOnly}" DockPanel.Dock="Right" VerticalAlignment="Center" Margin="14,0,0,0" AutomationProperties.Name="Pokaż tylko przypięte wspomnienia"/>
+                        <ComboBox ItemsSource="{Binding FilterOptions}" SelectedItem="{Binding CategoryFilter}" Width="170" DockPanel.Dock="Right" Margin="10,0,0,0" AutomationProperties.Name="Filtr kategorii wspomnień"/>
+                        <TextBox Text="{Binding Search, UpdateSourceTrigger=PropertyChanged}" u:InputHint.Text="Szukaj we wspomnieniach…" AutomationProperties.Name="Szukaj we wspomnieniach"/>
                     </DockPanel>
-                </StackPanel>
-            </Border>
+                </Border>
+                <TextBlock Text="{Binding Status}" Style="{StaticResource SxCaption}" Margin="0,0,0,10"/>
+                <TextBlock Text="{Binding ConflictHint}" Foreground="{DynamicResource SxWarning}" TextWrapping="Wrap" FontSize="{StaticResource SxFontCaption}" Margin="0,0,0,16"/>
 
-            <Border Margin="0,0,0,16">
-                <Border.Style>
-                    <Style TargetType="Border" BasedOn="{StaticResource SxCard}">
-                        <Style.Triggers>
-                            <DataTrigger Binding="{Binding SelectedItem}" Value="{x:Null}">
-                                <Setter Property="Visibility" Value="Collapsed"/>
-                            </DataTrigger>
-                        </Style.Triggers>
-                    </Style>
-                </Border.Style>
-                <StackPanel>
-                    <TextBlock Text="Edycja wybranego wspomnienia" Style="{StaticResource SxSectionTitle}"/>
-                    <TextBox Text="{Binding EditorText, UpdateSourceTrigger=PropertyChanged}" TextWrapping="Wrap" MaxHeight="120" VerticalScrollBarVisibility="Auto" Margin="0,12,0,12" AutomationProperties.Name="Treść edytowanego wspomnienia"/>
-                    <WrapPanel>
-                        <Button Content="Zapisz zmianę" Command="{Binding SaveEditCommand}" Style="{StaticResource SxPrimaryButton}" Margin="0,0,8,0"/>
-                        <Button Content="Anuluj edycję" Command="{Binding CancelEditCommand}" Style="{StaticResource SxGhostButton}"/>
-                    </WrapPanel>
-                </StackPanel>
-            </Border>
+                <Border Style="{StaticResource SxCard}" Margin="0,0,0,16">
+                    <StackPanel>
+                        <TextBlock Text="NOWY WPIS" Style="{StaticResource SxEyebrow}" Foreground="{DynamicResource SxAccentTeal}"/>
+                        <TextBlock Text="Dodaj wspomnienie" Style="{StaticResource SxSectionTitle}"/>
+                        <TextBox Text="{Binding NewText, UpdateSourceTrigger=PropertyChanged}" u:InputHint.Text="Krótkie, konkretne ustalenie — np. Decyzja: API w wersji 2" TextWrapping="Wrap" MaxHeight="90" VerticalScrollBarVisibility="Auto" Margin="0,0,0,12" AutomationProperties.Name="Treść nowego wspomnienia"/>
+                        <DockPanel>
+                            <Button Content="Zapisz wspomnienie" Command="{Binding AddNoteCommand}" Style="{StaticResource SxPrimaryButton}" DockPanel.Dock="Right"/>
+                            <ComboBox ItemsSource="{Binding CategoryOptions}" SelectedItem="{Binding NewCategory}" Width="180" HorizontalAlignment="Left" AutomationProperties.Name="Kategoria nowego wspomnienia"/>
+                        </DockPanel>
+                    </StackPanel>
+                </Border>
 
-            <ItemsControl ItemsSource="{Binding Items}">
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                        <Border Style="{StaticResource SxCard}" Margin="0,0,0,12">
-                            <StackPanel>
-                                <TextBlock Text="{Binding Text}" TextWrapping="Wrap"/>
-                                <TextBlock Text="{Binding MetaText}" Style="{StaticResource SxCaption}" Margin="0,8,0,12"/>
-                                <WrapPanel>
-                                    <Button Content="Edytuj" Command="{Binding DataContext.BeginEditCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" Style="{StaticResource SxGhostButton}" Margin="0,0,8,0"/>
-                                    <Button Content="{Binding PinLabel}" Command="{Binding DataContext.TogglePinCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" Style="{StaticResource SxGhostButton}" Margin="0,0,8,0"/>
-                                    <Button Content="{Binding StaleLabel}" Command="{Binding DataContext.ToggleStaleCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" Style="{StaticResource SxGhostButton}" Margin="0,0,8,0" ToolTip="Nieaktualne wspomnienie nie trafia do kontekstu AI, ale nie jest kasowane"/>
-                                    <Button Content="Usuń" Command="{Binding DataContext.RequestDeleteCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" Style="{StaticResource SxDangerButton}" Margin="0,0,8,0" ToolTip="Wymaga zgody HIGH w Centrum — usuwa wyłącznie ten wpis"/>
-                                </WrapPanel>
-                            </StackPanel>
-                        </Border>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
-            <TextBlock Text="Brak wspomnień do pokazania. Dodaj własne powyżej albo napisz w rozmowie: zapamiętaj …" Margin="0,0,0,16">
-                <TextBlock.Style>
-                    <Style TargetType="TextBlock" BasedOn="{StaticResource SxCaption}">
-                        <Setter Property="Visibility" Value="Collapsed"/>
-                        <Style.Triggers>
-                            <DataTrigger Binding="{Binding Items.Count}" Value="0">
-                                <Setter Property="Visibility" Value="Visible"/>
-                            </DataTrigger>
-                        </Style.Triggers>
-                    </Style>
-                </TextBlock.Style>
-            </TextBlock>
+                <Border Margin="0,0,0,16">
+                    <Border.Style>
+                        <Style TargetType="Border" BasedOn="{StaticResource SxAccentCard}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding SelectedItem}" Value="{x:Null}">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                    <StackPanel>
+                        <TextBlock Text="EDYCJA" Style="{StaticResource SxEyebrow}" Foreground="{DynamicResource SxAccentCyan}"/>
+                        <TextBlock Text="Edycja wybranego wspomnienia" Style="{StaticResource SxSectionTitle}"/>
+                        <TextBox Text="{Binding EditorText, UpdateSourceTrigger=PropertyChanged}" TextWrapping="Wrap" MaxHeight="120" VerticalScrollBarVisibility="Auto" Margin="0,0,0,12" AutomationProperties.Name="Treść edytowanego wspomnienia"/>
+                        <WrapPanel>
+                            <Button Content="Zapisz zmianę" Command="{Binding SaveEditCommand}" Style="{StaticResource SxPrimaryButton}" Margin="0,0,8,8"/>
+                            <Button Content="Anuluj edycję" Command="{Binding CancelEditCommand}" Style="{StaticResource SxChipButton}"/>
+                        </WrapPanel>
+                    </StackPanel>
+                </Border>
 
-            <Border Style="{StaticResource SxCard}" Margin="0,0,0,16">
-                <StackPanel>
-                    <TextBlock Text="Rozmowy" Style="{StaticResource SxSectionTitle}"/>
-                    <WrapPanel Margin="0,0,0,12">
-                        <Button Content="Nowa rozmowa" Command="{Binding NewConversationCommand}" Style="{StaticResource SxPrimaryButton}" Margin="0,0,8,0"/>
-                        <Button Content="Zmień tytuł wybranej" Command="{Binding RenameConversationCommand}" Margin="0,0,8,0"/>
-                        <TextBox Text="{Binding RenameTitle, UpdateSourceTrigger=PropertyChanged}" u:InputHint.Text="Nowy tytuł wybranej rozmowy" Width="260" AutomationProperties.Name="Nowy tytuł rozmowy"/>
-                    </WrapPanel>
-                    <ListBox ItemsSource="{Binding Conversations}" SelectedItem="{Binding SelectedConversation}" MaxHeight="220" AutomationProperties.Name="Lista rozmów">
-                        <ListBox.ItemTemplate>
-                            <DataTemplate>
-                                <StackPanel Margin="0,4">
-                                    <TextBlock Text="{Binding Title}"/>
-                                    <TextBlock Text="{Binding MetaText}" Style="{StaticResource SxCaption}"/>
-                                    <Button Content="Wznów tę rozmowę" Command="{Binding DataContext.ResumeConversationCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" Style="{StaticResource SxGhostButton}" HorizontalAlignment="Left" FontSize="11"/>
-                                </StackPanel>
-                            </DataTemplate>
-                        </ListBox.ItemTemplate>
-                    </ListBox>
-                </StackPanel>
-            </Border>
+                <TextBlock Text="WSPOMNIENIA" Style="{StaticResource SxEyebrow}" Foreground="{DynamicResource SxAccentViolet}" Margin="0,0,0,10"/>
+                <ItemsControl ItemsSource="{Binding Items}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Style="{StaticResource SxCardInteractive}" Margin="0,0,0,12" Padding="0" u:Reveal.Enabled="True">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Border Width="4" CornerRadius="{StaticResource SxRadiusCardEdge}" Background="{StaticResource SxVioletPinkGradient}"/>
+                                    <StackPanel Grid.Column="1" Margin="18,16">
+                                        <DockPanel Margin="0,0,0,8">
+                                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                                <Border Style="{StaticResource SxBadgeAccent}" Padding="9,3" Margin="0,0,6,0">
+                                                    <TextBlock Text="{Binding Category}" Style="{StaticResource SxBadgeText}" Foreground="{DynamicResource SxAccentCyan}"/>
+                                                </Border>
+                                                <Border Style="{StaticResource SxBadgeWarning}" Padding="9,3" Visibility="{Binding Pinned, Converter={StaticResource BoolToVisibility}}">
+                                                    <TextBlock Text="📌 PRZYPIĘTE" Style="{StaticResource SxBadgeText}" Foreground="{DynamicResource SxWarning}"/>
+                                                </Border>
+                                                <Border Style="{StaticResource SxBadge}" Padding="9,3" Margin="6,0,0,0" Visibility="{Binding Stale, Converter={StaticResource BoolToVisibility}}">
+                                                    <TextBlock Text="NIEAKTUALNE" Style="{StaticResource SxBadgeText}" Foreground="{DynamicResource SxTextSecondary}"/>
+                                                </Border>
+                                            </StackPanel>
+                                            <TextBlock Text="{Binding Text}" TextWrapping="Wrap" FontSize="{StaticResource SxFontSubheading}" Margin="0,0,12,0"/>
+                                        </DockPanel>
+                                        <TextBlock Text="{Binding MetaText}" Style="{StaticResource SxMuted}" Margin="0,0,0,12"/>
+                                        <WrapPanel>
+                                            <Button Content="Edytuj" Command="{Binding DataContext.BeginEditCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" Style="{StaticResource SxChipButton}"/>
+                                            <Button Content="{Binding PinLabel}" Command="{Binding DataContext.TogglePinCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" Style="{StaticResource SxChipButton}"/>
+                                            <Button Content="{Binding StaleLabel}" Command="{Binding DataContext.ToggleStaleCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" Style="{StaticResource SxChipButton}" ToolTip="Nieaktualne wspomnienie nie trafia do kontekstu AI, ale nie jest kasowane"/>
+                                            <Button Content="Usuń" Command="{Binding DataContext.RequestDeleteCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" Style="{StaticResource SxDangerButton}" Padding="14,6" MinHeight="32" FontSize="{StaticResource SxFontCaption}" Margin="0,0,8,8" ToolTip="Wymaga zgody HIGH w Centrum — usuwa wyłącznie ten wpis"/>
+                                        </WrapPanel>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <Border Margin="0,0,0,16">
+                    <Border.Style>
+                        <Style TargetType="Border" BasedOn="{StaticResource SxEmptyState}">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Items.Count}" Value="0">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                    <StackPanel HorizontalAlignment="Center">
+                        <TextBlock Text="▤" FontSize="{StaticResource SxFontDisplay1}" Foreground="{DynamicResource SxBorder}" HorizontalAlignment="Center"/>
+                        <TextBlock Text="Brak wspomnień do pokazania" Style="{StaticResource SxSubheading}" HorizontalAlignment="Center" Margin="0,10,0,6"/>
+                        <TextBlock Text="Dodaj własne powyżej albo napisz w rozmowie: „zapamiętaj …”." Style="{StaticResource SxCaption}" HorizontalAlignment="Center" TextAlignment="Center"/>
+                    </StackPanel>
+                </Border>
 
-            <Border Style="{StaticResource SxCard}" Margin="0,0,0,16">
-                <StackPanel>
-                    <TextBlock Text="Kontekst ostatniego zapytania AI" Style="{StaticResource SxSectionTitle}"/>
-                    <TextBlock Text="Co trafiło do modelu i dlaczego — bez zapisywania pełnych promptów." Style="{StaticResource SxCaption}" Margin="0,0,0,12"/>
-                    <ItemsControl ItemsSource="{Binding Trace}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <TextBlock Text="{Binding}" Style="{StaticResource SxCaption}" TextWrapping="Wrap" Margin="0,0,0,6"/>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </StackPanel>
-            </Border>
+                <Border Style="{StaticResource SxCard}" Margin="0,0,0,16">
+                    <StackPanel>
+                        <TextBlock Text="ROZMOWY" Style="{StaticResource SxEyebrow}" Foreground="{DynamicResource SxAccentBlue}"/>
+                        <TextBlock Text="Nazwane i wznawiane" Style="{StaticResource SxSectionTitle}"/>
+                        <WrapPanel Margin="0,0,0,12">
+                            <Button Content="Nowa rozmowa" Command="{Binding NewConversationCommand}" Style="{StaticResource SxPrimaryButton}" Margin="0,0,8,8"/>
+                            <Button Content="Zmień tytuł wybranej" Command="{Binding RenameConversationCommand}" Style="{StaticResource SxChipButton}"/>
+                            <TextBox Text="{Binding RenameTitle, UpdateSourceTrigger=PropertyChanged}" u:InputHint.Text="Nowy tytuł wybranej rozmowy" Width="260" AutomationProperties.Name="Nowy tytuł rozmowy"/>
+                        </WrapPanel>
+                        <ListBox ItemsSource="{Binding Conversations}" SelectedItem="{Binding SelectedConversation}" MaxHeight="240" AutomationProperties.Name="Lista rozmów">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <DockPanel Margin="0,4">
+                                        <Button Content="Wznów tę rozmowę" Command="{Binding DataContext.ResumeConversationCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" Style="{StaticResource SxGhostButton}" DockPanel.Dock="Right" HorizontalAlignment="Right" FontSize="{StaticResource SxFontSmall}"/>
+                                        <StackPanel Margin="0,0,12,0">
+                                            <StackPanel Orientation="Horizontal">
+                                                <Ellipse Width="8" Height="8" VerticalAlignment="Center" Margin="0,0,8,0" Visibility="{Binding IsActive, Converter={StaticResource BoolToVisibility}}" Fill="{DynamicResource SxSuccess}" u:Motion.Pulse="True"/>
+                                                <TextBlock Text="{Binding Title}" FontSize="{StaticResource SxFontSubheading}"/>
+                                            </StackPanel>
+                                            <TextBlock Text="{Binding MetaText}" Style="{StaticResource SxMuted}" Margin="16,3,0,0"/>
+                                        </StackPanel>
+                                    </DockPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </StackPanel>
+                </Border>
 
-            <Border Style="{StaticResource SxCard}" Margin="0,0,0,16">
-                <StackPanel>
-                    <TextBlock Text="Eksport i import wspomnień" Style="{StaticResource SxSectionTitle}"/>
-                    <WrapPanel Margin="0,0,0,12">
-                        <Button Content="Eksportuj pamięć (JSON)" Command="{Binding ExportMemoryCommand}" Margin="0,0,8,0"/>
-                        <Button Content="Podgląd importu" Command="{Binding PreviewImportCommand}" Margin="0,0,8,0"/>
-                        <Button Content="Wykonaj import" Command="{Binding RunImportCommand}" Style="{StaticResource SxPrimaryButton}"/>
-                    </WrapPanel>
-                    <TextBox Text="{Binding ImportPath, UpdateSourceTrigger=PropertyChanged}" u:InputHint.Text="Pełna ścieżka do pliku eksportu JSON…" AutomationProperties.Name="Ścieżka pliku importu"/>
-                    <TextBlock Text="{Binding ImportSummary}" Style="{StaticResource SxCaption}" TextWrapping="Wrap" Margin="0,8,0,0"/>
-                </StackPanel>
-            </Border>
+                <Border Style="{StaticResource SxCard}" Margin="0,0,0,16">
+                    <StackPanel>
+                        <TextBlock Text="KONTEKST AI" Style="{StaticResource SxEyebrow}" Foreground="{DynamicResource SxAccentTeal}"/>
+                        <TextBlock Text="Kontekst ostatniego zapytania AI" Style="{StaticResource SxSectionTitle}"/>
+                        <TextBlock Text="Co trafiło do modelu i dlaczego — bez zapisywania pełnych promptów." Style="{StaticResource SxCaption}" Margin="0,0,0,12"/>
+                        <ItemsControl ItemsSource="{Binding Trace}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Style="{StaticResource SxPanelSunken}" Margin="0,0,0,8" Padding="12,9">
+                                        <TextBlock Text="{Binding}" Style="{StaticResource SxCaption}" TextWrapping="Wrap"/>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
 
-            <Border Style="{StaticResource SxCardElevated}" Margin="0,0,0,16">
-                <StackPanel>
-                    <TextBlock Text="Prywatność" Style="{StaticResource SxSectionTitle}"/>
-                    <TextBlock Text="{Binding PrivacyLine}" Style="{StaticResource SxCaption}" Margin="0,0,0,12"/>
-                    <WrapPanel>
-                        <Button Content="Przełącz tryb prywatny" Command="{Binding TogglePrivateModeCommand}" Style="{StaticResource SxDangerButton}" Margin="0,0,8,0" ToolTip="Rozmowa prywatna nie jest nigdzie zapisywana"/>
-                        <TextBlock Text="{Binding IsPrivateMode, StringFormat=Tryb prywatny: {0}}" Foreground="{DynamicResource SxWarning}" VerticalAlignment="Center"/>
-                    </WrapPanel>
-                    <TextBlock Text="Cztery przełączniki zapisu i podglądu kontekstu oraz retencję zmienisz w Settings → Pamięć. Usuwanie całej pamięci lub historia rozmowy odbywa się wyłącznie przez zgodę HIGH w Centrum." Style="{StaticResource SxCaption}" Margin="0,12,0,0"/>
-                </StackPanel>
-            </Border>
-        </StackPanel>
-    </ScrollViewer>
+                <Border Style="{StaticResource SxCard}" Margin="0,0,0,16">
+                    <StackPanel>
+                        <TextBlock Text="PLIKI" Style="{StaticResource SxEyebrow}" Foreground="{DynamicResource SxAccentLime}"/>
+                        <TextBlock Text="Eksport i import wspomnień" Style="{StaticResource SxSectionTitle}"/>
+                        <WrapPanel Margin="0,0,0,12">
+                            <Button Content="Eksportuj pamięć (JSON)" Command="{Binding ExportMemoryCommand}" Style="{StaticResource SxChipButton}"/>
+                            <Button Content="Podgląd importu" Command="{Binding PreviewImportCommand}" Style="{StaticResource SxChipButton}"/>
+                            <Button Content="Wykonaj import" Command="{Binding RunImportCommand}" Style="{StaticResource SxPrimaryButton}" Margin="0,0,8,8"/>
+                        </WrapPanel>
+                        <TextBox Text="{Binding ImportPath, UpdateSourceTrigger=PropertyChanged}" u:InputHint.Text="Pełna ścieżka do pliku eksportu JSON…" AutomationProperties.Name="Ścieżka pliku importu"/>
+                        <TextBlock Text="{Binding ImportSummary}" Style="{StaticResource SxCaption}" TextWrapping="Wrap" Margin="0,10,0,0"/>
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource SxCardElevated}" BorderBrush="{DynamicResource SxWarningDim}" Margin="0,0,0,16">
+                    <StackPanel>
+                        <TextBlock Text="PRYWATNOŚĆ" Style="{StaticResource SxEyebrow}" Foreground="{DynamicResource SxWarning}"/>
+                        <TextBlock Text="Prywatność" Style="{StaticResource SxSectionTitle}"/>
+                        <TextBlock Text="{Binding PrivacyLine}" Style="{StaticResource SxCaption}" Margin="0,0,0,12"/>
+                        <WrapPanel>
+                            <Button Content="Przełącz tryb prywatny" Command="{Binding TogglePrivateModeCommand}" Style="{StaticResource SxDangerButton}" Margin="0,0,8,8" ToolTip="Nie zapisuje tekstu rozmowy w lokalnej historii/audycie; jawnie zlecone pliki to osobny zapis. Przy wyłączonej blokadzie usługi online mogą otrzymać i zapisywać temat."/>
+                            <TextBlock Text="{Binding IsPrivateMode, StringFormat=Tryb prywatny: {0}}" Foreground="{DynamicResource SxWarning}" VerticalAlignment="Center"/>
+                        </WrapPanel>
+                        <TextBlock Text="Tryb tylko lokalnie zmienisz w Settings → Pamięć. Blokuje on web research, pobieranie stron i modeli, zewnętrzne testy sieciowe, otwieranie stron, kopiowanie odpowiedzi do schowka, sterowanie zewnętrznymi aplikacjami/procesami oraz kompilację, która może pobierać pakiety. Ollama na localhost i lokalne narzędzia pozostają dostępne. Sentinel nie konfiguruje VPN ani łańcucha kilku proxy. Wyłączenie blokady pozwala na funkcje online, ale treść zapytań może trafić do usług zewnętrznych, które mogą ją zapisywać; Private Mode wyłącza zapis lokalny, nie zdalny. Windows i inne programy nie są izolowane. Ustawienia pamięci i retencję zmienisz w tym samym panelu. Usuwanie całej pamięci lub historia rozmowy odbywa się wyłącznie przez zgodę HIGH w Centrum." Style="{StaticResource SxCaption}" Margin="0,12,0,0"/>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
 </UserControl>

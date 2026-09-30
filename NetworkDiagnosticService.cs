@@ -14,6 +14,9 @@ namespace SentinelX;
 
 public sealed class NetworkDiagnosticService : Services.Network.INetworkService
 {
+    private readonly Func<bool> externalNetworkAllowed;
+    public NetworkDiagnosticService(Func<bool>? externalNetworkAllowed = null) => this.externalNetworkAllowed = externalNetworkAllowed ?? (() => true);
+
     private static readonly HttpClient Client = new(new HttpClientHandler { AllowAutoRedirect = false })
     { Timeout = Timeout.InfiniteTimeSpan };
 
@@ -21,6 +24,8 @@ public sealed class NetworkDiagnosticService : Services.Network.INetworkService
 
     public async Task<ActionExecutionResult> TestInternetAsync(CancellationToken cancellationToken)
     {
+        if (!externalNetworkAllowed())
+            return ActionExecutionResult.Failure("Nie wykonano testu Internetu: aktywny jest tryb tylko lokalnie.", "Żadne żądanie DNS, ICMP ani HTTPS nie zostało wysłane.");
         using var budget = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         budget.CancelAfter(TimeSpan.FromSeconds(9));
         var pingTask = ProbePingAsync("1.1.1.1", budget.Token);
@@ -39,6 +44,7 @@ public sealed class NetworkDiagnosticService : Services.Network.INetworkService
 
     public async Task<ActionExecutionResult> TestPingAsync(string host, CancellationToken cancellationToken = default)
     {
+        if (!externalNetworkAllowed()) return ActionExecutionResult.Failure("Nie wysłano pakietu ICMP: aktywny jest tryb tylko lokalnie.", "Brak żądania sieciowego.");
         if (!TryNormalizeHost(host, out var normalized)) return ActionExecutionResult.Failure("Podaj samą nazwę hosta lub adres IP, bez portu i ścieżki.");
         var probe = await ProbePingAsync(normalized, cancellationToken).ConfigureAwait(false);
         cancellationToken.ThrowIfCancellationRequested();
@@ -48,6 +54,7 @@ public sealed class NetworkDiagnosticService : Services.Network.INetworkService
 
     public async Task<ActionExecutionResult> TestDnsAsync(string host, CancellationToken cancellationToken = default)
     {
+        if (!externalNetworkAllowed()) return ActionExecutionResult.Failure("Nie wykonano zapytania DNS: aktywny jest tryb tylko lokalnie.", "Brak żądania sieciowego.");
         if (!TryNormalizeHost(host, out var normalized) || IPAddress.TryParse(normalized, out _))
             return ActionExecutionResult.Failure("Podaj nazwę domeny, np. dns example.com.");
         var probe = await ProbeDnsAsync(normalized, cancellationToken).ConfigureAwait(false);

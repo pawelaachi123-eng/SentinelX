@@ -430,6 +430,15 @@ FodyWeavers.xsd
 
 # Local validation outputs
 test-results/
+# Python generator tests and Android companion build outputs
+__pycache__/
+*.py[cod]
+phone-android/.gradle/
+phone-android/.idea/
+phone-android/local.properties
+phone-android/**/build/
+phone-android/**/*.iml
+
 # NuGet/MSBuild generated outputs accidentally tracked at the repository root
 /*.csproj.nuget.*
 /project.assets.json

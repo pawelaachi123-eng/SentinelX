@@ -1,11 +1,12 @@
 using SentinelX.Models;
 namespace SentinelX.Services.Voice;
-public sealed record VoiceMetrics(VoiceState State, double Raw, double Enhanced, double Noise, double Snr, double Gain, bool SpeechDetected, string Transcript);
+public sealed record VoiceMetrics(VoiceState State, double Raw, double Enhanced, double Playback, double Noise, double Snr, double Gain, bool SpeechDetected, string Transcript);
 public interface IVoiceService
 {
     VoiceState State { get; }
     string Status { get; }
     bool HasLocalModels { get; }
+    bool IsSpeaking { get; }
     event Action? Changed;
     event Action<VoiceMetrics>? MetricsUpdated;
     event Action<string>? CommandRecognized;
