@@ -68,7 +68,7 @@ jobs:
           dotnet --list-runtimes | Set-Content (Join-Path $output 'dotnet-runtimes.log')
           $stdout = Join-Path $output 'app.stdout.log'
           $stderr = Join-Path $output 'app.stderr.log'
-          $p = Start-Process $exe -ArgumentList '--ui-smoke', $output -PassThru -RedirectStandardOutput $stdout -RedirectStandardError $stderr
+          $p = Start-Process $exe -ArgumentList "--ui-smoke `"$output`"" -PassThru -RedirectStandardOutput $stdout -RedirectStandardError $stderr
           $finished = $p.WaitForExit(120000)
           if (-not $finished) { $p.Kill(); $p.WaitForExit() }
           if (-not $finished -or $p.ExitCode -ne 0 -or -not (Test-Path "$output/ui-smoke.txt")) {
@@ -85,7 +85,7 @@ jobs:
         run: |
           $exe = Resolve-Path 'bin/Release/net10.0-windows/SentinelX.exe'
           $output = Join-Path $PWD 'test-results/regression'
-          $p = Start-Process $exe -ArgumentList '--self-test', $output -PassThru
+          $p = Start-Process $exe -ArgumentList "--self-test `"$output`"" -PassThru
           if (-not $p.WaitForExit(300000)) { $p.Kill(); throw 'Regression timeout' }
           if ($p.ExitCode -ne 0) {
             Get-ChildItem $output -Recurse -Include FAILED.txt,errors.log | ForEach-Object {
@@ -110,7 +110,7 @@ jobs:
           if (-not (Test-Path 'bin/portable/coreclr.dll')) { throw 'Missing self-contained .NET runtime' }
           $exe = Resolve-Path 'bin/portable/SentinelX.exe'
           $output = Join-Path $PWD 'test-results/portable'
-          $p = Start-Process $exe -ArgumentList '--ui-smoke', $output -PassThru
+          $p = Start-Process $exe -ArgumentList "--ui-smoke `"$output`"" -PassThru
           if (-not $p.WaitForExit(120000)) { $p.Kill(); throw 'Portable smoke timeout' }
           if ($p.ExitCode -ne 0 -or -not (Test-Path "$output/ui-smoke.txt")) {
             Get-ChildItem $output -Recurse -Include FAILED.txt,errors.log,bindings.log | ForEach-Object {
@@ -149,7 +149,7 @@ jobs:
           if (-not $setup.WaitForExit(120000)) { $setup.Kill(); throw 'Installer timeout' }
           if ($setup.ExitCode -ne 0) { throw "Installer failed: $($setup.ExitCode)" }
           if (-not (Test-Path "$installed/coreclr.dll")) { throw 'Installed runtime missing' }
-          $p = Start-Process "$installed/SentinelX.exe" -ArgumentList '--ui-smoke', $output -PassThru
+          $p = Start-Process "$installed/SentinelX.exe" -ArgumentList "--ui-smoke `"$output`"" -PassThru
           if (-not $p.WaitForExit(120000)) { $p.Kill(); throw 'Installed application timeout' }
           if ($p.ExitCode -ne 0 -or -not (Test-Path "$output/ui-smoke.txt")) {
             Get-ChildItem $output -Recurse -Include FAILED.txt,errors.log,bindings.log | ForEach-Object {
