@@ -47,7 +47,7 @@ public static class ServiceLocator
             () => sp.GetRequiredService<ConversationMemoryService>().ExternalNetworkAllowed));
         services.AddSingleton<Services.Network.INetworkService>(sp => sp.GetRequiredService<NetworkDiagnosticService>());
         services.AddSingleton<Services.Gaming.IGamingService>(sp => sp.GetRequiredService<GamingModeService>());
-        services.AddSingleton<Services.Permissions.IPermissionService, PermissionCenterService>();
+        services.AddSingleton<Services.Permissions.IPermissionService>(new PermissionCenterService());
         services.AddSingleton<Services.Apps.IAppLauncherService>(sp => new AppLauncherService(
             () => sp.GetRequiredService<ISettingsService>().Current.Ui.DefaultBrowserPreference,
             () => sp.GetRequiredService<ConversationMemoryService>().ExternalNetworkAllowed));
