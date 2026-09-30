@@ -19,6 +19,10 @@ public static class UiSmokeTestRunner
         bitmap.Render(shell); var png = new PngBitmapEncoder(); png.Frames.Add(BitmapFrame.Create(bitmap));
         using var stream = File.Create(path); png.Save(stream);
     }
+
+    private static void RecordProgress(string output, string stage) =>
+        File.AppendAllText(Path.Combine(output, "ui-smoke-progress.log"),
+            $"{DateTimeOffset.UtcNow:O} {stage}{Environment.NewLine}");
     public static async Task RunAsync(IServiceProvider services, Window shell, string output)
     {
         Directory.CreateDirectory(output);
@@ -28,18 +32,32 @@ public static class UiSmokeTestRunner
         PresentationTraceSources.DataBindingSource.Switch.Level = SourceLevels.Error;
         try
         {
+            RecordProgress(output, "started regression suites");
             await Tests.BackendRegression.RunAsync(Path.Combine(output, "backend"));
+            RecordProgress(output, "passed BackendRegression");
             await Tests.ProductRegression.RunAsync(Path.Combine(output, "product"));
+            RecordProgress(output, "passed ProductRegression");
             await Tests.ReleaseRegression.RunAsync(Path.Combine(output, "release"));
+            RecordProgress(output, "passed ReleaseRegression");
             await Tests.MemoryRegression.RunAsync(Path.Combine(output, "memory"));
+            RecordProgress(output, "passed MemoryRegression");
             await Tests.ProjectRegression.RunAsync(Path.Combine(output, "projects"));
+            RecordProgress(output, "passed ProjectRegression");
             await Tests.TaskRegression.RunAsync(Path.Combine(output, "tasks"));
+            RecordProgress(output, "passed TaskRegression");
             await Tests.DiagnosticSnapshotRegression.RunAsync(Path.Combine(output, "snapshots"));
+            RecordProgress(output, "passed DiagnosticSnapshotRegression");
             await Tests.AiStreamRegression.RunAsync(Path.Combine(output, "ai-stream"));
+            RecordProgress(output, "passed AiStreamRegression");
             await Tests.UnderstandingRegression.RunAsync(Path.Combine(output, "understanding"));
+            RecordProgress(output, "passed UnderstandingRegression");
             await Tests.UtilityRegression.RunAsync(Path.Combine(output, "utility"));
+            RecordProgress(output, "passed UtilityRegression");
             await Tests.FileCleanupRegression.RunAsync(Path.Combine(output, "file-cleanup"));
+            RecordProgress(output, "passed FileCleanupRegression");
             await Tests.MemoryArchiveRegression.RunAsync(Path.Combine(output, "archives"));
+            RecordProgress(output, "passed MemoryArchiveRegression");
+            RecordProgress(output, "started live UI assertions");
             var vm = services.GetRequiredService<MainViewModel>();
             vm.Readiness.IsOpen = false;
             if (vm.InitializeCommand.IsRunning) await vm.InitializeCommand.ExecutionTask!;
