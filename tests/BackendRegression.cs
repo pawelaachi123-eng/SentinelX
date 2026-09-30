@@ -212,9 +212,10 @@ internal static class BackendRegression
         Check(sourceRequest.Handled && sourceRequest.Response.Contains("nie wygenerowałem pliku EXE", StringComparison.Ordinal) &&
               !Directory.EnumerateFiles(routedSourceRoot, "*.exe", SearchOption.AllDirectories).Any(),
             "Natural-language source generation must be available in the main toolbox without building an executable.");
-        using var currentWeb = new WebResearchTool(new StubWebHandler("https://1.1.1.1/guide"));
+        var currentWebHandler = new StubWebHandler("https://1.1.1.1/guide");
+        using var currentWeb = new WebResearchTool(currentWebHandler);
         string currentAnswer = (await currentWeb.TryProcessAsync("Jaka będzie pogoda jutro w Krakowie"))!;
-        Check(currentAnswer.Contains("Zestawienie", StringComparison.Ordinal) && currentWeb.RequestCount >= 2,
+        Check(currentAnswer.Contains("Zestawienie", StringComparison.Ordinal) && currentWebHandler.RequestCount >= 2,
             "Current-information questions should automatically invoke sourced research instead of trusting model memory.");
         using var blockedCurrentWeb = new WebResearchTool(new StubWebHandler(), () => false);
         string blockedCurrentAnswer = (await blockedCurrentWeb.TryProcessAsync("Jaka będzie pogoda jutro w Krakowie"))!;

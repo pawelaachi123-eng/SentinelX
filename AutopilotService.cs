@@ -540,8 +540,9 @@ public sealed class AutopilotService : IDisposable
 
     private static bool IsDownloadWatch(string query) =>
         query is "monitoruj pobieranie" or "obserwuj pobieranie" or "powiadom mnie gdy pobieranie sie skonczy" or
-            "powiadom mnie po zakonczeniu pobierania" or query.StartsWith("monitoruj pobieranie ", StringComparison.Ordinal) or
-            query.StartsWith("obserwuj pobieranie ", StringComparison.Ordinal);
+            "powiadom mnie po zakonczeniu pobierania" ||
+        query.StartsWith("monitoruj pobieranie ", StringComparison.Ordinal) ||
+        query.StartsWith("obserwuj pobieranie ", StringComparison.Ordinal);
 
     private static string? ExtractDownloadTarget(string command)
     {

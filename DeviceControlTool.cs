@@ -182,10 +182,10 @@ public sealed class DeviceControlTool : IDisposable
                 string text = serverError
                     ? $"Home Assistant zwrócił błąd serwera (HTTP {(int)response.StatusCode}); polecenie mogło zostać częściowo wykonane. Nie mam potwierdzenia stanu — sprawdź urządzenie przed ponowieniem."
                     : $"Home Assistant odrzucił polecenie (HTTP {(int)response.StatusCode}). Nie zgłaszam wykonania.";
-                ActionExecutionResult result = serverError
+                ActionExecutionResult responseResult = serverError
                     ? ActionExecutionResult.UnverifiedSuccess(text, device.EntityId)
                     : ActionExecutionResult.Failure(text);
-                AddHistory(actionId, command, result); return text;
+                AddHistory(actionId, command, responseResult); return text;
             }
             Entity? after = null;
             for (int attempt = 0; attempt < 4; attempt++)

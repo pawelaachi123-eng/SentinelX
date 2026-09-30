@@ -1,6 +1,6 @@
 # SENTINEL X 0.91 · CENTRUM — Windows / MVVM
 
-Lokalny asystent Windows 10/11, C# 13, .NET 9, WPF. Nowe GUI jest domyślnym interfejsem. Poprzedni interfejs i jego funkcje nadal są dostępne przez `--legacy`.
+Lokalny asystent Windows 10/11, C# 14, .NET 10, WPF. Nowe GUI jest domyślnym interfejsem. Poprzedni interfejs i jego funkcje nadal są dostępne przez `--legacy`.
 
 ## Narzędzia bez dodatkowego UI
 
@@ -42,7 +42,7 @@ Główny router dobiera lokalne narzędzia przed odpowiedzią modelu — urucham
 - **24 narzędzia działające offline, bez sieci i bez modelu**: `policz 12,5*4` · `procent 15 z 240` · `ile to procent 30 z 240` · `vat 100 [brutto]` · `przelicz 5 km na mile` (długość, masa, objętość, dane, prędkość, °C/°F/K) · `ile dni do 24.12` · `ile dni od 1.1.2020` · `jaki dzien tygodnia 1.1.2030` · `ile zostalo do 18:00` · `haslo 20` (generacja stockowym RNG, nigdzie nie zapisywana) · `uuid` · `ile slow: tekst` · `base64: tekst` i `dekoduj base64: …` · `hash tekstu: …` (SHA-256) · `json: {…}` · `slug: ZaŻółć Gęślą Jaźń` · `transliteruj: …` · `wielkie litery: …` · `male litery: …` · `odwroc tekst: …` · `losuj 1-100` · `rzuc kostka` · `wybierz losowo: pizza, sushi` · `bmi 80 180` · `rzymskie 2026` i `z rzymskich MMXXVI` · `kolor 1fa2c3` (RGB, HSL, kontrast WCAG). Kalkulator to własny parser wyrażeń — nie wykonuje kodu.
 - **5 funkcji przekrojowych**: `plan dnia` (przeterminowane, dzisiejsze, najbliższe przypomnienia, przypięte wspomnienia, aktywny projekt), `szukaj wszystkiego: fraza` (wspomnienia + aktywna rozmowa + zadania + projekty + odczyty diagnostyczne), `statystyki` (ile czego jest i ile to zajmuje na dysku), `backup` (kopia magazynów do `Backups/<data>/` z manifestem, hashami i odczytem zwrotnym), `pomoc` / `co umiesz`.
 - **Własny folder i comiesięczne archiwum pamięci**: `Memory/Archives/RRRR-MM/` z plikiem JSON i czytelnym Markdownem; hash i odczyt zwrotny są sprawdzane **zanim** cokolwiek zostanie usunięte z aktywnego magazynu. Ustawienie „Archiwum rozmów (miesiące)” (domyślnie 1, 0 = wyłączone): rozmowy starsze niż okno są archiwizowane przy starcie i usuwane z magazynu, a fakt ten jest zgłaszany w czacie. **Wspomnienia i profil nie są archiwizowane ani kasowane.** Komendy: `archiwizuj rozmowy`, `archiwa`, `usuń archiwum RRRR-MM`. W trybie prywatnym archiwizacja odmawia, bo nie ma czego zapisywać.
-- **Pliki do pobrania z GitHub** — wydania milowe: <https://github.com/pawelaachi123-eng/SentinelX/releases> (np. `v0.90.0`, `v0.91.2`). Każde zawiera `SentinelX-<wersja>-win-x64-portable.zip` (własny runtime .NET 9), `SentinelX-<wersja>-win-x64-setup.exe` (instalator per-user), `SHA256SUMS.txt` i `BUILD.txt`. Publikuje je workflow `release.yml` po pełnej walidacji, tylko dla tagów `v*.*.*` albo na ręczne żądanie; zwykły push na gałąź nic nie publikuje (decyzja z 2026-09-25). Pliki **nie są podpisane cyfrowo** — SmartScreen pokaże ostrzeżenie „nieznany wydawca”.
+- **Pliki do pobrania z GitHub** — wydania milowe: <https://github.com/pawelaachi123-eng/SentinelX/releases> (np. `v0.90.0`, `v0.91.2`). Każde zawiera `SentinelX-<wersja>-win-x64-portable.zip` (własny runtime .NET 10), `SentinelX-<wersja>-win-x64-setup.exe` (instalator per-user), `SHA256SUMS.txt` i `BUILD.txt`. Publikuje je workflow `release.yml` po pełnej walidacji, tylko dla tagów `v*.*.*` albo na ręczne żądanie; zwykły push na gałąź nic nie publikuje (decyzja z 2026-09-25). Pliki **nie są podpisane cyfrowo** — SmartScreen pokaże ostrzeżenie „nieznany wydawca”.
 - **Znane ograniczenia 0.90** (bez owijania): naprawa literówek to dopasowanie tekstu do katalogu — bez modelu językowego i bez pełnej odmiany; `przelicz` nie przelicza walut (potrzebny byłby kurs z sieci); zrzuty ekranu i sterowanie głośnością nie zostały dodane, bo nie da się ich uczciwie dostarczyć w tym przyroście; VAT liczy wyłącznie stawkę 23%; archiwum rozmów jest kopią do odczytu i nie ma przywracania do aktywnej rozmowy; wyszukiwanie „wszystkiego” jest dopasowaniem po normalizacji, bez literówek i synonimów.
 
 ## Nowe w 0.89 — strumieniowanie AI, odczyty diagnostyczne i narzędzia rozmowy
@@ -128,7 +128,7 @@ Instalator: w najnowszym udanym przebiegu [Windows build and WPF smoke](https://
 
 Bez instalacji: w najnowszym udanym przebiegu [Windows build and WPF smoke](https://github.com/pawelaachi123-eng/SentinelX/actions/workflows/windows-build.yml) pobierz **SentinelX-Portable-win-x64**, wypakuj cały ZIP i uruchom `SentinelX.exe`. Modele AI/ASR nie są częścią ZIP-a — konfigurujesz je osobno.
 
-Wymagania: **Windows x64**. Paczka Portable ma runtime w zestawie. Starsza paczka `SentinelX-windows-x64` nadal wymaga .NET **9 Desktop Runtime**; do budowania źródeł potrzebny jest **.NET 9 SDK**. Nie uruchamiaj WPF na Linuxie ani przez przeglądarkę.
+Wymagania: **Windows x64**. Paczka Portable ma runtime w zestawie. Starsza paczka `SentinelX-windows-x64` nadal wymaga .NET **9 Desktop Runtime**; do budowania źródeł potrzebny jest **.NET 10 SDK**. Nie uruchamiaj WPF na Linuxie ani przez przeglądarkę.
 
 ```powershell
 dotnet restore SENTINEL-X.csproj
@@ -146,7 +146,7 @@ dotnet publish SENTINEL-X.csproj -c Release -r win-x64 --self-contained true -o 
 Zachowany interfejs zgodności:
 
 ```powershell
-.\bin\Release\net9.0-windows\SentinelX.exe --legacy
+.\bin\Release\net10.0-windows\SentinelX.exe --legacy
 ```
 
 Najpierw zakończ działającą instancję przez **Wyjdź z aplikacji** / menu zasobnika. Aplikacja jest pojedynczą instancją; drugie uruchomienie aktywuje pierwsze okno. Zwykły przycisk X domyślnie chowa je do zasobnika.
@@ -203,7 +203,7 @@ Ostatnio jednoznacznie wybrany plik pozostaje celem dla kolejnych powiązanych p
 - `ViewModels/`: `ObservableObject`, `[ObservableProperty]`, `[RelayCommand]`. Brak operacji plikowych, zapytań systemowych i `Process.Start` w ViewModelach.
 - `Views/`: osiem stron, shell i overlay. Code-behind ograniczony do inicjalizacji widoku i przeciągania okna.
 - `Services/`: interfejsy oraz integracja z istniejącymi, sprawdzanymi regresyjnie serwisami. Routing najpierw wybiera deterministyczne narzędzia, potem istniejący adaptacyjny transport AI.
-- `Themes/`: pełny system tokenów designu `Sx*` (kolory, gradienty, promienie, odstępy, typografia, style kontrolek, storyboardy) na Fluent .NET 9; motywy Dark, Deep Dark i Light generuje `python3 scripts/generate-themes.py` (z wbudowaną kontrolą kontrastu WCAG `--check`), a kolor akcentu i bramka animacji są nadpisywane w trakcie działania. `Themes/Animations.xaml` jest scalany przed `Themes/Controls.xaml`, bo szablony sięgają po storyboardy przez `StaticResource` (kolejność sprawdza bramka „resource order”). Animacje są wyłączane ustawieniem Windows, przełącznikiem „Animacje” oraz automatycznie podczas gry.
+- `Themes/`: pełny system tokenów designu `Sx*` (kolory, gradienty, promienie, odstępy, typografia, style kontrolek, storyboardy) na Fluent .NET 10; motywy Dark, Deep Dark i Light generuje `python3 scripts/generate-themes.py` (z wbudowaną kontrolą kontrastu WCAG `--check`), a kolor akcentu i bramka animacji są nadpisywane w trakcie działania. `Themes/Animations.xaml` jest scalany przed `Themes/Controls.xaml`, bo szablony sięgają po storyboardy przez `StaticResource` (kolejność sprawdza bramka „resource order”). Animacje są wyłączane ustawieniem Windows, przełącznikiem „Animacje” oraz automatycznie podczas gry.
 - `Models/Settings/`: istniejący format ustawień zachowany bez duplikowania schematu. Migracja starego JSON, walidacja, zapis przez plik tymczasowy i kopia zapasowa.
 - Starsze pliki w katalogu głównym są celowo zachowane: część to współdzielone serwisy, część to interfejs zgodności.
 
@@ -238,11 +238,11 @@ Dane pozostają w `%LOCALAPPDATA%\SentinelX\`: `Settings`, `History`, `Memory`, 
 
 ```powershell
 # Windows: prawdziwe widoki, bindingi, motywy, backend i PNG wszystkich stron
-.\bin\Release\net9.0-windows\SentinelX.exe --ui-smoke "$PWD\test-results\ui"
+.\bin\Release\net10.0-windows\SentinelX.exe --ui-smoke "$PWD\test-results\ui"
 # Dotychczasowy zestaw testów regresji, nie korzysta z prawdziwej Ollama
-.\bin\Release\net9.0-windows\SentinelX.exe --self-test "$PWD\test-results\regression"
+.\bin\Release\net10.0-windows\SentinelX.exe --self-test "$PWD\test-results\regression"
 # Ręcznie, po instalacji modeli i polskiego głosu Windows
-.\bin\Release\net9.0-windows\SentinelX.exe --asr-test "$PWD\test-results\asr"
+.\bin\Release\net10.0-windows\SentinelX.exe --asr-test "$PWD\test-results\asr"
 ```
 
 `--ui-smoke` nie modyfikuje autostartu, nie rejestruje skrótów, nie instaluje modeli i nie uruchamia mikrofonu. Sprawdza renderowanie stron i błędy bindingów, paletę, panel gotowości, izolację dowodów między zadaniami, mieszane wyniki wielu kroków, zachowanie dowodów po anulowaniu, STOP/resume, zakaz potwierdzania głosem (także z wybudzeniem i interpunkcją), konkurencję/anulowanie zadań, odrzucenie fałszywego „VERIFIED”, zapis ustawień i bezpieczeństwo plików. Od 0.93 sprawdza też warstwę wizualną: ~120 zasobów (kolory po przełączeniu motywu, promienie i odstępy, style, storyboardy, gradienty, efekty) musi być osiągalnych z `App.Resources` **i mieć właściwy typ** (`Color`, `CornerRadius`/`Thickness`, `Style`, `Storyboard`, `Brush`, `Effect`), a wszystkie konwertery widoków — `ReadinessBrush`, `StatusBrush`, `VoiceBrush`, `RiskBrush`, `BoolToVisibility`, `StringNotEmptyToVisibility`, `SafePercent`, `FiniteToVisibility` — muszą być `IValueConverter`.

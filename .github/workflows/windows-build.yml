@@ -17,7 +17,7 @@ jobs:
       - uses: actions/checkout@v5
       - uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: 9.0.x
+          dotnet-version: 10.0.x
       - name: Portable architecture checks
         run: python scripts/check-architecture.py
       - name: Restore
@@ -34,7 +34,7 @@ jobs:
       - name: MVVM UI smoke (all pages and binding validation)
         shell: pwsh
         run: |
-          $exe = Resolve-Path 'bin/Release/net9.0-windows/SentinelX.exe'
+          $exe = Resolve-Path 'bin/Release/net10.0-windows/SentinelX.exe'
           $output = Join-Path $PWD 'test-results/ui'
           $p = Start-Process $exe -ArgumentList '--ui-smoke', $output -PassThru
           if (-not $p.WaitForExit(120000)) { $p.Kill(); throw 'UI smoke timeout' }
@@ -49,7 +49,7 @@ jobs:
       - name: Existing regression suite
         shell: pwsh
         run: |
-          $exe = Resolve-Path 'bin/Release/net9.0-windows/SentinelX.exe'
+          $exe = Resolve-Path 'bin/Release/net10.0-windows/SentinelX.exe'
           $output = Join-Path $PWD 'test-results/regression'
           $p = Start-Process $exe -ArgumentList '--self-test', $output -PassThru
           if (-not $p.WaitForExit(300000)) { $p.Kill(); throw 'Regression timeout' }
@@ -62,15 +62,15 @@ jobs:
           }
           Get-ChildItem $output
       - name: Publish portable Windows application
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
         run: dotnet publish SENTINEL-X.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=false -o bin/portable
       - name: Portable package checksums
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
         shell: pwsh
         run: |
           Get-ChildItem 'bin/portable' -File | ForEach-Object { "$((Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant())  $($_.Name)" } | Set-Content 'bin/portable/SHA256SUMS.txt'
       - name: Verify portable package
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
         shell: pwsh
         run: |
           if (-not (Test-Path 'bin/portable/coreclr.dll')) { throw 'Missing self-contained .NET runtime' }
@@ -86,7 +86,7 @@ jobs:
             throw "Portable smoke failed: exit $($p.ExitCode)"
           }
       - name: Build per-user EXE installer
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
         shell: pwsh
         run: |
           $compiler = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
@@ -104,7 +104,7 @@ jobs:
           "PORTABLE_EXE_SHA256=$exeHash" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
           Write-Output "::notice title=SHA256 portable::bin/portable/z SHA256SUMS.txt · $exeHash  SentinelX.exe"
       - name: Install EXE and smoke-test installed application
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
         shell: pwsh
         run: |
           $installer = Get-ChildItem 'bin/installer/*.exe' | Select-Object -First 1
@@ -134,15 +134,15 @@ jobs:
           path: test-results/
           retention-days: 2
       - uses: actions/upload-artifact@v4
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
         continue-on-error: true  # limit magazynu artefaktów nie może zamieniać wyników testów na czerwone
         with:
           name: SentinelX-windows-x64
-          path: bin/Release/net9.0-windows/
+          path: bin/Release/net10.0-windows/
           retention-days: 2
 
       - uses: actions/upload-artifact@v4
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
         continue-on-error: true  # limit magazynu artefaktów nie może zamieniać wyników testów na czerwone
         with:
           name: SentinelX-Portable-win-x64
@@ -150,7 +150,7 @@ jobs:
           retention-days: 2
 
       - uses: actions/upload-artifact@v4
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
         continue-on-error: true  # limit magazynu artefaktów nie może zamieniać wyników testów na czerwone
         with:
           name: SentinelX-Setup-win-x64
