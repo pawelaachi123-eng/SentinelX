@@ -90,6 +90,34 @@ jobs:
             throw "UI smoke failed: exit $($p.ExitCode)"
           }
           Get-Content "$output/ui-smoke.txt"
+      - name: Report UI smoke diagnostics
+        if: failure()
+        shell: pwsh
+        run: |
+          $output = Join-Path $PWD 'test-results/ui'
+          $diagnostics = @('### UI smoke diagnostic capture', "Output directory exists: $(Test-Path $output)")
+          if (Test-Path $output) {
+            foreach ($name in @('ui-smoke-progress.log', 'FAILED.txt', 'ui-smoke.txt', 'dotnet-runtimes.log', 'app.stdout.log', 'app.stderr.log')) {
+              $path = Join-Path $output $name
+              if (Test-Path $path) {
+                $content = Get-Content $path -Raw
+                $diagnostics += "#### $name"
+                $diagnostics += '```text'
+                $diagnostics += $content
+                $diagnostics += '```'
+                if ($name -eq 'ui-smoke-progress.log') {
+                  Get-Content $path | ForEach-Object { Write-Output "::notice::UI smoke progress: $_" }
+                }
+                if ($name -eq 'FAILED.txt') {
+                  $encoded = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($content))
+                  Write-Output "::error::UI smoke failure details (base64 UTF-8, $name): $encoded"
+                }
+              } else {
+                $diagnostics += "Missing diagnostic file: $name"
+              }
+            }
+          }
+          $diagnostics | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
       - name: Existing regression suite
         shell: pwsh
         run: |
