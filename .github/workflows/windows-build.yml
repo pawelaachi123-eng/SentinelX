@@ -30,6 +30,7 @@ jobs:
           if ($setup.ExitCode -notin 0, 3010) { throw ".NET Desktop runtime installer failed: $($setup.ExitCode)" }
           $runtimes = dotnet --list-runtimes
           $runtimes | ForEach-Object { Write-Output "::notice title=.NET runtime::$($_)" }
+          @('### Installed .NET runtimes', '', $runtimes, '') | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
           if (-not ($runtimes -match '^Microsoft.NETCore.App 10\.')) { throw 'The .NET 10 core runtime is unavailable after installation.' }
           if (-not ($runtimes -match '^Microsoft.WindowsDesktop.App 10\.')) { throw 'The .NET 10 Windows Desktop runtime is unavailable after installation.' }
       - name: .NET runtime inventory
@@ -65,10 +66,26 @@ jobs:
           $finished = $p.WaitForExit(120000)
           if (-not $finished) { $p.Kill(); $p.WaitForExit() }
           if (-not $finished -or $p.ExitCode -ne 0 -or -not (Test-Path "$output/ui-smoke.txt")) {
-            Get-ChildItem -Path $output -Recurse -File | Where-Object { $_.Extension -in '.txt', '.log' } | ForEach-Object {
-              $detail = (Get-Content $_.FullName -Raw).Replace("`r", '').Replace("`n", '%0A')
-              Write-Output "::error title=UI smoke diagnostic: $($_.Name)::$detail"
+            $diagnostics = @(
+              '### UI smoke failure diagnostics',
+              "Process finished within 120 seconds: $finished",
+              "Process exit code: $($p.ExitCode)",
+              "Smoke output directory: $output",
+              '',
+              '#### Diagnostic files'
+            )
+            $files = @(Get-ChildItem -Path $output -Recurse -File | Where-Object { $_.Extension -in '.txt', '.log' })
+            if ($files.Count -eq 0) { $diagnostics += 'No .txt or .log diagnostics were produced.' }
+            foreach ($file in $files) {
+              $content = Get-Content $file.FullName -Raw
+              $diagnostics += "##### $($file.Name)"
+              $diagnostics += '```text'
+              $diagnostics += $content
+              $diagnostics += '```'
+              $detail = $content.Replace("`r", '').Replace("`n", '%0A')
+              Write-Output "::error title=UI smoke diagnostic: $($file.Name)::$detail"
             }
+            $diagnostics | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
             if (-not $finished) { throw 'UI smoke timeout' }
             throw "UI smoke failed: exit $($p.ExitCode)"
           }
