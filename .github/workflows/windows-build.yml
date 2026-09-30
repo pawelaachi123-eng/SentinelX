@@ -21,7 +21,7 @@ jobs:
       - name: Install .NET 10 Windows Desktop runtime for WPF smoke
         shell: pwsh
         run: |
-          $runtimeRoot = Join-Path $env:RUNNER_TEMP 'sentinel-dotnet-runtime'
+          $runtimeRoot = Split-Path (Get-Command dotnet).Source
           $installer = Join-Path $env:RUNNER_TEMP 'dotnet-install.ps1'
           Invoke-WebRequest 'https://dot.net/v1/dotnet-install.ps1' -OutFile $installer
           & $installer -Runtime dotnet -Channel 10.0 -InstallDir $runtimeRoot -NoPath
