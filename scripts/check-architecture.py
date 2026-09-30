@@ -233,5 +233,5 @@ for key in sorted(code_boards & set(shapes)):
 project = ET.parse(ROOT / "SENTINEL-X.csproj")
 assert project.findtext(".//TargetFramework") == "net9.0-windows"
 assert project.findtext(".//UseWindowsForms") != "true"
-assert len(list((ROOT / "Views/Pages").glob("*Page.xaml"))) == 12
-print("PASS: XML, resources, resource order, animation paths, 12 views, thin code-behind, VM boundaries, target framework, no WinForms flag, XAML pitfalls")
+assert len(list((ROOT / "Views/Pages").glob("*Page.xaml"))) == 13
+print("PASS: XML, resources, resource order, animation paths, 13 views, thin code-behind, VM boundaries, target framework, no WinForms flag, XAML pitfalls")

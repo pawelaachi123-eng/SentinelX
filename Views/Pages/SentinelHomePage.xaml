@@ -89,7 +89,7 @@
 
             <Border x:Name="ResponseToast" Grid.Row="1" Visibility="Collapsed" Style="{StaticResource SxCardElevated}" MaxWidth="800" MaxHeight="108" HorizontalAlignment="Center" Margin="0,0,0,14" Padding="16,12" BorderBrush="{DynamicResource SxAccentCyanSoft}" AutomationProperties.Name="Powiadomienie Sentinel">
                 <DockPanel LastChildFill="True">
-                    <Button DockPanel.Dock="Right" Content="×" Click="DismissToast_Click" Style="{StaticResource SxIconButton}" Width="30" Height="30" MinHeight="30" Padding="0" Margin="12,0,0,0" ToolTip="Zamknij powiadomienie"/>
+                    <Button x:Name="DismissToastButton" DockPanel.Dock="Right" Content="×" Style="{StaticResource SxIconButton}" Width="30" Height="30" MinHeight="30" Padding="0" Margin="12,0,0,0" ToolTip="Zamknij powiadomienie"/>
                     <TextBlock x:Name="ToastText" TextWrapping="Wrap" MaxHeight="78" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Foreground="{DynamicResource SxTextPrimary}"/>
                 </DockPanel>
             </Border>
