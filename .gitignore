@@ -430,7 +430,9 @@ FodyWeavers.xsd
 
 # Local validation outputs
 test-results/
-# Android companion build outputs and machine-local SDK paths
+# Python generator tests and Android companion build outputs
+__pycache__/
+*.py[cod]
 phone-android/.gradle/
 phone-android/.idea/
 phone-android/local.properties

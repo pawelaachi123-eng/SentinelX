@@ -1,0 +1,108 @@
+name: Generate Android app
+
+on:
+  workflow_dispatch:
+    inputs:
+      template:
+        description: Reviewed starter app
+        required: true
+        type: choice
+        default: counter
+        options:
+          - counter
+          - notes
+          - checklist
+      app_name:
+        description: App label shown on the phone (1–32 letters/numbers/spaces/hyphens/underscores)
+        required: true
+        type: string
+        default: My Sentinel App
+  pull_request:
+    paths:
+      - '.github/workflows/android-app.yml'
+      - 'scripts/create_mobile_app.py'
+      - 'scripts/mobile-app-templates/**'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/android-app.yml'
+      - 'scripts/create_mobile_app.py'
+      - 'scripts/mobile-app-templates/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-app-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: ${{ matrix.template }} Android app
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        template: ${{ github.event_name == 'workflow_dispatch' && fromJSON(format('["{0}"]', inputs.template)) || fromJSON('["counter","notes","checklist"]') }}
+    env:
+      APP_TEMPLATE: ${{ matrix.template }}
+      APP_NAME: ${{ github.event_name == 'workflow_dispatch' && inputs.app_name || format('Sentinel {0}', matrix.template) }}
+      APP_DIR: ${{ runner.temp }}/sentinel-mobile-app
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Test safe source generator
+        run: python -m unittest discover -s tests -p 'test_mobile_app_generator.py' -v
+
+      - name: Generate reviewed Android project
+        run: python scripts/create_mobile_app.py --template "$APP_TEMPLATE" --app-name "$APP_NAME" --output "$APP_DIR"
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK 35
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Build debug APK
+        run: gradle --no-daemon --project-dir "$APP_DIR" :app:assembleDebug
+
+      - name: Verify and package outputs
+        if: github.event_name == 'workflow_dispatch'
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk="$APP_DIR/app/build/outputs/apk/debug/app-debug.apk"
+          test -s "$apk"
+          mkdir -p artifacts
+          cp "$apk" artifacts/app-debug.apk
+          (cd "$(dirname "$APP_DIR")" && zip -qr "$GITHUB_WORKSPACE/artifacts/source-project.zip" "$(basename "$APP_DIR")" -x "$(basename "$APP_DIR")/.gradle/*" "$(basename "$APP_DIR")/app/build/*")
+          (cd artifacts && sha256sum app-debug.apk source-project.zip > SHA256SUMS.txt)
+          {
+            echo '## Android app build'
+            echo "- Template: $APP_TEMPLATE"
+            echo "- Label: $APP_NAME"
+            echo '- APK: debug-signed for local testing; not a Play Store release.'
+            echo '- The generated app requests no Internet permission.'
+            cat artifacts/SHA256SUMS.txt
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        if: github.event_name == 'workflow_dispatch'
+        with:
+          name: android-${{ matrix.template }}-${{ github.run_number }}
+          path: artifacts/
+          if-no-files-found: error
+          retention-days: 7
