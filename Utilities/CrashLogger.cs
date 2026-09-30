@@ -23,6 +23,13 @@ public static class CrashLogger
                 : null;
         if (string.IsNullOrWhiteSpace(requestedOutput)) return;
         string output = Path.GetFullPath(requestedOutput);
+        try
+        {
+            Directory.CreateDirectory(output);
+            File.AppendAllText(Path.Combine(output, "ui-smoke-progress.log"),
+                $"{DateTimeOffset.UtcNow:O} managed module initializer{Environment.NewLine}");
+        }
+        catch { }
         AppDomain.CurrentDomain.UnhandledException += (_, error) =>
         {
             try
