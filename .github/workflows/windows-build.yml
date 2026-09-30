@@ -18,6 +18,22 @@ jobs:
       - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 10.0.x
+      - name: Install .NET 10 Windows Desktop runtime for WPF smoke
+        shell: pwsh
+        run: |
+          $runtimeRoot = Join-Path $env:RUNNER_TEMP 'sentinel-dotnet-runtime'
+          $installer = Join-Path $env:RUNNER_TEMP 'dotnet-install.ps1'
+          Invoke-WebRequest 'https://dot.net/v1/dotnet-install.ps1' -OutFile $installer
+          & $installer -Runtime dotnet -Channel 10.0 -InstallDir $runtimeRoot -NoPath
+          & $installer -Runtime windowsdesktop -Channel 10.0 -InstallDir $runtimeRoot -NoPath
+          if (-not (Test-Path (Join-Path $runtimeRoot 'shared/Microsoft.WindowsDesktop.App'))) {
+            throw 'The .NET 10 Windows Desktop runtime was not installed.'
+          }
+          if (-not (Test-Path (Join-Path $runtimeRoot 'shared/Microsoft.NETCore.App'))) {
+            throw 'The .NET 10 core runtime was not installed with Windows Desktop runtime.'
+          }
+          "DOTNET_ROOT=$runtimeRoot" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "DOTNET_ROOT_X64=$runtimeRoot" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
       - name: .NET runtime inventory
         shell: pwsh
         run: |
