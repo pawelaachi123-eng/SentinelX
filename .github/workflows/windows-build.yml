@@ -68,6 +68,8 @@ jobs:
           dotnet --list-runtimes | Set-Content (Join-Path $output 'dotnet-runtimes.log')
           $stdout = Join-Path $output 'app.stdout.log'
           $stderr = Join-Path $output 'app.stderr.log'
+          $env:SENTINEL_UI_SMOKE = '1'
+          $env:SENTINEL_UI_SMOKE_OUTPUT = $output
           $p = Start-Process $exe -ArgumentList "--ui-smoke `"$output`"" -PassThru -RedirectStandardOutput $stdout -RedirectStandardError $stderr
           $finished = $p.WaitForExit(120000)
           if (-not $finished) { $p.Kill(); $p.WaitForExit() }

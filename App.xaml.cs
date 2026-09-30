@@ -21,9 +21,12 @@ public partial class App : Application
         base.OnStartup(e);
         Utilities.CrashLogger.Initialize(this);
         bool selfTest = e.Args.Length == 2 && e.Args[0] is "--self-test" or "--asr-test" or "--ai-test" or "--builder-test";
-        bool uiTest = e.Args.Length == 2 && e.Args[0] == "--ui-smoke";
-        string uiOutput = uiTest ? Path.GetFullPath(e.Args[1]) : "";
-        if (selfTest || uiTest) Environment.SetEnvironmentVariable("SENTINEL_DATA_DIR", Path.Combine(Path.GetFullPath(e.Args[1]), "data"));
+        bool uiTestArgument = e.Args.Length == 2 && e.Args[0] == "--ui-smoke";
+        string uiOutputArgument = uiTestArgument ? e.Args[1] : Environment.GetEnvironmentVariable("SENTINEL_UI_SMOKE_OUTPUT") ?? "";
+        bool uiTest = uiTestArgument || (Environment.GetEnvironmentVariable("SENTINEL_UI_SMOKE") == "1" && !string.IsNullOrWhiteSpace(uiOutputArgument));
+        string uiOutput = uiTest ? Path.GetFullPath(uiOutputArgument) : "";
+        string testOutput = uiTest ? uiOutput : selfTest ? Path.GetFullPath(e.Args[1]) : "";
+        if (selfTest || uiTest) Environment.SetEnvironmentVariable("SENTINEL_DATA_DIR", Path.Combine(testOutput, "data"));
         RecordUiSmokeProgress(uiOutput, "entered App.OnStartup");
         if (uiTest) Environment.SetEnvironmentVariable("SENTINEL_UI_SMOKE", "1");
         if (!selfTest && !uiTest)

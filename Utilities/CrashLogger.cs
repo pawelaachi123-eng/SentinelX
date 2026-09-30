@@ -16,8 +16,13 @@ public static class CrashLogger
     internal static void CaptureStartupCrashForUiSmoke()
     {
         string[] args = Environment.GetCommandLineArgs();
-        if (args.Length < 3 || args[1] != "--ui-smoke") return;
-        string output = Path.GetFullPath(args[2]);
+        string? requestedOutput = args.Length >= 3 && args[1] == "--ui-smoke"
+            ? args[2]
+            : Environment.GetEnvironmentVariable("SENTINEL_UI_SMOKE") == "1"
+                ? Environment.GetEnvironmentVariable("SENTINEL_UI_SMOKE_OUTPUT")
+                : null;
+        if (string.IsNullOrWhiteSpace(requestedOutput)) return;
+        string output = Path.GetFullPath(requestedOutput);
         AppDomain.CurrentDomain.UnhandledException += (_, error) =>
         {
             try
