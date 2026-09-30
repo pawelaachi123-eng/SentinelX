@@ -9,7 +9,7 @@ public partial class App : Application
     private SingleInstanceService? instance;
     private ServiceProvider? provider;
     public static IServiceProvider Services { get; private set; } = null!;
-    private static void RecordUiSmokeProgress(string output, string stage)
+    internal static void RecordUiSmokeProgress(string output, string stage)
     {
         if (output.Length == 0) return;
         Directory.CreateDirectory(output);
@@ -53,7 +53,7 @@ public partial class App : Application
                 return;
             }
             RecordUiSmokeProgress(uiOutput, "building service provider");
-            provider = ServiceLocator.Build(Dispatcher); Services = provider;
+            provider = ServiceLocator.Build(Dispatcher, uiTest ? stage => RecordUiSmokeProgress(uiOutput, stage) : null); Services = provider;
             RecordUiSmokeProgress(uiOutput, "service provider ready");
             if (uiTest)
             {

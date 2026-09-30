@@ -12,7 +12,7 @@ using SentinelX.ViewModels;
 namespace SentinelX.Core;
 public static class ServiceLocator
 {
-    public static ServiceProvider Build(Dispatcher dispatcher)
+    public static ServiceProvider Build(Dispatcher dispatcher, Action<string>? startupProgress = null)
     {
         var services = new ServiceCollection();
         services.AddSingleton<IUiDispatcher>(new UiDispatcher(dispatcher));
@@ -87,20 +87,25 @@ public static class ServiceLocator
             systemMonitor: sp.GetRequiredService<SystemMonitor>(), aiSettingsProvider: () => sp.GetRequiredService<ISettingsService>().Current.Ai));
         services.AddSingleton<IAiService, AiService>();
         services.AddSingleton<CommandRouter>();
-        services.AddSingleton<SentinelToolboxService>(sp => new(() => sp.GetRequiredService<ISettingsService>().Current.Ui.DefaultBrowserPreference, sp.GetRequiredService<ActionHistoryService>(),
-            sp.GetRequiredService<Services.Permissions.IPermissionService>(), sp.GetRequiredService<Services.Apps.IAppLauncherService>(),
-            sp.GetRequiredService<ProcessToolService>(), sp.GetRequiredService<Services.Network.INetworkService>(),
-            sp.GetRequiredService<PcDiagnosticService>(), sp.GetRequiredService<ActionTaskRegistry>(),
-            sp.GetRequiredService<ConversationMemoryService>(), sp.GetRequiredService<HistoryExportService>(),
-            sp.GetRequiredService<Services.Memory.MemoryActionService>(),
-            desktopAutomationTool: sp.GetRequiredService<DesktopAutomationTool>(),
-            performanceHistory: sp.GetRequiredService<PerformanceHistoryService>(),
-            gameFocusMode: sp.GetRequiredService<GameFocusModeService>(),
-            autopilotService: sp.GetRequiredService<AutopilotService>(),
+        services.AddSingleton<SentinelToolboxService>(sp => new(() => sp.GetRequiredService<ISettingsService>().Current.Ui.DefaultBrowserPreference,
+            ResolveForStartup<ActionHistoryService>(sp, startupProgress, nameof(ActionHistoryService)),
+            ResolveForStartup<Services.Permissions.IPermissionService>(sp, startupProgress, nameof(Services.Permissions.IPermissionService)),
+            ResolveForStartup<Services.Apps.IAppLauncherService>(sp, startupProgress, nameof(Services.Apps.IAppLauncherService)),
+            ResolveForStartup<ProcessToolService>(sp, startupProgress, nameof(ProcessToolService)),
+            ResolveForStartup<Services.Network.INetworkService>(sp, startupProgress, nameof(Services.Network.INetworkService)),
+            ResolveForStartup<PcDiagnosticService>(sp, startupProgress, nameof(PcDiagnosticService)),
+            ResolveForStartup<ActionTaskRegistry>(sp, startupProgress, nameof(ActionTaskRegistry)),
+            ResolveForStartup<ConversationMemoryService>(sp, startupProgress, nameof(ConversationMemoryService)),
+            ResolveForStartup<HistoryExportService>(sp, startupProgress, nameof(HistoryExportService)),
+            ResolveForStartup<Services.Memory.MemoryActionService>(sp, startupProgress, nameof(Services.Memory.MemoryActionService)),
+            desktopAutomationTool: ResolveForStartup<DesktopAutomationTool>(sp, startupProgress, nameof(DesktopAutomationTool)),
+            performanceHistory: ResolveForStartup<PerformanceHistoryService>(sp, startupProgress, nameof(PerformanceHistoryService)),
+            gameFocusMode: ResolveForStartup<GameFocusModeService>(sp, startupProgress, nameof(GameFocusModeService)),
+            autopilotService: ResolveForStartup<AutopilotService>(sp, startupProgress, nameof(AutopilotService)),
             localAiAsk: (input, context, token) => sp.GetRequiredService<IAiService>().AskAsync(input, context, token),
             localAiLastResponseSucceeded: () => sp.GetRequiredService<IAiService>().LastResponseSucceeded,
-            readinessService: sp.GetRequiredService<Services.Readiness.IReadinessService>(),
-            deviceControlTool: sp.GetRequiredService<DeviceControlTool>()));
+            readinessService: ResolveForStartup<Services.Readiness.IReadinessService>(sp, startupProgress, nameof(Services.Readiness.IReadinessService)),
+            deviceControlTool: ResolveForStartup<DeviceControlTool>(sp, startupProgress, nameof(DeviceControlTool))));
         services.AddSingleton<FileWorkspaceService>(sp => new(
             history: sp.GetRequiredService<ActionHistoryService>(),
             externalNetworkAllowed: () => sp.GetRequiredService<ConversationMemoryService>().ExternalNetworkAllowed,
@@ -137,6 +142,14 @@ public static class ServiceLocator
         services.AddSingleton<Views.MainWindow>();
         return services.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });
     }
+    private static T ResolveForStartup<T>(IServiceProvider provider, Action<string>? progress, string name) where T : notnull
+    {
+        progress?.Invoke("resolving toolbox dependency " + name);
+        T service = provider.GetRequiredService<T>();
+        progress?.Invoke("resolved toolbox dependency " + name);
+        return service;
+    }
+
     private static MemoryPrivacy MapPrivacy(MemorySettings s) =>
         new(s.SaveConversations, s.UseHistoryForAi, s.SaveMemories, s.UseMemoriesForAi, s.RetentionDays, s.ContextPreviewEnabled);
 }
