@@ -66,6 +66,35 @@ public partial class App : Application
                 RecordUiSmokeProgress(uiOutput, "watchers started");
             }
             RecordUiSmokeProgress(uiOutput, "resolving main window");
+            if (uiTest)
+            {
+                Type[] startupDependencies =
+                [
+                    typeof(Services.Actions.IActionEngine),
+                    typeof(Services.Desktop.IDesktopService),
+                    typeof(Core.IUiDispatcher),
+                    typeof(ViewModels.CommandCenterViewModel),
+                    typeof(ViewModels.SystemViewModel),
+                    typeof(ViewModels.GamingViewModel),
+                    typeof(ViewModels.VoiceViewModel),
+                    typeof(ViewModels.AiViewModel),
+                    typeof(ViewModels.ActionsViewModel),
+                    typeof(ViewModels.HistoryViewModel),
+                    typeof(ViewModels.SettingsViewModel),
+                    typeof(ViewModels.CommandPaletteViewModel),
+                    typeof(ViewModels.ReadinessViewModel),
+                    typeof(ViewModels.MemoryViewModel),
+                    typeof(ViewModels.ProjectViewModel),
+                    typeof(ViewModels.TaskViewModel),
+                    typeof(ViewModels.DiagnosticViewModel)
+                ];
+                foreach (Type dependency in startupDependencies)
+                {
+                    RecordUiSmokeProgress(uiOutput, "resolving " + dependency.Name);
+                    provider.GetRequiredService(dependency);
+                    RecordUiSmokeProgress(uiOutput, "resolved " + dependency.Name);
+                }
+            }
             var shell = provider.GetRequiredService<Views.MainWindow>();
             RecordUiSmokeProgress(uiOutput, "main window constructed");
             MainWindow = shell;
