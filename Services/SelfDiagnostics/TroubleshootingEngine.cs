@@ -36,7 +36,7 @@ public sealed class TroubleshootingEngine
             if (score > bestScore) { bestScore = score; best = f; }
         }
         return best == null
-            ? new TroubleshootingProposal(error.Message, findings, null, null, needsApproval: true)
+            ? new TroubleshootingProposal(error.Message, findings, null, null, NeedsApproval: true)
             : new TroubleshootingProposal(error.Message, findings, best.Description, best.FixAction, best.RequiresApproval);
     }
 
