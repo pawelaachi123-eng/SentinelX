@@ -37,6 +37,32 @@
         <DataTemplate DataType="{x:Type vm:SettingsViewModel}">
             <pages:SettingsPage/>
         </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:ToolsViewModel}">
+            <pages:ToolsPage/>
+        </DataTemplate>
+        <Style x:Key="ThemeTile" TargetType="ListBoxItem">
+            <Setter Property="Margin" Value="0,0,6,6"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border x:Name="Tile" Background="{DynamicResource SxSurface}" BorderBrush="{DynamicResource SxBorderSubtle}" BorderThickness="1" CornerRadius="10" Padding="8,6">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Tile" Property="Background" Value="{DynamicResource SxSurfaceHover}"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Tile" Property="Background" Value="{DynamicResource SxSurfaceActive}"/>
+                                <Setter TargetName="Tile" Property="BorderBrush" Value="{DynamicResource SxAccentCyan}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
     <Grid>
         <Grid.ColumnDefinitions>
@@ -45,14 +71,54 @@
         </Grid.ColumnDefinitions>
         <Border Background="{DynamicResource SxSidebar}" BorderBrush="{DynamicResource SxBorderSubtle}" BorderThickness="0,0,1,0">
             <DockPanel>
-                <StackPanel DockPanel.Dock="Top" Margin="24,28,20,24">
-                    <TextBlock Text="◈  SENTINEL X" Foreground="{DynamicResource SxAccentCyan}" FontSize="18" FontWeight="Bold"/>
-                    <TextBlock Text="{Binding Version}" Style="{StaticResource SxCaption}" Margin="26,6,0,24"/>
-                    <Button Content="⌕  Szukaj · Ctrl+K" Command="{Binding OpenPaletteCommand}" FontSize="12" Margin="0,0,0,16" AutomationProperties.Name="Otwórz paletę poleceń"/>
-                    <TextBlock Text="LOCAL INTELLIGENCE" FontSize="10" Foreground="{DynamicResource SxTextMuted}"/>
-                    <Border Height="1" Background="{DynamicResource SxBorderSubtle}" Margin="0,16,0,0"/>
+                <StackPanel DockPanel.Dock="Top" Margin="20,26,18,18">
+                    <!-- 0.95: marka z gradientem akcentu zamiast jednolitego koloru -->
+                    <TextBlock Text="◈  SENTINEL X" FontSize="19" FontWeight="Bold" Foreground="{StaticResource SxAccentGradient}"/>
+                    <TextBlock Text="{Binding Version}" Style="{StaticResource SxCaption}" Margin="26,4,0,18"/>
+                    <Button Content="⌕  Szukaj · Ctrl+K" Command="{Binding OpenPaletteCommand}" FontSize="12" Margin="0,0,0,10" AutomationProperties.Name="Otwórz paletę poleceń"/>
+                    <Button Content="🧰  Narzędzia" Command="{Binding OpenToolsCommand}" Style="{StaticResource SxGhostButton}" FontSize="12" Margin="0,0,0,16" AutomationProperties.Name="Otwórz katalog narzędzi"/>
+                    <!-- 0.95: żywe metryki zamiast pustego miejsca — ten sam odczyt co zakładka System -->
+                    <TextBlock Text="TERAZ NA KOMPUTERZE" FontSize="10" Foreground="{DynamicResource SxTextMuted}" Margin="2,0,0,8"/>
+                    <UniformGrid Columns="3" Margin="0,0,0,8">
+                        <Border Style="{StaticResource SxMetricCard}" Padding="8,6" Margin="0,0,6,0">
+                            <StackPanel>
+                                <TextBlock Text="CPU" FontSize="10" Foreground="{DynamicResource SxTextSecondary}"/>
+                                <TextBlock Text="{Binding System.Snapshot.CpuText}" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" ToolTip="{Binding System.Snapshot.CpuText}"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Style="{StaticResource SxMetricCard}" Padding="8,6" Margin="0,0,6,0">
+                            <StackPanel>
+                                <TextBlock Text="RAM" FontSize="10" Foreground="{DynamicResource SxTextSecondary}"/>
+                                <TextBlock Text="{Binding System.Snapshot.RamText}" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" ToolTip="{Binding System.Snapshot.RamText}"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Style="{StaticResource SxMetricCard}" Padding="8,6">
+                            <StackPanel>
+                                <TextBlock Text="GPU" FontSize="10" Foreground="{DynamicResource SxTextSecondary}"/>
+                                <TextBlock Text="{Binding System.Snapshot.GpuText}" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" ToolTip="{Binding System.Snapshot.GpuText}"/>
+                            </StackPanel>
+                        </Border>
+                    </UniformGrid>
+                    <Border Height="1" Background="{DynamicResource SxBorderSubtle}" Margin="0,10,0,0"/>
                 </StackPanel>
-                <StackPanel DockPanel.Dock="Bottom" Margin="16,0,16,20">
+                <StackPanel DockPanel.Dock="Bottom" Margin="16,0,16,16">
+                    <!-- 0.95: motyw zmieniany jednym kliknięciem, zapisywany w ustawieniach -->
+                    <TextBlock Text="MOTYW" FontSize="10" Foreground="{DynamicResource SxTextMuted}" Margin="4,0,0,6"/>
+                    <ListBox ItemsSource="{Binding ThemeOptions}" SelectedItem="{Binding CurrentTheme, Mode=TwoWay}" ItemContainerStyle="{StaticResource ThemeTile}" Margin="0,0,0,12" AutomationProperties.Name="Wybór motywu">
+                        <ListBox.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <UniformGrid Columns="2"/>
+                            </ItemsPanelTemplate>
+                        </ListBox.ItemsPanel>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{Binding Icon}" FontSize="13" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding Label}" FontSize="11" Margin="6,0,0,0" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
                     <Button Content="◇  Konfiguracja i gotowość" Command="{Binding OpenReadinessCommand}" Style="{StaticResource SxGhostButton}" FontSize="12" Margin="0,0,0,8"/>
                     <TextBlock Text="{Binding DesktopStatus}" Foreground="{DynamicResource SxWarning}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,12"/>
                     <Border Style="{StaticResource SxBadge}" Margin="0,0,0,12">

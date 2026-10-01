@@ -10,8 +10,8 @@ android {
         applicationId 'pl.sentinelx.phone'
         minSdk 24
         targetSdk 35
-        versionCode 94
-        versionName '0.94.0'
+        versionCode 95
+        versionName '0.95.0'
     }
 
     // Stały klucz podpisu (repozytorium prywatne): kolejne wersje instalują się na poprzednie bez odinstalowywania.

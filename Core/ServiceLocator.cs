@@ -108,6 +108,8 @@ public static class ServiceLocator
         services.AddSingleton<ProjectViewModel>();
         services.AddSingleton<TaskViewModel>();
         services.AddSingleton<DiagnosticViewModel>();
+        // 0.95 · WARSZTAT: the Tools catalogue page (sidebar + Centrum tab).
+        services.AddSingleton<ToolsViewModel>();
         services.AddSingleton<OverlayViewModel>();
         services.AddSingleton<MainViewModel>();
         services.AddSingleton<Views.MainWindow>();

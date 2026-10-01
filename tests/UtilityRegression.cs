@@ -8,6 +8,8 @@ internal static class UtilityRegression
 {
     private static void Check(bool condition, string message) { if (!condition) throw new InvalidOperationException(message); }
     private static string Require(string? value, string label) => value ?? throw new InvalidOperationException(label + " was not handled as a tool");
+    /// <summary>Normalises the non-breaking space used by pl-PL group formatting so assertions stay readable.</summary>
+    private static string Flat(string value) => value.Replace('\u00a0', ' ').Replace("  ", " ");
 
     public static Task RunAsync(string directory)
     {
@@ -152,6 +154,72 @@ internal static class UtilityRegression
         Check(Require(UtilityToolbox.Process("ile rdzeni", "ile rdzeni"), "cores").StartsWith("Rdzenie logiczne:"), "core count is readable offline");
         Check(Require(UtilityToolbox.Process("architektura", "architektura"), "arch").StartsWith("Architektura"), "architecture is readable offline");
         Check(Require(UtilityToolbox.Process("moje ip", "moje ip"), "ip").Contains("adres"), "local IP listing answers offline (address or honest absence)");
+
+        // --- 0.95 · WARSZTAT: diff, regex, wyciąganie danych, porządki w tekście ---
+        string diff = Require(UtilityToolbox.Process("porownaj teksty: ala ma kota ||| ala ma psa", "porownaj teksty: ala ma kota ||| ala ma psa"), "diff");
+        Check(diff.Contains("− tylko w pierwszym: ala ma kota"), "diff must show the line missing on the right: " + diff);
+        Check(diff.Contains("+ tylko w drugim: ala ma psa"), "diff must show the line missing on the left: " + diff);
+        Check(diff.Contains("różnice 2"), "diff must summarise the difference count: " + diff);
+        Check(Require(UtilityToolbox.Process("porownaj teksty: ten sam tekst ||| ten sam tekst", "porownaj teksty: ten sam tekst ||| ten sam tekst"), "diff-same").StartsWith("Teksty są identyczne"), "identical texts must be reported as identical");
+        Check(UtilityToolbox.DiffText("bez separatora").StartsWith("Podaj dwa teksty"), "a missing separator must be explained");
+        Check(Require(UtilityToolbox.Process("diff: kot\n---\npies", "diff: kot\n---\npies"), "diff-dashes").Contains("różnice 2"), "a line of dashes must also split the two texts");
+
+        string regex = Require(UtilityToolbox.Process("regex: \\d+ ||| mam 12 kotów i 3 psy", "regex: \\d+ ||| mam 12 kotów i 3 psy"), "regex");
+        Check(regex.Contains("dopasowania: 2"), "regex must count the matches: " + regex);
+        Check(regex.Contains("„12”"), "regex must show the matched text");
+        Check(Require(UtilityToolbox.Process("regex: (\\w+)@(\\w+) ||| biuro@example", "regex: (\\w+)@(\\w+) ||| biuro@example"), "regex-groups").Contains("grupy: 1=biuro, 2=example"), "regex must expose groups");
+        Check(UtilityToolbox.RegexTest("[ ||| tekst").StartsWith("Wzorzec nie jest poprawny"), "an invalid pattern must be refused with a reason");
+        Check(Require(UtilityToolbox.Process("regex: zebra ||| ala ma kota", "regex: zebra ||| ala ma kota"), "regex-none").StartsWith("Brak dopasowań"), "a pattern without matches must say so");
+
+        string extract = Require(UtilityToolbox.Process("wyciagnij: napisz na biuro@example.com albo wejdź na https://example.com, IP 10.0.0.7 i 42 zł", "wyciagnij: napisz na biuro@example.com albo wejdź na https://example.com, IP 10.0.0.7 i 42 zł"), "extract");
+        Check(extract.Contains("biuro@example.com"), "extraction must find e-mails: " + extract);
+        Check(extract.Contains("https://example.com"), "extraction must find links");
+        Check(extract.Contains("10.0.0.7"), "extraction must find IPv4 addresses");
+        Check(extract.Contains("42"), "extraction must find numbers");
+        Check(Require(UtilityToolbox.Process("wyciagnij: nic tu nie ma", "wyciagnij: nic tu nie ma"), "extract-none").StartsWith("Nie znalazłem"), "an empty extraction must be honest");
+
+        string sorted = Require(UtilityToolbox.Process("posortuj linie: zebra\nkot\nAla", "posortuj linie: zebra\nkot\nAla"), "sort");
+        Check(sorted.IndexOf("Ala", StringComparison.Ordinal) < sorted.IndexOf("kot", StringComparison.Ordinal), "sorting must be case-insensitive and stable: " + sorted);
+        Check(sorted.Contains("Posortowane wiersze (3)"), "sorting must report the line count");
+        string unique = Require(UtilityToolbox.Process("usun duplikaty linii: kot\npies\nkot", "usun duplikaty linii: kot\npies\nkot"), "unique");
+        Check(unique.Contains("usunięte: 1"), "deduplication must report what it removed: " + unique);
+        Check(unique.Contains("zostało 2 z 3"), "deduplication must keep one copy of each line");
+
+        // --- 0.95 · WARSZTAT: kwota słownie, czas, moc hasła, QR ---
+        Check(UtilityToolbox.AmountInWords("1234,56").Contains("tysiąc dwieście trzydzieści cztery złote 56 groszy"), "amounts need correct Polish forms: " + UtilityToolbox.AmountInWords("1234,56"));
+        Check(UtilityToolbox.AmountInWords("1").Contains("jeden złoty 0 groszy"), "one złoty is singular: " + UtilityToolbox.AmountInWords("1"));
+        Check(UtilityToolbox.AmountInWords("5").Contains("pięć złotych 0 groszy"), "five złotych is plural genitive");
+        Check(UtilityToolbox.AmountInWords("2000").Contains("dwa tysiące złotych"), "2000 → dwa tysiące złotych: " + UtilityToolbox.AmountInWords("2000"));
+        Check(UtilityToolbox.AmountInWords("5000").Contains("pięć tysięcy złotych"), "5000 → pięć tysięcy złotych");
+        Check(UtilityToolbox.AmountInWords("1000000").Contains("milion złotych"), "a million uses the short form: " + UtilityToolbox.AmountInWords("1000000"));
+        Check(UtilityToolbox.AmountInWords("12,5").Contains("dwanaście złotych 50 groszy"), "grosze come from the decimal part: " + UtilityToolbox.AmountInWords("12,5"));
+        Check(UtilityToolbox.AmountInWords("abc").StartsWith("Nie rozpoznałem kwoty"), "junk must be refused");
+        Check(Require(UtilityToolbox.Process("kwota slownie: 250,05", "kwota slownie: 250,05"), "amount-cmd").Contains("dwieście pięćdziesiąt złotych 5 groszy"), "the chat form must reach the tool");
+
+        Check(Flat(UtilityToolbox.SecondsText("3661", toSeconds: false)).Contains("1 h 1 min 1 s"), "3661 s = 1 h 1 min 1 s: " + Flat(UtilityToolbox.SecondsText("3661", toSeconds: false)));
+        Check(Flat(UtilityToolbox.SecondsText("90000", toSeconds: false)).Contains("1 d 1 h"), "days must appear above 24 hours: " + Flat(UtilityToolbox.SecondsText("90000", toSeconds: false)));
+        Check(Flat(UtilityToolbox.SecondsText("2h 15m 10s", toSeconds: true)).Contains("= 8 110 s"), "2h 15m 10s = 8110 s: " + Flat(UtilityToolbox.SecondsText("2h 15m 10s", toSeconds: true)));
+        Check(Flat(UtilityToolbox.SecondsText("90min", toSeconds: true)).Contains("= 5 400 s"), "90 minutes = 5400 s: " + Flat(UtilityToolbox.SecondsText("90min", toSeconds: true)));
+        Check(UtilityToolbox.SecondsText("kiedyś", toSeconds: true).StartsWith("Nie rozpoznałem czasu"), "a missing unit must be refused");
+        Check(Flat(Require(UtilityToolbox.Process("sekundy: 3661", "sekundy: 3661"), "seconds-cmd")).Contains("1 h 1 min 1 s"), "the chat form must reach the seconds tool");
+
+        Check(UtilityToolbox.PasswordStrength("abc").Contains("bardzo słabe"), "a three-letter password is very weak: " + UtilityToolbox.PasswordStrength("abc"));
+        Check(UtilityToolbox.PasswordStrength("abc").Contains("krótsze niż 12 znaków"), "short passwords must be flagged");
+        Check(UtilityToolbox.PasswordStrength("qwerty123").Contains("typowy fragment"), "common fragments must be flagged");
+        Check(UtilityToolbox.PasswordStrength("T7#vQ!92Lm$4Zp&Xw").Contains("bardzo silne"), "a long mixed password must score high: " + UtilityToolbox.PasswordStrength("T7#vQ!92Lm$4Zp&Xw"));
+        Check(!UtilityToolbox.PasswordStrength("TajneHaslo123!").Contains("TajneHaslo123!"), "the password itself must never be echoed back");
+        Check(Require(UtilityToolbox.Process("moc hasla: abc", "moc hasla: abc"), "strength-cmd").Contains("bardzo słabe"), "the chat form must reach the strength meter");
+
+        string qrDirectory = Path.Combine(Path.GetTempPath(), "sentinel-qr-" + Guid.NewGuid().ToString("N"));
+        string qr = UtilityToolbox.QrCode("qr: test kodowania", qrDirectory);
+        Check(qr.StartsWith("Kod QR zapisany lokalnie"), "a QR code must be written locally: " + qr);
+        Check(Directory.GetFiles(qrDirectory, "*.png").Length == 1, "exactly one PNG must be created");
+        Check(new FileInfo(Directory.GetFiles(qrDirectory, "*.png")[0]).Length > 200, "the PNG must contain real image data");
+        Check(UtilityToolbox.QrCode("qr wifi: MojaSiec|tajnehaslo", qrDirectory).Contains("dane sieci Wi-Fi"), "the Wi-Fi form must be reported as such");
+        Check(Directory.GetFiles(qrDirectory, "*.png").Length == 2, "the Wi-Fi code must be a second PNG");
+        Check(UtilityToolbox.QrCode("qr:", qrDirectory).StartsWith("Podaj treść kodu"), "an empty QR command must be refused");
+        Check(Require(UtilityToolbox.Process("qr: cokolwiek", "qr: cokolwiek"), "qr-cmd") != null, "the chat form must reach the QR tool");
+        Directory.Delete(qrDirectory, true);
 
         // --- the router surface: handled tools versus everything else ---
         Check(Require(UtilityToolbox.Process("policz 12+8", "policz 12+8"), "policz").Contains("= 20"), "the chat form must reach the calculator");

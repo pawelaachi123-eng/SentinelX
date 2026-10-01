@@ -70,7 +70,7 @@ public partial class CommandCenterViewModel : ObservableObject, IDisposable
     public CommandCenterViewModel(IActionEngine engine, IVoiceService voice, IUiDispatcher dispatcher,
         SystemViewModel system, VoiceViewModel voiceViewModel, IHistoryService history, ConversationMemoryService memory, TaskService tasks,
         TaskViewModel taskPage, HistoryViewModel historyPage, GamingViewModel gamingPage, AiViewModel aiPage,
-        ActionsViewModel actionsPage, DiagnosticViewModel diagnosticsPage,
+        ActionsViewModel actionsPage, DiagnosticViewModel diagnosticsPage, ToolsViewModel toolsPage,
         MemoryArchiveService? archives = null)
     {
         this.engine = engine; this.voice = voice; this.dispatcher = dispatcher; this.history = history; this.memory = memory; this.tasks = tasks; System = system; Voice = voiceViewModel;
@@ -84,7 +84,8 @@ public partial class CommandCenterViewModel : ObservableObject, IDisposable
             new CenterTab("gry", "🎮", "Gaming", gamingPage),
             new CenterTab("ai", "✨", "AI", aiPage),
             new CenterTab("akcje", "⚡", "Akcje", actionsPage),
-            new CenterTab("diagnostyka", "🩺", "Diagnostyka", diagnosticsPage)
+            new CenterTab("diagnostyka", "🩺", "Diagnostyka", diagnosticsPage),
+            new CenterTab("narzedzia", "🧰", "Narzędzia", toolsPage)
         ];
         SelectedTab = Sections[0];
         VoiceActive = Voice.State != VoiceState.Off;

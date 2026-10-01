@@ -35,7 +35,7 @@ public static class SlashCatalog
         new("propozycje", "Propozycje", "co warto zrobić — decyzja należy do Ciebie", SlashKind.Command, "propozycje"),
         new("lekcje", "Lekcje", "czego nauczyłem się z Twoich poprawek", SlashKind.Command, "lekcje"),
         new("wersja", "Wersja", "wersja aplikacji i systemu", SlashKind.Command, "wersja"),
-        new("nowego", "Co nowego", "skrócona lista zmian 0.91", SlashKind.Command, "co nowego"),
+        new("nowego", "Co nowego", "skrócona lista zmian 0.95", SlashKind.Command, "co nowego"),
         // everyday helpers
         new("pomoc", "Pomoc", "pełna lista poleceń", SlashKind.Command, "pomoc"),
         new("skroty", "Skróty", "tabelka skrótów klawiszowych", SlashKind.Command, "skróty"),
@@ -51,6 +51,16 @@ public static class SlashCatalog
         new("porzadki", "Raport porządkowy", "co zajmuje miejsce w folderze, tylko odczyt", SlashKind.Command, "porzadki: "),
         new("sprzatanie", "Usuń duplikaty", "zostawia 1 plik w grupie, reszta do Kosza po zgodzie", SlashKind.Command, "usuń duplikaty: "),
         new("nazwy", "Zmień nazwy plików", "podgląd zmian, wykonanie dopiero po zgodzie", SlashKind.Command, "zmien nazwy: "),
+        // 0.95 · WARSZTAT: narzędzia z nowej strony „Narzędzia”
+        new("narzedzia", "Narzędzia", "katalog narzędzi offline z polem na argument", SlashKind.Tab, "narzedzia"),
+        new("diff", "Porównaj teksty", "dwa teksty oddzielone |||", SlashKind.Command, "porownaj teksty: "),
+        new("regex", "Test wyrażenia regularnego", "wzorzec ||| tekst", SlashKind.Command, "regex: "),
+        new("hash", "Skrót pliku", "SHA-256 i MD5 pliku, tylko odczyt", SlashKind.Command, "sha256 pliku: "),
+        new("qr", "Kod QR", "zapisz kod QR jako PNG lokalnie", SlashKind.Command, "qr: "),
+        new("slownie", "Kwota słownie", "np. 1234,56 → złote i grosze", SlashKind.Command, "kwota slownie: "),
+        new("sekundy", "Sekundy na czas", "3661 → godziny i minuty", SlashKind.Command, "sekundy: "),
+        new("moc", "Moc hasła", "entropia i słabości, bez zapisu hasła", SlashKind.Command, "moc hasla: "),
+        new("wyciagnij", "Wyciągnij dane z tekstu", "e-maile, linki, IP, liczby", SlashKind.Command, "wyciagnij: "),
         // panels inside Centrum and pages
         new("rozmowa", "Rozmowa", "wróć do czatu", SlashKind.Tab, "rozmowa"),
         new("historia", "Historia", "zakładka Historii", SlashKind.Tab, "historia"),
