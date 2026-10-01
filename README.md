@@ -33,7 +33,7 @@ Aplikację na Androida najłatwiej zbudować w wydaniu na GitHubie (workflow **R
 ## Nowe w 0.96 — KUŹNIA: podgląd decyzji, szukanie w zadaniach i 11 nowych narzędzi
 
 - **`jak to rozumiem: <polecenie>`** — podgląd decyzji: Sentinel opisuje po polsku, co by zrobił (naprawa literówki, narzędzie z katalogu, polecenie wymagające zgody, pytanie doprecyzowujące albo zwykłe pytanie do modelu), ale **niczego nie wykonuje i nie zapisuje** — podgląd `qr:` nie tworzy pliku PNG.
-- **`szukaj w zadaniach: fraza`** — przeszukuje zadania (także zrobione) i przypomnienia, tylko odczyt. Wcześniej to polecenie trafiało do wyszukiwarki internetowej.
+- **`szukaj w zadaniach: fraza`** — przeszukuje zadania (także zrobione) i przypomnienia, tylko odczyt. Wcześniej to polecenie (z 0.91) przesłaniała wyszukiwarka internetowa.
 - **Kategoria „Kuźnia 0.96” na stronie Narzędzia** (katalog ma 93 wpisy): `nazwa zmiennej:`, `url zakoduj:`, `url odkoduj:`, `unix:`, `na unix:`, `czestosc slow:`, `rata kredytu: 300000 25 7,5`, `porownaj wersje: 1.2.10 ||| 1.10.0`, `numeruj linie:`, `odwroc linie:`, `popraw odstepy:` — lokalnie, bez chmury.
 - **Porządek w kodzie:** `Brain/` (rozumienie i pamięć), `Brain/Router/` (router i podgląd decyzji), `Tools/` (narzędzia), `Testing/` (testy w aplikacji). Dwa nowe skrypty kontrolne: `scripts/check-syntax-lite.py` i rozszerzony `scripts/check-architecture.py`.
 

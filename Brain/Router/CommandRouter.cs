@@ -133,7 +133,7 @@ public sealed class CommandRouter
         if (text is "co nowego" or "lista zmian" or "changelog" or "co sie zmienilo")
             return "CO NOWEGO W 0.96 · KUŹNIA\n" +
                 "· Podgląd decyzji: „jak to rozumiem: <polecenie>” pokazuje, co Sentinel by zrobił (literówka, narzędzie, pytanie, model AI) — niczego przy tym nie wykonuje ani nie zapisuje.\n" +
-                "· „szukaj w zadaniach: fraza” przeszukuje zadania (także zrobione) i przypomnienia; wcześniej trafiało to do wyszukiwarki internetowej.\n" +
+                "· „szukaj w zadaniach: fraza” przeszukuje zadania (także zrobione) i przypomnienia; wcześniej przesłaniała je wyszukiwarka internetowa, a przypomnień nie obejmowało.\n" +
                 "· 11 nowych narzędzi w kategorii „Kuźnia 0.96”: nazwy zmiennych, kodowanie URL, czas Unix, najczęstsze słowa, rata kredytu, porównanie wersji, numerowanie i odwracanie wierszy, poprawa odstępów.\n" +
                 "· Porządek w kodzie: Brain/ (rozumienie i pamięć), Brain/Router/, Tools/ (narzędzia), Testing/ (testy w aplikacji).\n" +
                 "\nCO NOWEGO W 0.95 · WARSZTAT\n" +
@@ -182,19 +182,7 @@ public sealed class CommandRouter
         if (Regex.IsMatch(text, @"^(?:skanuj|przeskanuj) (?:caly )?dysk"))
             return "Nie skanuję całych dysków automatycznie — to kosztowne i narusza prywatność. Zamiast tego: „pokaz dyski” (pojemność), „top procesy” (co zużywa zasoby), „zabezpieczenia” (stan ochrony Windows).";
 
-        if (tasks != null)
-        {
-            var searchTasks = Regex.Match(text, @"^szukaj (?:w )?zadaniach[:\s]+(.+)$");
-            if (searchTasks.Success)
-            {
-                string needle = ConversationMemoryService.Normalize(searchTasks.Groups[1].Value);
-                var found = tasks.GetTasks(includeDone: true)
-                    .Where(x => ConversationMemoryService.Normalize(x.Title).Contains(needle, StringComparison.Ordinal)).Take(10).ToArray();
-                if (found.Length == 0) return "Nie znalazłem zadań pasujących do: " + searchTasks.Groups[1].Value.Trim();
-                return "Znalezione zadania (" + found.Length + "):\n" + string.Join("\n", found.Select((x, i) =>
-                    $"{i + 1}. {x.Title}  [{x.Status}{(x.DueAt == null ? "" : ", termin " + x.DueAt.Value.ToString("dd.MM HH:mm"))}]"));
-            }
-        }
+        // „szukaj w zadaniach: …” lives in TryHandleTaskCommand (0.96: also reminders, and the toolbox no longer turns it into a web search).
         return null;
     }
 
