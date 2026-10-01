@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<meta name="theme-color" content="#0D0F14">
+<meta name="color-scheme" content="dark">
+<meta name="application-name" content="Sentinel X">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Sentinel X">
+<meta name="referrer" content="no-referrer">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="stylesheet" href="app.css">
+<title>Sentinel X</title>
+</head>
+<body>
+<div id="app" data-state="boot">
+
+  <header class="top" id="top">
+    <div class="brand">
+      <svg class="logo" viewBox="0 0 48 48" aria-hidden="true"><use href="#i-logo"/></svg>
+      <div class="brand-text">
+        <div class="title" id="pcName">Sentinel X</div>
+        <div class="sub" id="pcSub">łączenie…</div>
+      </div>
+    </div>
+    <div class="top-actions">
+      <span class="pill" id="netPill" role="status"><i></i><span id="netText">łączenie</span></span>
+      <button class="icon-btn" id="btnSettings" type="button" aria-label="Ustawienia telefonu"><svg viewBox="0 0 24 24"><use href="#i-sliders"/></svg></button>
+    </div>
+  </header>
+
+  <main id="main">
+
+    <!-- PAROWANIE -->
+    <section id="view-pair" class="view center" hidden>
+      <div class="hero">
+        <svg class="logo big" viewBox="0 0 48 48" aria-hidden="true"><use href="#i-logo"/></svg>
+        <h1>Sentinel X</h1>
+        <p>Połącz telefon z komputerem. Wszystko dzieje się w Twojej sieci domowej, bez chmury i bez kont.</p>
+      </div>
+      <div class="card" id="pairIdle">
+        <label class="field">Nazwa tego telefonu
+          <input id="pairName" type="text" maxlength="32" autocomplete="off" spellcheck="false">
+        </label>
+        <button class="btn primary" id="btnPair" type="button">Połącz z komputerem</button>
+        <p class="hint">Na komputerze pojawi się okno z prośbą o zgodę. Wystarczy jedno kliknięcie — robisz to tylko raz.</p>
+      </div>
+      <div class="card" id="pairWait" hidden>
+        <div class="kicker">Kod potwierdzenia</div>
+        <div class="sas" id="sas" aria-live="polite">000 000</div>
+        <p>Na komputerze kliknij <b>Zezwól</b>. Kod na ekranie komputera powinien być taki sam.</p>
+        <div class="spinner" aria-hidden="true"></div>
+        <button class="btn ghost" id="btnPairCancel" type="button">Anuluj</button>
+      </div>
+      <div class="card warn" id="pairWarn" hidden>
+        <strong>Kody się różnią.</strong> Ktoś w sieci może podszywać się pod komputer. Nie zatwierdzaj tej prośby na komputerze.
+      </div>
+      <p class="foot" id="pairMsg" role="status"></p>
+    </section>
+
+    <!-- CZAT -->
+    <section id="view-chat" class="view" hidden>
+      <div id="chatList" class="chat" role="log" aria-live="polite" aria-label="Rozmowa z Sentinel"></div>
+    </section>
+
+    <!-- KOMPUTER -->
+    <section id="view-pc" class="view scroll" hidden>
+      <div class="grid2">
+        <div class="card metric"><div class="k">Procesor</div><div class="v" id="mCpu">–</div><div class="bar"><i id="bCpu"></i></div></div>
+        <div class="card metric"><div class="k">Pamięć RAM</div><div class="v" id="mRam">–</div><div class="sub" id="mRamSub">&nbsp;</div><div class="bar"><i id="bRam"></i></div></div>
+        <div class="card metric"><div class="k">Karta graficzna</div><div class="v" id="mGpu">–</div><div class="bar"><i id="bGpu"></i></div></div>
+        <div class="card metric"><div class="k">Gra</div><div class="v small" id="mGame">–</div><div class="sub" id="mUptime">&nbsp;</div></div>
+      </div>
+      <h3>Dyski</h3>
+      <div class="card list" id="disks"></div>
+      <h3>Najwięcej pamięci</h3>
+      <div class="card list" id="procs"></div>
+      <h3>Silnik AI <span class="tag">wbudowany · bez Ollamy</span></h3>
+      <div class="card" id="engine"></div>
+      <h3>Autopilot</h3>
+      <div class="card" id="care"></div>
+      <h3>Sieć</h3>
+      <div class="card" id="net"></div>
+      <div class="actions" id="pcActions">
+        <button class="btn danger" id="btnStop" type="button">Awaryjny STOP asystenta</button>
+      </div>
+    </section>
+
+    <!-- ZADANIA -->
+    <section id="view-tasks" class="view scroll" hidden>
+      <form class="card form" id="taskForm" autocomplete="off">
+        <div class="kicker">Nowe zadanie</div>
+        <input id="taskTitle" type="text" maxlength="200" placeholder="Co trzeba zrobić?" aria-label="Treść zadania" required>
+        <div class="row">
+          <select id="taskPrio" aria-label="Priorytet"><option value="normalny">normalny</option><option value="wysoki">wysoki</option><option value="niski">niski</option></select>
+          <input id="taskDue" type="datetime-local" aria-label="Termin">
+          <button class="btn primary sm" type="submit">Dodaj</button>
+        </div>
+      </form>
+      <h3>Do zrobienia <span class="count" id="taskCount"></span></h3>
+      <div class="card list" id="taskList"></div>
+      <form class="card form" id="remForm" autocomplete="off">
+        <div class="kicker">Nowe przypomnienie</div>
+        <input id="remText" type="text" maxlength="200" placeholder="O czym przypomnieć?" aria-label="Treść przypomnienia" required>
+        <div class="row">
+          <input id="remAt" type="datetime-local" aria-label="Kiedy" required>
+          <button class="btn primary sm" type="submit">Dodaj</button>
+        </div>
+        <p class="hint">Przypomnienia działają, gdy Sentinel jest uruchomiony na komputerze. Telefon dostanie alert.</p>
+      </form>
+      <h3>Przypomnienia <span class="count" id="remCount"></span></h3>
+      <div class="card list" id="remList"></div>
+    </section>
+
+    <!-- NOTATKI -->
+    <section id="view-notes" class="view scroll" hidden>
+      <form class="card form" id="noteForm" autocomplete="off">
+        <div class="kicker">Nowa notatka</div>
+        <textarea id="noteText" rows="2" maxlength="1000" placeholder="Zapamiętaj to…" aria-label="Treść notatki" required></textarea>
+        <div class="row end"><button class="btn primary sm" type="submit">Zapisz</button></div>
+      </form>
+      <input class="search" id="noteSearch" type="search" placeholder="Szukaj w notatkach" aria-label="Szukaj w notatkach">
+      <div class="card list" id="noteList"></div>
+    </section>
+
+    <!-- ALERTY -->
+    <section id="view-alerts" class="view scroll" hidden>
+      <div class="row between head">
+        <h3 class="flush">Alerty z komputera</h3>
+        <button class="btn ghost sm" id="btnAlertsRead" type="button">Oznacz jako przeczytane</button>
+      </div>
+      <div class="card list" id="alertList"></div>
+      <p class="hint pad">Sentinel pilnuje obciążenia komputera, przypomnień i silnika AI. Gdy coś wymaga uwagi, pojawi się tutaj — a w aplikacji na Androida także jako powiadomienie.</p>
+    </section>
+
+    <!-- USTAWIENIA -->
+    <section id="view-settings" class="view scroll" hidden>
+      <h3 class="flush">To urządzenie</h3>
+      <div class="card list" id="setInfo"></div>
+      <label class="card toggle"><span><b>Czytaj odpowiedzi na głos</b><small>Używa głosu telefonu</small></span><input type="checkbox" id="optSpeak"></label>
+      <div class="card list" id="setDevices"></div>
+      <div class="actions">
+        <button class="btn ghost" id="btnWake" type="button" hidden>Wybudź komputer (Wake-on-LAN)</button>
+        <button class="btn ghost" id="btnFind" type="button" hidden>Znajdź komputer w sieci</button>
+        <button class="btn danger" id="btnUnpair" type="button">Odłącz ten telefon</button>
+      </div>
+      <p class="hint pad" id="setAbout"></p>
+    </section>
+
+  </main>
+
+  <div class="banner" id="banner" hidden role="status"></div>
+
+  <footer class="dock" id="dock">
+    <form id="composer" class="composer" hidden autocomplete="off">
+      <div class="chips" id="chips"></div>
+      <div class="row">
+        <button type="button" class="icon-btn round" id="btnMic" aria-label="Mów do Sentinel" hidden><svg viewBox="0 0 24 24"><use href="#i-mic"/></svg></button>
+        <textarea id="input" rows="1" maxlength="4000" placeholder="Napisz polecenie lub pytanie…" enterkeyhint="send" autocomplete="off" autocapitalize="sentences" aria-label="Wiadomość"></textarea>
+        <button type="submit" class="send" id="btnSend" aria-label="Wyślij"><svg viewBox="0 0 24 24"><use href="#i-up"/></svg></button>
+      </div>
+    </form>
+    <nav class="tabs" id="tabs" aria-label="Sekcje" hidden>
+      <button type="button" data-tab="chat" aria-label="Czat"><svg viewBox="0 0 24 24"><use href="#i-chat"/></svg><span>Czat</span></button>
+      <button type="button" data-tab="pc" aria-label="Komputer"><svg viewBox="0 0 24 24"><use href="#i-monitor"/></svg><span>Komputer</span></button>
+      <button type="button" data-tab="tasks" aria-label="Zadania"><svg viewBox="0 0 24 24"><use href="#i-check"/></svg><span>Zadania</span></button>
+      <button type="button" data-tab="notes" aria-label="Notatki"><svg viewBox="0 0 24 24"><use href="#i-note"/></svg><span>Notatki</span></button>
+      <button type="button" data-tab="alerts" aria-label="Alerty"><svg viewBox="0 0 24 24"><use href="#i-bell"/></svg><span>Alerty</span><b class="badge" id="badgeAlerts" hidden>0</b></button>
+    </nav>
+  </footer>
+</div>
+
+<div id="toasts" aria-live="polite"></div>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#00D4FF"/><stop offset="1" stop-color="#8B5CF6"/></linearGradient>
+    <symbol id="i-logo" viewBox="0 0 48 48">
+      <path d="M24 4 7 10v12c0 10.5 7 18.6 17 22 10-3.4 17-11.5 17-22V10z" fill="none" stroke="url(#g)" stroke-width="3" stroke-linejoin="round"/>
+      <path d="M16 18h16M16 24h16M16 30h10" stroke="url(#g)" stroke-width="3" stroke-linecap="round" fill="none"/>
+    </symbol>
+    <symbol id="i-chat" viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.5-4.6A8 8 0 1 1 21 12z"/></symbol>
+    <symbol id="i-monitor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="3.5"/><path d="m8 12.2 2.7 2.7L16 9.5"/></symbol>
+    <symbol id="i-note" viewBox="0 0 24 24"><path d="M6 3h8.5L19 7.5V21H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 16v-5a6 6 0 1 1 12 0v5l1.5 2h-15z"/><path d="M10 21a2 2 0 0 0 4 0"/></symbol>
+    <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></symbol>
+    <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></symbol>
+    <symbol id="i-up" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></symbol>
+    <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6.5" y="6.5" width="11" height="11" rx="2.5"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><path d="M9 4h6l-1 6 3 3H7l3-3z"/><path d="M12 13v7"/></symbol>
+  </defs>
+</svg>
+
+<script src="app.js"></script>
+</body>
+</html>
