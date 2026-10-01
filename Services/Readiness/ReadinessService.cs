@@ -5,8 +5,8 @@ using SentinelX.Services.Settings;
 using SentinelX.Services.Voice;
 namespace SentinelX.Services.Readiness;
 
-/// <summary>Read-only probes. Never captures audio, downloads models, launches Ollama or changes settings.</summary>
-public sealed class ReadinessService(ISettingsService settings, IHistoryService history, IVoiceService voice, IAiService ai) : IReadinessService
+/// <summary>Read-only probes. Never captures audio, downloads models or changes settings (the engine downloads by itself, in the background).</summary>
+public sealed class ReadinessService(ISettingsService settings, IHistoryService history, IVoiceService voice, IAiService ai, Services.Engine.IEngineService? engine = null) : IReadinessService
 {
     public async Task<IReadOnlyList<ReadinessCheck>> CheckAsync(CancellationToken token)
     {
@@ -35,25 +35,27 @@ public sealed class ReadinessService(ISettingsService settings, IHistoryService 
             catch (Exception ex) { checks.Add(new("asr", "Rozpoznawanie mowy", ReadinessState.Unavailable, ex.Message, "voice", "Sprawdź modele")); }
             return checks;
         }, token);
-        var ollama = CheckAiAsync(token);
+        var aiCheck = CheckAiAsync(token);
         var results = await local.WaitAsync(token);
-        results.Add(await ollama);
+        results.Add(await aiCheck);
         return results;
     }
     private async Task<ReadinessCheck> CheckAiAsync(CancellationToken token)
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(token);
         timeout.CancelAfter(TimeSpan.FromSeconds(3));
+        string progress = engine == null ? "" : " " + engine.Status.Message;
         try
         {
             var models = await ai.GetModelsAsync(timeout.Token).WaitAsync(timeout.Token);
-            return new("ollama", "Ollama · tylko lokalnie", models.Count > 0 ? ReadinessState.Ready : ReadinessState.NeedsSetup,
-                models.Count > 0 ? $"Usługa odpowiada · modeli: {models.Count}. Nie uruchamiano generowania odpowiedzi." : "Ollama działa, ale nie ma lokalnych modeli. Zainstaluj np. qwen3:4b.", "ai", "Wybierz model");
+            return new("ai", "Silnik AI · wbudowany", models.Count > 0 ? ReadinessState.Ready : ReadinessState.NeedsSetup,
+                models.Count > 0 ? $"Działa lokalnie, bez Ollamy · modeli: {models.Count}. Nie uruchamiano generowania odpowiedzi." + (engine?.Status.State == "installing" ? progress : "")
+                    : "Silnik AI instaluje się sam w tle — nic nie musisz robić." + progress, "ai", "Zobacz silnik AI");
         }
         catch (OperationCanceledException) when (!token.IsCancellationRequested)
-        { return new("ollama", "Ollama · tylko lokalnie", ReadinessState.NeedsSetup, "Brak odpowiedzi w 3 sekundy. Uruchom Ollama i sprawdź ponownie. Narzędzia systemowe działają bez niej.", "ai", "Sprawdź połączenie"); }
+        { return new("ai", "Silnik AI · wbudowany", ReadinessState.NeedsSetup, "Silnik AI nie odpowiedział w 3 sekundy. Startuje sam; narzędzia systemowe działają bez niego." + progress, "ai", "Sprawdź silnik AI"); }
         catch (OperationCanceledException) { throw; }
         catch (Exception ex)
-        { return new("ollama", "Ollama · tylko lokalnie", ReadinessState.NeedsSetup, "Nie połączono z lokalną usługą. Uruchom Ollama. " + ex.Message, "ai", "Skonfiguruj AI"); }
+        { return new("ai", "Silnik AI · wbudowany", ReadinessState.NeedsSetup, "Silnik AI jeszcze nie jest gotowy (naprawi się sam). " + ex.Message + progress, "ai", "Sprawdź silnik AI"); }
     }
 }

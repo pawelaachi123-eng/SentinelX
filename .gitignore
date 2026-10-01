@@ -434,3 +434,6 @@ test-results/
 /*.csproj.nuget.*
 /project.assets.json
 /project.nuget.cache
+
+# Bundled AI engine binaries are fetched by CI / scripts/fetch-llama.ps1, never committed
+Engine/llama/

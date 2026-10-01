@@ -24,7 +24,7 @@ public static class SettingsCatalog
         void Toggle(string section, string label, string description, Func<bool> read, Action<bool> write) =>
             fields.Add(new(section, label, description, () => read().ToString(), value => { if (!bool.TryParse(value, out bool enabled)) return "Niepoprawna wartość."; write(enabled); return null; }, IsToggle: true));
         void Model(string label, string description, Func<string> read, Action<string> write) =>
-            fields.Add(new("AI", label, description, read, value => { if (!LocalAiService.IsLocalModelName(value)) return "Podaj nazwę lokalnego modelu Ollama."; write(value.Trim()); return null; }));
+            fields.Add(new("AI", label, description, read, value => { if (!LocalAiService.IsLocalModelName(value)) return "Podaj nazwę lokalnego modelu (litery, cyfry, . : / - _)."; write(value.Trim()); return null; }));
 
         Choice("Wygląd", "Motyw", "Zmiana kolorów całego interfejsu od razu.", () => S().Ui.Theme, x => S().Ui.Theme = x, "Dark", "Deep Dark", "System");
         Choice("Wygląd", "Przeglądarka", "Strony i wyszukiwanie. Gdy wybranej nie ma, używana jest domyślna przeglądarka Windows.", () => S().Ui.DefaultBrowserPreference, x => S().Ui.DefaultBrowserPreference = x, "Brave", "Chrome", "System");
@@ -45,6 +45,7 @@ public static class SettingsCatalog
         Number("Głos", "Tempo odpowiedzi", "Od -5 (wolno) do 5 (szybko).", () => S().Voice.SpeechRate, x => S().Voice.SpeechRate = (int)x, -5, 5, true);
         Toggle("Głos", "Log diagnostyczny wypowiedzi", "Czasy, poziomy sygnału i powody odrzucenia; bez zapisu audio.", () => S().Voice.UtteranceLoggingEnabled, x => S().Voice.UtteranceLoggingEnabled = x);
         Toggle("Głos", "Zapisuj transkrypcje w logu", "Opcjonalny lokalny zapis rozpoznanych słów.", () => S().Voice.IncludeTranscriptInLogs, x => S().Voice.IncludeTranscriptInLogs = x);
+        Toggle("AI", "Pobieraj silnik AI automatycznie", "Wbudowany silnik sam pobiera swoje pliki (ok. 1,1 GB, na mocniejszych komputerach także ok. 2,5 GB). Wyłącz przy łączu z limitem danych — „napraw AI” pobierze brakujące pliki na żądanie.", () => S().Ai.AutoInstallEngine, x => S().Ai.AutoInstallEngine = x);
         Model("Model podczas gry", "Używany przy wykrytej grze lub dużym obciążeniu.", () => S().Ai.GamingModel, x => S().Ai.GamingModel = x);
         Model("Model przy wolnych zasobach", "Model rozmowy w trybie automatycznym.", () => S().Ai.IdleModel, x => S().Ai.IdleModel = x);
         Model("Model awaryjny", "Używany, gdy preferowany lokalny model nie odpowiada.", () => S().Ai.FallbackModel, x => S().Ai.FallbackModel = x);
@@ -54,6 +55,9 @@ public static class SettingsCatalog
         Number("AI", "Próg obciążenia RAM (%)", "Powyżej progu wybierany jest model lekki.", () => S().Ai.RamPressurePercent, x => S().Ai.RamPressurePercent = (int)x, 50, 98, true);
         Number("AI", "Próg obciążenia CPU (%)", "Powyżej progu wybierany jest model lekki.", () => S().Ai.CpuPressurePercent, x => S().Ai.CpuPressurePercent = (int)x, 50, 99, true);
         Number("AI", "Próg obciążenia GPU (%)", "Niedostępny odczyt nie jest traktowany jako zerowe użycie.", () => S().Ai.GpuPressurePercent, x => S().Ai.GpuPressurePercent = (int)x, 30, 99, true);
+        Toggle("Telefon", "Połączenie z telefonem", "Sentinel czeka w sieci domowej na telefon (aplikacja na Androida albo przeglądarka). Każdy nowy telefon wymaga jednego kliknięcia zgody na komputerze.", () => S().Link.Enabled, x => S().Link.Enabled = x);
+        Toggle("Telefon", "Automatyczne wykrywanie w sieci", "Aplikacja na Androida sama znajduje ten komputer — nie trzeba wpisywać adresu.", () => S().Link.Discovery, x => S().Link.Discovery = x);
+        Number("Telefon", "Port telefonu", "Pierwszy próbowany port. Gdy jest zajęty, Sentinel bierze następny. Zmiana działa po ponownym uruchomieniu.", () => S().Link.Port, x => S().Link.Port = (int)x, 1024, 65000, true);
         Toggle("Pamięć", "Zapisuj rozmowy", "Gdy wyłączone, polecenia i odpowiedzi nie zostawiają trwałego śladu w rozmowach.", () => S().Memory.SaveConversations, x => S().Memory.SaveConversations = x);
         Toggle("Pamięć", "AI używa historii rozmów", "Dopowiedzenia czytają ostatnie wypowiedzi. Niezależne od zapisu rozmów.", () => S().Memory.UseHistoryForAi, x => S().Memory.UseHistoryForAi = x);
         Toggle("Pamięć", "Zapisuj wspomnienia", "Polecenie „zapamiętaj” i panel Pamięci dodają trwałe wpisy. Wyłączenie nie kasuje istniejących.", () => S().Memory.SaveMemories, x => S().Memory.SaveMemories = x);

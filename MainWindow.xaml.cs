@@ -51,7 +51,9 @@ public partial class MainWindow : Window
         files = new FileWorkspaceService(desktop: smokeMode ? System.IO.Path.Combine(AppPaths.Root, "TestDesktop") : null);
         toolbox = new SentinelToolboxService(() => settings.Settings.Ui.DefaultBrowserPreference, memory: memory);
         InitializeComponent();
-        ai = new LocalAiService(gaming, systemMonitor: monitor, aiSettingsProvider: () => settings.Settings.Ai);
+        // 0.94: the compatibility UI uses the built-in engine too (the self-test window keeps its own fake transport and never starts it).
+        ai = new LocalAiService(gaming, smokeMode ? null : Services.Engine.LegacyEngine.Handler(), systemMonitor: monitor, aiSettingsProvider: () => settings.Settings.Ai)
+        { EngineDescribe = smokeMode ? null : Services.Engine.LegacyEngine.Describe };
         voice = new VoiceRecognitionService(() => settings.Settings.Voice);
         router = new CommandRouter(monitor, systemInfo, ai, memory);
         ChatItems.ItemsSource = messages;

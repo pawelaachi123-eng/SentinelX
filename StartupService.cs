@@ -54,8 +54,9 @@ namespace SentinelX
                     return false;
 
 
+                // --autostart: when Windows starts us, stay in the tray instead of popping a window up at every login.
                 string command =
-                    $"\"{executablePath}\"";
+                    $"\"{executablePath}\" --autostart";
 
 
                 key.SetValue(

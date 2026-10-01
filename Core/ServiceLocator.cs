@@ -53,8 +53,18 @@ public static class ServiceLocator
         services.AddSingleton<IHistoryService, HistoryService>();
         services.AddSingleton<HistoryExportService>();
         services.AddSingleton<Services.Memory.IConversationMemory>(sp => sp.GetRequiredService<ConversationMemoryService>());
-        services.AddSingleton<LocalAiService>(sp => new(sp.GetRequiredService<GamingModeService>(),
-            systemMonitor: sp.GetRequiredService<SystemMonitor>(), aiSettingsProvider: () => sp.GetRequiredService<ISettingsService>().Current.Ai));
+        // 0.94: the AI runs on a built-in engine (llama.cpp), set up and kept alive automatically — no Ollama.
+        services.AddSingleton<Services.Engine.EngineService>(sp => new(isGaming: () => !string.IsNullOrEmpty(sp.GetRequiredService<GamingModeService>().GetRunningGame()),
+            totalRamGb: () => { double total = sp.GetRequiredService<SystemMonitor>().GetTotalRamGB(); return double.IsFinite(total) && total > 0 ? total : 8; },
+            autoInstall: () => sp.GetRequiredService<ISettingsService>().Current.Ai.AutoInstallEngine));
+        services.AddSingleton<Services.Engine.IEngineService>(sp => sp.GetRequiredService<Services.Engine.EngineService>());
+        services.AddSingleton<LocalAiService>(sp =>
+        {
+            var engine = sp.GetRequiredService<Services.Engine.EngineService>();
+            return new(sp.GetRequiredService<GamingModeService>(), handler: engine.CreateHandler(),
+                systemMonitor: sp.GetRequiredService<SystemMonitor>(), aiSettingsProvider: () => sp.GetRequiredService<ISettingsService>().Current.Ai)
+            { EngineDescribe = engine.Describe, RepairHandler = engine.RepairAsync };
+        });
         services.AddSingleton<IAiService, AiService>();
         services.AddSingleton<CommandRouter>();
         services.AddSingleton<SentinelToolboxService>(sp => new(() => sp.GetRequiredService<ISettingsService>().Current.Ui.DefaultBrowserPreference, sp.GetRequiredService<ActionHistoryService>(),
@@ -72,6 +82,15 @@ public static class ServiceLocator
         services.AddSingleton<VoiceRecognitionService>(sp => new(() => sp.GetRequiredService<ISettingsService>().Current.Voice));
         services.AddSingleton<SpeechOutputService>();
         services.AddSingleton<IVoiceService, VoiceService>();
+        // 0.94: phone link (HTTPS on the home network, approval on the PC), alerts for the phone, and the caretaker that keeps it all running.
+        services.AddSingleton<Services.Link.AlertFeed>();
+        services.AddSingleton<Views.Link.LinkUi>(sp => new(sp.GetRequiredService<IUiDispatcher>(), () => sp.GetRequiredService<Services.Link.LinkService>()));
+        services.AddSingleton<Services.Link.ILinkApprovalUi>(sp => sp.GetRequiredService<Views.Link.LinkUi>());
+        services.AddSingleton<Services.Link.LinkService>(sp => new(new Services.Link.LinkApi(sp.GetRequiredService<IActionEngine>(), sp.GetRequiredService<ISystemMonitorService>(),
+            sp.GetRequiredService<TaskService>(), sp.GetRequiredService<ConversationMemoryService>(), sp.GetRequiredService<Services.Link.AlertFeed>(),
+            () => sp.GetRequiredService<Services.Care.CareService>().BuildLinkInfo(), () => sp.GetRequiredService<Services.Link.LinkService>().Urls),
+            sp.GetRequiredService<Services.Link.ILinkApprovalUi>(), () => sp.GetRequiredService<ISettingsService>().Current.Link));
+        services.AddSingleton<Services.Care.CareService>();
         services.AddSingleton<IDesktopService, DesktopService>();
         services.AddSingleton<Services.Readiness.IReadinessService, Services.Readiness.ReadinessService>();
         services.AddSingleton<ReadinessViewModel>();

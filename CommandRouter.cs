@@ -58,11 +58,18 @@ public sealed class CommandRouter
         if (taskResponse != null) return taskResponse;
         if (text is "modele ai" or "lista modeli" or "status ai" or "test ai" or "sprawdz ai")
             return await localAi.GetStatusAsync(cancellationToken);
+        if (text is "napraw ai" or "napraw silnik ai" or "napraw silnik")
+            return await localAi.RepairAsync(cancellationToken);
+        if (text is "telefon" or "polacz telefon" or "polacz z telefonem" or "kod qr" or "telefon qr" or "aplikacja na telefon" or "sparuj telefon")
+        {
+            Services.Link.PhoneHint.Open?.Invoke();
+            return Services.Link.PhoneHint.Describe?.Invoke() ?? "Łącze z telefonem uruchomi się za chwilę. Jeśli nie — sprawdź Ustawienia → Telefon.";
+        }
         Match model = Regex.Match(command.Trim(), @"^(?:ustaw\s+)?model\s+ai\s+(.+)$", RegexOptions.IgnoreCase);
         if (model.Success)
         {
             try { return await localAi.SetPreferredModelAsync(model.Groups[1].Value.Trim(), cancellationToken); }
-            catch (System.Net.Http.HttpRequestException) { return "Nie udało się odczytać modeli. Uruchom lokalną Ollama."; }
+            catch (System.Net.Http.HttpRequestException) { return "Nie udało się odczytać modeli. Silnik AI uruchamia się sam — spróbuj za chwilę."; }
         }
         if (text is "anuluj" or "przerwij" or "przerwij odpowiedz")
         { localAi.CancelCurrentRequest(); return "Przerwano."; }
@@ -122,7 +129,11 @@ public sealed class CommandRouter
         if (text is "wersja" or "jaka wersja" or "wersja sentinel" or "wersja aplikacji")
             return "Sentinel X " + AppConstants.Version + " · " + systemInfo.GetWindowsVersion() + " · .NET " + Environment.Version;
         if (text is "co nowego" or "lista zmian" or "changelog" or "co sie zmienilo")
-            return "CO NOWEGO W 0.93 · PORZĄDKI\n" +
+            return "CO NOWEGO W 0.94 · AUTOPILOT\n" +
+                "· Telefon: aplikacja na Androida albo przeglądarka (także iPhone) łączy się z komputerem sama — zgoda to jedno kliknięcie na PC. Czat, zadania, notatki, stan komputera i alerty są takie same jak tutaj.\n" +
+                "· Silnik AI jest wbudowany (llama.cpp): instaluje się, startuje i naprawia sam. Ollama nie jest potrzebna.\n" +
+                "· Autopilot: start z Windows w tle, Watch włączony, alerty na telefon, jedna linia „Wszystko działa samo”.\n" +
+                "\nCO NOWEGO W 0.93 · PORZĄDKI\n" +
                 "· „usuń duplikaty: folder” — z każdej grupy identycznych plików zostawia 1, resztę po Twoim „potwierdz” przenosi do Kosza.\n" +
                 "· „usuń puste pliki: folder” — pliki 0 B po Twoim „potwierdz” do Kosza.\n" +
                 "· „zmien nazwy: folder zamien X na Y” — podgląd zmian nazw, wykonuje dopiero po „potwierdz”, nigdy nie nadpisuje.\n" +

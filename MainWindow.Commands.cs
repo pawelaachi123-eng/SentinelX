@@ -338,7 +338,7 @@ public partial class MainWindow
         ..clear       wyczyść widoczny czat
         ..status      status CPU/RAM/GPU/mikrofonu/AI
         ..voice       diagnostyka mikrofonu i ASR
-        ..ai          status Ollama i wybranego modelu
+        ..ai          status silnika AI i wybranego modelu
         ..models      lista modeli
         ..settings    podsumowanie ustawień
         ..commands    ta lista
@@ -371,11 +371,11 @@ public partial class MainWindow
         {
             var models = await ai.GetInstalledModelsAsync(lifetime.Token);
             ModelCombo.ItemsSource = new[] { "auto" }.Concat(models).ToArray(); ModelCombo.SelectedItem = string.IsNullOrEmpty(ai.PreferredModel) ? "auto" : ai.PreferredModel;
-            AiStatusText.Text = models.Count > 0 ? $"Ollama lokalnie • {models.Count} modeli" : "Ollama działa • brak lokalnego modelu";
+            AiStatusText.Text = models.Count > 0 ? $"Silnik AI lokalnie • {models.Count} modeli" : "Silnik AI instaluje się sam • brak gotowego modelu";
             ModelDetailText.Text = await ai.GetStatusAsync(lifetime.Token);
         }
-        catch (OperationCanceledException) { if (!exiting) AiStatusText.Text = "Ollama nie odpowiada."; }
-        catch (Exception ex) { AiStatusText.Text = "Ollama niedostępna • komendy i diagnostyka działają"; ModelDetailText.Text = "Uruchom Ollama i pobierz lokalny model, następnie odśwież listę.\n" + ex.Message; }
+        catch (OperationCanceledException) { if (!exiting) AiStatusText.Text = "Silnik AI jeszcze nie odpowiada."; }
+        catch (Exception ex) { AiStatusText.Text = "Silnik AI jeszcze niegotowy • komendy i diagnostyka działają"; ModelDetailText.Text = "Silnik AI startuje i pobiera model sam — odśwież listę za chwilę.\n" + ex.Message; }
     }
     private string SetStartup(bool enabled)
     { bool success = enabled ? startup.Enable() : startup.Disable(); settings.Settings.StartWithWindows = startup.IsEnabled(); StartupCheck.IsChecked = settings.Settings.StartWithWindows; settings.Save(); return success ? (enabled ? "Autostart włączony i odczytany z rejestru." : "Autostart wyłączony i zweryfikowany.") : "Nie udało się zmienić autostartu."; }

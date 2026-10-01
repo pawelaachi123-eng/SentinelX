@@ -75,6 +75,7 @@ namespace SentinelX
         private readonly ContextMenu contextMenu;
 
         private readonly MenuItem openItem;
+        private readonly MenuItem phoneItem;
         private readonly MenuItem voiceOnItem;
         private readonly MenuItem voiceOffItem;
         private readonly MenuItem emergencyItem;
@@ -94,6 +95,8 @@ namespace SentinelX
         // =========================================================
 
         public event Action? OpenRequested;
+
+        public event Action? PhoneRequested;
 
         public event Action? VoiceOnRequested;
 
@@ -165,6 +168,14 @@ namespace SentinelX
                 };
 
 
+            phoneItem =
+                new MenuItem
+                {
+                    Header =
+                        "Telefon…"
+                };
+
+
             voiceOnItem =
                 new MenuItem
                 {
@@ -201,6 +212,10 @@ namespace SentinelX
                 OpenItem_Click;
 
 
+            phoneItem.Click +=
+                PhoneItem_Click;
+
+
             voiceOnItem.Click +=
                 VoiceOnItem_Click;
 
@@ -223,6 +238,10 @@ namespace SentinelX
 
             contextMenu.Items.Add(
                 openItem);
+
+
+            contextMenu.Items.Add(
+                phoneItem);
 
 
             contextMenu.Items.Add(
@@ -555,6 +574,14 @@ namespace SentinelX
         }
 
 
+        private void PhoneItem_Click(
+            object sender,
+            RoutedEventArgs e)
+        {
+            PhoneRequested?.Invoke();
+        }
+
+
         private void ExitItem_Click(
             object sender,
             RoutedEventArgs e)
@@ -658,6 +685,9 @@ namespace SentinelX
             {
                 openItem.Click -=
                     OpenItem_Click;
+
+                phoneItem.Click -=
+                    PhoneItem_Click;
 
 
                 voiceOnItem.Click -=
