@@ -58,7 +58,7 @@ public sealed class KnowledgeEngine
         lock (chunksGate) chunks.Clear();
         foreach (var s in sources.Values.ToList())
         {
-            try { _ = IndexAsync(s, token).ConfigureAwait(false).GetAwaiter().GetResult(); }
+            try { IndexAsync(s, token).ConfigureAwait(false).GetAwaiter().GetResult(); }
             catch { }
         }
     }

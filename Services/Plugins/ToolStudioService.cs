@@ -66,7 +66,10 @@ public sealed class ToolStudioService
 public sealed record ToolDraft(string Id, string DisplayName, string Description, string Category, bool IsReadOnly);
 
 public enum ToolDesignStatus { ExistingMatch, MissingCapabilities, ReadyForApproval, Disabled }
-public sealed record ToolDesignResult(string Need, string? ExistingTool, IReadOnlyList<string> MissingCapabilities, ToolDesignStatus Status);
+public sealed record ToolDesignResult(string Need, string? ExistingTool, IReadOnlyList<string> MissingCapabilities, ToolDesignStatus Status, string? Message = null)
+{
+    public static ToolDesignResult Disabled(string message) => new("", null, Array.Empty<string>(), ToolDesignStatus.Disabled, message);
+}
 
 public enum ToolBuildStatus { Ok, Failed, Disabled, Unsupported }
 public sealed record ToolBuildResult(ToolBuildStatus Status, string Message)
