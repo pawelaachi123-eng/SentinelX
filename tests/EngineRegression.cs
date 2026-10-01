@@ -129,7 +129,7 @@ internal static class EngineRegression
         IReadOnlyList<string> args = LlamaServerHost.FullArguments("C:\\m\\model.gguf", 5555, 4096, 6);
         Check(args.Zip(args.Skip(1)).Any(pair => pair is ("--host", "127.0.0.1")), "the engine listens on loopback only");
         Check(!args.Contains("--api-key") && args.Contains("--no-webui") && args.Contains("5555"), "no key or web UI on the command line");
-        Check(LlamaServerHost.MinimalArguments("m.gguf", 1, 2048).Count == 7, "the fallback profile is the bare minimum");
+        Check(LlamaServerHost.MinimalArguments("m.gguf", 1, 2048).Count == 8 && !LlamaServerHost.MinimalArguments("m.gguf", 1, 2048).Contains("--jinja"), "the fallback profile is the bare minimum (model, loopback host, port, context)");
 
         // ---- keep-alive parsing (the AI layer sends "10m" normally and "0" while a game runs)
         Check(EngineOllamaFacade.ParseKeepAlive(JsonNode.Parse("\"0\"")) == TimeSpan.Zero, "keep_alive \"0\" frees memory at once");
