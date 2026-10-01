@@ -283,7 +283,7 @@ public static class UiSmokeTestRunner
             if (!toolsVm.HasResult || !toolsVm.Result.Contains("tysiąc dwieście trzydzieści cztery złote 56 groszy"))
                 throw new InvalidOperationException("Running a tool from the page must produce its result: " + toolsVm.Result);
             if (toolsVm.Recent.Count == 0) throw new InvalidOperationException("A run tool must appear in the session history.");
-            toolsVm.ClearQuery.Execute(null);
+            toolsVm.ClearQueryCommand.Execute(null);
             if (toolsVm.Results.Count < 40) throw new InvalidOperationException("Clearing the filters must restore the whole catalogue.");
             // 0.91 · CENTRUM: every embedded tab inside Centrum must render without binding errors.
             foreach (var tab in chat.Sections)

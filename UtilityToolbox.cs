@@ -208,8 +208,8 @@ public static partial class UtilityToolbox
         if (sortLines.Success) return SortLines(Argument(raw, "posortuj wiersze", "posortuj linie"), unique: false);
         var uniqueLines = Regex.Match(text, @"^(?:usun duplikaty linii|unikalne linie)[:\s]+(.+)$", RegexOptions.Singleline);
         if (uniqueLines.Success) return SortLines(Argument(raw, "unikalne linie", "usun duplikaty linii"), unique: true);
-        var amount = Regex.Match(text, @"^(?:kwota slownie|slownie)[:\s]+(.+)$");
-        if (amount.Success) return AmountInWords(Argument(raw, "kwota slownie", "slownie"));
+        var amountCommand = Regex.Match(text, @"^(?:kwota slownie|slownie)[:\s]+(.+)$");
+        if (amountCommand.Success) return AmountInWords(Argument(raw, "kwota slownie", "slownie"));
         var toSeconds = Regex.Match(text, @"^(?:na sekundy|ile to sekund)[:\s]+(.+)$");
         if (toSeconds.Success) return SecondsText(Argument(raw, "na sekundy", "ile to sekund"), toSeconds: true);
         var seconds = Regex.Match(text, @"^sekundy[:\s]+(.+)$");
