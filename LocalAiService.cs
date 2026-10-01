@@ -11,7 +11,8 @@ using System.Threading.Tasks;
 
 namespace SentinelX;
 
-/// <summary>Only talks to loopback Ollama. Model text is never executed as a command.</summary>
+/// <summary>Talks to the built-in local engine through the Ollama-style HTTP dialect (served in-process by EngineOllamaFacade, no network port,
+/// no Ollama needed). Model text is never executed as a command.</summary>
 public sealed class LocalAiService : IDisposable
 {
     private readonly HttpClient httpClient;
@@ -38,6 +39,12 @@ public sealed class LocalAiService : IDisposable
     public bool IsStreaming { get; private set; }
     /// <summary>Text produced so far when a generation was stopped halfway — shown, never silently dropped.</summary>
     public string LastPartialAnswer { get; private set; } = "";
+    /// <summary>One sentence about the engine state ("downloading the model, 37%…"), used instead of a generic "no model" message.</summary>
+    public Func<string>? EngineDescribe { get; set; }
+    /// <summary>Re-checks and finishes the built-in engine setup (chat command „napraw AI”).</summary>
+    public Func<CancellationToken, Task<string>>? RepairHandler { get; set; }
+    public async Task<string> RepairAsync(CancellationToken cancellationToken = default) =>
+        RepairHandler == null ? "Naprawa silnika AI nie jest dostępna w tym trybie." : await RepairHandler(cancellationToken);
 
     public LocalAiService(GamingModeService gamingMode, HttpMessageHandler? handler = null, string? settingsDirectory = null, SystemMonitor? systemMonitor = null,
         Func<AiSettings>? aiSettingsProvider = null, TimeSpan? requestTimeout = null)
@@ -70,7 +77,7 @@ public sealed class LocalAiService : IDisposable
         response.EnsureSuccessStatusCode();
         using JsonDocument document = JsonDocument.Parse(await response.Content.ReadAsStringAsync(timeout.Token));
         if (!document.RootElement.TryGetProperty("models", out var models) || models.ValueKind != JsonValueKind.Array)
-            throw new JsonException("Ollama nie zwróciła listy modeli.");
+            throw new JsonException("Silnik AI nie zwrócił listy modeli.");
         return models.EnumerateArray()
             .Where(x => x.TryGetProperty("name", out var n) && n.ValueKind == JsonValueKind.String)
             .Select(x => x.GetProperty("name").GetString()!)
@@ -90,15 +97,15 @@ public sealed class LocalAiService : IDisposable
             var models = await GetInstalledModelsAsync(cancellationToken);
             AiSettings config = GetSettingsSnapshot();
             bool pressure = IsSystemUnderPressure(config, out string reason);
-            if (models.Count == 0) return "Ollama działa, ale nie widzę lokalnego modelu. Pobierz model rozmowy, np. `ollama pull gemma3:4b`, a potem wpisz: modele AI.";
+            if (models.Count == 0) return EngineDescribe?.Invoke() ?? "Nie widzę jeszcze lokalnego modelu rozmowy. Silnik AI pobierze go sam; wpisz „napraw AI”, aby sprawdzić pliki od razu.";
             string? selected = SelectModel(models, pressure, preferredModel, config);
             string health = selected == null ? "Brak modelu rozmowy." : await CheckModelAsync(selected, cancellationToken);
-            return $"Ollama lokalnie: dostępna. {(preferredModel.Length == 0 ? "Auto" : "Ręczny wybór")}: {(pressure ? "tryb lekki" : "tryb mocniejszy")} ({reason}). Planowany model: {selected ?? "wybierz z listy"}.\n{health}\nModele: {string.Join(", ", models)}.\nAuto: obciążenie/gra → {config.GamingModel}, luz → {config.IdleModel}, zapasowy → {config.FallbackModel}.\nProgi: RAM {config.RamPressurePercent}%, CPU {config.CpuPressurePercent}%, GPU {config.GpuPressurePercent}%. Kontekst {config.MaxContextTokens}, odpowiedź do {config.MaxResponseTokens} tokenów.\nOstatni wynik: {(LastResponseSucceeded ? "odpowiedź odebrana" : "brak potwierdzonej odpowiedzi")}; model {LastModel}; {LastResponseTime.TotalSeconds:0.0} s.\n{LastRoutingReason}{(LastFallbackReason.Length > 0 ? "\nZmiana modelu: " + LastFallbackReason : "")}\nZmiana: ustaw model AI NAZWA. Automatyczny wybór: model AI auto.";
+            return $"Silnik AI (wbudowany, bez Ollamy): dostępny. {(preferredModel.Length == 0 ? "Auto" : "Ręczny wybór")}: {(pressure ? "tryb lekki" : "tryb mocniejszy")} ({reason}). Planowany model: {selected ?? "wybierz z listy"}.\n{health}\nModele: {string.Join(", ", models)}.\nAuto: obciążenie/gra → {config.GamingModel}, luz → {config.IdleModel}, zapasowy → {config.FallbackModel}.\nProgi: RAM {config.RamPressurePercent}%, CPU {config.CpuPressurePercent}%, GPU {config.GpuPressurePercent}%. Kontekst {config.MaxContextTokens}, odpowiedź do {config.MaxResponseTokens} tokenów.\nOstatni wynik: {(LastResponseSucceeded ? "odpowiedź odebrana" : "brak potwierdzonej odpowiedzi")}; model {LastModel}; {LastResponseTime.TotalSeconds:0.0} s.\n{LastRoutingReason}{(LastFallbackReason.Length > 0 ? "\nZmiana modelu: " + LastFallbackReason : "")}\nZmiana: ustaw model AI NAZWA. Automatyczny wybór: model AI auto.";
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
-        catch (OperationCanceledException) { return "Ollama nie odpowiedziała w ciągu 5 sekund."; }
-        catch (HttpRequestException) { return "Brak połączenia z Ollama na tym komputerze (127.0.0.1:11434). Uruchom Ollama."; }
-        catch (JsonException) { return "Ollama zwróciła nieprawidłową listę modeli."; }
+        catch (OperationCanceledException) { return "Silnik AI nie odpowiedział w ciągu 5 sekund."; }
+        catch (HttpRequestException) { return EngineDescribe?.Invoke() ?? "Silnik AI jeszcze się nie uruchomił. Startuje sam — spróbuj za chwilę albo wpisz „napraw AI”."; }
+        catch (JsonException) { return "Silnik AI zwrócił nieprawidłową listę modeli."; }
     }
 
     /// <summary>/tags may list a manifest even when its multi-GB weights have been deleted.</summary>
@@ -111,12 +118,12 @@ public sealed class LocalAiService : IDisposable
         using var response = await httpClient.PostAsync("/api/show", content, timeout.Token);
         string json = await response.Content.ReadAsStringAsync(timeout.Token);
         if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
-            return $"Model {model} jest niekompletny lub nie istnieje (Ollama HTTP 404). Naprawa: ollama pull {model}.";
+            return $"Model {model} jest niekompletny lub nie istnieje (HTTP 404). Naprawa: wpisz „napraw AI” — silnik pobierze {model} ponownie.";
         if (!response.IsSuccessStatusCode) return $"Diagnostyka {model}: HTTP {(int)response.StatusCode}: {ExtractOllamaError(json)}";
         using JsonDocument doc = JsonDocument.Parse(json);
         return IsConversationModel(doc.RootElement)
             ? $"Pliki i metadane {model}: dostępne. Odpowiedź potwierdza dopiero test rozmowy."
-            : $"Model {model} nie zgłasza obsługi rozmowy. Pliki mogą być niekompletne; naprawa: ollama pull {model}.";
+            : $"Model {model} nie zgłasza obsługi rozmowy. Pliki mogą być niekompletne; naprawa: wpisz „napraw AI”.";
     }
 
     public async Task<string> SetPreferredModelAsync(string model, CancellationToken cancellationToken = default)
@@ -170,7 +177,7 @@ public sealed class LocalAiService : IDisposable
             var models = await GetInstalledModelsAsync(request.Token);
             var candidates = SelectModels(models, pressure, preferredModel, config);
             if (candidates.Count == 0)
-                return Fail("Nie znaleziono lokalnego modelu do rozmowy. Wpisz „modele AI” i wybierz zainstalowany model. Modele chmurowe są wyłączone.");
+                return Fail(EngineDescribe?.Invoke() ?? "Nie znaleziono lokalnego modelu do rozmowy. Wpisz „modele AI” albo „napraw AI”. Modele chmurowe są wyłączone.");
 
             var errors = new List<string>();
             var attempted = new List<string>();
@@ -222,8 +229,8 @@ public sealed class LocalAiService : IDisposable
             LastPartialAnswer = CleanAnswer(LastPartialAnswer);
             return Fail(deadline.IsCancellationRequested ? $"Przekroczono limit czasu odpowiedzi AI ({requestTimeout.TotalSeconds:0} s). Spróbuj mniejszego modelu." : "Przerwano odpowiedź AI.");
         }
-        catch (HttpRequestException) { return Fail("Brak połączenia z lokalną Ollama. Uruchom Ollama i wpisz „status AI”."); }
-        catch (JsonException) { return Fail("Ollama zwróciła nieprawidłową odpowiedź."); }
+        catch (HttpRequestException) { return Fail(EngineDescribe?.Invoke() ?? "Silnik AI jeszcze się nie uruchomił. Startuje sam — spróbuj za chwilę albo wpisz „status AI”."); }
+        catch (JsonException) { return Fail("Silnik AI zwrócił nieprawidłową odpowiedź."); }
         finally
         {
             IsStreaming = false;
@@ -267,7 +274,7 @@ public sealed class LocalAiService : IDisposable
             response.EnsureSuccessStatusCode();
         }
         catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException or ObjectDisposedException)
-        { throw new InvalidOperationException("Nie udało się zwolnić modelu w Ollama.", ex); }
+        { throw new InvalidOperationException("Nie udało się zwolnić modelu w silniku AI.", ex); }
     }
 
     internal static bool IsLocalModelName(string name) =>

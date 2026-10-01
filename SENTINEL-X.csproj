@@ -20,26 +20,35 @@
 
     <PlatformTarget>x64</PlatformTarget>
     <Prefer32Bit>false</Prefer32Bit>
-    <Version>0.93.0</Version>
+    <Version>0.94.0</Version>
     <Description>Lokalny asystent i diagnostyka Windows</Description>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.0" />
-    <PackageReference Include="OllamaSharp" Version="5.4.18" />
-    <!-- 5.x uses the stable IChatClient ABI required by existing Whisper.net 1.9.1. -->
     <PackageReference Include="System.Speech" Version="9.0.0" />
     <PackageReference Include="NAudio" Version="2.2.1" />
     <PackageReference Include="Whisper.net" Version="1.9.1" />
     <PackageReference Include="Whisper.net.Runtime" Version="1.9.1" />
     <PackageReference Include="org.k2fsa.sherpa.onnx" Version="1.13.5" />
     <PackageReference Include="SharpCompress" Version="0.50.4" />
+    <PackageReference Include="QRCoder" Version="1.6.0" />
     <PackageReference Include="System.Diagnostics.PerformanceCounter" Version="9.0.0" />
   </ItemGroup>
 
   <ItemGroup>
     <Resource Include="Assets/sentinel.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The phone UI ships inside the exe and is served by the PC itself (Services/Link): nothing to install on the PC side. -->
+    <EmbeddedResource Include="Phone/web/*" LogicalName="phone/%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- CI drops llama-server.exe and its DLLs into Engine/llama before publishing (scripts/fetch-llama.ps1); they travel with the app. -->
+    <Content Include="Engine/llama/**/*" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

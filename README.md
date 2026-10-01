@@ -1,6 +1,34 @@
-# SENTINEL X 0.91 · CENTRUM — Windows / MVVM
+# SENTINEL X 0.94 · AUTOPILOT — Windows + telefon
 
-Lokalny asystent Windows 10/11, C# 13, .NET 9, WPF. Nowe GUI jest domyślnym interfejsem. Poprzedni interfejs i jego funkcje nadal są dostępne przez `--legacy`.
+Lokalny asystent Windows 10/11 (C# 14, .NET 10, WPF) z aplikacją na telefon. **Nic nie trzeba pilnować:** instalujesz raz, a Sentinel sam startuje z Windows, sam pobiera i naprawia swój silnik AI, sam pilnuje komputera i daje znać na telefon. Poprzedni interfejs jest nadal dostępny przez `--legacy`.
+
+## Szybki start (trzy kroki)
+
+1. **Komputer.** Z [najnowszego wydania](https://github.com/pawelaachi123-eng/SentinelX/releases) pobierz `SentinelX-<wersja>-win-x64-setup.exe` i kliknij go dwa razy (bez uprawnień administratora). Gdy Windows zapyta o zaporę, wybierz **Zezwól** (sieć prywatna) — to potrzebne tylko po to, żeby telefon mógł się połączyć.
+2. **Telefon z Androidem 7+.** Z tego samego wydania pobierz `SentinelX-Phone-<wersja>.apk`, zainstaluj (Android poprosi o zgodę na instalację z nieznanego źródła) i otwórz. Aplikacja **sama znajdzie komputer** w sieci Wi‑Fi. Na komputerze pojawi się okno z kodem — kliknij **Zezwól**. Robisz to raz.
+3. **iPhone lub dowolna przeglądarka.** W zasobniku Windows wybierz **Telefon…** — zobaczysz kod QR i adres. Zeskanuj aparatem telefonu (przeglądarka ostrzeże o własnym certyfikacie — to normalne, bo działa tylko w Twojej sieci).
+
+Telefon pokazuje **to samo co komputer**: ten sam czat z Sentinelem (polecenia, pytania do AI, odpowiedzi na żywo), stan komputera (CPU, RAM, GPU, dyski, procesy, gra), zadania i przypomnienia, notatki z pamięci oraz alerty. Polecenia z telefonu działają jak polecenia głosowe: potencjalnie ryzykowne akcje (np. zamknięcie programu) można zaproponować z telefonu, ale **zatwierdza się je tylko na komputerze**.
+
+### Co dzieje się samo
+
+- **Start z Windows w tle** (ikona w zasobniku, bez okna) — dzięki temu telefon zawsze ma z kim rozmawiać. Wyłączysz to w Ustawienia → Ogólne.
+- **Silnik AI jest wbudowany** (llama.cpp, ten sam silnik, na którym działa Ollama) i **nie wymaga Ollamy**. Sam się pobiera, uruchamia tylko przy pytaniu, zwalnia pamięć, gdy jest bezczynny lub gdy działa gra, a uszkodzone pliki pobiera od nowa. Na słabszych komputerach dostajesz model lekki (Qwen3 1,7B, ok. 1,1 GB), na mocniejszych (od 12 GB RAM) także Qwen3 4B (ok. 2,5 GB). Każdy plik jest sprawdzany sumą SHA-256. Do czasu pobrania wszystkie polecenia systemowe działają normalnie.
+- **Pilnowanie komputera:** długie obciążenie CPU/RAM, mało miejsca na dysku i przypomnienia trafiają do powiadomień Windows i na telefon (w aplikacji na Androida jako zwykłe powiadomienia).
+- **Opiekun** sprawdza co minutę, czy łącze z telefonem i silnik AI działają, i uruchamia je ponownie, gdy trzeba. Jedna linia statusu mówi „Wszystko działa samo” albo — uczciwie — co wymaga Twojej uwagi.
+- **Wake-on-LAN:** aplikacja na Androida może wybudzić komputer (o ile karta sieciowa i BIOS na to pozwalają).
+
+Szczegóły techniczne: [docs/PHONE-LINK.md](docs/PHONE-LINK.md) (protokół i bezpieczeństwo), [docs/ENGINE.md](docs/ENGINE.md) (silnik AI), [docs/RELEASE-0.94.md](docs/RELEASE-0.94.md) (notatki wydania i ograniczenia).
+
+### Plan B: zbuduj instalator u siebie (bez GitHub Actions)
+
+```powershell
+# wymaga tylko .NET 10 SDK; jeśli jest Inno Setup 6, powstanie też instalator .exe
+powershell -ExecutionPolicy Bypass -File scripts\build-local.ps1 -Test
+```
+
+Aplikację na Androida najłatwiej zbudować w wydaniu na GitHubie (workflow **Release**); lokalnie potrzebny jest Android Studio — zob. [phone-android/README.md](phone-android/README.md).
+
 
 ## Nowe w 0.91 — CENTRUM: jeden hub, paleta `//`, głos od startu i ~50 nowych narzędzi
 
@@ -95,7 +123,7 @@ CI dodatkowo buduje instalator, instaluje go w katalogu testowym i uruchamia zai
 ## Nowe w 0.84 — codzienna obsługa i wiarygodność
 
 - **Ctrl+K** otwiera paletę komend i nawigacji. Wyszukiwanie rozumie polskie znaki; ↑/↓ wybierają wynik, Enter otwiera stronę lub **wstawia polecenie do edytora**, Esc zamyka. Paleta nigdy sama nie wykonuje polecenia.
-- **Konfiguracja i gotowość** sprawdza ustawienia, wykrycie mikrofonu, obecność lokalnych plików ASR/VAD i listę modeli Ollama. Nie nagrywa, nie pobiera modeli i nie uruchamia generacji. Błąd Ollama nie blokuje lokalnych narzędzi. Sprawdzenie Ollama ma limit 3 sekund; dostępność plików ASR nie oznacza testu mikrofonu.
+- **Konfiguracja i gotowość** sprawdza ustawienia, wykrycie mikrofonu, obecność lokalnych plików ASR/VAD i stan wbudowanego silnika AI. Nie nagrywa, nie pobiera modeli i nie uruchamia generacji. Błąd Ollama nie blokuje lokalnych narzędzi. Sprawdzenie Ollama ma limit 3 sekund; dostępność plików ASR nie oznacza testu mikrofonu.
 - **Identyfikator polecenia jest stały.** Dowody zbierane są w ramach konkretnego wykonania asynchronicznego, nie przez wyszukiwanie „najnowszego” wpisu z podobnym czasem. Historia zawiera `requestId` umożliwiające filtrowanie audytu.
 - **Wynik wszystkich kroków**, a nie ostatniego: późniejszy sukces nie zakrywa wcześniejszego błędu. Anulowanie zachowuje dowody ukończonych operacji. Przekroczenie limitu dowodów wyklucza status Verified.
 - **Etap i czas wykonania na żywo**, bez wymyślonych procentów. Błąd zapisu audytu jest widoczny i nie blokuje kolejnych zadań.
@@ -106,11 +134,11 @@ To konkretne ulepszenia z testami regresji, **nie deklaracja przewagi nad wszyst
 
 ## Uruchomienie
 
-Instalator: w najnowszym udanym przebiegu [Windows build and WPF smoke](https://github.com/pawelaachi123-eng/SentinelX/actions/workflows/windows-build.yml) pobierz **SentinelX-Setup-win-x64**, wypakuj ZIP artefaktu i uruchom plik **SentinelX-Setup-0.88.0-win-x64.exe**. Przed aktualizacją zakończ Sentinel przez **Wyjdź** w zasobniku, nie sam przycisk X.
+Instalator i wersja przenośna: pobierz je z [wydań na GitHubie](https://github.com/pawelaachi123-eng/SentinelX/releases) (artefakty CI mają krótką retencję i bywają niedostępne, gdy magazyn artefaktów jest pełny). Przed aktualizacją zakończ Sentinela przez **Wyjdź z aplikacji** w zasobniku; dane zostają w `%LOCALAPPDATA%\SentinelX`.
 
-Bez instalacji: w najnowszym udanym przebiegu [Windows build and WPF smoke](https://github.com/pawelaachi123-eng/SentinelX/actions/workflows/windows-build.yml) pobierz **SentinelX-Portable-win-x64**, wypakuj cały ZIP i uruchom `SentinelX.exe`. Modele AI/ASR nie są częścią ZIP-a — konfigurujesz je osobno.
+Bez instalacji: rozpakuj `SentinelX-<wersja>-win-x64-portable.zip` i uruchom `SentinelX.exe`. Modele głosu (Whisper) pobierasz jawnie w zakładce Głos; silnik AI i jego modele pobierają się same.
 
-Wymagania: **Windows x64**. Paczka Portable ma runtime w zestawie. Starsza paczka `SentinelX-windows-x64` nadal wymaga .NET **9 Desktop Runtime**; do budowania źródeł potrzebny jest **.NET 9 SDK**. Nie uruchamiaj WPF na Linuxie ani przez przeglądarkę.
+Wymagania: **Windows 10/11 x64**. Instalator i paczka przenośna mają runtime .NET 10 w zestawie; do budowania ze źródeł potrzebny jest **.NET 10 SDK**. Nie uruchamiaj WPF na Linuxie ani przez przeglądarkę.
 
 ```powershell
 dotnet restore SENTINEL-X.csproj
@@ -128,7 +156,7 @@ dotnet publish SENTINEL-X.csproj -c Release -r win-x64 --self-contained true -o 
 Zachowany interfejs zgodności:
 
 ```powershell
-.\bin\Release\net9.0-windows\SentinelX.exe --legacy
+.\bin\Release\net10.0-windows\SentinelX.exe --legacy
 ```
 
 Najpierw zakończ działającą instancję przez **Wyjdź z aplikacji** / menu zasobnika. Aplikacja jest pojedynczą instancją; drugie uruchomienie aktywuje pierwsze okno. Zwykły przycisk X domyślnie chowa je do zasobnika.
@@ -136,7 +164,7 @@ Najpierw zakończ działającą instancję przez **Wyjdź z aplikacji** / menu z
 ## Pierwsze użycie
 
 1. **Command Center**: wpisz `ile mam RAM`, `użycie CPU`, `top procesy`, `uruchom kalkulator` lub `test internetu`.
-2. **AI**: zainstaluj i uruchom lokalną [Ollama](https://ollama.com/), np. `ollama pull qwen3:4b`, następnie **Sprawdź połączenie** i wybierz model. Połączenie jest celowo ograniczone do `127.0.0.1:11434` na komputerze użytkownika. Przy braku Ollama narzędzia lokalne nadal działają.
+2. **AI**: nic nie instalujesz — wbudowany silnik pobiera się sam (postęp widać w zakładce AI i w linii statusu). Komenda `status AI` pokazuje stan, `napraw AI` sprawdza pliki od razu. Do czasu pobrania narzędzia lokalne działają normalnie.
 3. **Voice**: wybierz mikrofon. Jeśli nie masz lokalnych modeli, kliknij **Pobierz modele i włącz głos** (Whisper Small ~488 MB plus VAD). Pobieranie jest jawne, nie odbywa się przy starcie. Każde polecenie głosowe musi zawierać słowo-klucz „Sentinel” — może ono paść w dowolnym miejscu zdania; bez niego Sentinel niczego nie wykonuje i dalej nasłuchuje. Kalibracja wymaga dwóch sekund ciszy.
 4. **Settings**: wyszukaj parametr, zmień go i kliknij **Zapisz** przy danym polu. Niepoprawna wartość nie jest zapisywana. Możesz przywrócić pojedynczą sekcję.
 5. **Gaming**: wykrywanie gry działa automatycznie. Overlay włączysz przyciskiem. Możesz przeciągać go myszą. Nie zmieniamy trybu gry Windows ani priorytetów procesów.
@@ -170,7 +198,7 @@ Dane pozostają w `%LOCALAPPDATA%\SentinelX\`: `Settings`, `History`, `Memory`, 
 ### Świadome odstępstwa od master prompta
 
 - Nie obniżano projektu do 0.77 z prompta: migrację rozpoczęto na 0.83, a bieżąca iteracja ma numer **0.86**.
-- **OllamaSharp 5.4.18**, nie 4.0.6. Test uruchomienia wykrył `MissingMethodException`: 4.0.6 wymaga preview `IChatClient`, podczas gdy istniejący Whisper.net 1.9.1 używa stabilnego `Microsoft.Extensions.AI.Abstractions` 10.2.0. Nie można załadować obu ABI do tej samej aplikacji. OllamaSharp obsługuje odkrywanie modeli, a istniejący transport HTTP zachowuje testowane strategie timeout/retry/fallback czatu.
+- **Bez OllamaSharp i bez Ollamy (0.94)**: `LocalAiService` nadal mówi dialektem HTTP Ollamy, ale obsługuje go w procesie `EngineOllamaFacade` (bez portu sieciowego), który tłumaczy wywołania na wbudowany `llama-server`. Dzięki temu przetestowane routowanie modeli, strumieniowanie i fallbacki zostały bez zmian.
 - **NAudio 2.2.1** z `WaveInEvent` (bez okna callback WinForms) i `WasapiLoopbackCapture`, CommunityToolkit.Mvvm **8.4.2**, DI **9.0.0**; istniejące biblioteki Whisper/Sherpa pozostają.
 - Zasobnik korzysta z istniejącego **natywnego Shell_NotifyIcon**, bez `UseWindowsForms`, WPF-UI i H.NotifyIcon. Rozwiązuje to sprzeczność „bez WinForms” vs „NotifyIcon WinForms” w prompcie.
 - Zakresy ustawień głosu zachowują bezpieczne limity obecnego pipeline, zamiast wpisywać niewspierane przez niego wartości.
@@ -182,7 +210,8 @@ Dane pozostają w `%LOCALAPPDATA%\SentinelX\`: `Settings`, `History`, `Memory`, 
 | MVVM shell | 8 rzeczywistych stron, stan zachowany przy nawigacji, DI, obsługa błędów i pustych danych |
 | System | CPU/RAM z WinAPI, GPU z liczników Windows, dyski, sieć, top procesów; niedostępny pomiar jest jawny |
 | VRAM | **Niedostępne** — nie podajemy fikcyjnego zera ani wartości z demonstracji |
-| AI | Lokalna Ollama, lista modeli, wybór, istniejący adaptacyjny czat; **brak autonomicznego wykonywania dowolnych narzędzi przez LLM** |
+| AI | Wbudowany silnik (llama.cpp), lista modeli, wybór, istniejący adaptacyjny czat; **brak autonomicznego wykonywania dowolnych narzędzi przez LLM** |
+| Telefon | Serwer HTTPS w sieci domowej, parowanie jednym kliknięciem z kodem potwierdzenia, aplikacja na Androida i strona dla przeglądarek; **nie działa przez internet bez własnej sieci prywatnej** |
 | Głos | Istniejący capture/VAD/ASR + MVVM, RMS/SNR/gain, kalibracja, wake word, TTS; detekcja VAD jest flagą, nie zmyślonym confidence |
 | Akcje | Jedna kolejka wykonawcza, zgody na zamknięcie aplikacji, anulowanie, historia, dowody; tekst modelu `VERIFIED` nie daje statusu Verified |
 | Pliki | Bezpieczny workspace, create/edit/copy/move/search, kopie przed edycją; brak ogólnego edytora dowolnych ścieżek i automatycznego rollbacku |
@@ -196,11 +225,11 @@ Dane pozostają w `%LOCALAPPDATA%\SentinelX\`: `Settings`, `History`, `Memory`, 
 
 ```powershell
 # Windows: prawdziwe widoki, bindingi, motywy, backend i PNG wszystkich stron
-.\bin\Release\net9.0-windows\SentinelX.exe --ui-smoke "$PWD\test-results\ui"
-# Dotychczasowy zestaw testów regresji, nie korzysta z prawdziwej Ollama
-.\bin\Release\net9.0-windows\SentinelX.exe --self-test "$PWD\test-results\regression"
+.\bin\Release\net10.0-windows\SentinelX.exe --ui-smoke "$PWD\test-results\ui"
+# Dotychczasowy zestaw testów regresji
+.\bin\Release\net10.0-windows\SentinelX.exe --self-test "$PWD\test-results\regression"
 # Ręcznie, po instalacji modeli i polskiego głosu Windows
-.\bin\Release\net9.0-windows\SentinelX.exe --asr-test "$PWD\test-results\asr"
+.\bin\Release\net10.0-windows\SentinelX.exe --asr-test "$PWD\test-results\asr"
 ```
 
 `--ui-smoke` nie modyfikuje autostartu, nie rejestruje skrótów, nie instaluje modeli i nie uruchamia mikrofonu. Sprawdza renderowanie stron i błędy bindingów, paletę, panel gotowości, izolację dowodów między zadaniami, mieszane wyniki wielu kroków, zachowanie dowodów po anulowaniu, STOP/resume, zakaz potwierdzania głosem (także z wybudzeniem i interpunkcją), konkurencję/anulowanie zadań, odrzucenie fałszywego „VERIFIED”, zapis ustawień i bezpieczeństwo plików.
@@ -210,7 +239,8 @@ Workflow **Windows build and WPF smoke** w `.github/workflows/windows-build.yml`
 Ręczne testy wymagane przed uznaniem całości master prompta za DONE:
 
 - [ ] Mikrofon użytkownika, cisza, szum, odległa mowa, odłączenie urządzenia, wake word i timeout.
-- [ ] Ollama z faktycznie zainstalowanymi modelami, obciążenie i anulowanie generacji.
+- [ ] Silnik AI z faktycznie pobranymi modelami (prawdziwa generacja, obciążenie, anulowanie, zwalnianie pamięci podczas gry).
+- [ ] Telefon: zapora Windows, parowanie na prawdziwej sieci Wi‑Fi, wybudzanie Wake-on-LAN, powiadomienia na Androidzie.
 - [ ] Tray, konflikt globalnego hotkey, druga instancja, wylogowanie, autostart po ponownym logowaniu.
 - [ ] CS2, GPU producenta użytkownika, wydajność monitorowania, overlay na kilku ekranach/DPI.
 - [ ] Ręczna ocena wszystkich interakcji GUI i wymaganych funkcji jeszcze dostępnych tylko w `--legacy`.

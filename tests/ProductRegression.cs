@@ -144,7 +144,7 @@ internal static class ProductRegression
         var voice = new ProbeVoice();
         var readiness = new ReadinessService(settings, new HistoryService(history, memory), voice, new OfflineAi());
         var checks = await readiness.CheckAsync(CancellationToken.None);
-        Check(checks.Count == 4 && checks.Single(x => x.Key == "ollama").State == ReadinessState.NeedsSetup, "Offline Ollama must be actionable, not a false Ready.");
+        Check(checks.Count == 4 && checks.Single(x => x.Key == "ai").State == ReadinessState.NeedsSetup, "An engine that is not ready must be actionable, not a false Ready.");
         Check(voice.StartCalls == 0 && voice.SpeakCalls == 0, "Readiness must never capture or speak.");
         var readyVm = new ReadinessViewModel(readiness);
         await readyVm.RefreshCommand.ExecuteAsync(null);

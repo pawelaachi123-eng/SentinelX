@@ -2,6 +2,7 @@ using System.IO;
 using System.Windows;
 using Microsoft.Extensions.DependencyInjection;
 using SentinelX.Core;
+using SentinelX.Services.Care;
 using SentinelX.Services.Desktop;
 namespace SentinelX;
 public partial class App : Application
@@ -9,10 +10,13 @@ public partial class App : Application
     private SingleInstanceService? instance;
     private ServiceProvider? provider;
     public static IServiceProvider Services { get; private set; } = null!;
+    /// <summary>True when Windows started the app at login (registry Run entry with --autostart).</summary>
+    public static bool AutostartLaunch { get; private set; }
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
         Utilities.CrashLogger.Initialize(this);
+        AutostartLaunch = e.Args.Contains("--autostart");
         bool selfTest = e.Args.Length == 2 && e.Args[0] is "--self-test" or "--asr-test" or "--ai-test" or "--builder-test";
         bool uiTest = e.Args.Length == 2 && e.Args[0] == "--ui-smoke";
         if (selfTest || uiTest) Environment.SetEnvironmentVariable("SENTINEL_DATA_DIR", Path.Combine(Path.GetFullPath(e.Args[1]), "data"));
@@ -44,6 +48,12 @@ public partial class App : Application
             var shell = provider.GetRequiredService<Views.MainWindow>();
             MainWindow = shell; shell.Show();
             instance?.Listen(provider.GetRequiredService<IDesktopService>().ShowWindow);
+            // The caretaker starts the phone link and the AI engine and keeps them running (it does nothing in the UI smoke test).
+            if (!uiTest)
+            {
+                try { provider.GetRequiredService<CareService>().Start(); }
+                catch (Exception careError) { AppLog.Write(careError); }
+            }
             if (uiTest)
             {
                 await UiSmokeTestRunner.RunAsync(provider, shell, Path.GetFullPath(e.Args[1]));

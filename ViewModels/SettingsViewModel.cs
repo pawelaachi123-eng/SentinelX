@@ -10,16 +10,16 @@ public partial class SettingViewModel : ObservableObject
 {
     private readonly SettingField field;
     private readonly AppSettingsService store;
-    public string Section => field.Section;
-    public string Label => field.Label;
-    public string Description => field.Description;
-    public string[]? Choices => field.Choices;
+    public string Section => this.field.Section;
+    public string Label => this.field.Label;
+    public string Description => this.field.Description;
+    public string[]? Choices => this.field.Choices;
     public bool IsChoice => Choices != null;
-    public bool IsToggle => field.IsToggle;
+    public bool IsToggle => this.field.IsToggle;
     public bool IsText => !IsChoice && !IsToggle;
-    public bool IsSlider => field.Minimum.HasValue && !field.Integer;
-    public double Minimum => field.Minimum ?? 0;
-    public double Maximum => field.Maximum ?? 1;
+    public bool IsSlider => this.field.Minimum.HasValue && !this.field.Integer;
+    public double Minimum => this.field.Minimum ?? 0;
+    public double Maximum => this.field.Maximum ?? 1;
     [ObservableProperty] private double numericValue;
     partial void OnNumericValueChanged(double value) => Value = value.ToString("0.###", CultureInfo.InvariantCulture);
     partial void OnValueChanged(string value)
@@ -46,7 +46,7 @@ public partial class SettingsViewModel : ObservableObject
     private readonly AppSettingsService store;
     public ObservableCollection<SettingViewModel> Fields { get; } = [];
     public ICollectionView FilteredFields { get; }
-    public string[] Sections { get; } = ["Wygląd", "Głos", "AI", "Pamięć", "Watch", "Zasoby", "Ogólne", "Developer"];
+    public string[] Sections { get; } = ["Wygląd", "Głos", "AI", "Telefon", "Pamięć", "Watch", "Zasoby", "Ogólne", "Developer"];
     [ObservableProperty] private string selectedSection = "Wygląd";
     [ObservableProperty] private string search = "";
     [ObservableProperty] private string status = "Zapisz wybrane ustawienie przyciskiem obok pola. Zmiana działa od razu.";

@@ -31,11 +31,11 @@ public static class SelfDiagnosticService
         Line("NOT VERIFIED", "Jakość rozpoznawania mikrofonu", "Wymaga próby mowy użytkownika; diagnostyka nie uruchamia nagrywania.");
         if (checkAi)
         {
-            try { Line("INFO", "Ollama", await ai.GetStatusAsync(token)); }
+            try { Line("INFO", "Silnik AI", await ai.GetStatusAsync(token)); }
             catch (OperationCanceledException) { throw; }
-            catch (Exception ex) { Line("NOT VERIFIED", "Ollama", ex.Message); }
+            catch (Exception ex) { Line("NOT VERIFIED", "Silnik AI", ex.Message); }
         }
-        else Line("NOT VERIFIED", "Ollama", "Pominięta w izolowanym teście aplikacji.");
+        else Line("NOT VERIFIED", "Silnik AI", "Pominięta w izolowanym teście aplikacji.");
         return report.ToString();
     }
 }

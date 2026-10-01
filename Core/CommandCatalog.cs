@@ -39,7 +39,7 @@ public static class CommandCatalog
         new("System", "CPU, RAM, dyski, sieć i procesy", "monitor statystyki", PageKey: "system"),
         new("Gaming", "Wykrywanie gry i nakładka z metrykami", "gra cs2 overlay nakladka", PageKey: "gaming"),
         new("Voice", "Mikrofon, modele i kalibracja głosu", "glos mikrofon vad asr voice", PageKey: "voice"),
-        new("AI", "Połączenie z Ollama i wybór modelu", "ollama model ai", PageKey: "ai"),
+        new("AI", "Wbudowany silnik AI i wybór modelu", "silnik model ai ollama llama", PageKey: "ai"),
         new("Actions", "Zadania, zgody i dowody wykonania", "akcje zadania uprawnienia permission dowody", PageKey: "actions"),
         new("History", "Historia akcji i rozmów", "historia audit log", PageKey: "history"),
         new("Settings", "Konfiguracja i walidacja ustawień", "ustawienia settings motyw wyglad", PageKey: "settings")

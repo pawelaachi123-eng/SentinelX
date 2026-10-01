@@ -15,7 +15,8 @@ namespace SentinelX.Services.Desktop;
 
 /// <summary>Owns Windows interop and UI lifetime; no business logic in window code-behind.</summary>
 public sealed class DesktopService(ISettingsService settings, IActionEngine engine, IVoiceService voice,
-    ISystemMonitorService monitor, IUiDispatcher dispatcher, OverlayViewModel overlayVm) : IDesktopService, IDisposable
+    ISystemMonitorService monitor, IUiDispatcher dispatcher, OverlayViewModel overlayVm,
+    Services.Link.AlertFeed alerts, Views.Link.LinkUi linkUi) : IDesktopService, IDisposable
 {
     private Window? window;
     private TrayService? tray;
@@ -34,6 +35,7 @@ public sealed class DesktopService(ISettingsService settings, IActionEngine engi
     {
         if (window != null) return;
         window = target;
+        Services.Link.PhoneHint.Open = linkUi.ShowPhoneWindow;
         window.Closing += Closing;
         window.SourceInitialized += SourceInitialized;
         window.Loaded += Loaded;
@@ -64,6 +66,7 @@ public sealed class DesktopService(ISettingsService settings, IActionEngine engi
         {
             tray = new TrayService();
             tray.OpenRequested += ShowWindow;
+            tray.PhoneRequested += linkUi.ShowPhoneWindow;
             tray.VoiceOnRequested += StartVoice;
             tray.VoiceOffRequested += voice.Stop;
             tray.EmergencyStopRequested += engine.EmergencyStop;
@@ -72,7 +75,8 @@ public sealed class DesktopService(ISettingsService settings, IActionEngine engi
         }
         catch (Exception ex) { SetStatus("Zasobnik niedostępny; zamknięcie zakończy aplikację. " + ex.Message); }
         monitor.Start();
-        if (settings.Current.Startup.StartMinimized && tray != null) window.Hide();
+        // Started by Windows (autostart): stay quietly in the tray; the phone and the assistant work without a window.
+        if ((settings.Current.Startup.StartMinimized || App.AutostartLaunch) && tray != null) window.Hide();
         if (settings.Current.Startup.StartVoiceOnLaunch)
         {
             try { await voice.StartAsync(settings.Current.Voice.SelectedMicrophoneDevice, false, CancellationToken.None); }
@@ -109,6 +113,7 @@ public sealed class DesktopService(ISettingsService settings, IActionEngine engi
                 string message = $"CPU {snapshot.CpuText} · RAM {snapshot.RamText}";
                 SetStatus("Watch: długotrwałe obciążenie. " + message);
                 tray?.ShowInfo("Sentinel Watch", message);
+                alerts.Add("warn", "Wysokie obciążenie komputera", message + " — utrzymuje się dłużej niż " + watch.MinSecondsBeforeAlert + " s.");
             }
         }
         Application.Current.Resources["SxAnimationsEnabled"] = settings.Current.Ui.AnimationsEnabled && string.IsNullOrEmpty(snapshot.Game);

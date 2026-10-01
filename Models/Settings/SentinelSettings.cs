@@ -12,6 +12,7 @@ public sealed class SentinelSettings
     public DeveloperSettings Developer { get; set; } = new();
     public ResourceSettings Resources { get; set; } = new();
     public MemorySettings Memory { get; set; } = new();
+    public LinkSettings Link { get; set; } = new();
 
     // Backward-compatible properties for existing code and old settings.json files.
     [JsonIgnore] public bool CloseToTray { get => Ui.CloseToTray; set => Ui.CloseToTray = value; }
@@ -53,6 +54,8 @@ public sealed class SentinelSettings
         Developer ??= new();
         Resources ??= new();
         Memory ??= new();
+        Link ??= new();
+        Link.Port = Math.Clamp(Link.Port, 1024, 65000);
         Memory.RetentionDays = Math.Clamp(Memory.RetentionDays, 0, 3650);
         Memory.ArchiveMonths = Math.Clamp(Memory.ArchiveMonths, 0, 120);
         Ui.Theme = ValidateChoice(Ui.Theme, ["Dark", "Deep Dark", "System"], "Dark");

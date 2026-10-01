@@ -1,6 +1,6 @@
 ; Per-user installer. User data lives outside {app}; never delete it on uninstall.
 #ifndef AppVersion
-  #define AppVersion "0.90.0"
+  #define AppVersion "0.94.0"
 #endif
 [Setup]
 AppId={{8A74FE2D-DA3A-48B5-9A88-20C17E983E53}
@@ -38,3 +38,7 @@ Source: "..\bin\portable\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdi
 [Icons]
 Name: "{group}\SentinelX"; Filename: "{app}\SentinelX.exe"; WorkingDir: "{app}"
 Name: "{autodesktop}\SentinelX"; Filename: "{app}\SentinelX.exe"; WorkingDir: "{app}"; Tasks: desktopicon
+
+[Run]
+; After a normal (non-silent) install the assistant starts by itself — nothing to find or open.
+Filename: "{app}\SentinelX.exe"; Description: "{cm:LaunchProgram,SentinelX}"; Flags: nowait postinstall skipifsilent

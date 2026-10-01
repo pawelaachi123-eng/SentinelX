@@ -1,24 +1,53 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using SentinelX.Core;
 using SentinelX.Services.AI;
+using SentinelX.Services.Engine;
 namespace SentinelX.ViewModels;
-public partial class AiViewModel(IAiService ai) : ObservableObject
+public partial class AiViewModel : ObservableObject, IDisposable
 {
+    private readonly IAiService ai;
+    private readonly IEngineService engine;
+    private readonly IUiDispatcher dispatcher;
     public ObservableCollection<string> Models { get; } = [];
     [ObservableProperty] private string selectedModel = "";
-    [ObservableProperty] private string status = "Ollama nie była jeszcze sprawdzana. Kliknij Sprawdź połączenie.";
+    [ObservableProperty] private string status = "Wybierz model, jeśli chcesz wymusić konkretny. Domyślnie Sentinel dobiera go sam.";
+    [ObservableProperty] private string engineLabel = "Silnik AI startuje";
+    [ObservableProperty] private string engineMessage = "";
+    [ObservableProperty] private double engineProgressPercent;
+    public AiViewModel(IAiService ai, IEngineService engine, IUiDispatcher dispatcher)
+    {
+        this.ai = ai; this.engine = engine; this.dispatcher = dispatcher;
+        engine.Changed += OnEngineChanged;
+        ApplyEngine();
+    }
+    private void OnEngineChanged() => dispatcher.Post(ApplyEngine);
+    private void ApplyEngine()
+    {
+        var current = engine.Status;
+        EngineLabel = current.State switch
+        {
+            "ready" => "Silnik AI: gotowy",
+            "installing" => "Silnik AI: instaluje się sam",
+            "paused" => "Silnik AI: czeka na koniec gry",
+            "error" => "Silnik AI: czeka na internet (ponowi sam)",
+            _ => "Silnik AI: startuje"
+        };
+        EngineMessage = current.Message;
+        EngineProgressPercent = Math.Clamp(current.Progress * 100, 0, 100);
+    }
     [RelayCommand(IncludeCancelCommand = true)] private async Task RefreshAsync(CancellationToken token)
     {
-        Status = "Łączenie z lokalną Ollama…";
+        Status = "Sprawdzam modele silnika AI…";
         try
         {
             var models = await ai.GetModelsAsync(token); Models.Clear(); foreach (string model in models) Models.Add(model);
             if (!Models.Contains(SelectedModel)) SelectedModel = Models.FirstOrDefault() ?? "";
-            Status = models.Count > 0 ? $"Połączono · {models.Count} modeli lokalnych" : "Ollama działa, ale nie ma modeli. Zainstaluj model poleceniem ollama pull qwen3:4b.";
+            Status = models.Count > 0 ? $"Dostępne lokalnie: {models.Count} modeli" : "Modele jeszcze się pobierają — silnik robi to sam w tle. Polecenia systemowe działają już teraz.";
         }
-        catch (OperationCanceledException) { Status = "Sprawdzanie przerwane lub przekroczono czas połączenia."; }
-        catch (Exception ex) { Status = "Ollama niedostępna. Uruchom ollama serve.\n" + ex.Message; }
+        catch (OperationCanceledException) { Status = "Sprawdzanie przerwane lub przekroczono czas."; }
+        catch (Exception ex) { Status = "Silnik AI jeszcze nie jest gotowy (naprawi się sam). " + ex.Message; }
     }
     [RelayCommand(IncludeCancelCommand = true)] private async Task SelectModelAsync(CancellationToken token)
     {
@@ -27,4 +56,10 @@ public partial class AiViewModel(IAiService ai) : ObservableObject
         catch (OperationCanceledException) { Status = "Przerwano."; }
         catch (Exception ex) { Status = ex.Message; }
     }
+    [RelayCommand] private async Task RepairAsync()
+    {
+        try { Status = await engine.RepairAsync(CancellationToken.None); }
+        catch (Exception ex) { Status = "Nie udało się uruchomić naprawy: " + ex.Message; }
+    }
+    public void Dispose() => engine.Changed -= OnEngineChanged;
 }

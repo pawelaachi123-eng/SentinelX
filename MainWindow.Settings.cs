@@ -31,7 +31,7 @@ public partial class MainWindow
         if (model.Success)
         {
             string name = model.Groups[2].Value;
-            if (!LocalAiService.IsLocalModelName(name)) { response = "Podaj lokalny model Ollama."; return true; }
+            if (!LocalAiService.IsLocalModelName(name)) { response = "Podaj nazwę lokalnego modelu."; return true; }
             if (model.Groups[1].Value is "gry" or "lekki") settings.Settings.Ai.GamingModel = name; else settings.Settings.Ai.IdleModel = name;
             settings.Save(); response = settings.LastError ?? "Zapisano model: " + name + ". Zostanie użyty przy następnym zapytaniu w trybie auto."; return true;
         }

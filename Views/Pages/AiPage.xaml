@@ -2,30 +2,35 @@
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
         <StackPanel Margin="28">
             <TextBlock Text="AI" Style="{StaticResource SxHeading}"/>
-            <TextBlock Text="OllamaSharp · lokalne modele · kontrolowany dostęp do narzędzi" Style="{StaticResource SxCaption}" Margin="0,0,0,24"/>
+            <TextBlock Text="Wbudowany silnik · działa lokalnie na tym komputerze · bez Ollamy i bez chmury" Style="{StaticResource SxCaption}" Margin="0,0,0,24"/>
             <Border Style="{StaticResource SxCard}" Margin="0,0,0,16">
                 <StackPanel>
-                    <TextBlock Text="Lokalna Ollama" Style="{StaticResource SxSectionTitle}"/>
-                    <TextBlock Text="Endpoint: http://127.0.0.1:11434 · na Twoim komputerze, bez chmury" Style="{StaticResource SxCaption}" Margin="0,0,0,16"/>
-                    <TextBlock Text="{Binding Status}" Style="{StaticResource SxCaption}" Margin="0,0,0,16"/>
+                    <TextBlock Text="{Binding EngineLabel}" Style="{StaticResource SxSectionTitle}"/>
+                    <TextBlock Text="Instaluje się, uruchamia i naprawia sam. Pobieranie modeli wstrzymuje się na czas gry, a pamięć wraca do systemu, gdy AI jest bezczynne." Style="{StaticResource SxCaption}" TextWrapping="Wrap" Margin="0,0,0,12"/>
+                    <TextBlock Text="{Binding EngineMessage}" Style="{StaticResource SxCaption}" TextWrapping="Wrap" Margin="0,0,0,12"/>
+                    <ProgressBar Value="{Binding EngineProgressPercent, Mode=OneWay}" Minimum="0" Maximum="100" Height="8" Margin="0,0,0,16"/>
                     <WrapPanel>
-                        <Button Content="Sprawdź połączenie" Command="{Binding RefreshCommand}" Style="{StaticResource SxPrimaryButton}" Margin="0,0,8,8"/>
-                        <Button Content="Anuluj sprawdzanie" Command="{Binding RefreshCancelCommand}" Margin="0,0,8,8"/>
+                        <Button Content="Sprawdź i napraw" Command="{Binding RepairCommand}" Style="{StaticResource SxPrimaryButton}" Margin="0,0,8,8"/>
                     </WrapPanel>
                 </StackPanel>
             </Border>
             <Border Style="{StaticResource SxCard}" Margin="0,0,0,16">
                 <StackPanel>
                     <TextBlock Text="Model rozmowy" Style="{StaticResource SxSectionTitle}"/>
-                    <ComboBox ItemsSource="{Binding Models}" SelectedItem="{Binding SelectedModel}" AutomationProperties.Name="Model Ollama" Margin="0,0,0,16"/>
-                    <Button Content="Użyj wybranego modelu" Command="{Binding SelectModelCommand}" Margin="0,0,8,8"/>
-                    <TextBlock Text="Listowane są wyłącznie zainstalowane modele lokalne. Przy grze lub dużym obciążeniu istniejący router wybiera lżejszy model. Modele i limity kontekstu skonfigurujesz w Settings." Style="{StaticResource SxCaption}"/>
+                    <TextBlock Text="{Binding Status}" Style="{StaticResource SxCaption}" TextWrapping="Wrap" Margin="0,0,0,12"/>
+                    <ComboBox ItemsSource="{Binding Models}" SelectedItem="{Binding SelectedModel}" AutomationProperties.Name="Model AI" Margin="0,0,0,16"/>
+                    <WrapPanel>
+                        <Button Content="Odśwież listę" Command="{Binding RefreshCommand}" Margin="0,0,8,8"/>
+                        <Button Content="Anuluj sprawdzanie" Command="{Binding RefreshCancelCommand}" Margin="0,0,8,8"/>
+                        <Button Content="Użyj wybranego modelu" Command="{Binding SelectModelCommand}" Margin="0,0,8,8"/>
+                    </WrapPanel>
+                    <TextBlock Text="Listowane są wyłącznie modele zapisane na tym komputerze. Przy grze lub dużym obciążeniu Sentinel sam wybiera lżejszy model. Limity i nazwy modeli ustawisz w Ustawieniach." Style="{StaticResource SxCaption}" TextWrapping="Wrap"/>
                 </StackPanel>
             </Border>
             <Border Style="{StaticResource SxCard}" Margin="0,0,0,16">
                 <StackPanel>
                     <TextBlock Text="Najpierw narzędzia, potem model" Style="{StaticResource SxSectionTitle}"/>
-                    <TextBlock Text="Polecenia systemowe trafiają do deterministycznego routera. AI służy do rozmowy i interpretacji informacji — jego tekst nie jest wykonywany jako kod ani polecenie powłoki. VERIFIED pojawia się tylko przy dowodzie z narzędzia." Style="{StaticResource SxCaption}"/>
+                    <TextBlock Text="Polecenia systemowe trafiają do deterministycznego routera. AI służy do rozmowy i interpretacji informacji — jego tekst nie jest wykonywany jako kod ani polecenie powłoki. VERIFIED pojawia się tylko przy dowodzie z narzędzia." Style="{StaticResource SxCaption}" TextWrapping="Wrap"/>
                 </StackPanel>
             </Border>
         </StackPanel>

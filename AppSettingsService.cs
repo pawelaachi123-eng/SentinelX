@@ -90,7 +90,8 @@ public sealed class AppSettingsService
             case "Pamięć": Settings.Memory = new(); break;
             case "Watch": Settings.Watch = new(); break;
             case "Zasoby": Settings.Resources = new(); break;
-            case "Ogólne": Settings.Startup = new(); Settings.Ui.CloseToTray = true; break;
+            case "Ogólne": Settings.Startup = new() { AutopilotApplied = true }; Settings.Ui.CloseToTray = true; break;
+            case "Telefon": Settings.Link = new(); break;
             case "Developer": Settings.Developer = new(); Settings.Voice.SaveVoiceSamples = false; break;
         }
         Save();

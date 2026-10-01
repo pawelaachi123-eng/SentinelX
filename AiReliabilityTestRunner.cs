@@ -71,7 +71,7 @@ internal static class AiReliabilityTestRunner
             {
                 string answer = await service.AskAsync("Proste pytanie");
                 Check("missing weights recover using fallback", answer == "Zapasowy działa." && service.LastResponseSucceeded && service.LastModel == "gemma3:1b");
-                Check("fallback is explained with repair command", service.LastFallbackReason.Contains("ollama pull qwen3:4b-instruct") && service.LastAttemptedModels.Count == 2);
+                Check("fallback is explained with repair command", service.LastFallbackReason.Contains("napraw AI") && service.LastFallbackReason.Contains("qwen3:4b-instruct") && service.LastAttemptedModels.Count == 2);
             }
 
             foreach (string failure in new[] { "malformed", "empty", "server500" })
