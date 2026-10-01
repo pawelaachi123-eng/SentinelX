@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Collections.Concurrent;
 using SentinelX.Models.Integrations;
 
