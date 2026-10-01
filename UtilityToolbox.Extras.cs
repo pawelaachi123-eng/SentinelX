@@ -156,8 +156,8 @@ public static partial class UtilityToolbox
     /// Comparison is case-insensitive and culture-free, so the result is always the same.</summary>
     public static string SortLines(string text, bool unique)
     {
-        if (text.Trim().Length == 0) return "Podaj kolejne wiersze — każdy w osobnej linii.";
-        string[] lines = SplitLines(text).Where(line => line.Trim().Length > 0).ToArray();
+        if (text.Trim().Length == 0) return "Podaj kolejne wiersze — osobno albo rozdzielone „ | ”, np. „posortuj linie: zebra | kot | Ala”.";
+        string[] lines = Lines(text);
         if (lines.Length == 0) return "Nie znalazłem żadnego wiersza z treścią.";
         if (lines.Length > 2000) return "Za dużo wierszy (" + lines.Length + ") — limit to 2000. Podziel tekst na części.";
         if (unique)
@@ -410,6 +410,15 @@ public static partial class UtilityToolbox
         string[] dashed = Regex.Split(text, @"^\s*-{3,}\s*$", RegexOptions.Multiline);
         if (dashed.Length == 2) return (dashed[0].Trim(), dashed[1].Trim(), null);
         return (string.Empty, string.Empty, DiffSeparatorHint);
+    }
+
+    /// <summary>Lines of a tool argument. The chat pipeline flattens newlines into spaces
+    /// (verified by CI), so „ | ” works as an explicit separator as well.</summary>
+    private static string[] Lines(string text)
+    {
+        string[] byNewline = SplitLines(text).Where(line => line.Trim().Length > 0).ToArray();
+        if (byNewline.Length > 1) return byNewline;
+        return text.Split(" | ", StringSplitOptions.None).Where(line => line.Trim().Length > 0).ToArray();
     }
 
     private static string[] SplitLines(string text) =>

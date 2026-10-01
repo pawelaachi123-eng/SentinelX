@@ -182,6 +182,8 @@ internal static class UtilityRegression
         string sorted = Require(UtilityToolbox.Process("posortuj linie: zebra\nkot\nAla", "posortuj linie: zebra\nkot\nAla"), "sort");
         Check(sorted.IndexOf("Ala", StringComparison.Ordinal) < sorted.IndexOf("kot", StringComparison.Ordinal), "sorting must be case-insensitive and stable: " + sorted);
         Check(sorted.Contains("Posortowane wiersze (3)"), "sorting must report the line count");
+        string piped = Require(UtilityToolbox.Process("posortuj linie: zebra | kot | Ala", "posortuj linie: zebra | kot | Ala"), "sort-pipe");
+        Check(piped.Contains("Posortowane wiersze (3)") && piped.IndexOf("Ala", StringComparison.Ordinal) < piped.IndexOf("zebra", StringComparison.Ordinal), " „ | ” must also separate lines: " + piped);
         string unique = Require(UtilityToolbox.Process("usun duplikaty linii: kot\npies\nkot", "usun duplikaty linii: kot\npies\nkot"), "unique");
         Check(unique.Contains("usunięte: 1"), "deduplication must report what it removed: " + unique);
         Check(unique.Contains("zostało 2 z 3"), "deduplication must keep one copy of each line");
