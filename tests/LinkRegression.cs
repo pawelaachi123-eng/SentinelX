@@ -222,8 +222,8 @@ internal static class LinkRegression
               && state.Json.GetProperty("pc").GetProperty("version").GetString() == "9.9" && state.Json.GetProperty("engine").GetProperty("state").GetString() == "ready",
             "the state shows measurements, the engine and the version");
 
-        List<(string Name, JsonElement Data)> events = await PostSse(phone, "api/chat", new { text = "daj strumień" });
-        Check(events[0].Name == "start" && events.Count(e => e.Name == "delta") == 3 && events[^1].Name == "done", "chat streams start, deltas and a final answer");
+        List<(string Name, JsonElement Data)> events = await PostSse(phone, "api/chat", new { text = "daj stream (strumień)" });
+        Check(events[0].Name == "start" && events.Count(e => e.Name == "delta") == 3 && events[^1].Name == "done", "chat streams start, deltas and a final answer (got: " + string.Join(",", events.Select(e => e.Name)) + ")");
         Check(events[^1].Data.GetProperty("text").GetString() == "Jeden dwa trzy" && events[^1].Data.GetProperty("status").GetString() == "verified", "the final answer carries its proof status");
         Check(engine.Calls[^1].FromVoice, "commands from the phone are treated like voice: risky actions can only be confirmed on the PC");
         List<(string Name, JsonElement Data)> plain = await PostSse(phone, "api/chat", new { text = "ile ram" });
@@ -270,12 +270,15 @@ internal static class LinkRegression
             await tcp.ConnectAsync(IPAddress.Loopback, service.Port);
             using var tls = new SslStream(tcp.GetStream(), false, (_, _, _, _) => true);
             await tls.AuthenticateAsClientAsync("127.0.0.1");
-            await tls.WriteAsync(Encoding.ASCII.GetBytes("GET /" + new string('a', 20000) + " HTTP/1.1\r\n"));
-            await tls.FlushAsync();
             byte[] sink = new byte[64];
             int read;
-            try { read = await tls.ReadAsync(sink); }
-            catch (IOException) { read = 0; }
+            try
+            {
+                await tls.WriteAsync(Encoding.ASCII.GetBytes("GET /" + new string('a', 20000) + " HTTP/1.1\r\n"));
+                await tls.FlushAsync();
+                read = await tls.ReadAsync(sink);
+            }
+            catch (IOException) { read = 0; } // the server hangs up as soon as the head is too large — possibly while we are still sending
             Check(read == 0, "an oversized request head is dropped without an answer");
         }
         Check((await Get(anonymous, "api/hello")).Status == 200, "the service is still healthy after garbage");
