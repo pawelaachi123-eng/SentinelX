@@ -1,3 +1,5 @@
+using System.Threading.Tasks;
+
 namespace SentinelX.Models.Notifications;
 
 public enum NotificationLevel
