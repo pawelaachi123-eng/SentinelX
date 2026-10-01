@@ -38,7 +38,7 @@ Aplikację na Androida najłatwiej zbudować w wydaniu na GitHubie (workflow **R
   - `regex: wzorzec ||| tekst` — dopasowania i grupy, z limitem 500 ms chroniącym przed zawieszeniem,
   - `sha256 pliku: ścieżka` (oraz `md5 pliku:`) — skrót i metadane pliku, wyłącznie odczyt, limit 2 GB,
   - `wyciagnij: tekst` — e-maile, linki, adresy IPv4 i liczby bez otwierania czegokolwiek,
-  - `posortuj linie:` i `usun duplikaty linii:` — porządki w tekstach,
+  - `posortuj linie:` i `unikalne linie:` — porządki w tekstach (też w wierszach rozdzielonych „ | ”; nie mylić z narzędziami plikowymi `duplikaty:`),
   - `kwota slownie: 1234,56` — poprawna polska odmiana złotych i groszy,
   - `sekundy: 3661` i `na sekundy: 2h 15m 10s` — czas w obie strony,
   - `moc hasla: …` — entropia i typowe słabości; hasła nie zapisuję i nie pokazuję,

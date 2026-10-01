@@ -36,6 +36,7 @@ public static class CommandCatalog
         new("Test wyrażenia regularnego", "Dopasowania i grupy · limit 500 ms", "regex wzor wyrazenie regularne", CommandText: "regex: "),
         new("Skrót pliku (SHA-256)", "Tylko odczyt · rozmiar i data zmiany", "hash pliku sha256 md5 suma kontrolna", CommandText: "sha256 pliku: "),
         new("Wyciągnij dane z tekstu", "E-maile, linki, adresy IP i liczby", "wyciagnij extract emaile linki ip liczby", CommandText: "wyciagnij: "),
+        new("Tylko unikalne wiersze", "Porządek w tekście: powtórzone wiersze zostają tylko raz (nie dotyczy plików)", "unikalne linie duplikaty wierszy tekst", CommandText: "unikalne linie: "),
         new("Kwota słownie", "Poprawna polska odmiana złotych i groszy", "kwota slownie faktura zlote", CommandText: "kwota slownie: "),
         new("Sekundy na czas", "3661 → 1 h 1 min 1 s · i odwrotnie", "sekundy czas godziny minuty", CommandText: "sekundy: "),
         new("Moc hasła", "Entropia i typowe słabości · hasła nie zapisuję", "moc hasla sila entropia", CommandText: "moc hasla: "),

@@ -91,7 +91,7 @@ public static class IntentCatalog
             // 0.95 · WARSZTAT: nowe narzędzia offline i strona z katalogiem
             "porownaj teksty", "diff", "regex", "sprawdz wzor", "sha256 pliku", "md5 pliku", "hash pliku",
             "wyciagnij", "wyciagnij z tekstu", "posortuj linie", "posortuj wiersze",
-            "unikalne linie", "powtorz bez duplikatow", "kwota slownie", "slownie",
+            "unikalne linie", "tylko unikalne linie", "kwota slownie", "slownie",
             "sekundy", "na sekundy", "ile to sekund", "moc hasla", "sila hasla", "qr", "qr wifi", "narzedzia"
         ];
         foreach (string phrase in extra) phrases.Add(phrase);

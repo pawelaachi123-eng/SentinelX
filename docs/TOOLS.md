@@ -18,7 +18,7 @@ a polecenia zmieniające stan systemu wymagają zgody.
 | `sha256 pliku: <ścieżka>` / `md5 pliku:` / `hash pliku:` | Skrót, rozmiar i data zmiany pliku. | Tylko odczyt; pliki do 2 GB; ścieżka musi być wskazana wprost. |
 | `wyciagnij: <tekst>` | E-maile, linki, adresy IPv4 i liczby. | Nic nie otwiera i nie wysyła. |
 | `posortuj linie: <tekst>` | Porządek alfabetyczny (bez różnicy wielkości liter). Wiersze rozdzielaj `\|` albo znakiem nowej linii — czat spłaszcza entery, więc `\|` jest pewniejsze. | Do 2000 wierszy, pokazuje pierwsze 100. |
-| `usun duplikaty linii: <tekst>` | Zostawia pierwsze wystąpienie i mówi, ile usunął (separator `\|`). | Jak wyżej. |
+| `unikalne linie: <tekst>` | Zostawia pierwsze wystąpienie i mówi, ile powtórzeń pominął (separator `\|`). Nie dotyczy plików — do plików służy `duplikaty: folder`. | Jak wyżej. |
 | `kwota slownie: 1234,56` | Polska odmiana złotych i groszy (0 – 999 999 999,99). | Czysta funkcja. |
 | `sekundy: 3661` | Sekundy → dni/godziny/minuty/sekundy. | Czysta funkcja. |
 | `na sekundy: 2h 15m 10s` | Zapis `2h 15m 10s`, `90min`, `1d` → sekundy. | Czysta funkcja. |

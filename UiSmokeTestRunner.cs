@@ -159,7 +159,7 @@ public static class UiSmokeTestRunner
                 // 0.95 · WARSZTAT: the new tools through the real pipeline (the QR check stays in UtilityRegression, it writes a file)
                 ("porownaj teksty: ala ma kota ||| ala ma psa", "tylko w drugim"), ("regex: \\d+ ||| mam 12 kotów", "dopasowania: 1"),
                 ("wyciagnij: napisz na biuro@example.com", "biuro@example.com"), ("posortuj linie: zebra | kot | Ala", "Posortowane wiersze (3)"),
-                ("usun duplikaty linii: kot | pies | kot", "usunięte: 1"), ("kwota slownie: 1234,56", "złote 56 groszy"),
+                ("unikalne linie: kot | pies | kot", "usunięte: 1"), ("kwota slownie: 1234,56", "złote 56 groszy"),
                 ("sekundy: 3661", "1 h 1 min 1 s"), ("na sekundy: 2h 15m 10s", "= 8"), ("moc hasla: abc", "bardzo słabe"),
             })
             {

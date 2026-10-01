@@ -5,7 +5,7 @@
 | Obszar | Zmiana |
 | --- | --- |
 | Strona **🧰 Narzędzia** | Ponad 60 narzędzi w jednym katalogu: wyszukiwanie, kategorie, przykład, pole argumentu, „Uruchom”, wynik do skopiowania, historia sesji. Podgląd dokładnego polecenia przed uruchomieniem. |
-| Nowe narzędzia | `porownaj teksty:`, `regex:`, `sha256 pliku:`, `md5 pliku:`, `wyciagnij:`, `posortuj linie:`, `usun duplikaty linii:`, `kwota slownie:`, `sekundy:`, `na sekundy:`, `moc hasla:`, `qr:`, `qr wifi:`. |
+| Nowe narzędzia | `porownaj teksty:`, `regex:`, `sha256 pliku:`, `md5 pliku:`, `wyciagnij:`, `posortuj linie:`, `unikalne linie:`, `kwota slownie:`, `sekundy:`, `na sekundy:`, `moc hasla:`, `qr:`, `qr wifi:`. |
 | Wygląd | Metryki CPU/RAM/GPU na żywo w pasku bocznym, przełącznik motywu na żywo (ciemny · głęboka czerń · jasny · jak Windows), gradientowa marka, pełne palety jasna i głębokiej czerni. |
 | Nawigacja | Nowa pozycja **Narzędzia** w pasku bocznym oraz zakładka 🧰 w Centrum; `//narzedzia` i wpis w palecie Ctrl+K prowadzą w to samo miejsce. |
 | Pomoce | `pomoc` i `co nowego` opisują warsztat; wyszukiwanie narzędzi działa też przez typowe słowa kluczowe („diff”, „qr”, „faktura”, „hash”). |

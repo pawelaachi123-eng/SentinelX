@@ -54,6 +54,7 @@ public static class SlashCatalog
         // 0.95 · WARSZTAT: narzędzia z nowej strony „Narzędzia”
         new("narzedzia", "Narzędzia", "katalog narzędzi offline z polem na argument", SlashKind.Tab, "narzedzia"),
         new("diff", "Porównaj teksty", "dwa teksty oddzielone |||", SlashKind.Command, "porownaj teksty: "),
+        new("unikalne", "Tylko unikalne wiersze", "usuwa powtórzone wiersze tekstu (nie pliki); separator |", SlashKind.Command, "unikalne linie: "),
         new("regex", "Test wyrażenia regularnego", "wzorzec ||| tekst", SlashKind.Command, "regex: "),
         new("hash", "Skrót pliku", "SHA-256 i MD5 pliku, tylko odczyt", SlashKind.Command, "sha256 pliku: "),
         new("qr", "Kod QR", "zapisz kod QR jako PNG lokalnie", SlashKind.Command, "qr: "),
