@@ -87,7 +87,12 @@ public static class IntentCatalog
             "tydzien roku", "dzien roku", "ile dni do konca roku", "wiek", "dni robocze", "wielkanoc",
             "moje ip", "nazwa komputera", "ile rdzeni", "architektura",
             "wersja", "co nowego", "lekcje", "samokontrola", "propozycje",
-            "szukaj zadan", "zrob zadanie", "notatka"
+            "szukaj zadan", "zrob zadanie", "notatka",
+            // 0.95 · WARSZTAT: nowe narzędzia offline i strona z katalogiem
+            "porownaj teksty", "diff", "regex", "sprawdz wzor", "sha256 pliku", "md5 pliku", "hash pliku",
+            "wyciagnij", "wyciagnij z tekstu", "posortuj linie", "posortuj wiersze",
+            "unikalne linie", "tylko unikalne linie", "kwota slownie", "slownie",
+            "sekundy", "na sekundy", "ile to sekund", "moc hasla", "sila hasla", "qr", "qr wifi", "narzedzia"
         ];
         foreach (string phrase in extra) phrases.Add(phrase);
         return phrases.OrderBy(x => x, StringComparer.Ordinal).ToArray();

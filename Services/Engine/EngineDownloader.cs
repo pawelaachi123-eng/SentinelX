@@ -18,7 +18,7 @@ public sealed class EngineDownloader : IDisposable
     {
         http = new HttpClient(handler ?? new HttpClientHandler { AllowAutoRedirect = true, MaxAutomaticRedirections = 8 })
         { Timeout = Timeout.InfiniteTimeSpan };
-        http.DefaultRequestHeaders.UserAgent.ParseAdd("SentinelX-Engine/0.94");
+        http.DefaultRequestHeaders.UserAgent.ParseAdd("SentinelX-Engine/0.95");
         this.maxAttempts = Math.Max(1, maxAttempts);
         this.retryStep = retryStep ?? TimeSpan.FromSeconds(5);
     }

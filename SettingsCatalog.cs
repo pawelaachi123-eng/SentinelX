@@ -26,7 +26,7 @@ public static class SettingsCatalog
         void Model(string label, string description, Func<string> read, Action<string> write) =>
             fields.Add(new("AI", label, description, read, value => { if (!LocalAiService.IsLocalModelName(value)) return "Podaj nazwę lokalnego modelu (litery, cyfry, . : / - _)."; write(value.Trim()); return null; }));
 
-        Choice("Wygląd", "Motyw", "Zmiana kolorów całego interfejsu od razu.", () => S().Ui.Theme, x => S().Ui.Theme = x, "Dark", "Deep Dark", "System");
+        Choice("Wygląd", "Motyw", "Zmiana kolorów całego interfejsu od razu — też z panelu bocznego.", () => S().Ui.Theme, x => S().Ui.Theme = x, "Dark", "Deep Dark", "Light", "System");
         Choice("Wygląd", "Przeglądarka", "Strony i wyszukiwanie. Gdy wybranej nie ma, używana jest domyślna przeglądarka Windows.", () => S().Ui.DefaultBrowserPreference, x => S().Ui.DefaultBrowserPreference = x, "Brave", "Chrome", "System");
         Choice("Wygląd", "Kolor akcentu", "Mięta, błękit, fiolet, bursztyn albo róż.", () => S().Ui.AccentColor, x => S().Ui.AccentColor = x, "#00D4FF", "#66F2C2", "#48D8FF", "#A98BFF", "#FFC86B", "#FF8DA6");
         Number("Wygląd", "Przezroczystość nakładki (%)", "Stosowana również do otwartej nakładki.", () => S().Ui.OverlayOpacityPercent, x => S().Ui.OverlayOpacityPercent = (int)x, 20, 100, true);

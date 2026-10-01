@@ -58,7 +58,7 @@ public sealed class SentinelSettings
         Link.Port = Math.Clamp(Link.Port, 1024, 65000);
         Memory.RetentionDays = Math.Clamp(Memory.RetentionDays, 0, 3650);
         Memory.ArchiveMonths = Math.Clamp(Memory.ArchiveMonths, 0, 120);
-        Ui.Theme = ValidateChoice(Ui.Theme, ["Dark", "Deep Dark", "System"], "Dark");
+        Ui.Theme = ValidateChoice(Ui.Theme, ["Dark", "Deep Dark", "Light", "System"], "Dark");
         Ui.DefaultBrowserPreference = ValidateChoice(Ui.DefaultBrowserPreference, ["Brave", "Chrome", "System"], "Brave");
         Ui.AccentColor = System.Text.RegularExpressions.Regex.IsMatch(Ui.AccentColor ?? "", "^#[0-9a-fA-F]{6}$") ? Ui.AccentColor!.Trim() : "#00D4FF";
         Ui.OverlayOpacityPercent = Math.Clamp(Ui.OverlayOpacityPercent, 20, 100);

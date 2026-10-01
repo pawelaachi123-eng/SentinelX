@@ -1,4 +1,4 @@
-# SENTINEL X 0.94 · AUTOPILOT — Windows + telefon
+# SENTINEL X 0.95 · WARSZTAT — Windows + telefon
 
 Lokalny asystent Windows 10/11 (C# 14, .NET 10, WPF) z aplikacją na telefon. **Nic nie trzeba pilnować:** instalujesz raz, a Sentinel sam startuje z Windows, sam pobiera i naprawia swój silnik AI, sam pilnuje komputera i daje znać na telefon. Poprzedni interfejs jest nadal dostępny przez `--legacy`.
 
@@ -18,7 +18,7 @@ Telefon pokazuje **to samo co komputer**: ten sam czat z Sentinelem (polecenia, 
 - **Opiekun** sprawdza co minutę, czy łącze z telefonem i silnik AI działają, i uruchamia je ponownie, gdy trzeba. Jedna linia statusu mówi „Wszystko działa samo” albo — uczciwie — co wymaga Twojej uwagi.
 - **Wake-on-LAN:** aplikacja na Androida może wybudzić komputer (o ile karta sieciowa i BIOS na to pozwalają).
 
-Szczegóły techniczne: [docs/PHONE-LINK.md](docs/PHONE-LINK.md) (protokół i bezpieczeństwo), [docs/ENGINE.md](docs/ENGINE.md) (silnik AI), [docs/RELEASE-0.94.md](docs/RELEASE-0.94.md) (notatki wydania i ograniczenia).
+Szczegóły techniczne: [docs/PHONE-LINK.md](docs/PHONE-LINK.md) (protokół i bezpieczeństwo), [docs/ENGINE.md](docs/ENGINE.md) (silnik AI), [docs/TOOLS.md](docs/TOOLS.md) (katalog narzędzi), [docs/RELEASE-0.95.md](docs/RELEASE-0.95.md) (notatki wydania i ograniczenia).
 
 ### Plan B: zbuduj instalator u siebie (bez GitHub Actions)
 
@@ -29,6 +29,22 @@ powershell -ExecutionPolicy Bypass -File scripts\build-local.ps1 -Test
 
 Aplikację na Androida najłatwiej zbudować w wydaniu na GitHubie (workflow **Release**); lokalnie potrzebny jest Android Studio — zob. [phone-android/README.md](phone-android/README.md).
 
+
+## Nowe w 0.95 — WARSZTAT: strona Narzędzia, 12 nowych narzędzi i motywy na żywo
+
+- **Strona 🧰 Narzędzia** (pozycja w pasku bocznym i zakładka w Centrum): ponad 60 narzędzi w jednym katalogu z wyszukiwaniem, filtrem kategorii, przykładem, polem argumentu, przyciskiem „Uruchom”, wynikiem do skopiowania i listą tego, co uruchomiłeś w tej sesji. Nad przyciskiem zawsze widzisz **dokładnie to polecenie**, które zostanie wysłane.
+- **Nowe narzędzia offline** (wszystkie deterministyczne, bez chmury):
+  - `porownaj teksty: A ||| B` — różnice linia po linii (działa też separator z trzech myślników),
+  - `regex: wzorzec ||| tekst` — dopasowania i grupy, z limitem 500 ms chroniącym przed zawieszeniem,
+  - `sha256 pliku: ścieżka` (oraz `md5 pliku:`) — skrót i metadane pliku, wyłącznie odczyt, limit 2 GB,
+  - `wyciagnij: tekst` — e-maile, linki, adresy IPv4 i liczby bez otwierania czegokolwiek,
+  - `posortuj linie:` i `unikalne linie:` — porządki w tekstach (też w wierszach rozdzielonych „ | ”; nie mylić z narzędziami plikowymi `duplikaty:`),
+  - `kwota slownie: 1234,56` — poprawna polska odmiana złotych i groszy,
+  - `sekundy: 3661` i `na sekundy: 2h 15m 10s` — czas w obie strony,
+  - `moc hasla: …` — entropia i typowe słabości; hasła nie zapisuję i nie pokazuję,
+  - `qr: tekst` oraz `qr wifi: nazwa|hasło` — kod QR zapisany jako PNG w folderze danych Sentinel X.
+- **Wygląd**: metryki CPU/RAM/GPU na żywo w pasku bocznym, przełącznik motywu jednym kliknięciem (ciemny · głęboka czerń · jasny · jak Windows) z zapisem w ustawieniach, gradientowa marka oraz **pełne palety** jasna i głębokiej czerni (wcześniej nadpisanych było tylko kilka kolorów, więc „jasny” motyw miał ciemne wyspy).
+- **Zasięg katalogu**: każdy wpis na stronie Narzędzia jest sprawdzony względem routera — strona nie oferuje niczego, czego Sentinel nie umie. Uruchomienie idzie normalną ścieżką silnika, więc narzędzia zachowują zgody, dowody i historię.
 
 ## Nowe w 0.91 — CENTRUM: jeden hub, paleta `//`, głos od startu i ~50 nowych narzędzi
 

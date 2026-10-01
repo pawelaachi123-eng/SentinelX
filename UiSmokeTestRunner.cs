@@ -154,8 +154,13 @@ public static class UiSmokeTestRunner
                 ("pierwiastek 144", "= 12"), ("silnia 10", "3628800"), ("nwd 12 8", "= 4"),
                 ("palindrom: kajak", "palindromem"), ("morse: sos", "... --- ..."),
                 ("pesel: 90010112349", "PESEL poprawny"), ("wielkanoc 2027", "28.03.2027"),
-                ("lotto", "Lotto (6 z 49)"), ("wersja", "0.94"), ("co nowego", "AUTOPILOT"),
+                ("lotto", "Lotto (6 z 49)"), ("wersja", "0.95"), ("co nowego", "WARSZTAT"),
                 ("nazwa komputera", "Komputer:"), ("samokontrola", "SAMOKONTROLA"),
+                // 0.95 · WARSZTAT: the new tools through the real pipeline (the QR check stays in UtilityRegression, it writes a file)
+                ("porownaj teksty: ala ma kota ||| ala ma psa", "tylko w drugim"), ("regex: \\d+ ||| mam 12 kotów", "dopasowania: 1"),
+                ("wyciagnij: napisz na biuro@example.com", "biuro@example.com"), ("posortuj linie: zebra | kot | Ala", "Posortowane wiersze (3)"),
+                ("unikalne linie: kot | pies | kot", "usunięte: 1"), ("kwota slownie: 1234,56", "złote 56 groszy"),
+                ("sekundy: 3661", "1 h 1 min 1 s"), ("na sekundy: 2h 15m 10s", "= 8"), ("moc hasla: abc", "bardzo słabe"),
             })
             {
                 string toolResponse = (await memoryEngine.ExecuteAsync(command)).Text;
@@ -268,6 +273,18 @@ public static class UiSmokeTestRunner
                 var png = new PngBitmapEncoder(); png.Frames.Add(BitmapFrame.Create(image));
                 using var imageFile = File.Create(Path.Combine(output, item.Key + ".png")); png.Save(imageFile);
             }
+            // 0.95 · WARSZTAT: the Tools page lists the catalogue and runs a tool through its own view-model.
+            var toolsVm = services.GetRequiredService<ToolsViewModel>();
+            if (toolsVm.Results.Count < 40) throw new InvalidOperationException("The tool catalogue must be populated: " + toolsVm.Results.Count);
+            toolsVm.Query = "kwota";
+            if (toolsVm.Results.Count == 0 || toolsVm.SelectedTool == null) throw new InvalidOperationException("Tool search must find the amount tool.");
+            toolsVm.Argument = "1234,56";
+            await toolsVm.RunCommand.ExecuteAsync(null);
+            if (!toolsVm.HasResult || !toolsVm.Result.Contains("tysiąc dwieście trzydzieści cztery złote 56 groszy"))
+                throw new InvalidOperationException("Running a tool from the page must produce its result: " + toolsVm.Result);
+            if (toolsVm.Recent.Count == 0) throw new InvalidOperationException("A run tool must appear in the session history.");
+            toolsVm.ClearQueryCommand.Execute(null);
+            if (toolsVm.Results.Count < 40) throw new InvalidOperationException("Clearing the filters must restore the whole catalogue.");
             // 0.91 · CENTRUM: every embedded tab inside Centrum must render without binding errors.
             foreach (var tab in chat.Sections)
             {
@@ -322,7 +339,7 @@ public static class UiSmokeTestRunner
             if (vm.Readiness.Checks.Count != 4) throw new InvalidOperationException("Readiness cards not populated.");
             Capture(shell, Path.Combine(output, "readiness.png"));
             vm.Readiness.CloseCommand.Execute(null);
-            foreach (string theme in new[] { "Deep Dark", "System", "Dark" })
+            foreach (string theme in new[] { "Deep Dark", "Light", "System", "Dark" })
             {
                 var store = services.GetRequiredService<AppSettingsService>();
                 store.Settings.Ui.Theme = theme; store.Save();
@@ -342,7 +359,7 @@ public static class UiSmokeTestRunner
             string errors = buffer.ToString();
             File.WriteAllText(Path.Combine(output, "bindings.log"), errors);
             if (errors.Length != 0) throw new InvalidOperationException("WPF binding errors: " + errors);
-            File.WriteAllText(Path.Combine(output, "ui-smoke.txt"), "PASS\nPages: " + string.Join(", ", visited) + "\nCentrum tabs, // palette and voice default verified\nDark/DeepDark/System themes rendered\nSTOP/Resume/voice approval passed\nPalette, readiness, draft preservation and execution-scoped evidence passed\nTypo repair, grey-zone questions, lessons, self-check, offline tools, archives, insights and unified search passed\n");
+            File.WriteAllText(Path.Combine(output, "ui-smoke.txt"), "PASS\nPages: " + string.Join(", ", visited) + "\nCentrum tabs, // palette and voice default verified\nDark/DeepDark/Light/System themes rendered\nSTOP/Resume/voice approval passed\nPalette, readiness, draft preservation and execution-scoped evidence passed\nTypo repair, grey-zone questions, lessons, self-check, offline tools, the 0.95 workshop catalogue, archives, insights and unified search passed\n");
         }
         finally { PresentationTraceSources.DataBindingSource.Listeners.Remove(listener); }
     }

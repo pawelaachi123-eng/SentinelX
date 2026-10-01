@@ -129,7 +129,11 @@ public sealed class CommandRouter
         if (text is "wersja" or "jaka wersja" or "wersja sentinel" or "wersja aplikacji")
             return "Sentinel X " + AppConstants.Version + " · " + systemInfo.GetWindowsVersion() + " · .NET " + Environment.Version;
         if (text is "co nowego" or "lista zmian" or "changelog" or "co sie zmienilo")
-            return "CO NOWEGO W 0.94 · AUTOPILOT\n" +
+            return "CO NOWEGO W 0.95 · WARSZTAT\n" +
+                "· Nowa strona NARZĘDZIA (🧰 w pasku albo zakładka w Centrum): katalog ponad 60 narzędzi z wyszukiwaniem, przykładem, polem argumentu i wynikiem — wszystko liczy się lokalnie.\n" +
+                "· Nowe narzędzia: porównanie tekstów (diff), test wyrażeń regularnych, skrót SHA-256/MD5 pliku, wyciąganie e-maili i linków, sortowanie i usuwanie duplikatów wierszy, kwota słownie, sekundy↔czas, ocena mocy hasła, kody QR (także do sieci Wi-Fi).\n" +
+                "· Wygląd: metryki CPU/RAM/GPU na żywo w pasku bocznym, przełącznik motywu jednym kliknięciem (ciemny, głęboka czerń, jasny, jak Windows), pełna paleta jasna i głębokiej czerni.\n" +
+                "\nCO NOWEGO W 0.94 · AUTOPILOT\n" +
                 "· Telefon: aplikacja na Androida albo przeglądarka (także iPhone) łączy się z komputerem sama — zgoda to jedno kliknięcie na PC. Czat, zadania, notatki, stan komputera i alerty są takie same jak tutaj.\n" +
                 "· Silnik AI jest wbudowany (llama.cpp): instaluje się, startuje i naprawia sam. Ollama nie jest potrzebna.\n" +
                 "· Autopilot: start z Windows w tle, Watch włączony, alerty na telefon, jedna linia „Wszystko działa samo”.\n" +
@@ -585,7 +589,7 @@ public sealed class CommandRouter
     private const string Help = """
         SENTINEL X — CO UMIEM (wszystko działa lokalnie)
 
-        Interfejs: wpisz „//” w polu czatu — lista poleceń, Tab wybiera, Enter wykonuje. Centrum mieści zakładki: 📓 zadania, 🕘 historia, 🎤 głos, 🖥 system, 🎮 gry, ✨ AI, ⚡ akcje, 🩺 diagnostyka.
+        Interfejs: wpisz „//” w polu czatu — lista poleceń, Tab wybiera, Enter wykonuje. Strona 🧰 Narzędzia to katalog z wyszukiwaniem i polem argumentu. Centrum mieści zakładki: 📓 zadania, 🕘 historia, 🎤 głos, 🖥 system, 🎮 gry, ✨ AI, ⚡ akcje, 🩺 diagnostyka, 🧰 narzędzia.
         Pomiary i system: ile mam RAM · użycie CPU · użycie GPU · dyski · top procesy · czas pracy komputera · która godzina · dzisiejsza data · nazwa komputera · ile rdzeni · architektura · moje ip
         Aplikacje: włącz <nazwa> (cs2, discord, steam, chrome, brave, spotify, notatnik, kalkulator, VS Code, Firefox, VLC, OBS…) · otwórz pobrane / dokumenty / pulpit · skróty
         Diagnostyka: diagnostyka komputera (albo //diag) · eksportuj raport · status zabezpieczeń · zdarzenia windows · programy autostartu · lista usług
@@ -597,6 +601,7 @@ public sealed class CommandRouter
         Sentinel: samokontrola · propozycje · lekcje · wersja · co nowego
         Matematyka: policz 12,5*4 · pierwiastek 144 · silnia 10 · nwd 12 8 · nww 4 6 · czy pierwsza 97 · dzielniki 12 · fibonacci 10 · srednia: 2, 4, 6 · mediana: … · suma: … · min: … · max: … · zaokraglij 3,14159 do 2 · zmiana z 50 do 80 · procent 15 z 240 · ile to procent 30 z 240 · vat 100
         Konwersje: przelicz 5 km na mile · rgb 31 162 195 · kolor 1fa2c3 · rzymskie 2026 · z rzymskich XIV · base64: tekst · dekoduj base64: … · morse: sos · dekoduj morse: … · binarnie: A · dekoduj binarnie: … · hex: Ala · dekoduj hex: …
+        Warsztat: porownaj teksty: A ||| B · regex: wzorzec ||| tekst · sha256 pliku: ścieżka · wyciagnij: tekst · posortuj linie: … · unikalne linie: … · kwota slownie: 1234,56 · sekundy: 3661 · na sekundy: 2h 15m · moc hasla: … · qr: tekst · qr wifi: nazwa|hasło
         Tekst: ile slow: tekst · ile znakow: tekst · ile zdan: tekst · palindrom: kajak · anagram: kot, tok · rot13: ala · tytul: ala ma kota · wielkie litery: … · male litery: … · odwroc tekst: … · slug: tekst · transliteruj: tekst · json: {…} · hash tekstu: …
         Kalendarz: ile dni do 24.12 · jaki dzien tygodnia 1.1.2030 · tydzien roku · dzien roku · ile dni do konca roku · wiek: 01.01.1990 · dni robocze 1.1.2024 do 31.1.2024 · wielkanoc 2027 · czas w toki / londyn / berlin / paryz / nowy jork / chicago / los angeles / seoul
         Dokumenty PL: pesel: 11 cyfr · nip: 10 cyfr · iban: PL61… (walidacja lokalna, nic nie jest wysyłane)

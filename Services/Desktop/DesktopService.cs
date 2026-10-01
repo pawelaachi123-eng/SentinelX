@@ -121,7 +121,7 @@ public sealed class DesktopService(ISettingsService settings, IActionEngine engi
     private void ApplySettings()
     {
         if (window == null || disposed) return;
-        bool light = false;
+        bool light = settings.Current.Ui.Theme == "Light";
         if (settings.Current.Ui.Theme == "System")
         {
             try { using var key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize"); light = key?.GetValue("AppsUseLightTheme") is int v && v != 0; }

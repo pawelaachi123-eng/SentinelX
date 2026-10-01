@@ -9,8 +9,11 @@ using System.Text.RegularExpressions;
 namespace SentinelX;
 
 /// <summary>Offline, deterministic helper tools. Everything here is a pure function: no network,
-/// no file access, no process starts — so each one is testable without a machine.</summary>
-public static class UtilityToolbox
+/// no file access, no process starts — so each one is testable without a machine.
+/// 0.95 splits the workshop additions (diff, regex, file hash, QR, amounts in words) into
+/// UtilityToolbox.Extras.cs; the routing below stays in one place so every tool is reachable
+/// both from chat and from the Tools page.</summary>
+public static partial class UtilityToolbox
 {
     private static readonly CultureInfo Pl = CultureInfo.GetCultureInfo("pl-PL");
 
@@ -192,6 +195,29 @@ public static class UtilityToolbox
         if (easter.Success) return Easter(int.Parse(easter.Groups[1].Value));
         var clock = Regex.Match(text, @"^czas w[:\s]+(.+)$");
         if (clock.Success) return WorldClock(text[^clock.Groups[1].Length..].Trim());
+
+        // --- 0.95 · WARSZTAT: diff, regex, hash pliku, wyciąganie danych, porządki w tekście ---
+        var diff = Regex.Match(text, @"^(?:porownaj teksty|diff)[:\s]+(.+)$", RegexOptions.Singleline);
+        if (diff.Success) return DiffText(Argument(raw, "porownaj teksty", "diff"));
+        var regexTest = Regex.Match(text, @"^(?:regex|sprawdz wzor)[:\s]+(.+)$", RegexOptions.Singleline);
+        if (regexTest.Success) return RegexTest(Argument(raw, "regex", "sprawdz wzor"));
+        if (Regex.IsMatch(text, @"^(?:sha256 pliku|md5 pliku|hash pliku)[:\s]+.+$", RegexOptions.Singleline)) return FileHash(raw.Trim());
+        var extract = Regex.Match(text, @"^(?:wyciagnij z tekstu|wyciagnij)[:\s]+(.+)$", RegexOptions.Singleline);
+        if (extract.Success) return Extract(Argument(raw, "wyciagnij z tekstu", "wyciagnij"));
+        var sortLines = Regex.Match(text, @"^(?:posortuj linie|posortuj wiersze)[:\s]+(.+)$", RegexOptions.Singleline);
+        if (sortLines.Success) return SortLines(Argument(raw, "posortuj wiersze", "posortuj linie"), unique: false);
+        var uniqueLines = Regex.Match(text, @"^(?:unikalne linie|tylko unikalne linie)[:\s]+(.+)$", RegexOptions.Singleline);
+        if (uniqueLines.Success) return SortLines(Argument(raw, "tylko unikalne linie", "unikalne linie"), unique: true);
+        var amountCommand = Regex.Match(text, @"^(?:kwota slownie|slownie)[:\s]+(.+)$");
+        if (amountCommand.Success) return AmountInWords(Argument(raw, "kwota slownie", "slownie"));
+        var toSeconds = Regex.Match(text, @"^(?:na sekundy|ile to sekund)[:\s]+(.+)$");
+        if (toSeconds.Success) return SecondsText(Argument(raw, "na sekundy", "ile to sekund"), toSeconds: true);
+        var seconds = Regex.Match(text, @"^sekundy[:\s]+(.+)$");
+        if (seconds.Success) return SecondsText(Argument(raw, "sekundy"), toSeconds: false);
+        var strength = Regex.Match(text, @"^(?:moc hasla|sila hasla)[:\s]+(.+)$", RegexOptions.Singleline);
+        if (strength.Success) return PasswordStrength(Argument(raw, "moc hasla", "sila hasla"));
+        var qr = Regex.Match(text, @"^qr(?: wifi)?[:\s]+.+$", RegexOptions.Singleline);
+        if (qr.Success) return QrCode(raw.Trim());
 
         // --- arithmetic (last: it is the most generic pattern) ---
         var calc = Regex.Match(text, @"^(?:policz|kalkulator|ile to|oblicz)[:\s]+(.+)$");
