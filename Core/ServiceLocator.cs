@@ -2,11 +2,27 @@ using System.Windows.Threading;
 using Microsoft.Extensions.DependencyInjection;
 using SentinelX.Services.Actions;
 using SentinelX.Services.AI;
+using SentinelX.Services.Automations;
+using SentinelX.Services.Backup;
+using SentinelX.Services.Cache;
+using SentinelX.Services.Capabilities;
+using SentinelX.Services.CodeAssistant;
 using SentinelX.Services.Desktop;
+using SentinelX.Services.Devices;
+using SentinelX.Services.Health;
 using SentinelX.Services.History;
+using SentinelX.Services.Integrations;
 using SentinelX.Services.Intent;
+using SentinelX.Services.Knowledge;
 using SentinelX.Services.Monitoring;
+using SentinelX.Services.Notifications;
+using SentinelX.Services.Performance;
+using SentinelX.Services.Plugins;
+using SentinelX.Services.Repository;
+using SentinelX.Services.Scheduling;
+using SentinelX.Services.SelfDiagnostics;
 using SentinelX.Services.Settings;
+using SentinelX.Services.Update;
 using SentinelX.Services.Voice;
 using SentinelX.ViewModels;
 namespace SentinelX.Core;
@@ -93,6 +109,35 @@ public static class ServiceLocator
         services.AddSingleton<Services.Care.CareService>();
         services.AddSingleton<IDesktopService, DesktopService>();
         services.AddSingleton<Services.Readiness.IReadinessService, Services.Readiness.ReadinessService>();
+        // Nowa infrastruktura (kolejki, cache, zdrowie, pluginy, możliwości, urządzenia, integracje, automacje, wiedza, repo)
+        services.AddSingleton<BackgroundJobQueue>(_ => new(maxCapacity: 64));
+        services.AddSingleton<SmartCache>(_ => new(maxBytes: 64 * 1024 * 1024));
+        services.AddSingleton<SentinelHealthService>();
+        services.AddSingleton<SafeModeService>();
+        services.AddSingleton<WatchdogService>();
+        services.AddSingleton<PluginRegistry>();
+        services.AddSingleton<PluginManager>(sp =>
+        {
+            var m = new PluginManager(Array.Empty<ISentinelPlugin>());
+            m.ScanDirectory(AppPaths.PluginsDirectory);
+            return m;
+        });
+        services.AddSingleton<CapabilityGraph>();
+        services.AddSingleton<DeviceEngine>();
+        services.AddSingleton<IntegrationEngine>();
+        services.AddSingleton<AutomationEngine>();
+        services.AddSingleton<NotificationCenter>();
+        services.AddSingleton<PerformanceManager>();
+        services.AddSingleton<KnowledgeEngine>();
+        services.AddSingleton<RepositoryIndex>();
+        services.AddSingleton<CodeAssistantService>(sp => new(sp.GetRequiredService<RepositoryIndex>()));
+        services.AddSingleton<ToolStudioService>(sp => new(sp.GetRequiredService<PluginRegistry>(), sp.GetRequiredService<CapabilityGraph>()));
+        services.AddSingleton<BackupService>();
+        services.AddSingleton<StatisticsService>();
+        services.AddSingleton<UpdateEngine>(_ => new UpdateEngine());
+        services.AddSingleton<SelfDiagnosticsService>(sp => new(sp.GetRequiredService<SentinelHealthService>(),
+            new IDiagnosticCheck[] { new ConfigDiagnosticCheck(sp.GetRequiredService<AppSettingsService>()), new StorageDiagnosticCheck() }));
+        services.AddSingleton<TroubleshootingEngine>(sp => new(sp.GetRequiredService<SelfDiagnosticsService>()));
         services.AddSingleton<ReadinessViewModel>();
         services.AddSingleton<CommandPaletteViewModel>();
         // Cached page VMs preserve drafts, selections and subscriptions across navigation.

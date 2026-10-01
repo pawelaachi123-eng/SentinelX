@@ -26,6 +26,7 @@ public sealed class AppSettingsService
             if (File.Exists(path))
             {
                 string json = File.ReadAllText(path);
+                json = SentinelX.Services.Settings.ConfigurationMigration.Migrate(json);
                 Settings = JsonSerializer.Deserialize<SentinelSettings>(MigrateLegacyJson(json), JsonOptions) ?? new();
             }
             Settings.Validate();

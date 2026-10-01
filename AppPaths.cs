@@ -12,6 +12,11 @@ public static class AppPaths
     public static string MemoryDirectory => Path.Combine(Root, "Memory");
     public static string BackupsDirectory => Path.Combine(Root, "Backups");
     public static string CacheDirectory => Path.Combine(Root, "Cache");
+    public static string PluginsDirectory => Path.Combine(Root, "Plugins");
+    public static string KnowledgeDirectory => Path.Combine(Root, "Knowledge");
+    public static string RepositoryDirectory => Path.Combine(Root, "Repository");
+    public static string UpdateDirectory => Path.Combine(Root, "Update");
+    public static string OverlayDirectory => Path.Combine(Root, "Overlay");
     private static string Resolve()
     {
         string? custom = Environment.GetEnvironmentVariable("SENTINEL_DATA_DIR");
