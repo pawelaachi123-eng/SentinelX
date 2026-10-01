@@ -1,3 +1,5 @@
+using System.Net.Http;
+
 namespace SentinelX.Services.Engine;
 
 /// <summary>The compatibility UI (--legacy) builds its own LocalAiService outside the DI container; it shares one lazily created engine

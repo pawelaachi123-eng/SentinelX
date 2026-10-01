@@ -1,3 +1,5 @@
+using System.Net.Http;
+
 namespace SentinelX.Services.Engine;
 
 public sealed record EngineEndpoint(Uri BaseAddress, string ApiKey);
