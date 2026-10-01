@@ -1,3 +1,4 @@
+using System.IO;
 using System.Net.Sockets;
 using SentinelX.Core;
 using SentinelX.Services.Engine;

@@ -1,3 +1,5 @@
+using System.IO;
+
 namespace SentinelX.Services.Engine;
 
 /// <summary>Where the engine lives on disk. Nothing here needs the user to touch it.
