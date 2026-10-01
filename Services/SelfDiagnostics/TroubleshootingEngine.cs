@@ -1,7 +1,9 @@
-using System.Threading.Tasks;
-using System.Linq;
-using System.IO; using System.Threading;
 using System.Collections.Concurrent;
+using System.IO;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using SentinelX;
 
 namespace SentinelX.Services.SelfDiagnostics;
 
@@ -40,10 +42,11 @@ public sealed class TroubleshootingEngine
 
     private void RegisterDefaults()
     {
-        Register(new KnownFix("Brak wolnego miejsca",
-            new[] { "disk", "space", "no space", "miejsce", "brak miejsca" },
-            "Wyczyść folder Cache i stare logi.",
-            async ct =>
+        Register(new KnownFix(
+            FixDescription: "Brak wolnego miejsca",
+            Triggers: new[] { "disk", "space", "no space", "miejsce", "brak miejsca" },
+            Description: "Wyczyść folder Cache i stare logi.",
+            FixAction: async ct =>
             {
                 try
                 {
@@ -53,14 +56,18 @@ public sealed class TroubleshootingEngine
                     return await Task.FromResult(true).ConfigureAwait(false);
                 }
                 catch { return false; }
-            }, requiresApproval: true));
-        Register(new KnownFix("Restart silnika AI",
-            new[] { "ai", "llama", "engine", "model" },
-            "Spróbuj zatrzymać i uruchomić silnik AI.", null, requiresApproval: true));
+            },
+            RequiresApproval: true));
+        Register(new KnownFix(
+            FixDescription: "Restart silnika AI",
+            Triggers: new[] { "ai", "llama", "engine", "model" },
+            Description: "Spróbuj zatrzymać i uruchomić silnik AI.",
+            FixAction: null,
+            RequiresApproval: true));
     }
 }
 
-public sealed record KnownFix(string Description, string[] Triggers, string FixDescription,
+public sealed record KnownFix(string FixDescription, string[] Triggers, string Description,
     Func<CancellationToken, Task<bool>>? FixAction, bool RequiresApproval);
 
 public sealed record TroubleshootingProposal(
