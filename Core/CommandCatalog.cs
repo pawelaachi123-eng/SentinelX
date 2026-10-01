@@ -42,7 +42,13 @@ public static class CommandCatalog
         new("AI", "Wbudowany silnik AI i wybór modelu", "silnik model ai ollama llama", PageKey: "ai"),
         new("Actions", "Zadania, zgody i dowody wykonania", "akcje zadania uprawnienia permission dowody", PageKey: "actions"),
         new("History", "Historia akcji i rozmów", "historia audit log", PageKey: "history"),
-        new("Settings", "Konfiguracja i walidacja ustawień", "ustawienia settings motyw wyglad", PageKey: "settings")
+        new("Settings", "Konfiguracja i walidacja ustawień", "ustawienia settings motyw wyglad", PageKey: "settings"),
+        new("Pluginy", "Zainstalowane rozszerzenia i ich uprawnienia", "plugin extension rozszerzenie", PageKey: "plugins"),
+        new("Automacje", "Reguły WHEN-IF-THEN i szablony", "automation automatyzacja rule regula", PageKey: "automations"),
+        new("Urządzenia", "PC, telefon, TV, Smart Home", "urzadzenie device tv smart home", PageKey: "devices"),
+        new("Zdrowie Sentinela", "Status usług, watchdog, diagnostyka", "health zdrowie diagnostic stan", PageKey: "health"),
+        new("Wiedza", "Indeks dokumentów i kodu źródłowego", "wiedza knowledge index dokumenty", PageKey: "knowledge"),
+        new("Sentinel sprawdź siebie", "Uruchom autodiagnostykę", "sprawdz siebie self-diag diagnostyka", CommandText: "sentinel sprawdź siebie")
     ];
     public static IReadOnlyList<PaletteEntry> Search(string query)
     {
