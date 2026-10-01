@@ -33,10 +33,22 @@ Plan B bez GitHub Actions: `scripts/build-local.ps1` (instalator EXE).
 - CI testuje **dokładnie to, co wydajemy** (samodzielna paczka z wbudowanym .NET i silnikiem, potem instalator), nie wersję zależną od zainstalowanego runtime. Oszczędniejszy: bez dublowania przez `pull_request`, bez dużych artefaktów.
 - Nowe testy: `EngineRegression` (katalog, pobieranie z wznawianiem i odrzucaniem złego hasha, fasada, strumień, `keep_alive`, argumenty) i `LinkRegression` (prawdziwy TLS na loopback: przypinanie certyfikatu, parowanie i kod SAS, strumień czatu, zadania, notatki, long-poll alertów, odporność na śmieci). Test interfejsu telefonu w prawdziwej przeglądarce: `scripts/phone-mock`.
 
-## Uczciwie o ograniczeniach (czego NIE sprawdzono)
-- **Kod C# i Java powstał bez możliwości kompilacji w środowisku autora** (brak .NET SDK i dostępu do NuGet). Składnię sprawdzono parserami, interfejs telefonu przetestowano w prawdziwej przeglądarce na atrapie serwera, a protokół (SHA-256/SAS) zweryfikowano między JS, Node i Pythonem — **ale pierwszy prawdziwy build i testy uruchomi dopiero CI**. Jeśli pierwszy przebieg pokaże błędy kompilacji, to oczekiwane i łatwe do poprawienia.
-- Prawdziwa generacja z modelem, zapora Windows, Wi‑Fi, Wake-on-LAN i powiadomienia na Androidzie wymagają sprawdzenia na prawdziwych urządzeniach.
+## Co zostało sprawdzone w CI, a czego nie
+
+**Sprawdzone automatycznie (GitHub Actions, `windows-latest`/`ubuntu-latest`, wszystko zielone):**
+kompilacja na .NET 10; silnik llama.cpp pobrany, zweryfikowany sumą SHA-256 i **uruchomiony** (`llama-server --version`); samodzielna paczka z silnikiem;
+smoke UI wszystkich stron; `EngineRegression` i `LinkRegression` (prawdziwy TLS na loopback, przypinanie certyfikatu, parowanie z kodem potwierdzenia, token jednorazowy,
+strumień czatu, zadania, notatki, long-poll alertów, odporność na śmieci, autopilot); dotychczasowa regresja; instalator i test **zainstalowanej** aplikacji (silnik jest w środku);
+budowa i podpisanie APK. Interfejs telefonu dodatkowo przetestowano w prawdziwej przeglądarce (`scripts/phone-mock`).
+
+**Nie sprawdzone (wymaga prawdziwych urządzeń):**
+- prawdziwa generacja z modelem (modele mają gigabajty; CI ich nie pobiera),
+- zapora Windows i prawdziwa sieć Wi‑Fi, wykrywanie telefonu, Wake-on-LAN,
+- aplikacja na prawdziwym telefonie: instalacja APK, powiadomienia (Android 13+ pyta o zgodę), rozpoznawanie mowy,
+- zachowanie Windows Defender/SmartScreen wobec niepodpisanych plików.
+
+## Uczciwie o ograniczeniach
 - Pliki nie są podpisane cyfrowo (SmartScreen, „instalacja z nieznanego źródła”).
-- Telefon działa w sieci lokalnej; nie ma dostępu spoza domu bez własnej sieci prywatnej.
+- Telefon działa w sieci lokalnej; nie ma dostępu spoza domu bez własnej sieci prywatnej (np. Tailscale).
 - Silnik AI działa na CPU (bez GPU); na słabym komputerze odpowiedzi są wolne, ale komendy systemowe działają natychmiast.
-- Pierwsze pobranie modeli to 1,1 GB (+2,5 GB na mocniejszych komputerach) i wymaga internetu.
+- Pierwsze pobranie modeli to 1,1 GB (+2,5 GB na mocniejszych komputerach) i wymaga internetu (można wyłączyć w Ustawieniach → AI).

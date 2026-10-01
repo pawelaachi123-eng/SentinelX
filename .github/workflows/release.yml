@@ -3,12 +3,16 @@ name: Release (EXE installer, portable ZIP, phone APK, checksums)
 # Publikacja plików na GitHubie — TYLKO na żądanie (decyzja użytkownika 2026-09-25: wydanie „rolling” przy każdym pushu wyłączone).
 #   - push tagu v*.*.*   → wydanie milowe (np. v0.94.0) z pełną walidacją.
 #   - workflow_dispatch  → ręczne wydanie pod wskazanym tagiem (puste pole = v<wersja z SENTINEL-X.csproj>).
+#   - push na gałąź arena/** z napisem [release] w komunikacie commita → wydanie przedpremierowe v<wersja>
+#     (dla agentów i skryptów, które mogą pushować, ale nie mogą uruchamiać workflowów ręcznie).
+#     Push bez tego napisu nie robi nic — zadania są pomijane i nie zużywają minut.
 # Jedno wydanie zawiera komplet: instalator EXE, wersję przenośną ZIP, aplikację na Androida (APK) i sumy kontrolne.
 # Zadania Windows (EXE) i Linux (APK) są niezależne i dokładają pliki do tego samego wydania (nic nie jest kasowane).
 # Nic nie jest publikowane bez zielonych testów: architektura, kompilacja, smoke UI, testy silnika AI i łącza z telefonem, regresja.
 on:
   push:
     tags: ['v*.*.*']
+    branches: ['arena/**']
   workflow_dispatch:
     inputs:
       tag:
@@ -30,6 +34,7 @@ concurrency:
 
 jobs:
   windows:
+    if: github.event_name != 'push' || startsWith(github.ref, 'refs/tags/') || contains(github.event.head_commit.message, '[release]')
     runs-on: windows-latest
     timeout-minutes: 45
     steps:
@@ -151,8 +156,8 @@ jobs:
             - Silnik AI jest wbudowany (llama.cpp). Modele Qwen3 (ok. 1,1 GB i ok. 2,5 GB na mocniejszych komputerach) pobierają się same w tle po pierwszym uruchomieniu.
             - Telefon łączy się z komputerem w sieci domowej (Wi‑Fi). Przez internet — tylko przez własną sieć prywatną (np. Tailscale).
             - Wersja testowana w CI na `windows-latest` (Windows Server 2022). Telefon i prawdziwy komputer użytkownika potwierdzą resztę.
-      - name: Publish release on demand (workflow_dispatch)
-        if: github.event_name == 'workflow_dispatch'
+      - name: Publish release on demand (workflow_dispatch or a branch push marked [release])
+        if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/'))
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
@@ -206,6 +211,7 @@ jobs:
           retention-days: 2
 
   android:
+    if: github.event_name != 'push' || startsWith(github.ref, 'refs/tags/') || contains(github.event.head_commit.message, '[release]')
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
