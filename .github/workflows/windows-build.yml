@@ -23,6 +23,8 @@ jobs:
           dotnet-version: 10.0.x
       - name: Portable architecture checks
         run: python scripts/check-architecture.py
+      - name: Portable syntax sanity check (brackets, strings, duplicate types - not a compiler)
+        run: python scripts/check-syntax-lite.py
       - name: Bundled AI engine (llama.cpp - pinned, SHA-256 verified, started with --version)
         shell: pwsh
         run: ./scripts/fetch-llama.ps1

@@ -219,6 +219,10 @@ public static partial class UtilityToolbox
         var qr = Regex.Match(text, @"^qr(?: wifi)?[:\s]+.+$", RegexOptions.Singleline);
         if (qr.Success) return QrCode(raw.Trim());
 
+        // --- 0.96 · KUŹNIA: nazwy zmiennych, URL, czas Unix, częstość słów, rata kredytu, wersje, wiersze (Tools/ForgeTools.cs) ---
+        string? forge = ProcessForge(raw, text);
+        if (forge != null) return forge;
+
         // --- arithmetic (last: it is the most generic pattern) ---
         var calc = Regex.Match(text, @"^(?:policz|kalkulator|ile to|oblicz)[:\s]+(.+)$");
         if (calc.Success) return Calculate(calc.Groups[1].Value.Trim());

@@ -41,6 +41,8 @@ public sealed class CommandRouter
     {
         cancellationToken.ThrowIfCancellationRequested();
         if (string.IsNullOrWhiteSpace(command)) return "";
+        string? previewResponse = DecisionPreview.TryExplain(command);
+        if (previewResponse != null) return previewResponse;
         string text = Normalize(command).TrimEnd('?', '!', '.', ' ');
         string? snapshotResponse = await TryHandleSnapshotCommandAsync(command.Trim(), text, cancellationToken);
         if (snapshotResponse != null) return snapshotResponse;
@@ -129,7 +131,12 @@ public sealed class CommandRouter
         if (text is "wersja" or "jaka wersja" or "wersja sentinel" or "wersja aplikacji")
             return "Sentinel X " + AppConstants.Version + " · " + systemInfo.GetWindowsVersion() + " · .NET " + Environment.Version;
         if (text is "co nowego" or "lista zmian" or "changelog" or "co sie zmienilo")
-            return "CO NOWEGO W 0.95 · WARSZTAT\n" +
+            return "CO NOWEGO W 0.96 · KUŹNIA\n" +
+                "· Podgląd decyzji: „jak to rozumiem: <polecenie>” pokazuje, co Sentinel by zrobił (literówka, narzędzie, pytanie, model AI) — niczego przy tym nie wykonuje ani nie zapisuje.\n" +
+                "· „szukaj w zadaniach: fraza” przeszukuje zadania (także zrobione) i przypomnienia; wcześniej trafiało to do wyszukiwarki internetowej.\n" +
+                "· 11 nowych narzędzi w kategorii „Kuźnia 0.96”: nazwy zmiennych, kodowanie URL, czas Unix, najczęstsze słowa, rata kredytu, porównanie wersji, numerowanie i odwracanie wierszy, poprawa odstępów.\n" +
+                "· Porządek w kodzie: Brain/ (rozumienie i pamięć), Brain/Router/, Tools/ (narzędzia), Testing/ (testy w aplikacji).\n" +
+                "\nCO NOWEGO W 0.95 · WARSZTAT\n" +
                 "· Nowa strona NARZĘDZIA (🧰 w pasku albo zakładka w Centrum): katalog ponad 60 narzędzi z wyszukiwaniem, przykładem, polem argumentu i wynikiem — wszystko liczy się lokalnie.\n" +
                 "· Nowe narzędzia: porównanie tekstów (diff), test wyrażeń regularnych, skrót SHA-256/MD5 pliku, wyciąganie e-maili i linków, sortowanie i usuwanie duplikatów wierszy, kwota słownie, sekundy↔czas, ocena mocy hasła, kody QR (także do sieci Wi-Fi).\n" +
                 "· Wygląd: metryki CPU/RAM/GPU na żywo w pasku bocznym, przełącznik motywu jednym kliknięciem (ciemny, głęboka czerń, jasny, jak Windows), pełna paleta jasna i głębokiej czerni.\n" +
@@ -277,6 +284,24 @@ public sealed class CommandRouter
             return tasks.AddTask(title, TaskRecord.PriorityNormal, due, projectId) != null
                 ? StorageResult("Zadanie zapisane" + dueNote + ". Znajdziesz je w Centrum → zakładka 📓 Zadania.")
                 : tasks.LastStorageError ?? "Nie zapisano zadania.";
+        }
+        // 0.96 · KUŹNIA: read-only search through tasks (also done ones) and reminders.
+        var searchTasks = Regex.Match(text, @"^(?:szukaj w zadaniach|szukaj zadan(?:ia)?|znajdz zadanie)(?:[:\s]+(.+))?$");
+        if (searchTasks.Success)
+        {
+            // The phrase is shown with the user's own letters; the normalized match is only the fallback.
+            var typedPhrase = Regex.Match(command, @"^\s*(?:szukaj\s+w\s+zadaniach|szukaj\s+zadań|szukaj\s+zadania|szukaj\s+zadan|znajdź\s+zadanie|znajdz\s+zadanie)\s*:?\s*(.+)$", RegexOptions.IgnoreCase);
+            string phrase = typedPhrase.Success ? typedPhrase.Groups[1].Value.Trim() : searchTasks.Groups[1].Success ? searchTasks.Groups[1].Value.Trim() : "";
+            if (phrase.Length == 0) return "Podaj frazę, np. „szukaj w zadaniach: raport”. Przeszukuję tytuły zadań (także zrobionych) i przypomnień — tylko odczyt.";
+            var (foundTasks, foundReminders) = tasks.Search(phrase);
+            if (foundTasks.Count == 0 && foundReminders.Count == 0) return "W zadaniach i przypomnieniach nie ma nic z frazą „" + phrase + "”. Nic nie zmieniałem.";
+            var lines = new List<string> { "Znalezione w zadaniach i przypomnieniach dla „" + phrase + "”:" };
+            foreach (var found in foundTasks)
+                lines.Add("· zadanie: " + found.Title + "  [" + found.Status + "]" + (found.DueAt != null ? "  (termin: " + found.DueAt.Value.ToString("dd.MM.yyyy HH:mm") + ")" : ""));
+            foreach (var found in foundReminders)
+                lines.Add("· przypomnienie: " + found.Text + "  —  " + found.RemindAt.ToString("dd.MM.yyyy HH:mm") + (found.NotifiedAt != null ? "  [już zadziałało]" : ""));
+            lines.Add("To tylko odczyt — zmieniasz zadania w panelu Zadania albo poleceniem „zadanie N zrobione”.");
+            return string.Join("\n", lines);
         }
         if (text is "zadania" or "moje zadania" or "lista zadan")
         {
@@ -598,10 +623,11 @@ public sealed class CommandRouter
         Archiwum: archiwizuj rozmowy · archiwa · usuń archiwum RRRR-MM
         Projekty: nowy projekt: nazwa · projekty · użyj projektu N · aktywny projekt
         Zadania: dodaj zadanie: treść · zrob zadanie: treść · zadania · zadanie N zrobione · szukaj w zadaniach: fraza · przypomnienia · przypomnij mi jutro o 18 o …
-        Sentinel: samokontrola · propozycje · lekcje · wersja · co nowego
+        Sentinel: samokontrola · propozycje · lekcje · wersja · co nowego · jak to rozumiem: <polecenie> (podgląd bez wykonania)
         Matematyka: policz 12,5*4 · pierwiastek 144 · silnia 10 · nwd 12 8 · nww 4 6 · czy pierwsza 97 · dzielniki 12 · fibonacci 10 · srednia: 2, 4, 6 · mediana: … · suma: … · min: … · max: … · zaokraglij 3,14159 do 2 · zmiana z 50 do 80 · procent 15 z 240 · ile to procent 30 z 240 · vat 100
         Konwersje: przelicz 5 km na mile · rgb 31 162 195 · kolor 1fa2c3 · rzymskie 2026 · z rzymskich XIV · base64: tekst · dekoduj base64: … · morse: sos · dekoduj morse: … · binarnie: A · dekoduj binarnie: … · hex: Ala · dekoduj hex: …
         Warsztat: porownaj teksty: A ||| B · regex: wzorzec ||| tekst · sha256 pliku: ścieżka · wyciagnij: tekst · posortuj linie: … · unikalne linie: … · kwota slownie: 1234,56 · sekundy: 3661 · na sekundy: 2h 15m · moc hasla: … · qr: tekst · qr wifi: nazwa|hasło
+        Kuźnia: nazwa zmiennej: liczba użytkowników · url zakoduj: … · url odkoduj: … · unix: 1700000000 · na unix: 14.11.2023 22:13 utc · czestosc slow: … · rata kredytu: 300000 25 7,5 · porownaj wersje: 1.2.10 ||| 1.10.0 · numeruj linie: a | b · odwroc linie: a | b · popraw odstepy: …
         Tekst: ile slow: tekst · ile znakow: tekst · ile zdan: tekst · palindrom: kajak · anagram: kot, tok · rot13: ala · tytul: ala ma kota · wielkie litery: … · male litery: … · odwroc tekst: … · slug: tekst · transliteruj: tekst · json: {…} · hash tekstu: …
         Kalendarz: ile dni do 24.12 · jaki dzien tygodnia 1.1.2030 · tydzien roku · dzien roku · ile dni do konca roku · wiek: 01.01.1990 · dni robocze 1.1.2024 do 31.1.2024 · wielkanoc 2027 · czas w toki / londyn / berlin / paryz / nowy jork / chicago / los angeles / seoul
         Dokumenty PL: pesel: 11 cyfr · nip: 10 cyfr · iban: PL61… (walidacja lokalna, nic nie jest wysyłane)

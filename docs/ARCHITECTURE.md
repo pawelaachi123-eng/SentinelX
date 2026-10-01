@@ -77,11 +77,25 @@ nie `eval`, nie kod z polecenia użytkownika.
 
 ## 7. Testy i CI
 
-`--ui-smoke` uruchamia 11 zestawów regresji (`tests/*.cs`) na prawdziwym DI i prawdziwych stronach,
+`--ui-smoke` uruchamia zestawy regresji (`tests/*.cs`, od 0.96 także `Testing/ForgeRegression.cs` i `Testing/RoutingRegression.cs`) na prawdziwym DI i prawdziwych stronach,
 a następnie renderuje każdą stronę, zbierając błędy wiązań WPF z `PresentationTraceSources`.
 `--self-test` odpala te same zestawy bez UI. CI (`windows-build.yml`): checki architektury → restore →
 build → smoke UI → regresje → publish portable → sumy kontrolne → smoke portable → instalator Inno →
 instalacja i smoke zainstalowanej aplikacji → artefakty.
+
+## 7a. Układ katalogów (od 0.96)
+
+```
+Brain/            rozumienie i pamięć: CommandUnderstanding, ConversationMemoryService, LocalAiService, filtry
+Brain/Router/     CommandRouter (ostatnia deterministyczna warstwa przed modelem), DecisionPreview („jak to rozumiem:”)
+Tools/            UtilityToolbox (+ Extras, ForgeTools), SentinelToolboxService, ProcessToolService
+Testing/          UiSmokeTestRunner, SelfTestRunner, runnery AI/ASR, RoutingRegression, ForgeRegression
+Services/, Core/, ViewModels/, Views/   bez zmian
+```
+
+Przestrzenie nazw nie zmieniły się przy przenosinach (`SentinelX`, `SentinelX.Tests`). `scripts/check-architecture.py`
+pilnuje, że w `Brain/` i `Tools/` nie ma `System.Windows`, a `scripts/check-syntax-lite.py` wyłapuje błędy, które
+inaczej kosztowałyby cały przebieg Windows CI.
 
 ## 8. Znane granice architektury
 

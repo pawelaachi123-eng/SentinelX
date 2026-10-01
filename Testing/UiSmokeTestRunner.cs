@@ -37,6 +37,8 @@ public static class UiSmokeTestRunner
             await Tests.AiStreamRegression.RunAsync(Path.Combine(output, "ai-stream"));
             await Tests.UnderstandingRegression.RunAsync(Path.Combine(output, "understanding"));
             await Tests.UtilityRegression.RunAsync(Path.Combine(output, "utility"));
+            await Tests.ForgeRegression.RunAsync(Path.Combine(output, "forge"));
+            await Tests.RoutingRegression.RunAsync(Path.Combine(output, "routing"));
             await Tests.FileCleanupRegression.RunAsync(Path.Combine(output, "file-cleanup"));
             await Tests.MemoryArchiveRegression.RunAsync(Path.Combine(output, "archives"));
             await Tests.EngineRegression.RunAsync(Path.Combine(output, "engine"));
@@ -154,13 +156,17 @@ public static class UiSmokeTestRunner
                 ("pierwiastek 144", "= 12"), ("silnia 10", "3628800"), ("nwd 12 8", "= 4"),
                 ("palindrom: kajak", "palindromem"), ("morse: sos", "... --- ..."),
                 ("pesel: 90010112349", "PESEL poprawny"), ("wielkanoc 2027", "28.03.2027"),
-                ("lotto", "Lotto (6 z 49)"), ("wersja", "0.95"), ("co nowego", "WARSZTAT"),
+                ("lotto", "Lotto (6 z 49)"), ("wersja", "0.96"), ("co nowego", "KUŹNIA"),
                 ("nazwa komputera", "Komputer:"), ("samokontrola", "SAMOKONTROLA"),
                 // 0.95 · WARSZTAT: the new tools through the real pipeline (the QR check stays in UtilityRegression, it writes a file)
                 ("porownaj teksty: ala ma kota ||| ala ma psa", "tylko w drugim"), ("regex: \\d+ ||| mam 12 kotów", "dopasowania: 1"),
                 ("wyciagnij: napisz na biuro@example.com", "biuro@example.com"), ("posortuj linie: zebra | kot | Ala", "Posortowane wiersze (3)"),
                 ("unikalne linie: kot | pies | kot", "usunięte: 1"), ("kwota slownie: 1234,56", "złote 56 groszy"),
                 ("sekundy: 3661", "1 h 1 min 1 s"), ("na sekundy: 2h 15m 10s", "= 8"), ("moc hasla: abc", "bardzo słabe"),
+                // 0.96 · KUŹNIA: the new tools and the decision preview through the real pipeline
+                ("nazwa zmiennej: moja zmienna", "camelCase: mojaZmienna"), ("unix: 1700000000", "UTC 14.11.2023 22:13:20"),
+                ("rata kredytu: 12000 1 0", "Rata miesięczna: 1"), ("porownaj wersje: 1.9 ||| 1.10", "nowsza jest druga"),
+                ("jak to rozumiem: kwota slownie: 1234,56", "Narzędzie „Kwota słownie”"),
             })
             {
                 string toolResponse = (await memoryEngine.ExecuteAsync(command)).Text;
@@ -359,7 +365,7 @@ public static class UiSmokeTestRunner
             string errors = buffer.ToString();
             File.WriteAllText(Path.Combine(output, "bindings.log"), errors);
             if (errors.Length != 0) throw new InvalidOperationException("WPF binding errors: " + errors);
-            File.WriteAllText(Path.Combine(output, "ui-smoke.txt"), "PASS\nPages: " + string.Join(", ", visited) + "\nCentrum tabs, // palette and voice default verified\nDark/DeepDark/Light/System themes rendered\nSTOP/Resume/voice approval passed\nPalette, readiness, draft preservation and execution-scoped evidence passed\nTypo repair, grey-zone questions, lessons, self-check, offline tools, the 0.95 workshop catalogue, archives, insights and unified search passed\n");
+            File.WriteAllText(Path.Combine(output, "ui-smoke.txt"), "PASS\nPages: " + string.Join(", ", visited) + "\nCentrum tabs, // palette and voice default verified\nDark/DeepDark/Light/System themes rendered\nSTOP/Resume/voice approval passed\nPalette, readiness, draft preservation and execution-scoped evidence passed\nTypo repair, grey-zone questions, lessons, self-check, offline tools, the 0.95 workshop catalogue, the 0.96 forge tools, decision preview and task search, archives, insights and unified search passed\n");
         }
         finally { PresentationTraceSources.DataBindingSource.Listeners.Remove(listener); }
     }

@@ -15,12 +15,36 @@ public static class ToolCatalog
 
     public static IReadOnlyList<string> Categories { get; } =
     [
-        AllCategories, "Warsztat 0.95", "Tekst i kody", "Liczby i czas", "Pliki i foldery",
+        AllCategories, "Kuźnia 0.96", "Warsztat 0.95", "Tekst i kody", "Liczby i czas", "Pliki i foldery",
         "Dokumenty PL", "System", "Losowe i rozrywka"
     ];
 
     public static IReadOnlyList<ToolEntry> Entries { get; } =
     [
+        // ---------------- 0.96 · KUŹNIA (nowe narzędzia) ----------------
+        new("varnames", "Kuźnia 0.96", "Nazwy zmiennych", "camelCase, PascalCase, snake_case, kebab-case i UPPER_SNAKE z jednego zdania; polskie litery zamieniam na ASCII",
+            "nazwa zmiennej:", true, "liczba użytkowników aktywnych"),
+        new("urlenc", "Kuźnia 0.96", "Zakoduj do adresu URL", "Procent-kodowanie UTF-8: spacje, &, =, polskie litery",
+            "url zakoduj:", true, "ala ma kota & psa"),
+        new("urldec", "Kuźnia 0.96", "Odkoduj adres URL", "Zamienia %20, %C5%BC i podobne z powrotem na tekst",
+            "url odkoduj:", true, "ala%20ma%20kota%20%26%20psa"),
+        new("unix2date", "Kuźnia 0.96", "Czas Unix na datę", "Sekundy (albo milisekundy) od 1970 → data w UTC i w czasie tego komputera",
+            "unix:", true, "1700000000"),
+        new("date2unix", "Kuźnia 0.96", "Data na czas Unix", "Bez dopisku „utc” biorę czas tego komputera",
+            "na unix:", true, "14.11.2023 22:13:20 utc"),
+        new("wordfreq", "Kuźnia 0.96", "Najczęstsze słowa", "Dziesięć najczęstszych słów tekstu z liczbą wystąpień",
+            "czestosc slow:", true, "ala ma kota ala ma psa ala"),
+        new("loan", "Kuźnia 0.96", "Rata kredytu", "Raty równe: suma kredytu, lata i oprocentowanie roczne; wynik orientacyjny, bez prowizji",
+            "rata kredytu:", true, "300000 25 7,5"),
+        new("versions", "Kuźnia 0.96", "Porównaj wersje", "Składowa po składowej: 1.10 jest nowsze niż 1.9; separator |||",
+            "porownaj wersje:", true, "1.2.10 ||| 1.10.0"),
+        new("numberlines", "Kuźnia 0.96", "Numeruj wiersze", "Dopisuje 1., 2., 3.; wiersze rozdzielaj „ | ”, bo czat spłaszcza entery",
+            "numeruj linie:", true, "kot | pies | ryba"),
+        new("reverselines", "Kuźnia 0.96", "Odwróć kolejność wierszy", "Ostatni wiersz staje się pierwszym; separator „ | ”",
+            "odwroc linie:", true, "pierwszy | drugi | trzeci"),
+        new("spacing", "Kuźnia 0.96", "Popraw odstępy", "Zamienia kilka spacji na jedną i mówi, ile znaków usunął",
+            "popraw odstepy:", true, "ala   ma    kota"),
+
         // ---------------- 0.95 · WARSZTAT (nowe narzędzia) ----------------
         new("diff", "Warsztat 0.95", "Porównaj dwa teksty", "Różnice linia po linii; separator ||| (albo linia ---)",
             "porownaj teksty:", true, "ala ma kota ||| ala ma psa"),
