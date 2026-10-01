@@ -1,18 +1,21 @@
 name: Windows build and WPF smoke
+
+# Sprawdza dokładnie to, co trafia do użytkownika: samodzielną paczkę (z wbudowanym .NET i silnikiem AI) oraz instalator.
+# Jest oszczędny: jeden przebieg na push (bez dublowania przez pull_request, bo gałęzie arena/** i tak budują się po pushu)
+# i bez dużych artefaktów (magazyn artefaktów w tym repozytorium bywa pełny; trwałą dystrybucją są pliki wydania).
 concurrency:
   group: windows-${{ github.ref }}
   cancel-in-progress: true
 on:
   push:
     branches: [main, 'arena/**']
-  pull_request:
   workflow_dispatch:
 permissions:
   contents: read
 jobs:
   build:
     runs-on: windows-latest
-    timeout-minutes: 25
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-dotnet@v5
@@ -20,24 +23,37 @@ jobs:
           dotnet-version: 10.0.x
       - name: Portable architecture checks
         run: python scripts/check-architecture.py
+      - name: Bundled AI engine (llama.cpp - pinned, SHA-256 verified, started with --version)
+        shell: pwsh
+        run: ./scripts/fetch-llama.ps1
       - name: Restore
         shell: pwsh
         run: |
-          dotnet restore SENTINEL-X.csproj 2>&1 | Tee-Object restore.log
+          dotnet restore SENTINEL-X.csproj -r win-x64 2>&1 | Tee-Object restore.log
           if ($LASTEXITCODE -ne 0) {
             $detail = (Get-Content restore.log -Raw).Replace("`r", '').Replace("`n", '%0A')
             Write-Output "::error::$detail"
             exit 1
           }
-      - name: Build
-        run: dotnet build SENTINEL-X.csproj -c Release --no-restore
-      - name: MVVM UI smoke (all pages and binding validation)
+      - name: Publish self-contained win-x64 (this is also the compile check)
         shell: pwsh
         run: |
-          $exe = Resolve-Path 'bin/Release/net10.0-windows/SentinelX.exe'
+          dotnet publish SENTINEL-X.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=false --no-restore -o bin/portable 2>&1 | Tee-Object publish.log
+          if ($LASTEXITCODE -ne 0) {
+            $errors = Get-Content publish.log | Where-Object { $_ -match ' error ' } | Select-Object -Unique -First 40
+            $detail = ($errors -join "`n").Replace("`r", '').Replace("`n", '%0A')
+            Write-Output "::error title=Kompilacja nie powiodła się::$detail"
+            exit 1
+          }
+          if (-not (Test-Path 'bin/portable/coreclr.dll')) { throw 'Missing self-contained .NET runtime' }
+          if (-not (Get-ChildItem 'bin/portable/Engine' -Recurse -Filter 'llama-server.exe' -ErrorAction SilentlyContinue)) { throw 'The AI engine was not bundled into the package' }
+      - name: MVVM UI smoke + engine and phone-link regression (on the self-contained build)
+        shell: pwsh
+        run: |
+          $exe = Resolve-Path 'bin/portable/SentinelX.exe'
           $output = Join-Path $PWD 'test-results/ui'
           $p = Start-Process $exe -ArgumentList '--ui-smoke', $output -PassThru
-          if (-not $p.WaitForExit(120000)) { $p.Kill(); throw 'UI smoke timeout' }
+          if (-not $p.WaitForExit(240000)) { $p.Kill(); throw 'UI smoke timeout' }
           if ($p.ExitCode -ne 0 -or -not (Test-Path "$output/ui-smoke.txt")) {
             Get-ChildItem $output -Recurse -Include FAILED.txt,errors.log,bindings.log | ForEach-Object {
               $detail = (Get-Content $_.FullName -Raw).Replace("`r", '').Replace("`n", '%0A')
@@ -49,7 +65,7 @@ jobs:
       - name: Existing regression suite
         shell: pwsh
         run: |
-          $exe = Resolve-Path 'bin/Release/net10.0-windows/SentinelX.exe'
+          $exe = Resolve-Path 'bin/portable/SentinelX.exe'
           $output = Join-Path $PWD 'test-results/regression'
           $p = Start-Process $exe -ArgumentList '--self-test', $output -PassThru
           if (-not $p.WaitForExit(300000)) { $p.Kill(); throw 'Regression timeout' }
@@ -61,27 +77,10 @@ jobs:
             throw "Regression failed: exit $($p.ExitCode)"
           }
           Get-ChildItem $output
-      - name: Publish portable Windows application
-        run: dotnet publish SENTINEL-X.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=false -o bin/portable
       - name: Portable package checksums
         shell: pwsh
         run: |
           Get-ChildItem 'bin/portable' -File | ForEach-Object { "$((Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant())  $($_.Name)" } | Set-Content 'bin/portable/SHA256SUMS.txt'
-      - name: Verify portable package
-        shell: pwsh
-        run: |
-          if (-not (Test-Path 'bin/portable/coreclr.dll')) { throw 'Missing self-contained .NET runtime' }
-          $exe = Resolve-Path 'bin/portable/SentinelX.exe'
-          $output = Join-Path $PWD 'test-results/portable'
-          $p = Start-Process $exe -ArgumentList '--ui-smoke', $output -PassThru
-          if (-not $p.WaitForExit(120000)) { $p.Kill(); throw 'Portable smoke timeout' }
-          if ($p.ExitCode -ne 0 -or -not (Test-Path "$output/ui-smoke.txt")) {
-            Get-ChildItem $output -Recurse -Include FAILED.txt,errors.log,bindings.log | ForEach-Object {
-              $detail = (Get-Content $_.FullName -Raw).Replace("`r", '').Replace("`n", '%0A')
-              Write-Output "::error::$detail"
-            }
-            throw "Portable smoke failed: exit $($p.ExitCode)"
-          }
       - name: Build per-user EXE installer
         shell: pwsh
         run: |
@@ -95,11 +94,8 @@ jobs:
           $hash = (Get-FileHash $installer.FullName -Algorithm SHA256).Hash
           "$hash  $($installer.Name)" | Set-Content 'bin/installer/SHA256SUMS.txt'
           "INSTALLER_SHA256=$hash" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
-          Write-Output "::notice title=SHA256 instalatora::$hash  $($installer.Name)"
-          $exeHash = (Get-FileHash 'bin/portable/SentinelX.exe' -Algorithm SHA256).Hash
-          "PORTABLE_EXE_SHA256=$exeHash" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
-          Write-Output "::notice title=SHA256 portable::bin/portable/z SHA256SUMS.txt · $exeHash  SentinelX.exe"
-      - name: Install EXE and smoke-test installed application
+          Write-Output "::notice title=SHA256 instalatora::$hash  $($installer.Name) ($([math]::Round($installer.Length / 1MB, 1)) MB)"
+      - name: Install EXE and smoke-test the installed application
         shell: pwsh
         run: |
           $installer = Get-ChildItem 'bin/installer/*.exe' | Select-Object -First 1
@@ -107,11 +103,12 @@ jobs:
           $output = Join-Path $PWD 'test-results/installer'
           New-Item -ItemType Directory -Force $output | Out-Null
           $setup = Start-Process $installer.FullName -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-', "/DIR=`"$installed`"", "/LOG=`"$output/setup.log`"" -PassThru
-          if (-not $setup.WaitForExit(120000)) { $setup.Kill(); throw 'Installer timeout' }
+          if (-not $setup.WaitForExit(180000)) { $setup.Kill(); throw 'Installer timeout' }
           if ($setup.ExitCode -ne 0) { throw "Installer failed: $($setup.ExitCode)" }
           if (-not (Test-Path "$installed/coreclr.dll")) { throw 'Installed runtime missing' }
+          if (-not (Get-ChildItem "$installed/Engine" -Recurse -Filter 'llama-server.exe' -ErrorAction SilentlyContinue)) { throw 'Installed AI engine missing' }
           $p = Start-Process "$installed/SentinelX.exe" -ArgumentList '--ui-smoke', $output -PassThru
-          if (-not $p.WaitForExit(120000)) { $p.Kill(); throw 'Installed application timeout' }
+          if (-not $p.WaitForExit(240000)) { $p.Kill(); throw 'Installed application timeout' }
           if ($p.ExitCode -ne 0 -or -not (Test-Path "$output/ui-smoke.txt")) {
             Get-ChildItem $output -Recurse -Include FAILED.txt,errors.log,bindings.log | ForEach-Object {
               $detail = (Get-Content $_.FullName -Raw).Replace("`r", '').Replace("`n", '%0A')
@@ -121,30 +118,8 @@ jobs:
           }
       - uses: actions/upload-artifact@v4
         continue-on-error: true  # limit magazynu artefaktów nie może zamieniać wyników testów na czerwone
-        # Krótka retencja: trwałą dystrybucją są assety wydania, artefakty CI są tylko diagnostyczne.
-        # Bez tego limit magazynu artefaktów blokuje kolejne przebiegi (quota hit 2026-09-24).
         if: always()
         with:
           name: sentinel-validation
           path: test-results/
-          retention-days: 2
-      - uses: actions/upload-artifact@v4
-        continue-on-error: true  # limit magazynu artefaktów nie może zamieniać wyników testów na czerwone
-        with:
-          name: SentinelX-windows-x64
-          path: bin/Release/net10.0-windows/
-          retention-days: 2
-
-      - uses: actions/upload-artifact@v4
-        continue-on-error: true  # limit magazynu artefaktów nie może zamieniać wyników testów na czerwone
-        with:
-          name: SentinelX-Portable-win-x64
-          path: bin/portable/
-          retention-days: 2
-
-      - uses: actions/upload-artifact@v4
-        continue-on-error: true  # limit magazynu artefaktów nie może zamieniać wyników testów na czerwone
-        with:
-          name: SentinelX-Setup-win-x64
-          path: bin/installer/
           retention-days: 2

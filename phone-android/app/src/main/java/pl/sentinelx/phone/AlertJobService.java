@@ -1,0 +1,85 @@
+package pl.sentinelx.phone;
+
+import android.app.job.JobInfo;
+import android.app.job.JobParameters;
+import android.app.job.JobScheduler;
+import android.app.job.JobService;
+import android.content.ComponentName;
+import android.content.Context;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import java.io.IOException;
+
+/** Every ~15 minutes (the Android minimum) asks the PC for new alerts and shows them as notifications — no account, no cloud, no foreground service. */
+public class AlertJobService extends JobService {
+    private static final int JOB_ID = 94;
+
+    static void schedule(Context context) {
+        try {
+            JobScheduler scheduler = (JobScheduler) context.getSystemService(Context.JOB_SCHEDULER_SERVICE);
+            if (scheduler == null || scheduler.getPendingJob(JOB_ID) != null) return;
+            JobInfo job = new JobInfo.Builder(JOB_ID, new ComponentName(context, AlertJobService.class))
+                    .setPeriodic(15 * 60 * 1000L)
+                    .setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY)
+                    .setPersisted(true)
+                    .build();
+            scheduler.schedule(job);
+        } catch (Exception ignored) {
+            // alerts are a convenience; the app works without them
+        }
+    }
+
+    @Override
+    public boolean onStartJob(JobParameters params) {
+        final Context context = getApplicationContext();
+        new Thread(() -> {
+            try {
+                pollOnce(context);
+            } catch (Exception ignored) {
+                // next run will try again
+            } finally {
+                jobFinished(params, false);
+            }
+        }, "sentinelx-alerts").start();
+        return true;
+    }
+
+    @Override
+    public boolean onStopJob(JobParameters params) { return true; }
+
+    /** One polling round; also used when the app is opened. The first round only remembers the current state, so old alerts are not replayed. */
+    static void pollOnce(Context context) throws Exception {
+        Session session = new Session(context);
+        if (!session.hasPc() || !session.hasToken()) return;
+        String body;
+        try {
+            body = fetch(session);
+        } catch (PinnedTls.HttpStatusException unauthorized) {
+            if (unauthorized.status == 401) session.clearToken(); // the phone was disconnected on the PC
+            return;
+        } catch (IOException unreachable) {
+            // the PC may have a new address: find it (only the PC with the pinned certificate counts) and try once more
+            PcLocator.Pc found = PcLocator.discover(session.fingerprint());
+            if (found == null) return;
+            session.savePc(found.host, found.port, found.fingerprint, found.name);
+            body = fetch(session);
+        }
+        JSONObject json = new JSONObject(body);
+        JSONArray alerts = json.optJSONArray("alerts");
+        long previous = session.lastAlert();
+        if (alerts != null && previous != 0L) {
+            for (int i = 0; i < alerts.length(); i++) {
+                JSONObject alert = alerts.getJSONObject(i);
+                long id = alert.optLong("id");
+                if (id > previous) Notifier.post(context, id, alert.optString("level", "info"), alert.optString("title", ""), alert.optString("text", ""));
+            }
+        }
+        session.setLastAlert(json.optLong("last", previous));
+    }
+
+    private static String fetch(Session session) throws IOException {
+        return PinnedTls.getText(session.baseUrl() + "api/alerts?after=" + session.lastAlert() + "&wait=0", session.fingerprint(), session.token(), 8000);
+    }
+}

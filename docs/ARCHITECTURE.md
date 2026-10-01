@@ -29,7 +29,7 @@ CommandCenterViewModel.SendMessageCommand
         3. Services.Files.IFileService        pliki w jawnie nadanym zakresie
         4. SentinelToolboxService             uruchamianie programów, sieć, procesy, raporty
         5. CommandRouter                      pamięć, projekty, zadania, snapshoty, narzędzia, insights
-        6. LocalAiService                     dopiero tu model językowy (Ollama)
+        6. LocalAiService                     dopiero tu model językowy (wbudowany silnik llama.cpp, bez Ollamy — od 0.94)
 ```
 
 Kluczowa decyzja: **model językowy jest na końcu**, więc żadna odpowiedź modelu nie wykonuje
@@ -92,3 +92,19 @@ instalacja i smoke zainstalowanej aplikacji → artefakty.
 - Brak bazy danych: magazyny JSON wystarczają przy obecnych limitach (720 wpisów rozmowy,
   500 wspomnień, 500 zadań, 200 projektów, 20 odczytów). Próg, przy którym warto rozważyć SQLite,
   to realne przekroczenie tych limitów przez użytkownika, nie przewidywanie.
+
+## 9. Telefon, silnik AI i opiekun (0.94)
+
+```
+Views/Link/*            okno zgody na parowanie (PairingWindow), panel „Telefon” z kodem QR (PhoneLinkWindow), LinkUi — kod w C#, bez XAML
+Services/Link/*         serwer HTTPS dla telefonu: LinkService (TLS, routing, parowanie, wykrywanie UDP), LinkApi (endpointy po zalogowaniu),
+                        LinkHttp (parser HTTP/1.1 i odpowiedzi, SSE), LinkCertificate (certyfikat + DPAPI), LinkDeviceStore (hasze tokenów), AlertFeed
+Services/Engine/*       wbudowany silnik AI: EngineCatalog (przypięte wersje i SHA-256), EngineDownloader (wznawianie), LlamaServerHost (proces potomny),
+                        EngineOllamaFacade (dialekt Ollamy w procesie → llama-server), EngineService (automatyczna instalacja i cykl życia)
+Services/Care/*         CareService: start i pilnowanie łącza oraz silnika, autopilot (jednorazowo), alerty, linia „Wszystko działa samo”
+Phone/web/*             interfejs telefonu (HTML/CSS/JS), osadzony w exe i serwowany przez LinkService
+phone-android/*         aplikacja Android (Java, bez bibliotek): powłoka WebView + wykrywanie + przypięty certyfikat + alerty + WoL
+```
+
+Polecenie z telefonu: `LinkApi` → `IActionEngine.ExecuteAsync(..., fromVoice: true)` — ta sama kolejka, te same dowody, te same zgody; ryzykowne akcje zatwierdza się wyłącznie na komputerze.
+Protokół i model bezpieczeństwa: [PHONE-LINK.md](PHONE-LINK.md). Silnik AI: [ENGINE.md](ENGINE.md).

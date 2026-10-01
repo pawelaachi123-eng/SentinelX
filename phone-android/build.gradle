@@ -1,0 +1,4 @@
+// Sentinel X Telefon — aplikacja na Androida bez zewnętrznych bibliotek (tylko SDK), żeby budowa była przewidywalna.
+plugins {
+    id 'com.android.application' version '8.7.3' apply false
+}
