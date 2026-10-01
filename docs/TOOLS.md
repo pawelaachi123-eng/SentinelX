@@ -1,4 +1,4 @@
-# Narzędzia Sentinel X (0.95)
+# Narzędzia Sentinel X (0.96)
 
 Strona **🧰 Narzędzia** (pasek boczny albo zakładka w Centrum, skrót `//narzedzia`, wpis w palecie Ctrl+K)
 pokazuje wszystko, co Sentinel potrafi zrobić bez chmury: ponad 60 pozycji w kategoriach, z wyszukiwaniem,
@@ -8,6 +8,22 @@ które zostanie wysłane — nic nie dzieje się w tle i nic nie uruchamia się 
 Każde narzędzie działa też z czatu: wystarczy wpisać jego polecenie. Uruchomienie idzie normalną
 ścieżką silnika, więc obowiązują te same zasady co wszędzie: STOP awaryjny blokuje akcje, wynik ma dowód,
 a polecenia zmieniające stan systemu wymagają zgody.
+
+## Kuźnia 0.96 — nowe narzędzia
+
+| Polecenie | Co robi |
+| --- | --- |
+| `nazwa zmiennej: liczba użytkowników` | camelCase, PascalCase, snake_case, kebab-case i UPPER_SNAKE; polskie litery → ASCII, camelCase na wejściu jest rozbijany na słowa |
+| `url zakoduj: ala ma kota & psa` / `url odkoduj: ala%20ma` | procent-kodowanie UTF-8 w obie strony |
+| `unix: 1700000000` / `na unix: 14.11.2023 22:13:20 utc` | czas Unix ↔ data (UTC i czas komputera; wartość powyżej 99 999 999 999 to milisekundy) |
+| `czestosc slow: ala ma kota ala` | dziesięć najczęstszych słów z liczbą wystąpień |
+| `rata kredytu: 300000 25 7,5` | rata równa: suma, lata, oprocentowanie roczne; rachunek orientacyjny |
+| `porownaj wersje: 1.2.10 ||| 1.10.0` | porównanie składowych liczbowych (1.10 jest nowsze niż 1.9) |
+| `numeruj linie: a \| b \| c` / `odwroc linie: a \| b \| c` | numeracja i odwrócenie kolejności wierszy |
+| `popraw odstepy: ala   ma    kota` | kilka spacji → jedna, z informacją ile usunięto |
+
+Podgląd decyzji: `jak to rozumiem: <polecenie>` pokazuje, które narzędzie by zadziałało — bez uruchamiania.
+Szukanie: `szukaj w zadaniach: fraza` (zadania i przypomnienia, tylko odczyt).
 
 ## Warsztat 0.95 — nowe narzędzia
 

@@ -47,6 +47,10 @@ public sealed class IntentRouter : IIntentRouter
                 : "Nie znam skrótu „" + trimmed + "”. Najbliżej:\n" + string.Join("\n", closest.Select(x => "· //" + x.Trigger + " — " + x.Label)) + "\nWpisz samo „//”, aby zobaczyć całą listę.";
         }
 
+        // 0.96: „jak to rozumiem: …” only explains — it must not execute, clear a pending question or reach the model.
+        string? preview = DecisionPreview.TryExplain(input);
+        if (preview != null) return preview;
+
         // A pending "did you mean…?" waits only for an explicit yes; anything else discards it.
         if (pendingSuggestion is { } suggested && CommandText.Normalize(input).Trim().TrimEnd('.', '!', '?', ',') is "tak" or "potwierdz" or "tak to")
         {

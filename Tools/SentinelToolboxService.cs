@@ -204,7 +204,9 @@ namespace SentinelX
             if (normalizedForSearch.StartsWith("szukaj w rozmowie", StringComparison.Ordinal) ||
                 normalizedForSearch.StartsWith("szukaj wszystkiego", StringComparison.Ordinal) ||
                 normalizedForSearch.StartsWith("znajdz w rozmowie", StringComparison.Ordinal) ||
-                normalizedForSearch.StartsWith("przeszukaj rozmowe", StringComparison.Ordinal))
+                normalizedForSearch.StartsWith("przeszukaj rozmowe", StringComparison.Ordinal) ||
+                normalizedForSearch.StartsWith("szukaj w zadaniach", StringComparison.Ordinal) ||
+                normalizedForSearch.StartsWith("szukaj zadan", StringComparison.Ordinal))
                 return ToolboxCommandResult.NotHandled();
 
             // =====================================================

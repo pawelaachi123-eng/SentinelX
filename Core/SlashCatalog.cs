@@ -35,7 +35,7 @@ public static class SlashCatalog
         new("propozycje", "Propozycje", "co warto zrobić — decyzja należy do Ciebie", SlashKind.Command, "propozycje"),
         new("lekcje", "Lekcje", "czego nauczyłem się z Twoich poprawek", SlashKind.Command, "lekcje"),
         new("wersja", "Wersja", "wersja aplikacji i systemu", SlashKind.Command, "wersja"),
-        new("nowego", "Co nowego", "skrócona lista zmian 0.95", SlashKind.Command, "co nowego"),
+        new("nowego", "Co nowego", "skrócona lista zmian 0.96", SlashKind.Command, "co nowego"),
         // everyday helpers
         new("pomoc", "Pomoc", "pełna lista poleceń", SlashKind.Command, "pomoc"),
         new("skroty", "Skróty", "tabelka skrótów klawiszowych", SlashKind.Command, "skróty"),
@@ -62,6 +62,10 @@ public static class SlashCatalog
         new("sekundy", "Sekundy na czas", "3661 → godziny i minuty", SlashKind.Command, "sekundy: "),
         new("moc", "Moc hasła", "entropia i słabości, bez zapisu hasła", SlashKind.Command, "moc hasla: "),
         new("wyciagnij", "Wyciągnij dane z tekstu", "e-maile, linki, IP, liczby", SlashKind.Command, "wyciagnij: "),
+        // 0.96 · KUŹNIA
+        new("rozumiem", "Jak to rozumiem", "podgląd decyzji: co bym zrobił, bez wykonywania", SlashKind.Command, "jak to rozumiem: "),
+        new("szukajzadan", "Szukaj w zadaniach", "zadania (także zrobione) i przypomnienia, tylko odczyt", SlashKind.Command, "szukaj w zadaniach: "),
+        new("zmienna", "Nazwy zmiennych", "camelCase, snake_case, kebab-case z jednego zdania", SlashKind.Command, "nazwa zmiennej: "),
         // panels inside Centrum and pages
         new("rozmowa", "Rozmowa", "wróć do czatu", SlashKind.Tab, "rozmowa"),
         new("historia", "Historia", "zakładka Historii", SlashKind.Tab, "historia"),

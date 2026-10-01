@@ -81,6 +81,28 @@ public sealed class TaskService
             return state.Reminders.OrderBy(x => x.NotifiedAt == null ? x.RemindAt : DateTime.MaxValue).ThenBy(x => x.RemindAt).Select(Clone).ToArray();
     }
 
+    /// <summary>0.96 · KUŹNIA: read-only search through titles of tasks (also done ones) and reminders.
+    /// Diacritics and case are ignored and every word of the query must occur (same rule as the Tools page).</summary>
+    public (IReadOnlyList<TaskRecord> Tasks, IReadOnlyList<ReminderRecord> Reminders) Search(string query, int limit = 20)
+    {
+        string[] terms = ConversationMemoryService.Normalize(query ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (terms.Length == 0) return (Array.Empty<TaskRecord>(), Array.Empty<ReminderRecord>());
+        bool Matches(string text)
+        {
+            string haystack = ConversationMemoryService.Normalize(text);
+            return terms.All(term => haystack.Contains(term, StringComparison.Ordinal));
+        }
+        lock (syncRoot)
+        {
+            var foundTasks = state.Tasks.Where(x => Matches(x.Title))
+                .OrderBy(x => x.Status == TaskRecord.StatusDone).ThenBy(x => x.DueAt ?? DateTime.MaxValue)
+                .Take(limit).Select(Clone).ToArray();
+            var foundReminders = state.Reminders.Where(x => Matches(x.Text))
+                .OrderBy(x => x.RemindAt).Take(limit).Select(Clone).ToArray();
+            return (foundTasks, foundReminders);
+        }
+    }
+
     public TaskRecord? AddTask(string title, string priority, DateTime? dueAt, string projectId)
     {
         bool fire = false;
