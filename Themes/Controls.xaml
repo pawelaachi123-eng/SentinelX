@@ -15,25 +15,19 @@
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
                     <Border x:Name="border" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="12" Padding="{TemplateBinding Padding}" SnapsToDevicePixels="True">
-                        <Border.Effect>
-                            <DropShadowEffect x:Name="shadow" Color="#000000" BlurRadius="0" ShadowDepth="0" Opacity="0"/>
-                        </Border.Effect>
                         <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="Center" RecognizesAccessKey="True"/>
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="border" Property="Background" Value="{DynamicResource SxSurfaceHover}"/>
                             <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource SxAccentCyan}"/>
-                            <Setter TargetName="shadow" Property="Color" Value="#22E0FF"/>
-                            <Setter TargetName="shadow" Property="BlurRadius" Value="10"/>
-                            <Setter TargetName="shadow" Property="Opacity" Value="0.25"/>
+                            <Setter TargetName="border" Property="Opacity" Value="0.94"/>
                         </Trigger>
                         <Trigger Property="IsKeyboardFocused" Value="True">
                             <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource SxAccentCyan}"/>
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
                             <Setter TargetName="border" Property="Opacity" Value="0.82"/>
-                            <Setter TargetName="shadow" Property="BlurRadius" Value="0"/>
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter TargetName="border" Property="Opacity" Value="0.4"/>
@@ -48,7 +42,7 @@
 
     <Style x:Key="SxPrimaryButton" TargetType="Button" BasedOn="{StaticResource SxSecondaryButton}">
         <Setter Property="Background" Value="{StaticResource SxSendGradient}"/>
-        <Setter Property="Foreground" Value="#071018"/>
+        <Setter Property="Foreground" Value="{DynamicResource SxInk}"/>
         <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="FontWeight" Value="Bold"/>
         <Setter Property="Template">
@@ -56,23 +50,19 @@
                 <ControlTemplate TargetType="Button">
                     <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="12" Padding="{TemplateBinding Padding}" SnapsToDevicePixels="True">
                         <Border.Effect>
-                            <DropShadowEffect x:Name="shadow" Color="#22E0FF" BlurRadius="14" ShadowDepth="0" Opacity="0.45"/>
+                            <DropShadowEffect Color="{DynamicResource SxAccentCyanColor}" BlurRadius="16" ShadowDepth="0" Opacity="0.45"/>
                         </Border.Effect>
                         <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="Center" RecognizesAccessKey="True"/>
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="border" Property="Opacity" Value="0.92"/>
-                            <Setter TargetName="shadow" Property="BlurRadius" Value="20"/>
-                            <Setter TargetName="shadow" Property="Opacity" Value="0.6"/>
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
                             <Setter TargetName="border" Property="Opacity" Value="0.78"/>
-                            <Setter TargetName="shadow" Property="BlurRadius" Value="6"/>
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter TargetName="border" Property="Opacity" Value="0.4"/>
-                            <Setter TargetName="shadow" Property="Opacity" Value="0"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -81,24 +71,22 @@
     </Style>
 
     <Style x:Key="SxDangerButton" TargetType="Button" BasedOn="{StaticResource SxSecondaryButton}">
-        <Setter Property="Background" Value="{DynamicResource SxErrorDim}"/>
+        <Setter Property="Background" Value="{StaticResource SxDangerGradient}"/>
         <Setter Property="Foreground" Value="{DynamicResource SxWhite}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource SxError}"/>
+        <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
-                    <Border x:Name="border" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1" CornerRadius="12" Padding="{TemplateBinding Padding}" SnapsToDevicePixels="True">
-                        <Border.Effect><DropShadowEffect x:Name="shadow" Color="#FF5A6E" BlurRadius="0" ShadowDepth="0" Opacity="0"/></Border.Effect>
+                    <Border x:Name="border" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="0" CornerRadius="12" Padding="{TemplateBinding Padding}" SnapsToDevicePixels="True">
                         <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="Center"/>
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="border" Property="Background" Value="{DynamicResource SxError}"/>
-                            <Setter TargetName="shadow" Property="BlurRadius" Value="12"/>
-                            <Setter TargetName="shadow" Property="Opacity" Value="0.45"/>
+                            <Setter TargetName="border" Property="Opacity" Value="0.88"/>
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
-                            <Setter TargetName="border" Property="Opacity" Value="0.8"/>
+                            <Setter TargetName="border" Property="Opacity" Value="0.75"/>
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter TargetName="border" Property="Opacity" Value="0.4"/>
@@ -158,11 +146,6 @@
                         <Trigger Property="IsSelected" Value="True">
                             <Setter TargetName="row" Property="Background" Value="{DynamicResource SxSidebarActive}"/>
                             <Setter TargetName="row" Property="BorderBrush" Value="{DynamicResource SxAccentCyan}"/>
-                            <Setter TargetName="row" Property="Effect">
-                                <Setter.Value>
-                                    <DropShadowEffect Color="#22E0FF" BlurRadius="12" ShadowDepth="0" Opacity="0.35"/>
-                                </Setter.Value>
-                            </Setter>
                             <Setter Property="Foreground" Value="{DynamicResource SxAccentCyan}"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
@@ -194,11 +177,6 @@
     <Style x:Key="SxGlassCard" TargetType="Border" BasedOn="{StaticResource SxCard}">
         <Setter Property="Background" Value="{StaticResource SxGlassGradient}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource SxBorderGlow}"/>
-        <Setter Property="Effect">
-            <Setter.Value>
-                <DropShadowEffect Color="#22E0FF" BlurRadius="16" ShadowDepth="0" Opacity="0.10"/>
-            </Setter.Value>
-        </Setter>
     </Style>
 
     <Style x:Key="SxMetricCard" TargetType="Border" BasedOn="{StaticResource SxCard}">
@@ -224,7 +202,7 @@
         <Setter Property="Padding" Value="14,11"/>
         <Setter Property="MinHeight" Value="42"/>
         <Setter Property="FontSize" Value="14"/>
-        <Setter Property="SelectionBrush" Value="#22E0FF44"/>
+        <Setter Property="SelectionBrush" Value="#3B77A4"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="TextBox">
@@ -240,9 +218,6 @@
                         </Trigger>
                         <Trigger Property="IsKeyboardFocusWithin" Value="True">
                             <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource SxAccentCyan}"/>
-                            <Setter TargetName="border" Property="Effect">
-                                <Setter.Value><DropShadowEffect Color="#22E0FF" BlurRadius="10" ShadowDepth="0" Opacity="0.3"/></Setter.Value>
-                            </Setter>
                         </Trigger>
                         <Trigger Property="Validation.HasError" Value="True">
                             <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource SxError}"/>
@@ -263,7 +238,6 @@
                 <ControlTemplate TargetType="CheckBox">
                     <StackPanel Orientation="Horizontal">
                         <Border x:Name="track" Width="46" Height="24" CornerRadius="12" Background="{DynamicResource SxBorder}">
-                            <Border.Effect><DropShadowEffect x:Name="trackShadow" Color="#000000" BlurRadius="0" ShadowDepth="0" Opacity="0"/></Border.Effect>
                             <Ellipse x:Name="thumb" Width="18" Height="18" Fill="{DynamicResource SxWhite}" HorizontalAlignment="Left" Margin="3"/>
                         </Border>
                         <ContentPresenter Margin="12,0,0,0" VerticalAlignment="Center"/>
@@ -272,9 +246,6 @@
                         <Trigger Property="IsChecked" Value="True">
                             <Setter TargetName="track" Property="Background" Value="{StaticResource SxAccentGradient}"/>
                             <Setter TargetName="thumb" Property="HorizontalAlignment" Value="Right"/>
-                            <Setter TargetName="trackShadow" Property="Color" Value="#22E0FF"/>
-                            <Setter TargetName="trackShadow" Property="BlurRadius" Value="8"/>
-                            <Setter TargetName="trackShadow" Property="Opacity" Value="0.5"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -377,7 +348,6 @@
             <Setter.Value>
                 <ControlTemplate TargetType="ToolTip">
                     <Border Background="{DynamicResource SxSurfaceActive}" BorderBrush="{DynamicResource SxBorder}" BorderThickness="1" CornerRadius="10" Padding="12,8">
-                        <Border.Effect><DropShadowEffect Color="#000" BlurRadius="10" ShadowDepth="2" Opacity="0.5"/></Border.Effect>
                         <ContentPresenter/>
                     </Border>
                 </ControlTemplate>
@@ -456,9 +426,7 @@
                                 <Thumb Width="20" Height="20">
                                     <Thumb.Template>
                                         <ControlTemplate TargetType="Thumb">
-                                            <Ellipse Fill="{DynamicResource SxWhite}">
-                                                <Ellipse.Effect><DropShadowEffect Color="#22E0FF" BlurRadius="8" ShadowDepth="0" Opacity="0.6"/></Ellipse.Effect>
-                                            </Ellipse>
+                                            <Ellipse Fill="{DynamicResource SxWhite}"/>
                                         </ControlTemplate>
                                     </Thumb.Template>
                                 </Thumb>
