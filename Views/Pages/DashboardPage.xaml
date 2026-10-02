@@ -14,7 +14,7 @@
                     </DockPanel>
                     <TextBlock Text="{Binding Value}" FontSize="{StaticResource FontHeading2}" Foreground="{DynamicResource SxText}" Margin="0,6,0,2"/>
                     <TextBlock Text="{Binding Subtitle}" FontSize="{StaticResource FontCaption}" Foreground="{DynamicResource SxTextFaint}"/>
-                    <ProgressBar Height="4" Margin="0,10,0,0" Maximum="100" Value="{Binding Progress}"
+                    <ProgressBar Height="4" Margin="0,10,0,0" Maximum="100" Value="{Binding Progress, Mode=OneWay}"
                                  Foreground="{DynamicResource SxAccent}" Background="{DynamicResource SxSurfaceActive}" BorderThickness="0"/>
                 </StackPanel>
             </Border>
@@ -39,7 +39,7 @@
                     <StackPanel DockPanel.Dock="Right" VerticalAlignment="Center">
                         <Ellipse Width="10" Height="10" Fill="{DynamicResource SxSuccess}">
                             <Ellipse.Effect>
-                                <DropShadowEffect Color="#3DDC84" BlurRadius="10" ShadowDepth="0" Opacity="0.8"/>
+                                <DropShadowEffect BlurRadius="10" ShadowDepth="0" Opacity="0.8" Color="{StaticResource SuccessColor}"/>
                             </Ellipse.Effect>
                         </Ellipse>
                     </StackPanel>

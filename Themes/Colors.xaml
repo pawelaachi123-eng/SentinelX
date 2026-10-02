@@ -21,10 +21,28 @@
     <Color x:Key="ErrorColor">#FF4D6D</Color>
     <Color x:Key="InfoColor">#5BA8FF</Color>
     <Color x:Key="IdleColor">#7A8BA3</Color>
+    <SolidColorBrush x:Key="SxSuccessColor" Color="#3DDC84"/>
+    <SolidColorBrush x:Key="SxWarnColor" Color="#FFB347"/>
+    <SolidColorBrush x:Key="SxErrorColor" Color="#FF4D6D"/>
 
     <!-- ═══════════ DARK THEME (domyślny) ═══════════ -->
     <SolidColorBrush x:Key="SxWindowBg" Color="#05080D"/>
+    <SolidColorBrush x:Key="SxBackground" Color="#05080D"/>
     <SolidColorBrush x:Key="SxWindow" Color="#0A0F17"/>
+    <SolidColorBrush x:Key="SxTransparent" Color="Transparent"/>
+    <SolidColorBrush x:Key="SxWhite" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="SxWhiteOverlaySoft" Color="#1FFFFFFF"/>
+    <SolidColorBrush x:Key="SxTextPrimary" Color="#E6F1FF"/>
+    <SolidColorBrush x:Key="SxTextSecondary" Color="#B8C4D4"/>
+    <SolidColorBrush x:Key="SxPillBg" Color="#1C2737"/>
+    <SolidColorBrush x:Key="SxAssistantBubble" Color="#15202F"/>
+    <SolidColorBrush x:Key="SxUserBubbleBorder" Color="#2A3F5A"/>
+    <SolidColorBrush x:Key="SxWarningDim" Color="#664C1A"/>
+    <SolidColorBrush x:Key="SxAccentViolet" Color="#A878FF"/>
+    <SolidColorBrush x:Key="SxAccentMint" Color="#4BEFB9"/>
+    <SolidColorBrush x:Key="SxAccentRose" Color="#FF6B9D"/>
+    <SolidColorBrush x:Key="SxAccentCyanDim" Color="#176B7A"/>
+    <SolidColorBrush x:Key="SxAccentVioletDim" Color="#402C6B"/>
     <SolidColorBrush x:Key="SxSidebar" Color="#0B111A"/>
     <SolidColorBrush x:Key="SxSurface" Color="#0F1722"/>
     <SolidColorBrush x:Key="SxSurfaceHover" Color="#162030"/>
@@ -60,10 +78,18 @@
     <SolidColorBrush x:Key="SxBorderLight" Color="#D3D9E3"/>
     <SolidColorBrush x:Key="SxBorderGlowLight" Color="#B6D2DC"/>
 
+    <!-- ═══════════ GRADIENTS ═══════════ -->
+    <LinearGradientBrush x:Key="SxBrandGradient" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Color="#22E0FF" Offset="0"/>
+        <GradientStop Color="#A878FF" Offset="1"/>
+    </LinearGradientBrush>
+
     <!-- ═══════════ SHARED ═══════════ -->
     <SolidColorBrush x:Key="SxSuccess" Color="#3DDC84"/>
     <SolidColorBrush x:Key="SxWarn" Color="#FFB347"/>
+    <SolidColorBrush x:Key="SxWarning" Color="#FFB347"/>
     <SolidColorBrush x:Key="SxError" Color="#FF4D6D"/>
+    <SolidColorBrush x:Key="SxDanger" Color="#FF4D6D"/>
     <SolidColorBrush x:Key="SxInfo" Color="#5BA8FF"/>
     <SolidColorBrush x:Key="SxIdle" Color="#7A8BA3"/>
 </ResourceDictionary>

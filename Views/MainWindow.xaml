@@ -4,7 +4,7 @@
         xmlns:vm="clr-namespace:SentinelX.ViewModels"
         xmlns:pages="clr-namespace:SentinelX.Views.Pages"
         xmlns:ctrl="clr-namespace:SentinelX.Views.Controls"
-        xmlns:local="clr-namespace:SentinelX.Views"
+        xmlns:conv="clr-namespace:SentinelX.Converters"
         xmlns:sys="clr-namespace:System;assembly=System.Runtime"
         Title="Sentinel X 2.0" Height="900" Width="1380"
         WindowStartupLocation="CenterScreen"
@@ -69,8 +69,7 @@
                 </Setter.Value>
             </Setter>
         </Style>
-        <local:BooleanInvertConverter x:Key="InvBool"/>
-        <local:CollapsedVisibilityConverter x:Key="CollapsedVis"/>
+        <conv:CollapsedWhenTrueConverter x:Key="CollapsedVis"/>
     </Window.Resources>
 
     <Grid>
@@ -95,14 +94,7 @@
                             HorizontalAlignment="Left" VerticalAlignment="Center" Padding="6" ToolTip="Zwiń/rozwiń pasek"/>
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0,0,0"
                                 Visibility="{Binding SidebarCollapsed, Converter={StaticResource CollapsedVis}}">
-                        <Ellipse Width="22" Height="22">
-                            <Ellipse.Fill>
-                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                    <GradientStop Color="#22E0FF" Offset="0"/>
-                                    <GradientStop Color="#A878FF" Offset="1"/>
-                                </LinearGradientBrush>
-                            </Ellipse.Fill>
-                        </Ellipse>
+                        <Ellipse Width="22" Height="22" Fill="{StaticResource SxBrandGradient}"/>
                         <StackPanel Margin="10,0,0,0">
                             <TextBlock Text="SENTINEL" Foreground="{DynamicResource SxText}" FontSize="14" FontWeight="SemiBold"/>
                             <TextBlock Text="X · 2.0" Foreground="{DynamicResource SxTextMuted}" FontSize="10"/>
