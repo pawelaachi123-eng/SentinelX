@@ -35,13 +35,17 @@ public sealed class UiSettings
     public bool UsePerCoreCharts { get; set; } = true;
 
     [JsonIgnore]
-    public string AccentColor => AccentKey switch
+    public string AccentColor
     {
-        "Violet" => "#A878FF",
-        "Mint" => "#4BEFB9",
-        "Rose" => "#FF6B9D",
-        "Amber" => "#FFC462",
-        "Blue" => "#4C8BFF",
-        _ => "#22E0FF" // Cyan (default Aurora)
-    };
+        get => AccentKey switch
+        {
+            "Violet" => "#A878FF",
+            "Mint" => "#4BEFB9",
+            "Rose" => "#FF6B9D",
+            "Amber" => "#FFC462",
+            "Blue" => "#4C8BFF",
+            _ => "#22E0FF" // Cyan (default Aurora)
+        };
+        set { /* ignored – kept for backward compat */ }
+    }
 }

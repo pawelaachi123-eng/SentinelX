@@ -2,7 +2,7 @@ using System;
 using System.Diagnostics;
 using System.Threading;
 
-namespace SentinelX.Services.System;
+namespace SentinelX.Services.Performance;
 
 /// <summary>
 /// 2.0 · Monitoruje zużycie zasobów przez Sentinela i włącza tryb oszczędny

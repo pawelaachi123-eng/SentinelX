@@ -4,7 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace SentinelX.Services.System;
+namespace SentinelX.Services.Performance;
 
 /// <summary>
 /// 2.0 · Ograniczony worker pool dla zadań CPU-bound.

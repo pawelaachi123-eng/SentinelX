@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Media;
 
-namespace SentinelX.Services.System;
+namespace SentinelX.Services.Performance;
 
 public static class SentinelThemes
 {

@@ -3,7 +3,7 @@ using System.Collections.ObjectModel;
 using System.Windows.Controls;
 using System.Windows.Threading;
 using Microsoft.Extensions.DependencyInjection;
-using SentinelX.Services.System;
+using SentinelX.Services.Performance;
 
 namespace SentinelX.Views.Controls;
 

@@ -36,7 +36,7 @@ public class SystemMonitor : IDisposable
         {
             int cores = Environment.ProcessorCount;
             var values = new double[cores];
-            if (!OperatingSystem.IsWindows()) return null;
+            if (!OperatingSystem.IsWindows()) return null!;
             // Build counters lazily
             lock (perCoreGate)
             {
@@ -52,7 +52,7 @@ public class SystemMonitor : IDisposable
                     // Prime counters
                     foreach (var c in perCoreCounters) c?.NextValue();
                     // Return null first run so next call has a valid delta
-                    return null;
+                    return null!;
                 }
             }
             for (int i = 0; i < perCoreCounters.Length; i++)
@@ -67,7 +67,7 @@ public class SystemMonitor : IDisposable
             }
             return values;
         }
-        catch { return null; }
+        catch { return null!; }
     }
     private PerformanceCounter[]? perCoreCounters;
     private long[]? perCoreNextSample;

@@ -4,7 +4,7 @@ using SentinelX.Core;
 using SentinelX.Services.Actions;
 using SentinelX.Services.Desktop;
 using SentinelX.Services.Settings;
-using SentinelX.Services.System;
+using SentinelX.Services.Performance;
 namespace SentinelX.ViewModels;
 public sealed record NavItem(string Key, string Icon, string Label, object ViewModel, string Category = "Main");
 

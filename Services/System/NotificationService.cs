@@ -4,7 +4,7 @@ using System.Windows;
 using System.Windows.Threading;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace SentinelX.Services.System;
+namespace SentinelX.Services.Performance;
 
 public sealed record SentinelNotification(
     Guid Id,

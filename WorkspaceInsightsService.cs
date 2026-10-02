@@ -211,6 +211,7 @@ public sealed class WorkspaceInsightsService
 
     public string SearchAll(string query)
     {
+        if (query == null) return "";
         string needle = ConversationMemoryService.Normalize(query ?? "");
         if (needle.Length < 2) return "Podaj co najmniej 2 znaki do wyszukania.";
         DateTime now = NowProvider();

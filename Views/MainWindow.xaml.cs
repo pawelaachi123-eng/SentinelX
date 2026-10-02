@@ -1,7 +1,7 @@
 using System.Windows;
 using Microsoft.Extensions.DependencyInjection;
 using SentinelX.Services.Desktop;
-using SentinelX.Services.System;
+using SentinelX.Services.Performance;
 using SentinelX.ViewModels;
 
 namespace SentinelX.Views;

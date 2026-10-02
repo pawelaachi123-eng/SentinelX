@@ -1,4 +1,4 @@
-namespace SentinelX.Services.System;
+namespace SentinelX.Services.Performance;
 
 public enum NotificationLevel
 {

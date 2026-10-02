@@ -6,7 +6,7 @@ using SentinelX.Core;
 using SentinelX.Models;
 using SentinelX.Services.Gaming;
 using SentinelX.Services.Monitoring;
-using SentinelX.Services.System;
+using SentinelX.Services.Performance;
 using SentinelX.Services.Voice;
 
 namespace SentinelX.ViewModels;

@@ -7,7 +7,7 @@ using SentinelX.Services.History;
 using SentinelX.Services.Intent;
 using SentinelX.Services.Monitoring;
 using SentinelX.Services.Settings;
-using SentinelX.Services.System;
+using SentinelX.Services.Performance;
 using SentinelX.Services.Voice;
 using SentinelX.ViewModels;
 namespace SentinelX.Core;
