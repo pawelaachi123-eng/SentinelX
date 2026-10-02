@@ -104,7 +104,8 @@ public partial class TaskViewModel : ObservableObject, IDisposable
 
     private void RebuildProjects()
     {
-        string previous = newProjectIndex >= 0 && newProjectIndex < projectIds.Count ? projectIds[newProjectIndex] : "";
+        int selectedProjectIndex = NewProjectIndex;
+        string previous = selectedProjectIndex >= 0 && selectedProjectIndex < projectIds.Count ? projectIds[selectedProjectIndex] : "";
         projectIds.Clear(); projectIds.Add("");
         ProjectOptions.Clear(); ProjectOptions.Add("(bez projektu)");
         foreach (var project in projects.GetProjects()) { projectIds.Add(project.Id); ProjectOptions.Add(project.Name); }
@@ -168,7 +169,8 @@ public partial class TaskViewModel : ObservableObject, IDisposable
     {
         string title = NewTitle;
         string dueText = NewDueText;
-        var projectId = newProjectIndex > 0 && newProjectIndex < projectIds.Count ? projectIds[newProjectIndex] : "";
+        int selectedProjectIndex = NewProjectIndex;
+        var projectId = selectedProjectIndex > 0 && selectedProjectIndex < projectIds.Count ? projectIds[selectedProjectIndex] : "";
         DateTime? due = null;
         if (dueText.Trim().Length > 0)
         {
