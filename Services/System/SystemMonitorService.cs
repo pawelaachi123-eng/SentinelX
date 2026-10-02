@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.IO;
+using System.Net.NetworkInformation;
 using SentinelX.Models;
 using SentinelX.Services.Settings;
 
@@ -12,6 +13,8 @@ public sealed class SystemMonitorService(SystemMonitor monitor, Services.Gaming.
     private readonly CancellationTokenSource lifetime = new();
     private readonly Dictionary<int, (DateTime Start, TimeSpan Cpu)> previous = [];
     private long previousTick;
+    private long previousNetBytes;
+    private DateTime previousNetTime = DateTime.MinValue;
     private Task? loop;
     private SystemSnapshot current = SystemSnapshot.Empty;
     public SystemSnapshot Current => Volatile.Read(ref current);
@@ -20,6 +23,8 @@ public sealed class SystemMonitorService(SystemMonitor monitor, Services.Gaming.
 
     private async Task SampleLoopAsync()
     {
+        // Prime per-core counters
+        monitor.GetPerCoreCpu();
         while (!lifetime.IsCancellationRequested)
         {
             try
@@ -32,9 +37,50 @@ public sealed class SystemMonitorService(SystemMonitor monitor, Services.Gaming.
                     catch (IOException) { }
                     catch (UnauthorizedAccessException) { }
                 }
+
+                // Per-core
+                var rawCores = monitor.GetPerCoreCpu();
+                List<CoreSnapshot>? cores = null;
+                if (rawCores != null)
+                {
+                    cores = new List<CoreSnapshot>(rawCores.Count);
+                    foreach (var v in rawCores) cores.Add(new CoreSnapshot(double.IsFinite(v) ? v : 0, 0));
+                }
+
+                // Network bandwidth (Mbps)
+                double netDown = 0, netUp = 0;
+                try
+                {
+                    long bytes = 0;
+                    foreach (var iface in NetworkInterface.GetAllNetworkInterfaces())
+                    {
+                        if (iface.OperationalStatus == OperationalStatus.Up
+                            && iface.NetworkInterfaceType is not NetworkInterfaceType.Loopback and not NetworkInterfaceType.Tunnel)
+                        {
+                            try { bytes += iface.GetIPStatistics().BytesReceived + iface.GetIPStatistics().BytesSent; }
+                            catch { }
+                        }
+                    }
+                    var now = DateTime.UtcNow;
+                    if (previousNetTime != DateTime.MinValue)
+                    {
+                        double secs = (now - previousNetTime).TotalSeconds;
+                        if (secs > 0.1)
+                        {
+                            double bps = (bytes - previousNetBytes) * 8.0 / secs; // bits/s total
+                            // Rough split: assume down > up typical — for simplicity show total as "down" (since we can't split cheaply)
+                            netDown = bps / 1_000_000.0;
+                        }
+                    }
+                    previousNetBytes = bytes;
+                    previousNetTime = now;
+                }
+                catch { }
+
                 var snapshot = new SystemSnapshot(DateTime.Now, monitor.GetCpuUsage(), monitor.GetUsedRamGB(),
                     monitor.GetTotalRamGB(), monitor.GetGpuUsagePercent(), gaming.GetRunningGame(),
-                    network.GetNetworkSummary(), disks, processes);
+                    network.GetNetworkSummary(), disks, processes, cores,
+                    NetworkDownMbps: netDown);
                 Volatile.Write(ref current, snapshot);
                 Updated?.Invoke(snapshot);
             }

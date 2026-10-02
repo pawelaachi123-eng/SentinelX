@@ -131,7 +131,17 @@ public sealed class CommandRouter
         if (text is "wersja" or "jaka wersja" or "wersja sentinel" or "wersja aplikacji")
             return "Sentinel X " + AppConstants.Version + " · " + systemInfo.GetWindowsVersion() + " · .NET " + Environment.Version;
         if (text is "co nowego" or "lista zmian" or "changelog" or "co sie zmienilo")
-            return "CO NOWEGO W 0.97 · AURORA\n" +
+            return "CO NOWEGO W 0.98 · SENTINEL 2.0\n" +
+                "· Całkowita przebudowa interfejsu: collapsible sidebar, nowy pulpit z widgetami, górny pasek i status bar.\n" +
+                "· Wielordzeniowy silnik WorkerPool (kanały priorytetowe, bounded concurrency, bez Thread-per-task).\n" +
+                "· Performance Budget Service — auto-throttling gdy Sentinel przekroczy budżet CPU, szczególnie w grach.\n" +
+                "· Tryb Gaming Aware: wykrywanie pełnego ekranu i redukcja liczby workerów.\n" +
+                "· Notification Center + toasty; ThemeService z przełączaniem Dark/Light/System w locie.\n" +
+                "· Centralne Design Tokens (spacery, zaokrąglenia, typografia, czasy animacji, kolory).\n" +
+                "· Reusable karty: SentinelCard, StatCard, ActionCard, skeleton, chips.\n" +
+                "· Nowy Dashboard: widgety CPU/RAM/GPU/Sieć/Gry/Temp, per-core słupki, szybkie akcje.\n" +
+                "· Wszystkie istniejące funkcje zachowane (Głos, Wake Word, Narzędzia, Automatyzacje, Telefon, Overlay).\n" +
+                "\nCO NOWEGO W 0.97 · AURORA\n" +
                 "· Nowy interfejs AURORA: paleta nocy polarnej z akcentami cyjanu, fioletu i róży.\n" +
                 "· Szklane karty z poświatą (glassmorphism) i trzy aurorowe blaski w tle.\n" +
                 "· Przeprojektowane bąbelki czatu (użytkownik: gradient cyjan, asystent: ciemne szkło) oraz nowy pasek wejścia z przyciskiem mikrofonu.\n" +

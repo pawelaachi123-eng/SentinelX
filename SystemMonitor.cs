@@ -29,6 +29,50 @@ public class SystemMonitor : IDisposable
 
     public SystemMonitor() => GetCpuUsage();
 
+    /// <summary>2.0 · Per-core CPU usage. Returns null when PerformanceCounter unavailable.</summary>
+    public IReadOnlyList<double>? GetPerCoreCpu()
+    {
+        try
+        {
+            int cores = Environment.ProcessorCount;
+            var values = new double[cores];
+            if (!OperatingSystem.IsWindows()) return null;
+            // Build counters lazily
+            lock (perCoreGate)
+            {
+                if (perCoreCounters == null)
+                {
+                    perCoreCounters = new PerformanceCounter[cores];
+                    perCoreNextSample = new long[cores];
+                    for (int i = 0; i < cores; i++)
+                    {
+                        try { perCoreCounters[i] = new PerformanceCounter("Processor", "% User Time", i.ToString()); }
+                        catch { perCoreCounters[i] = null; }
+                    }
+                    // Prime counters
+                    foreach (var c in perCoreCounters) c?.NextValue();
+                    // Return null first run so next call has a valid delta
+                    return null;
+                }
+            }
+            for (int i = 0; i < perCoreCounters.Length; i++)
+            {
+                var c = perCoreCounters[i];
+                if (c == null) values[i] = double.NaN;
+                else
+                {
+                    try { values[i] = (float)Math.Clamp(c.NextValue() + 0, 0, 100); }
+                    catch { values[i] = double.NaN; }
+                }
+            }
+            return values;
+        }
+        catch { return null; }
+    }
+    private PerformanceCounter[]? perCoreCounters;
+    private long[]? perCoreNextSample;
+    private readonly object perCoreGate = new();
+
     public float GetCpuUsage()
     {
         lock (gate)

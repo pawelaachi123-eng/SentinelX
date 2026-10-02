@@ -1,0 +1,24 @@
+<UserControl x:Class="SentinelX.Views.Controls.StatusBarControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Border Background="{DynamicResource SxSidebar}" BorderBrush="{DynamicResource SxBorderSubtle}" BorderThickness="0,1,0,0" Padding="14,6">
+        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,18,0">
+                <Ellipse Width="8" Height="8" Fill="{DynamicResource SxSuccess}"/>
+                <TextBlock Text="Sentinel" Foreground="{DynamicResource SxTextBody}" FontSize="11" Margin="6,0,0,0"/>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,18,0">
+                <Ellipse Width="8" Height="8" Fill="{DynamicResource SxAccent}"/>
+                <TextBlock x:Name="AiStatus" Text="AI · Gotowy" Foreground="{DynamicResource SxTextBody}" FontSize="11" Margin="6,0,0,0"/>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,18,0">
+                <Ellipse Width="8" Height="8" Fill="{DynamicResource SxIdle}"/>
+                <TextBlock x:Name="VoiceStatus" Text="Głos · Gotowy" Foreground="{DynamicResource SxTextBody}" FontSize="11" Margin="6,0,0,0"/>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,18,0" Cursor="Hand">
+                <TextBlock x:Name="PerfStatus" Text="CPU — · RAM —" Foreground="{DynamicResource SxTextMuted}" FontSize="11"/>
+            </StackPanel>
+            <TextBlock x:Name="Version" Text="" Foreground="{DynamicResource SxTextFaint}" FontSize="11" HorizontalAlignment="Right" Margin="0,0,0,0"/>
+        </StackPanel>
+    </Border>
+</UserControl>

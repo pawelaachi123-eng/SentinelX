@@ -1,0 +1,139 @@
+<UserControl x:Class="SentinelX.Views.Pages.DashboardPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:SentinelX.ViewModels"
+             xmlns:sys="clr-namespace:System;assembly=System.Runtime">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolVis"/>
+        <DataTemplate x:Key="WidgetTemplate" DataType="{x:Type vm:WidgetCard}">
+            <Border Style="{StaticResource StatCard}">
+                <StackPanel>
+                    <DockPanel>
+                        <TextBlock Text="{Binding Icon}" FontSize="16" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <TextBlock Text="{Binding Title}" FontSize="{StaticResource FontSmall}" Foreground="{DynamicResource SxTextMuted}" VerticalAlignment="Center"/>
+                    </DockPanel>
+                    <TextBlock Text="{Binding Value}" FontSize="{StaticResource FontHeading2}" Foreground="{DynamicResource SxText}" Margin="0,6,0,2"/>
+                    <TextBlock Text="{Binding Subtitle}" FontSize="{StaticResource FontCaption}" Foreground="{DynamicResource SxTextFaint}"/>
+                    <ProgressBar Height="4" Margin="0,10,0,0" Maximum="100" Value="{Binding Progress}"
+                                 Foreground="{DynamicResource SxAccent}" Background="{DynamicResource SxSurfaceActive}" BorderThickness="0"/>
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+        <DataTemplate x:Key="QuickActionTemplate" DataType="{x:Type vm:QuickActionVm}">
+            <Border Style="{StaticResource ActionCard}" Width="160" Height="96" Margin="0,0,10,10">
+                <StackPanel>
+                    <TextBlock Text="{Binding Icon}" FontSize="22"/>
+                    <TextBlock Text="{Binding Label}" FontSize="{StaticResource FontSubheading}" Foreground="{DynamicResource SxText}" Margin="0,8,0,2"/>
+                    <TextBlock Text="{Binding Description}" FontSize="{StaticResource FontCaption}" Foreground="{DynamicResource SxTextMuted}" TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="28,24">
+        <StackPanel MaxWidth="1480">
+
+            <!-- Hero / powitanie -->
+            <Border Style="{StaticResource SentinelCardElevated}" Padding="28,26" Margin="0,0,0,22">
+                <DockPanel>
+                    <StackPanel DockPanel.Dock="Right" VerticalAlignment="Center">
+                        <Ellipse Width="10" Height="10" Fill="{DynamicResource SxSuccess}">
+                            <Ellipse.Effect>
+                                <DropShadowEffect Color="#3DDC84" BlurRadius="10" ShadowDepth="0" Opacity="0.8"/>
+                            </Ellipse.Effect>
+                        </Ellipse>
+                    </StackPanel>
+                    <StackPanel>
+                        <TextBlock FontSize="{StaticResource FontDisplay}" FontWeight="SemiBold" Foreground="{DynamicResource SxText}" Text="Sentinel X"/>
+                        <TextBlock FontSize="{StaticResource FontSubheading}" Foreground="{DynamicResource SxTextBody}" Margin="0,4,0,0">
+                            Pulpit · twój inteligentny asystent systemowy
+                        </TextBlock>
+                        <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                            <Border Background="{DynamicResource SxSurfaceActive}" CornerRadius="999" Padding="10,5" Margin="0,0,6,0">
+                                <TextBlock Text="{Binding SentinelStatusText}" FontSize="11" Foreground="{DynamicResource SxSuccess}"/>
+                            </Border>
+                            <Border Background="{DynamicResource SxSurfaceActive}" CornerRadius="999" Padding="10,5" Margin="0,0,6,0">
+                                <TextBlock Text="{Binding AiStatusText, StringFormat='AI · {0}'}" FontSize="11" Foreground="{DynamicResource SxTextBody}"/>
+                            </Border>
+                            <Border Background="{DynamicResource SxSurfaceActive}" CornerRadius="999" Padding="10,5">
+                                <TextBlock Text="{Binding VoiceStatusText, StringFormat='Głos · {0}'}" FontSize="11" Foreground="{DynamicResource SxTextBody}"/>
+                            </Border>
+                        </StackPanel>
+                    </StackPanel>
+                </DockPanel>
+            </Border>
+
+            <!-- Widget grid -->
+            <TextBlock Text="Wydajność systemu" FontSize="{StaticResource FontHeading3}" Foreground="{DynamicResource SxText}" Margin="0,0,0,10"/>
+            <ItemsControl ItemsSource="{Binding Widgets}" ItemTemplate="{StaticResource WidgetTemplate}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <UniformGrid Columns="3" Rows="2"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+            </ItemsControl>
+
+            <!-- Szybkie akcje -->
+            <DockPanel Margin="0,24,0,10">
+                <TextBlock Text="Szybkie akcje" FontSize="{StaticResource FontHeading3}" Foreground="{DynamicResource SxText}" DockPanel.Dock="Left" VerticalAlignment="Center"/>
+                <TextBlock Text="Najczęściej używane polecenia" FontSize="{StaticResource FontCaption}" Foreground="{DynamicResource SxTextMuted}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+            </DockPanel>
+            <ItemsControl ItemsSource="{Binding QuickActions}" ItemTemplate="{StaticResource QuickActionTemplate}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+            </ItemsControl>
+
+            <!-- Per-core + ostatnie powiadomienia -->
+            <Grid Margin="0,20,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="2*"/>
+                    <ColumnDefinition Width="1*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Rdzenie CPU -->
+                <Border Grid.Column="0" Style="{StaticResource SentinelCard}" Margin="0,0,10,0">
+                    <StackPanel>
+                        <DockPanel Margin="0,0,0,12">
+                            <TextBlock Text="Rdzenie CPU" FontSize="{StaticResource FontHeading3}" Foreground="{DynamicResource SxText}"/>
+                        </DockPanel>
+                        <ItemsControl ItemsSource="{Binding Snapshot.Cores}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Background="{DynamicResource SxSurfaceActive}" CornerRadius="6" Width="34" Height="48" Margin="0,0,6,6" VerticalAlignment="Bottom">
+                                        <Border Height="{Binding UsagePercent}" VerticalAlignment="Bottom" CornerRadius="6"
+                                                Background="{DynamicResource SxAccent}"/>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+
+                <!-- Ostatnie zdarzenia -->
+                <Border Grid.Column="1" Style="{StaticResource SentinelCard}" Margin="10,0,0,0">
+                    <StackPanel>
+                        <DockPanel Margin="0,0,0,12">
+                            <TextBlock Text="Ostatnie zdarzenia" FontSize="{StaticResource FontHeading3}" Foreground="{DynamicResource SxText}"/>
+                        </DockPanel>
+                        <ItemsControl ItemsSource="{Binding RecentNotifications}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Background="{DynamicResource SxSurfaceActive}" CornerRadius="8" Padding="10,8" Margin="0,0,0,8">
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding Title}" FontSize="{StaticResource FontCaption}" Foreground="{DynamicResource SxText}"/>
+                                            <TextBlock Text="{Binding Message}" FontSize="{StaticResource FontMicro}" Foreground="{DynamicResource SxTextMuted}" TextWrapping="Wrap" Margin="0,2,0,0"/>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

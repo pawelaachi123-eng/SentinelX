@@ -7,6 +7,7 @@ using SentinelX.Services.History;
 using SentinelX.Services.Intent;
 using SentinelX.Services.Monitoring;
 using SentinelX.Services.Settings;
+using SentinelX.Services.System;
 using SentinelX.Services.Voice;
 using SentinelX.ViewModels;
 namespace SentinelX.Core;
@@ -22,6 +23,17 @@ public static class ServiceLocator
         services.AddSingleton<SystemInfoService>();
         services.AddSingleton<GamingModeService>();
         services.AddSingleton<NetworkDiagnosticService>();
+        // 2.0 · globalne usługi
+        services.AddSingleton<NotificationService>(_ => new NotificationService(dispatcher));
+        services.AddSingleton<WorkerPoolService>(sp => new WorkerPoolService(
+            isGaming: () => !string.IsNullOrEmpty(sp.GetRequiredService<GamingModeService>().GetRunningGame()),
+            getWorkerCount: () => sp.GetRequiredService<ISettingsService>().Current.Resources.EffectiveWorkerCount(
+                !string.IsNullOrEmpty(sp.GetRequiredService<GamingModeService>().GetRunningGame()))));
+        services.AddSingleton<PerformanceBudgetService>(sp => new PerformanceBudgetService(
+            isGaming: () => !string.IsNullOrEmpty(sp.GetRequiredService<GamingModeService>().GetRunningGame())));
+        services.AddSingleton<ThemeService>(sp => new ThemeService(
+            getMode: () => sp.GetRequiredService<ISettingsService>().Current.Ui.Theme,
+            getAccent: () => sp.GetRequiredService<ISettingsService>().Current.Ui.AccentKey));
         services.AddSingleton<Services.Network.INetworkService>(sp => sp.GetRequiredService<NetworkDiagnosticService>());
         services.AddSingleton<Services.Gaming.IGamingService>(sp => sp.GetRequiredService<GamingModeService>());
         services.AddSingleton<Services.Permissions.IPermissionService, PermissionCenterService>();
@@ -95,6 +107,7 @@ public static class ServiceLocator
         services.AddSingleton<Services.Readiness.IReadinessService, Services.Readiness.ReadinessService>();
         services.AddSingleton<ReadinessViewModel>();
         services.AddSingleton<CommandPaletteViewModel>();
+        services.AddSingleton<DashboardViewModel>();
         // Cached page VMs preserve drafts, selections and subscriptions across navigation.
         services.AddSingleton<SystemViewModel>();
         services.AddSingleton<VoiceViewModel>();

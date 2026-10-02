@@ -54,6 +54,11 @@ public partial class App : Application
                 try { provider.GetRequiredService<CareService>().Start(); }
                 catch (Exception careError) { AppLog.Write(careError); }
             }
+            // 2.0 · SystemMonitor + WorkerPool + Theme start
+            try { provider.GetRequiredService<Services.Monitoring.ISystemMonitorService>().Start(); }
+            catch (Exception ex) { AppLog.Write(ex); }
+            try { provider.GetRequiredService<Services.System.ThemeService>().Apply(); }
+            catch (Exception ex) { AppLog.Write(ex); }
             if (uiTest)
             {
                 await UiSmokeTestRunner.RunAsync(provider, shell, Path.GetFullPath(e.Args[1]));
