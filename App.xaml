@@ -11,6 +11,8 @@
                 <ResourceDictionary Source="Themes/Animations.xaml"/>
                 <ResourceDictionary Source="Themes/Cards.xaml"/>
             </ResourceDictionary.MergedDictionaries>
+            <!-- Global converters -->
+            <conv:CollapsedWhenTrueConverter xmlns:conv="clr-namespace:SentinelX.Converters" x:Key="CollapsedVis"/>
             <c:ReadinessToBrushConverter x:Key="ReadinessBrush"/>
             <c:StatusToBrushConverter x:Key="StatusBrush"/>
             <c:VoiceStateToBrushConverter x:Key="VoiceBrush"/>

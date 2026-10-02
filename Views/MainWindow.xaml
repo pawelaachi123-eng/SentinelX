@@ -4,7 +4,6 @@
         xmlns:vm="clr-namespace:SentinelX.ViewModels"
         xmlns:pages="clr-namespace:SentinelX.Views.Pages"
         xmlns:ctrl="clr-namespace:SentinelX.Views.Controls"
-        xmlns:conv="clr-namespace:SentinelX.Converters"
         xmlns:sys="clr-namespace:System;assembly=System.Runtime"
         Title="Sentinel X 2.0" Height="900" Width="1380"
         WindowStartupLocation="CenterScreen"
@@ -69,7 +68,6 @@
                 </Setter.Value>
             </Setter>
         </Style>
-        <conv:CollapsedWhenTrueConverter x:Key="CollapsedVis"/>
     </Window.Resources>
 
     <Grid>
