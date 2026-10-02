@@ -60,7 +60,7 @@ public partial class DashboardViewModel : ObservableObject
         Widgets.Add(new WidgetCard("ram", "RAM", s.RamText, "Pamięć", "🧠", "Violet", s.RamPercent));
         Widgets.Add(new WidgetCard("gpu", "GPU", s.GpuText, "Karta graficzna", "🎮", "Mint", double.IsFinite(s.Gpu) ? s.Gpu : 0));
         Widgets.Add(new WidgetCard("net", "Sieć", s.NetText, "Transfer", "📡", "Blue", 0));
-        Widgets.Add(new WidgetCard("game", "Gry", s.GamingText, IsGaming ? "Aktywny tryb gry" : "Spokój", IsGaming ? "Amber" : "Idle", IsGaming ? 100 : 0));
+        Widgets.Add(new WidgetCard("game", "Gry", s.GamingText, IsGaming ? "Aktywny tryb gry" : "Spokój", "🎮", IsGaming ? "Amber" : "Idle", IsGaming ? 100 : 0));
         Widgets.Add(new WidgetCard("temp", "Temp CPU", s.TempCpuText, "Procesor", "🌡", double.IsFinite(s.CpuTempC ?? double.NaN) && s.CpuTempC > 80 ? "Error" : "Cyan", 0));
 
         if (RecentNotifications.Count == 0)

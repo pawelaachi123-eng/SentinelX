@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.DependencyInjection;
 using SentinelX.Core;
 using SentinelX.Services.Actions;
 using SentinelX.Services.Desktop;

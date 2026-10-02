@@ -48,7 +48,7 @@ public sealed class SystemMonitorService(SystemMonitor monitor, Services.Gaming.
                 }
 
                 // Network bandwidth (Mbps)
-                double netDown = 0, netUp = 0;
+                double netDown = 0, _ = 0;
                 try
                 {
                     long bytes = 0;
