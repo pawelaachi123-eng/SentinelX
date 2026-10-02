@@ -284,12 +284,14 @@ jobs:
             echo "::error title=Wydanie już istnieje::$tag nie zostanie nadpisane. Użyj nowej wersji/tagu."
             exit 1
           fi
+          notes_file="docs/RELEASE-${version%.*}.md"
+          if [[ -f "$notes_file" ]]; then
+            release_notes=$(cat "$notes_file")
+          else
+            release_notes="Sentinel X $version. Pełna lista plików i sum kontrolnych znajduje się w załącznikach wydania."
+          fi
           notes=$(cat <<EOF
-          Pliki do pobrania:
-          - $installer — instalator Windows x64.
-          - $portable — samodzielna wersja przenośna Windows x64.
-          - $apk — aplikacja na Androida; aktualizacje wymagają zachowania chronionego klucza podpisu.
-          - SHA256SUMS.txt — sumy kontrolne wszystkich plików.
+          $release_notes
 
           Wydanie powstało dopiero po zielonych testach kompilacji, UI i regresji na Windows oraz poprawnym podpisaniu APK kluczem z chronionych sekretów.
           EOF

@@ -1,4 +1,4 @@
-# SENTINEL X 0.96 · KUŹNIA — Windows + telefon
+# SENTINEL X 0.98 · AUTOMATION — Windows + telefon
 
 Lokalny asystent Windows 10/11 (C# 14, .NET 10, WPF) z aplikacją na telefon. **Nic nie trzeba pilnować:** instalujesz raz, a Sentinel sam startuje z Windows, sam pobiera i naprawia swój silnik AI, sam pilnuje komputera i daje znać na telefon. Poprzedni interfejs jest nadal dostępny przez `--legacy`.
 
@@ -18,7 +18,7 @@ Telefon pokazuje **to samo co komputer**: ten sam czat z Sentinelem (polecenia, 
 - **Opiekun** sprawdza co minutę, czy łącze z telefonem i silnik AI działają, i uruchamia je ponownie, gdy trzeba. Jedna linia statusu mówi „Wszystko działa samo” albo — uczciwie — co wymaga Twojej uwagi.
 - **Wake-on-LAN:** aplikacja na Androida może wybudzić komputer (o ile karta sieciowa i BIOS na to pozwalają).
 
-Szczegóły techniczne: [docs/PHONE-LINK.md](docs/PHONE-LINK.md) (protokół i bezpieczeństwo), [docs/ENGINE.md](docs/ENGINE.md) (silnik AI), [docs/TOOLS.md](docs/TOOLS.md) (katalog narzędzi), [docs/RELEASE-0.96.md](docs/RELEASE-0.96.md) (notatki wydania i ograniczenia).
+Szczegóły techniczne: [docs/PHONE-LINK.md](docs/PHONE-LINK.md) (protokół i bezpieczeństwo), [docs/ENGINE.md](docs/ENGINE.md) (silnik AI), [docs/TOOLS.md](docs/TOOLS.md) (katalog narzędzi), [docs/RELEASE-0.98.md](docs/RELEASE-0.98.md) (notatki wydania i ograniczenia).
 
 ## Automatyzacje i artefakty CI
 
@@ -35,6 +35,16 @@ powershell -ExecutionPolicy Bypass -File scripts\build-local.ps1 -Test
 
 Aplikację na Androida najłatwiej zbudować w wydaniu na GitHubie (workflow **Release**); lokalnie potrzebny jest Android Studio — zob. [phone-android/README.md](phone-android/README.md).
 
+## Nowe w 0.98 — automatyzacje i bezpieczniejszy łącznik z telefonem
+
+- **Automatyzacje z ograniczonym katalogiem akcji:** ręczny start, uruchomienie przy starcie Sentinela oraz harmonogram dzienny; akcje mogą uruchomić rozpoznaną aplikację, otworzyć zweryfikowany adres HTTP/HTTPS albo pokazać powiadomienie. Dowolne skrypty, polecenia powłoki i ścieżki wykonywalne nie są obsługiwane.
+- **Trwała historia automatyzacji** z limitem zapisanych wyników i stanami wykonania; interfejs pokazuje rzeczywiste wyniki, nie symulowane postępy.
+- **Bezpieczniejsze parowanie telefonu:** utrwalony rejestr urządzeń i możliwość odwołania sparowania; sekret urządzenia jest przechowywany jako hash, a dostęp może być ograniczany per urządzenie.
+- **Ulepszenia odporności aplikacji Windows:** walidacja lokalizacji danych, bezpieczniejsze operacje na plikach/pobieranych komponentach oraz lepsze logowanie awarii.
+- **Publikowanie przez CI:** wersja Windows jest kompilowana, testowana i instalowana w smoke teście; build Androida jest weryfikowany w CI. Zwykłe buildy gałęzi nie tworzą wydania GitHub.
+- **Podpis Androida:** z repozytorium usunięto klucz historyczny, który nie powinien być zaufany. Oficjalny APK jest publikowany wyłącznie po weryfikacji nowego, trwałego klucza z chronionych sekretów; buildy gałęzi bez niego są podpisane kluczem tymczasowym i wymagają odinstalowania przed następną instalacją.
+
+Szczegóły, ograniczenia i sposób pobrania: [docs/RELEASE-0.98.md](docs/RELEASE-0.98.md).
 
 ## Nowe w 0.96 — KUŹNIA: podgląd decyzji, szukanie w zadaniach i 11 nowych narzędzi
 
