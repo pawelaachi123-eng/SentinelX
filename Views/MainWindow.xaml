@@ -4,6 +4,7 @@
         xmlns:vm="clr-namespace:SentinelX.ViewModels"
         xmlns:pages="clr-namespace:SentinelX.Views.Pages"
         xmlns:ctrl="clr-namespace:SentinelX.Views.Controls"
+        xmlns:local="clr-namespace:SentinelX.Views"
         xmlns:sys="clr-namespace:System;assembly=System.Runtime"
         Title="Sentinel X 2.0" Height="900" Width="1380"
         WindowStartupLocation="CenterScreen"
@@ -49,7 +50,7 @@
                                 <TextBlock Text="{Binding Icon}" FontSize="16" VerticalAlignment="Center"
                                            HorizontalAlignment="Left" DockPanel.Dock="Left"/>
                                 <TextBlock Text="{Binding Label}" VerticalAlignment="Center" Margin="12,0,0,0" x:Name="Lbl"
-                                           Visibility="{Binding DataContext.SidebarCollapsed, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolVis}, ConverterParameter=Invert}"/>
+                                           Visibility="{Binding DataContext.SidebarCollapsed, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource CollapsedVis}}"/>
                             </DockPanel>
                         </Border>
                         <ControlTemplate.Triggers>
@@ -68,8 +69,8 @@
                 </Setter.Value>
             </Setter>
         </Style>
-        <BooleanInvertConverter x:Key="InvBool" xmlns:local="clr-namespace:SentinelX.Views"/>
-        <local:CollapsedVisibilityConverter x:Key="CollapsedVis" xmlns:local="clr-namespace:SentinelX.Views"/>
+        <local:BooleanInvertConverter x:Key="InvBool"/>
+        <local:CollapsedVisibilityConverter x:Key="CollapsedVis"/>
     </Window.Resources>
 
     <Grid>
