@@ -57,7 +57,7 @@ public partial class App : Application
             // 2.0 · SystemMonitor + WorkerPool + Theme start
             try { provider.GetRequiredService<Services.Monitoring.ISystemMonitorService>().Start(); }
             catch (Exception ex) { AppLog.Write(ex); }
-            try { provider.GetRequiredService<Services.System.ThemeService>().Apply(); }
+            try { provider.GetRequiredService<Services.System.SxThemeService>().Apply(); }
             catch (Exception ex) { AppLog.Write(ex); }
             if (uiTest)
             {

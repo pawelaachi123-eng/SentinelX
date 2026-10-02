@@ -15,14 +15,14 @@ public static class SentinelThemes
 /// 2.0 · Przełączanie motywów Dark/Light/System w locie, bez restartu aplikacji.
 /// Zamienia wartości kluczowych pędzli w Application.Current.Resources.
 /// </summary>
-public sealed class ThemeService
+public sealed class SxThemeService
 {
     private readonly Func<string> getMode;
     private readonly Func<string> getAccent;
     private string appliedMode = "";
     private string appliedAccent = "";
 
-    public ThemeService(Func<string> getMode, Func<string> getAccent)
+    public SxThemeService(Func<string> getMode, Func<string> getAccent)
     {
         this.getMode = getMode;
         this.getAccent = getAccent;

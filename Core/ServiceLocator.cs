@@ -31,7 +31,7 @@ public static class ServiceLocator
                 !string.IsNullOrEmpty(sp.GetRequiredService<GamingModeService>().GetRunningGame()))));
         services.AddSingleton<PerformanceBudgetService>(sp => new PerformanceBudgetService(
             isGaming: () => !string.IsNullOrEmpty(sp.GetRequiredService<GamingModeService>().GetRunningGame())));
-        services.AddSingleton<ThemeService>(sp => new ThemeService(
+        services.AddSingleton<SxThemeService>(sp => new SxThemeService(
             getMode: () => sp.GetRequiredService<ISettingsService>().Current.Ui.Theme,
             getAccent: () => sp.GetRequiredService<ISettingsService>().Current.Ui.AccentKey));
         services.AddSingleton<Services.Network.INetworkService>(sp => sp.GetRequiredService<NetworkDiagnosticService>());

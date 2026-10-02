@@ -13,7 +13,7 @@ public partial class MainWindow : Window
         InitializeComponent(); DataContext = vm; desktop.Attach(this);
         Loaded += (_, _) =>
         {
-            App.Services.GetService<ThemeService>()?.Apply();
+            App.Services.GetService<SxThemeService>()?.Apply();
             App.Services.GetService<Services.Monitoring.ISystemMonitorService>()?.Start();
         };
         vm.PropertyChanged += (_, e) =>

@@ -53,7 +53,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         VoiceViewModel voice, AiViewModel ai, ActionsViewModel actions, HistoryViewModel history, SettingsViewModel settings,
         CommandPaletteViewModel palette, ReadinessViewModel readiness, MemoryViewModel memory, ProjectViewModel projects, TaskViewModel tasks,
         DiagnosticViewModel diagnostics, ToolsViewModel tools, ISettingsService settingsService,
-        DashboardViewModel dashboard, NotificationService notifications, ThemeService theme)
+        DashboardViewModel dashboard, NotificationService notifications, SxThemeService theme)
     {
         this.engine = engine; this.desktop = desktop; this.dispatcher = dispatcher; this.settings = settingsService;
         Voice = voice; Palette = palette; Readiness = readiness; commandCenter = command; System = system; Tools = tools; Dashboard = dashboard;
@@ -125,7 +125,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         if (value == null || settings.Current.Ui.Theme == value.Value) return;
         settings.Current.Ui.Theme = value.Value;
         settings.Save();
-        var theme = App.Services.GetService<ThemeService>();
+        var theme = App.Services.GetService<SxThemeService>();
         theme?.Apply();
         DesktopStatus = "Motyw: " + value.Label + " — zapisany w ustawieniach.";
     }
