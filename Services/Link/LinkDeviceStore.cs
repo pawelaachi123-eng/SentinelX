@@ -23,6 +23,8 @@ public sealed class LinkDeviceStore
     private readonly object gate = new();
     private readonly string path;
     private List<Record> records = [];
+    private bool persistenceBlocked;
+    private DateTimeOffset lastActivityWrite = DateTimeOffset.MinValue;
 
     public string? LastError { get; private set; }
     public event Action? Changed;
@@ -45,14 +47,21 @@ public sealed class LinkDeviceStore
         LinkDeviceInfo info;
         lock (gate)
         {
-            while (records.Count >= MaxDevices) records.Remove(records.OrderBy(x => x.LastSeen).First());
+            List<Record> previous = records;
+            var next = records.ToList();
+            while (next.Count >= MaxDevices) next.Remove(next.OrderBy(x => x.LastSeen).First());
             var record = new Record
             {
                 Id = "d" + Convert.ToHexString(RandomNumberGenerator.GetBytes(6)).ToLowerInvariant(),
                 Name = name, TokenHash = Hash(token), AddedAt = DateTimeOffset.Now, LastSeen = DateTimeOffset.Now
             };
-            records.Add(record);
-            Save();
+            next.Add(record);
+            records = next;
+            if (!Save())
+            {
+                records = previous;
+                throw new IOException(LastError ?? "Nie udało się zapisać sparowanego telefonu.");
+            }
             info = ToInfo(record);
         }
         RaiseChanged();
@@ -64,6 +73,8 @@ public sealed class LinkDeviceStore
     {
         if (string.IsNullOrEmpty(token) || token.Length > 128) return null;
         byte[] actual = SHA256.HashData(Encoding.UTF8.GetBytes(token));
+        LinkDeviceInfo? matched = null;
+        bool activityWriteAttempted = false;
         lock (gate)
         {
             foreach (Record record in records)
@@ -73,10 +84,19 @@ public sealed class LinkDeviceStore
                 catch (FormatException) { continue; }
                 if (expected.Length != actual.Length || !CryptographicOperations.FixedTimeEquals(expected, actual)) continue;
                 record.LastSeen = DateTimeOffset.Now;
-                return ToInfo(record);
+                matched = ToInfo(record);
+                DateTimeOffset now = DateTimeOffset.UtcNow;
+                if (now - lastActivityWrite >= TimeSpan.FromMinutes(5))
+                {
+                    _ = Save(); // Activity telemetry is best-effort; authentication itself remains available.
+                    lastActivityWrite = now; // Bound disk writes even when the data directory is read-only.
+                    activityWriteAttempted = true;
+                }
+                break;
             }
         }
-        return null;
+        if (activityWriteAttempted) RaiseChanged();
+        return matched;
     }
 
     public bool Remove(string id)
@@ -84,17 +104,29 @@ public sealed class LinkDeviceStore
         bool removed;
         lock (gate)
         {
-            removed = records.RemoveAll(x => x.Id == id) > 0;
-            if (removed) Save();
+            List<Record> previous = records;
+            var next = records.Where(x => x.Id != id).ToList();
+            if (next.Count == previous.Count) return false;
+            records = next;
+            removed = Save();
+            if (!removed) records = previous; // Never claim revocation unless it is durable.
         }
-        if (removed) RaiseChanged();
+        RaiseChanged(); // Also refresh the UI when persistence failed so the warning is visible.
         return removed;
     }
 
-    public void RemoveAll()
+    public bool RemoveAll()
     {
-        lock (gate) { records = []; Save(); }
+        bool removed;
+        lock (gate)
+        {
+            List<Record> previous = records;
+            records = [];
+            removed = Save();
+            if (!removed) records = previous;
+        }
         RaiseChanged();
+        return removed;
     }
 
     private static LinkDeviceInfo ToInfo(Record r) => new(r.Id, r.Name, r.AddedAt, r.LastSeen);
@@ -103,33 +135,73 @@ public sealed class LinkDeviceStore
 
     private void Load()
     {
+        if (!File.Exists(path)) return;
         try
         {
-            if (!File.Exists(path) || new FileInfo(path).Length > 256 * 1024) return;
-            records = JsonSerializer.Deserialize<List<Record>>(File.ReadAllText(path), JsonOptions) ?? [];
-            records = records.Where(x => x != null && x.Id.Length is > 0 and <= 40 && x.TokenHash.Length == 64).Take(MaxDevices).ToList();
+            if (new FileInfo(path).Length > 256 * 1024)
+                throw new InvalidDataException("Lista telefonów przekracza limit 256 KB.");
+            List<Record?> loaded = JsonSerializer.Deserialize<List<Record?>>(File.ReadAllText(path), JsonOptions)
+                ?? throw new InvalidDataException("Lista telefonów jest pusta lub nieprawidłowa.");
+            if (loaded.Count > MaxDevices || loaded.Any(x => !IsValidRecord(x))
+                || loaded.Select(x => x!.Id).Distinct(StringComparer.Ordinal).Count() != loaded.Count
+                || loaded.Select(x => x!.TokenHash).Distinct(StringComparer.OrdinalIgnoreCase).Count() != loaded.Count)
+                throw new InvalidDataException("Lista telefonów zawiera wpisy nieprawidłowe lub powtórzone.");
+            records = loaded.Select(x => x!).ToList();
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or InvalidDataException or NotSupportedException or ArgumentException)
         {
             records = [];
-            LastError = "Nie udało się odczytać listy telefonów: " + ex.Message;
+            string quarantine = path + ".corrupt-" + DateTimeOffset.UtcNow.ToString("yyyyMMdd-HHmmssfff") + "-" + Guid.NewGuid().ToString("N")[..8];
+            try
+            {
+                File.Move(path, quarantine, false);
+                LastError = "Nie udało się odczytać listy telefonów; uszkodzony plik zachowano jako " + Path.GetFileName(quarantine) + ". " + ex.Message;
+            }
+            catch (Exception moveError) when (moveError is IOException or UnauthorizedAccessException)
+            {
+                persistenceBlocked = true;
+                LastError = "Nie udało się odczytać ani zachować listy telefonów; zapis i parowanie są zablokowane, aby nie nadpisać danych. " + ex.Message;
+            }
+            AppLog.Write("Devices", "Warning", "Paired-device storage could not be loaded safely.", ex);
         }
     }
 
-    private void Save()
+    private static bool IsValidRecord(Record? record) => record != null
+        && !string.IsNullOrWhiteSpace(record.Id) && record.Id.Length <= 40
+        && !string.IsNullOrWhiteSpace(record.Name) && record.Name.Length <= 32 && !record.Name.Any(char.IsControl)
+        && !string.IsNullOrEmpty(record.TokenHash) && record.TokenHash.Length == 64 && record.TokenHash.All(Uri.IsHexDigit)
+        && record.AddedAt != default && record.LastSeen != default;
+
+    private bool Save()
     {
+        if (persistenceBlocked) return false;
+        string temp = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
         try
         {
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-            string temp = path + ".tmp";
-            File.WriteAllText(temp, JsonSerializer.Serialize(records, JsonOptions));
+            string json = JsonSerializer.Serialize(records, JsonOptions);
+            File.WriteAllText(temp, json);
+            List<Record?> check = JsonSerializer.Deserialize<List<Record?>>(File.ReadAllText(temp), JsonOptions)
+                ?? throw new InvalidDataException("Zapis listy telefonów jest pusty.");
+            if (check.Count != records.Count || check.Any(item => item == null) || check.Where((item, index) =>
+                    item!.Id != records[index].Id || item.Name != records[index].Name || item.TokenHash != records[index].TokenHash ||
+                    item.AddedAt != records[index].AddedAt || item.LastSeen != records[index].LastSeen).Any())
+                throw new InvalidDataException("Zapis listy telefonów nie przeszedł odczytu kontrolnego.");
             File.Move(temp, path, true);
             LastError = null;
+            lastActivityWrite = DateTimeOffset.UtcNow;
+            return true;
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or InvalidDataException or NotSupportedException or ArgumentException)
         {
             LastError = "Nie udało się zapisać listy telefonów: " + ex.Message;
-            AppLog.Write(ex);
+            AppLog.Write("Devices", "Error", "Paired-device data could not be saved.", ex);
+            return false;
+        }
+        finally
+        {
+            try { if (File.Exists(temp)) File.Delete(temp); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
         }
     }
 

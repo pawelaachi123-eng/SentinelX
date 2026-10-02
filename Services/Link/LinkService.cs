@@ -83,8 +83,9 @@ public sealed class LinkService : IDisposable
     public string Status { get { lock (gate) return status; } }
     public IReadOnlyList<string> Urls => IsRunning ? LinkNetwork.BuildUrls(Port) : [];
     public IReadOnlyList<LinkDeviceInfo> Devices => devices.List();
+    public string? DeviceStoreError => devices.LastError;
     public bool RemoveDevice(string id) => devices.Remove(id);
-    public void RemoveAllDevices() => devices.RemoveAll();
+    public bool RemoveAllDevices() => devices.RemoveAll();
 
     // ------------------------------------------------------------------ lifecycle
 
@@ -429,10 +430,19 @@ public sealed class LinkService : IDisposable
             else if (!approved) entry.State = PairingState.Denied;
             else
             {
-                (LinkDeviceInfo device, string token) = devices.Add(entry.Device);
-                entry.DeviceId = device.Id;
-                entry.Token = token;
-                entry.State = PairingState.Approved;
+                try
+                {
+                    (LinkDeviceInfo device, string token) = devices.Add(entry.Device);
+                    entry.DeviceId = device.Id;
+                    entry.Token = token;
+                    entry.State = PairingState.Approved;
+                }
+                catch (Exception ex)
+                {
+                    // Do not hand a one-time bearer token to the phone unless its hash was durably saved.
+                    entry.State = PairingState.Denied;
+                    AppLog.Write("Devices", "Error", "Phone pairing was denied because its credentials could not be persisted.", ex);
+                }
             }
         }
         RaiseChanged();

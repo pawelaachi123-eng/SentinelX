@@ -2,6 +2,7 @@ using System.Windows.Threading;
 using Microsoft.Extensions.DependencyInjection;
 using SentinelX.Services.Actions;
 using SentinelX.Services.AI;
+using SentinelX.Services.Automation;
 using SentinelX.Services.Desktop;
 using SentinelX.Services.History;
 using SentinelX.Services.Intent;
@@ -84,6 +85,12 @@ public static class ServiceLocator
         services.AddSingleton<IVoiceService, VoiceService>();
         // 0.94: phone link (HTTPS on the home network, approval on the PC), alerts for the phone, and the caretaker that keeps it all running.
         services.AddSingleton<Services.Link.AlertFeed>();
+        services.AddSingleton<Services.Notifications.INotificationService, Services.Notifications.AppNotificationService>();
+        services.AddSingleton<IAutomationActionHandler, LaunchApplicationAutomationAction>();
+        services.AddSingleton<IAutomationActionHandler, OpenUrlAutomationAction>();
+        services.AddSingleton<IAutomationActionHandler, ShowNotificationAutomationAction>();
+        services.AddSingleton<AutomationActionRegistry>();
+        services.AddSingleton<AutomationService>();
         services.AddSingleton<Views.Link.LinkUi>(sp => new(sp.GetRequiredService<IUiDispatcher>(), () => sp.GetRequiredService<Services.Link.LinkService>()));
         services.AddSingleton<Services.Link.ILinkApprovalUi>(sp => sp.GetRequiredService<Views.Link.LinkUi>());
         services.AddSingleton<Services.Link.LinkService>(sp => new(new Services.Link.LinkApi(sp.GetRequiredService<IActionEngine>(), sp.GetRequiredService<ISystemMonitorService>(),
@@ -110,6 +117,7 @@ public static class ServiceLocator
         services.AddSingleton<DiagnosticViewModel>();
         // 0.95 · WARSZTAT: the Tools catalogue page (sidebar + Centrum tab).
         services.AddSingleton<ToolsViewModel>();
+        services.AddSingleton<AutomationViewModel>();
         services.AddSingleton<OverlayViewModel>();
         services.AddSingleton<MainViewModel>();
         services.AddSingleton<Views.MainWindow>();

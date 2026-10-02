@@ -76,6 +76,7 @@ final class PinnedTls {
             connection.setConnectTimeout(timeoutMs);
             connection.setReadTimeout(timeoutMs);
             connection.setUseCaches(false);
+            connection.setInstanceFollowRedirects(false);
             return connection;
         } catch (IOException e) {
             throw e;

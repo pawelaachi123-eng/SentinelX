@@ -68,6 +68,19 @@ internal static class UpgradeRegressionRunner
         Check(File.ReadAllText(files.LastFile!).Contains("druga") && Directory.GetFiles(Path.GetDirectoryName(files.LastFile!)!, "*.bak").Length == 2, "Dopisywanie zachowuje treść i kopie poprzednich wersji");
         await files.ProcessAsync("zmien 2 linie na poprawiona", default);
         Check(File.ReadAllText(files.LastFile!).Contains("poprawiona"), "Edycja wskazanej linii pliku");
+        string readBack = await files.ProcessAsync("pokaż ten plik", default) ?? "";
+        Check(readBack.Contains("poprawiona") && readBack.Contains(files.LastFile!), "Odczyt odnosi się wyłącznie do ostatniego pliku Sentinel");
+        await File.WriteAllTextAsync(files.LastFile!, new string('x', 1024 * 1024 + 1));
+        string oversizedRead = await files.ProcessAsync("przeczytaj ten plik", default) ?? "";
+        Check(oversizedRead.Contains("przekracza limit 1 MB"), "Odczyt pliku zmienionego poza aplikacją ma limit pamięci");
+        using (var cancelledRead = new CancellationTokenSource())
+        {
+            cancelledRead.Cancel();
+            bool cancelled = false;
+            try { await files.ProcessAsync("pokaż ten plik", cancelledRead.Token); }
+            catch (OperationCanceledException) { cancelled = true; }
+            Check(cancelled, "Odczyt pliku respektuje anulowanie");
+        }
         Check((await files.ProcessAsync("stwórz plik ../escape.txt na pulpicie", default))!.StartsWith("FAILED"), "Polecenie plikowe nie opuszcza katalogu docelowego");
         Check((await files.ProcessAsync("stwórz plik notatka.txt na pulpicie", default))!.StartsWith("FAILED"), "Tworzenie nie nadpisuje istniejącego pliku");
         return checks;

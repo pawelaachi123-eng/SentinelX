@@ -6,7 +6,9 @@ using Microsoft.Win32;
 using SentinelX.Core;
 using SentinelX.Models;
 using SentinelX.Services.Actions;
+using SentinelX.Services.Automation;
 using SentinelX.Services.Monitoring;
+using SentinelX.Services.Notifications;
 using SentinelX.Services.Settings;
 using SentinelX.Services.Voice;
 using SentinelX.Views.Overlay;
@@ -16,7 +18,8 @@ namespace SentinelX.Services.Desktop;
 /// <summary>Owns Windows interop and UI lifetime; no business logic in window code-behind.</summary>
 public sealed class DesktopService(ISettingsService settings, IActionEngine engine, IVoiceService voice,
     ISystemMonitorService monitor, IUiDispatcher dispatcher, OverlayViewModel overlayVm,
-    Services.Link.AlertFeed alerts, Views.Link.LinkUi linkUi) : IDesktopService, IDisposable
+    Services.Link.AlertFeed alerts, INotificationService notifications, AutomationService automations,
+    Views.Link.LinkUi linkUi) : IDesktopService, IDisposable
 {
     private Window? window;
     private TrayService? tray;
@@ -43,6 +46,7 @@ public sealed class DesktopService(ISettingsService settings, IActionEngine engi
         settings.Changed += ApplySettings;
         monitor.Updated += MetricsUpdated;
         engine.Changed += StateChanged; voice.Changed += StateChanged;
+        notifications.Published += NotificationPublished;
         SystemEvents.UserPreferenceChanged += PreferencesChanged;
         ApplySettings();
     }
@@ -75,6 +79,7 @@ public sealed class DesktopService(ISettingsService settings, IActionEngine engi
         }
         catch (Exception ex) { SetStatus("Zasobnik niedostępny; zamknięcie zakończy aplikację. " + ex.Message); }
         monitor.Start();
+        automations.Start();
         // Started by Windows (autostart): stay quietly in the tray; the phone and the assistant work without a window.
         if ((settings.Current.Startup.StartMinimized || App.AutostartLaunch) && tray != null) window.Hide();
         if (settings.Current.Startup.StartVoiceOnLaunch)
@@ -96,6 +101,10 @@ public sealed class DesktopService(ISettingsService settings, IActionEngine engi
         exiting = true; engine.EmergencyStop(); voice.Stop(); overlay?.Close(); Application.Current.Shutdown();
     }
     private void StateChanged() => dispatcher.Post(() => tray?.UpdateState(voice.State != VoiceState.Off, engine.IsStopped, !string.IsNullOrEmpty(monitor.Current.Game)));
+    private void NotificationPublished(AppNotification notification) => dispatcher.Post(() =>
+    {
+        if (!disposed) tray?.ShowInfo(notification.Title, notification.Message);
+    });
     private void MetricsUpdated(SystemSnapshot snapshot) => dispatcher.Post(() =>
     {
         StateChanged();
@@ -171,6 +180,7 @@ public sealed class DesktopService(ISettingsService settings, IActionEngine engi
         if (disposed) return;
         disposed = true; exiting = true;
         settings.Changed -= ApplySettings; monitor.Updated -= MetricsUpdated; engine.Changed -= StateChanged; voice.Changed -= StateChanged;
+        notifications.Published -= NotificationPublished;
         SystemEvents.UserPreferenceChanged -= PreferencesChanged;
         if (window != null) { window.Closing -= Closing; window.SourceInitialized -= SourceInitialized; window.Loaded -= Loaded; window.StateChanged -= WindowStateChanged; }
         hotkeys?.Dispose(); tray?.Dispose(); overlay?.Close();

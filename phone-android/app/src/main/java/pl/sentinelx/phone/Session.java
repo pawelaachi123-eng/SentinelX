@@ -38,12 +38,20 @@ final class Session {
     }
 
     void saveToken(String token, String pcName) {
+        if (token == null || !token.matches("[A-Za-z0-9_-]{32,128}")) return;
         SharedPreferences.Editor editor = prefs.edit().putString("token", token).putLong("lastAlert", 0L);
-        if (pcName != null && !pcName.isEmpty()) editor.putString("pcName", pcName);
+        if (pcName != null && !pcName.isEmpty()) {
+            String safeName = pcName.replaceAll("\\p{Cntrl}", " ").trim();
+            editor.putString("pcName", safeName.length() > 64 ? safeName.substring(0, 64) : safeName);
+        }
         editor.apply();
     }
 
-    void saveMac(String mac) { prefs.edit().putString("mac", mac == null ? "" : mac).apply(); }
+    void saveMac(String mac) {
+        String value = mac == null ? "" : mac.trim();
+        if (!value.isEmpty() && !value.matches("(?i)([0-9a-f]{2}[:-]){5}[0-9a-f]{2}")) value = "";
+        prefs.edit().putString("mac", value).apply();
+    }
     void setLastAlert(long id) { prefs.edit().putLong("lastAlert", id).apply(); }
     void setNotificationsAsked() { prefs.edit().putBoolean("notificationsAsked", true).apply(); }
     void clearToken() { prefs.edit().remove("token").remove("lastAlert").apply(); }

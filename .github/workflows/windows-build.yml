@@ -1,8 +1,8 @@
 name: Windows build and WPF smoke
 
 # Sprawdza dokładnie to, co trafia do użytkownika: samodzielną paczkę (z wbudowanym .NET i silnikiem AI) oraz instalator.
-# Jest oszczędny: jeden przebieg na push (bez dublowania przez pull_request, bo gałęzie arena/** i tak budują się po pushu)
-# i bez dużych artefaktów (magazyn artefaktów w tym repozytorium bywa pełny; trwałą dystrybucją są pliki wydania).
+# Jeden przebieg na push (bez dublowania przez pull_request); gotowy instalator EXE jest też publikowany jako krótko żyjący artefakt CI.
+# APK buduje android-phone.yml niezależnie, dzięki czemu oba pliki są dostępne po zwykłym pushu bez tworzenia wydania.
 concurrency:
   group: windows-${{ github.ref }}
   cancel-in-progress: true
@@ -118,6 +118,15 @@ jobs:
             }
             throw "Installed application smoke failed: $($p.ExitCode)"
           }
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: sentinelx-windows-x64-installer-${{ github.sha }}
+          path: |
+            bin/installer/*.exe
+            bin/installer/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 7
       - uses: actions/upload-artifact@v4
         continue-on-error: true  # limit magazynu artefaktów nie może zamieniać wyników testów na czerwone
         if: always()

@@ -20,6 +20,12 @@ Telefon pokazuje **to samo co komputer**: ten sam czat z Sentinelem (polecenia, 
 
 Szczegóły techniczne: [docs/PHONE-LINK.md](docs/PHONE-LINK.md) (protokół i bezpieczeństwo), [docs/ENGINE.md](docs/ENGINE.md) (silnik AI), [docs/TOOLS.md](docs/TOOLS.md) (katalog narzędzi), [docs/RELEASE-0.96.md](docs/RELEASE-0.96.md) (notatki wydania i ograniczenia).
 
+## Automatyzacje i artefakty CI
+
+Strona **Automatyzacje** w Centrum pozwala zapisać regułę ręczną, na start aplikacji albo raz dziennie o lokalnej godzinie. Katalog akcji jest ograniczony do uruchomienia rozpoznanej aplikacji, otwarcia zweryfikowanego adresu HTTP/HTTPS oraz powiadomienia. Nie ma akcji powłoki, PowerShella ani dowolnej ścieżki procesu. Historia wykonania jest lokalna i ograniczona do 500 rekordów. Automatyzacje działają tylko wtedy, gdy Sentinel jest uruchomiony; wyzwalacze oparte na procesach, urządzeniach i warunkach systemowych nie są jeszcze dostępne.
+
+Zwykły push na gałąź `arena/**` uruchamia walidację Windows i Androida, bez tworzenia ani nadpisywania wydania GitHub. Po pomyślnym przebiegu pobierz z sekcji **Actions → Artifacts** `sentinelx-windows-x64-installer-<commit>` (instalator `.exe`) i `sentinelx-phone-apk-<commit>`; artefakty są przechowywane 7 dni. Trwałe APK aktualizowane bez odinstalowania wymagają nowego klucza podpisu skonfigurowanego jako chronione sekrety `SENTINELX_ANDROID_KEYSTORE_BASE64`, `SENTINELX_ANDROID_STORE_PASSWORD`, `SENTINELX_ANDROID_KEY_ALIAS` i `SENTINELX_ANDROID_KEY_PASSWORD`. Zwykły artefakt branch-CI bez nich jest podpisany jednorazowym kluczem i przed kolejną instalacją wymaga odinstalowania. Workflow oficjalnego wydania zatrzymuje się, jeśli trwały nowy klucz nie jest skonfigurowany — nie publikuje APK podpisanego kluczem ujawnionym w repozytorium. Stary klucz został usunięty z bieżącego drzewa, ale wcześniejsze commity i klony nie są przepisywane w ramach zwykłego wdrożenia.
+
 ### Plan B: zbuduj instalator u siebie (bez GitHub Actions)
 
 ```powershell

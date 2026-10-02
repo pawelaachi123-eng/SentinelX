@@ -39,7 +39,19 @@ for path in (ROOT / "ViewModels").glob("*.cs"):
 project = ET.parse(ROOT / "SENTINEL-X.csproj")
 assert project.findtext(".//TargetFramework") == "net10.0-windows"
 assert project.findtext(".//UseWindowsForms") != "true"
-assert len(list((ROOT / "Views/Pages").glob("*Page.xaml"))) == 13
+page_files = list((ROOT / "Views/Pages").glob("*Page.xaml"))
+assert len(page_files) == 14
+main_window = ET.parse(ROOT / "Views/MainWindow.xaml")
+page_templates = {
+    child.tag.split("}")[-1]
+    for template in main_window.iter()
+    if template.tag.endswith("}DataTemplate")
+    and template.attrib.get("DataType", "").startswith("{x:Type vm:")
+    for child in list(template)
+    if child.tag.startswith("{clr-namespace:SentinelX.Views.Pages}")
+}
+expected_pages = {path.stem for path in page_files}
+assert page_templates == expected_pages, f"Page/DataTemplate mismatch: missing={sorted(expected_pages - page_templates)}, extra={sorted(page_templates - expected_pages)}"
 # 0.96 · KUŹNIA: the logic is split by responsibility, and the "brain" and the tools never touch WPF.
 assert not (ROOT / "CommandRouter.cs").exists(), "CommandRouter.cs belongs in Brain/Router/"
 for required in ("Brain/Router/CommandRouter.cs", "Brain/Router/DecisionPreview.cs", "Tools/UtilityToolbox.cs", "Tools/ForgeTools.cs", "Testing/UiSmokeTestRunner.cs"):
@@ -47,4 +59,4 @@ for required in ("Brain/Router/CommandRouter.cs", "Brain/Router/DecisionPreview.
 for folder in ("Brain", "Tools"):
     for path in (ROOT / folder).rglob("*.cs"):
         assert "using System.Windows" not in path.read_text(encoding="utf-8-sig"), f"WPF in {folder}/: {path}"
-print("PASS: XML, resources, 13 views, thin code-behind, VM boundaries, target framework, no WinForms flag, Brain/Tools layout without WPF")
+print("PASS: XML, resources, 14 views, thin code-behind, VM boundaries, target framework, no WinForms flag, Brain/Tools layout without WPF")

@@ -43,7 +43,8 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private static readonly Dictionary<string, string> CenterTabByLegacyKey = new(StringComparer.Ordinal)
     {
         ["command"] = "rozmowa", ["tasks"] = "zadania", ["history"] = "historia", ["voice"] = "glos",
-        ["system"] = "system", ["gaming"] = "gry", ["ai"] = "ai", ["actions"] = "akcje", ["diagnostics"] = "diagnostyka"
+        ["system"] = "system", ["gaming"] = "gry", ["ai"] = "ai", ["actions"] = "akcje", ["diagnostics"] = "diagnostyka",
+        ["automations"] = "automations"
     };
 
     public MainViewModel(IActionEngine engine, IDesktopService desktop, IUiDispatcher dispatcher,

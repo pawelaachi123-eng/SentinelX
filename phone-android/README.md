@@ -12,8 +12,9 @@ pokazuje alerty jako powiadomienia, rozpoznaje mowę po polsku i może wybudzić
 
 ## Podpis
 
-`app/sentinelx-phone.p12` (hasło `sentinelx`) to stały klucz, dzięki któremu kolejne wersje instalują się na poprzednie bez odinstalowywania.
-To nie jest klucz do sklepu Play; repozytorium jest prywatne. Workflow sprawdza klucz `keytool`-em i tylko gdy nie da się go odczytać, tworzy nowy (wtedy raz trzeba odinstalować starą aplikację).
+Klucza podpisu ani hasła nie przechowujemy w repozytorium. CI używa chronionych sekretów `SENTINELX_ANDROID_KEYSTORE_BASE64`, `SENTINELX_ANDROID_STORE_PASSWORD`, `SENTINELX_ANDROID_KEY_ALIAS` i `SENTINELX_ANDROID_KEY_PASSWORD`, jeśli są skonfigurowane. W przeciwnym razie workflow tworzy jednorazowy klucz wyłącznie na czas zadania, podpisuje nim APK i zgłasza ostrzeżenie; taki APK można zainstalować, ale aktualizacja wymaga odinstalowania poprzedniej wersji.
+
+Poprzedni klucz był przechowywany w kodzie z hasłem zapisanym w pliku Gradle, więc został usunięty z bieżącego drzewa i nie jest już używany. Traktuj go jako ujawniony: usunięcie pliku nie usuwa go z wcześniejszych commitów ani kopii klonów. Android nie ma mechanizmu unieważniania starego certyfikatu podpisu; starsze instalacje wymagają jednorazowego odinstalowania przed instalacją APK z nowym kluczem. Lokalne `assembleRelease` bez zmiennych podpisu produkuje APK niepodpisany; do lokalnego testu użyj wariantu debug, a gotowy podpisany APK pobierz z artefaktów workflow CI.
 
 ## Pliki
 
@@ -28,4 +29,4 @@ To nie jest klucz do sklepu Play; repozytorium jest prywatne. Workflow sprawdza 
 
 ## Sprawdzone i niesprawdzone
 
-Kod nie był kompilowany w środowisku, w którym powstał (brak Android SDK); składnię sprawdzono parserem Javy. Pierwszy build wykona CI. Na prawdziwym telefonie trzeba jeszcze sprawdzić: wykrywanie, parowanie, powiadomienia (Android 13+ pyta o zgodę), Wake-on-LAN.
+Kod Androida nie był kompilowany lokalnie w tym środowisku (brak Android SDK/JDK); ostatnie poprawki połączenia i sesji nie mają jeszcze wyniku kompilatora. Po pushu workflow CI uruchamia Gradle, weryfikuje podpis APK (`apksigner`) i zachowuje artefakt przez 7 dni. Na prawdziwym telefonie trzeba jeszcze sprawdzić: wykrywanie, parowanie, powiadomienia (Android 13+ pyta o zgodę), Wake-on-LAN.

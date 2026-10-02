@@ -142,6 +142,10 @@ internal static class LinkRegression
         feed.Add("warn", "nowy", "alert");
         Check((await waiting).Count == 1 && feed.After(before)[0].Level == "warn", "long-polling returns as soon as an alert arrives");
         Check((await feed.WaitAfterAsync(feed.LastId, TimeSpan.FromMilliseconds(120), default)).Count == 0, "long-polling times out quietly");
+        var hostileAlert = feed.Add("warn", "Title" + (char)13 + (char)10 + new string('x', 130), "Body" + (char)13 + (char)10 + new string('y', 700));
+        Check(hostileAlert.Title.Length == 120 && hostileAlert.Text.Length == 600 &&
+              !hostileAlert.Title.Any(char.IsControl) && !hostileAlert.Text.Any(char.IsControl),
+            "phone notifications strip control characters and enforce field-size limits at the journal boundary");
 
         string deviceDirectory = Path.Combine(directory, "devices");
         var devices = new LinkDeviceStore(deviceDirectory);
@@ -152,6 +156,53 @@ internal static class LinkRegression
         Check(devices.Remove(device.Id) && new LinkDeviceStore(deviceDirectory).Validate(token) == null, "removing a phone revokes its token");
         for (int i = 0; i < 12; i++) devices.Add("Telefon " + i);
         Check(devices.List().Count == 10, "at most ten phones; the least recently used one is replaced");
+
+        string blockedRoot = Path.Combine(directory, "not-a-directory");
+        if (Directory.Exists(blockedRoot)) Directory.Delete(blockedRoot, true);
+        if (File.Exists(blockedRoot)) File.Delete(blockedRoot);
+        File.WriteAllText(blockedRoot, "test fixture");
+        var blockedStore = new LinkDeviceStore(Path.Combine(blockedRoot, "nested"));
+        bool addFailed = false;
+        try { blockedStore.Add("Niezapisany telefon"); }
+        catch (IOException) { addFailed = true; }
+        Check(addFailed && blockedStore.List().Count == 0 && blockedStore.LastError != null,
+            "a phone is not paired or issued a bearer token when the credential store cannot be written");
+
+        string revocationRoot = Path.Combine(directory, "revocation");
+        string preservedDeviceDirectory = revocationRoot + ".preserved";
+        if (Directory.Exists(revocationRoot)) Directory.Delete(revocationRoot, true);
+        if (File.Exists(revocationRoot)) File.Delete(revocationRoot);
+        if (Directory.Exists(preservedDeviceDirectory)) Directory.Delete(preservedDeviceDirectory, true);
+        if (File.Exists(preservedDeviceDirectory)) File.Delete(preservedDeviceDirectory);
+        var revocationStore = new LinkDeviceStore(revocationRoot);
+        (LinkDeviceInfo revocable, string revocationToken) = revocationStore.Add("Telefon do odłączenia");
+        Directory.Move(revocationRoot, preservedDeviceDirectory);
+        File.WriteAllText(revocationRoot, "test fixture blocks the store directory");
+        Check(!revocationStore.Remove(revocable.Id) && revocationStore.Validate(revocationToken)?.Id == revocable.Id && revocationStore.LastError != null,
+            "failed credential persistence is surfaced instead of reporting a durable revocation");
+        Check(new LinkDeviceStore(preservedDeviceDirectory).Validate(revocationToken)?.Id == revocable.Id,
+            "the old credential remains explicitly recoverable after a failed revocation write");
+        Check(!revocationStore.RemoveAll() && revocationStore.List().Count == 1,
+            "disconnect-all also reports a failed durable write and preserves the in-memory view");
+
+        string corruptDeviceDirectory = Path.Combine(directory, "corrupt-devices");
+        if (Directory.Exists(corruptDeviceDirectory)) Directory.Delete(corruptDeviceDirectory, true);
+        Directory.CreateDirectory(corruptDeviceDirectory);
+        File.WriteAllText(Path.Combine(corruptDeviceDirectory, "devices.json"), "{ invalid");
+        var corruptStore = new LinkDeviceStore(corruptDeviceDirectory);
+        Check(corruptStore.LastError != null && Directory.GetFiles(corruptDeviceDirectory, "devices.json.corrupt-*").Length == 1,
+            "an unreadable credential store is quarantined instead of silently replaced");
+        (LinkDeviceInfo recoveredDevice, string recoveredToken) = corruptStore.Add("Nowy telefon");
+        Check(new LinkDeviceStore(corruptDeviceDirectory).Validate(recoveredToken)?.Id == recoveredDevice.Id,
+            "a fresh pairing works after the damaged credential file has been preserved");
+
+        string oversizedDeviceDirectory = Path.Combine(directory, "oversized-devices");
+        if (Directory.Exists(oversizedDeviceDirectory)) Directory.Delete(oversizedDeviceDirectory, true);
+        Directory.CreateDirectory(oversizedDeviceDirectory);
+        File.WriteAllText(Path.Combine(oversizedDeviceDirectory, "devices.json"), new string('x', 256 * 1024 + 1));
+        var oversizedStore = new LinkDeviceStore(oversizedDeviceDirectory);
+        Check(oversizedStore.LastError != null && Directory.GetFiles(oversizedDeviceDirectory, "devices.json.corrupt-*").Length == 1,
+            "an oversized device store is detected and preserved before any new credentials can overwrite it");
 
         string certDirectory = Path.Combine(directory, "cert");
         using (var first = new LinkCertificate(certDirectory))
@@ -166,7 +217,10 @@ internal static class LinkRegression
         var memory = new ConversationMemoryService(Path.Combine(directory, "memory"));
         var api = new LinkApi(engine, new FakeMonitor(), tasks, memory, alerts,
             () => new LinkInfo("9.9", "ready", "gotowy", 1, "qwen3:1.7b", ["qwen3:1.7b"], true, "Wszystko działa samo"), () => ["https://127.0.0.1/"]);
-        using var service = new LinkService(api, ui, () => new LinkSettings { Port = 0, Discovery = false }, Path.Combine(directory, "link"));
+        string linkDirectory = Path.Combine(directory, "link");
+        if (Directory.Exists(linkDirectory)) Directory.Delete(linkDirectory, true);
+        if (File.Exists(linkDirectory)) File.Delete(linkDirectory);
+        using var service = new LinkService(api, ui, () => new LinkSettings { Port = 0, Discovery = false }, linkDirectory);
         await service.StartAsync(IPAddress.Loopback);
         Check(service.IsRunning && service.Port > 0 && service.Fingerprint.Length == 64, "the link starts and reports its certificate fingerprint");
 
@@ -203,9 +257,21 @@ internal static class LinkRegression
             "the window on the PC shows the same code the phone derives itself");
         Check((await Post(anonymous, "api/pair/request", new { device = "Drugi", nonce = clientNonce })).Status == 429, "a second request is refused while one is waiting for the user");
         Check((await Get(anonymous, "api/pair/status?id=" + id)).Json.GetProperty("state").GetString() == "pending", "the request waits for the click");
+        string blockedDevicePath = Path.Combine(linkDirectory, "devices.json");
+        Directory.CreateDirectory(blockedDevicePath); // Make the final rename fail after the one-time token has been generated.
+        ui.Decide!(true);
+        var persistenceDenied = await Get(anonymous, "api/pair/status?id=" + id);
+        Check(persistenceDenied.Json.GetProperty("state").GetString() == "denied" && !persistenceDenied.Json.TryGetProperty("token", out _)
+              && service.Devices.Count == 0 && service.DeviceStoreError != null,
+            "a pairing consent cannot issue a bearer token unless its hash is durably persisted");
+        Directory.Delete(blockedDevicePath);
+
+        var retryRequest = await Post(anonymous, "api/pair/request", new { device = "Telefon z testu", nonce = clientNonce });
+        Check(retryRequest.Status == 200, "pairing can be retried after the credential store is repaired");
+        id = retryRequest.Json.GetProperty("id").GetString()!;
         ui.Decide!(true);
         var approved = await Get(anonymous, "api/pair/status?id=" + id);
-        Check(approved.Json.GetProperty("state").GetString() == "approved", "after the click the phone is approved");
+        Check(approved.Json.GetProperty("state").GetString() == "approved", "after durable storage and the click the phone is approved");
         string phoneToken = approved.Json.GetProperty("token").GetString()!;
         Check((await Get(anonymous, "api/pair/status?id=" + id)).Json.GetProperty("state").GetString() == "expired", "the token is handed over exactly once");
 

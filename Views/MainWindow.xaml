@@ -40,6 +40,9 @@
         <DataTemplate DataType="{x:Type vm:ToolsViewModel}">
             <pages:ToolsPage/>
         </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:AutomationViewModel}">
+            <pages:AutomationPage/>
+        </DataTemplate>
         <Style x:Key="ThemeTile" TargetType="ListBoxItem">
             <Setter Property="Margin" Value="0,0,6,6"/>
             <Setter Property="Padding" Value="0"/>

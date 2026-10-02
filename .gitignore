@@ -437,3 +437,8 @@ test-results/
 
 # Bundled AI engine binaries are fetched by CI / scripts/fetch-llama.ps1, never committed
 Engine/llama/
+
+# Android release-signing material must stay in protected CI secrets, never in the repository.
+phone-android/app/*.p12
+phone-android/app/*.jks
+phone-android/app/*.keystore

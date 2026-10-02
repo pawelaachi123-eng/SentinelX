@@ -1,7 +1,7 @@
-# Architektura SentinelX (0.90)
+# Architektura SentinelX (stan bieżącego drzewa)
 
-Dokument opisuje stan faktyczny kodu na gałęzi `arena/01a0ca99-sentinelx`, nie plany.
-Nazwy typów są rzeczywiste — można ich szukać `grep`-em w repozytorium.
+Dokument opisuje stan faktyczny kodu w tym checkoutcie, nie plany.
+Nazwy typów są rzeczywiste — można ich szukać w repozytorium.
 
 ## 1. Warstwy
 
@@ -12,7 +12,8 @@ ViewModels/*            stan widoku i AsyncRelayCommand (CommunityToolkit.Mvvm),
    │  (wywołania serwisów)
 Services/* + *.cs       cała logika: pomiary, polecenia, pamięć, zadania, projekty, diagnostyka
    │  (JSON + odczyt zwrotny)
-Magazyny lokalne        %LocalAppData%\SentinelX\{Settings,Memory,History,Backups,Logs,Cache}
+Magazyny lokalne        %LocalAppData%\SentinelX\{Settings,Memory,History,Backups,Logs,Cache,Automations}
+                        Logs/sentinel.jsonl: ustrukturyzowany JSONL z redakcją sekretów i rotacją
 ```
 
 Zasada pilnowana przez `scripts/check-architecture.py` w CI: widok nie sięga do logiki,
@@ -65,6 +66,7 @@ produktowa, nie kosmetyka: `zamknij notatnik` bez potwierdzenia procesu nie moż
   w ustawieniach działa bez restartu. Tryb prywatny jest wyłącznie runtime i nigdy nie jest zapisywany.
 - Archiwum rozmów (`MemoryArchiveService`) pisze do `Memory/Archives/RRRR-MM/` i kasuje wpisy
   z magazynu **dopiero po** zgodnym odczycie zwrotnym. Wspomnienia i profil nie podlegają archiwizacji.
+- `FileWorkspaceService` ogranicza operacje i odczyt utworzonego pliku do 1 MiB, odrzuca dowiązania i weryfikuje zapis; awaria lub anulowanie nie jest przedstawiane jako sukces.
 - `WorkspaceInsightsService.Backup` kopiuje magazyny do `Backups/<data>/` z manifestem hashów
   i sprawdza każdą kopię odczytem zwrotnym.
 
@@ -77,7 +79,7 @@ nie `eval`, nie kod z polecenia użytkownika.
 
 ## 7. Testy i CI
 
-`--ui-smoke` uruchamia zestawy regresji (`tests/*.cs`, od 0.96 także `Testing/ForgeRegression.cs` i `Testing/RoutingRegression.cs`) na prawdziwym DI i prawdziwych stronach,
+`--ui-smoke` uruchamia zestawy regresji (`tests/*.cs`, od 0.96 także `Testing/ForgeRegression.cs`, `Testing/RoutingRegression.cs` i `tests/AutomationRegression.cs`) na prawdziwym DI i prawdziwych stronach,
 a następnie renderuje każdą stronę, zbierając błędy wiązań WPF z `PresentationTraceSources`.
 `--self-test` odpala te same zestawy bez UI. CI (`windows-build.yml`): checki architektury → restore →
 build → smoke UI → regresje → publish portable → sumy kontrolne → smoke portable → instalator Inno →
@@ -120,5 +122,17 @@ Phone/web/*             interfejs telefonu (HTML/CSS/JS), osadzony w exe i serwo
 phone-android/*         aplikacja Android (Java, bez bibliotek): powłoka WebView + wykrywanie + przypięty certyfikat + alerty + WoL
 ```
 
-Polecenie z telefonu: `LinkApi` → `IActionEngine.ExecuteAsync(..., fromVoice: true)` — ta sama kolejka, te same dowody, te same zgody; ryzykowne akcje zatwierdza się wyłącznie na komputerze.
+Polecenie z telefonu: `LinkApi` → `IActionEngine.ExecuteAsync(..., fromVoice: true)` — ta sama kolejka, te same dowody, te same zgody; ryzykowne akcje zatwierdza się wyłącznie na komputerze. `LinkDeviceStore` odrzuca nieprawidłowy i nadmiernie duży magazyn, zachowuje uszkodzony plik w kwarantannie, weryfikuje zapis JSON przed podmianą i nie wydaje tokenu przed trwałym zapisem jego skrótu. Odłączenie jednego lub wszystkich urządzeń zgłasza błąd zamiast udawać trwałe unieważnienie; panel „Telefon” ma przycisk per urządzenie.
 Protokół i model bezpieczeństwa: [PHONE-LINK.md](PHONE-LINK.md). Silnik AI: [ENGINE.md](ENGINE.md).
+
+## 10. Automatyzacje i powiadomienia
+
+`Services/Automation/` rozdziela kontrakty reguł, katalog allowlisty akcji i scheduler. Triggerami są wyłącznie: ręczne uruchomienie, start aplikacji oraz harmonogram raz dziennie w lokalnym czasie. Akcje są osobnymi `IAutomationActionHandler`: rozpoznana aplikacja, walidowany adres HTTP/HTTPS i komunikat powiadomienia. Nie ma fallbacku do shell/PowerShell, swobodnej ścieżki procesu ani zdalnego wykonania. Reguły i ograniczona historia 500 wykonań są przechowywane atomowo w `Automations/automations.json`; awaria pliku pozostawia kwarantannę i komunikat.
+
+`DesktopService` uruchamia scheduler po załadowaniu aplikacji. `INotificationService` przekazuje zdarzenia do lokalnego zasobnika i istniejącego `AlertFeed` (także dla sparowanego telefonu). Zmiana reguły w trakcie wykonania jest blokowana; ręczne i zaplanowane wykonanie można anulować, ale ukończone akcje nie są cofane. Regresja używa atrap, testuje walidację URL/aplikacji, kolejność, scheduler, trwałość, awarie, anulowanie oraz limit historii.
+
+## 11. Diagnostyka i dystrybucja
+
+`AppLog` zapisuje ograniczony JSONL w `Logs/sentinel.jsonl`: kategorie, poziomy, redakcja typowych tokenów/kluczy/hasła oraz rotacja przy 2 MiB z czterema archiwami. Logger jest best-effort i nie może zakończyć procesu. Ścieżka `SENTINEL_DATA_DIR` jest używana tylko jako absolutny override, a błędna wartość wraca do katalogu LocalAppData.
+
+Zwykły push publikuje 7-dniowe artefakty instalatora EXE i APK, lecz nie tworzy wydania GitHub. Release buduje Windows i Android osobno, wymaga chronionego trwałego klucza Androida, waliduje podpis oraz sumy kontrolne, a pojedynczy job publikuje dopiero po sukcesie obu buildów. Istniejących tagów i wydań nie nadpisuje. Stary klucz z jawnym hasłem usunięto z bieżącego drzewa, ale pozostaje w historii wcześniejszych commitów i należy traktować go jako ujawniony.

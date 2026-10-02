@@ -53,8 +53,9 @@ public sealed class PhoneLinkWindow : Window
         disconnect.Style = TryFindResource("SxDangerButton") as Style;
         disconnect.Click += (_, _) =>
         {
-            if (MessageBox.Show(this, "Odłączyć wszystkie telefony? Każdy będzie musiał ponownie uzyskać zgodę na komputerze.", "Sentinel X", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
-                link.RemoveAllDevices();
+            if (MessageBox.Show(this, "Odłączyć wszystkie telefony? Każdy będzie musiał ponownie uzyskać zgodę na komputerze.", "Sentinel X", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes
+                && !link.RemoveAllDevices())
+                MessageBox.Show(this, link.DeviceStoreError ?? "Nie udało się trwale odłączyć telefonów. Spróbuj ponownie.", "Sentinel X", MessageBoxButton.OK, MessageBoxImage.Error);
         };
         panel.Children.Add(disconnect);
         panel.Children.Add(Text("Jeśli Windows zapyta o zaporę, kliknij „Zezwól” dla sieci prywatnych. Sentinel nigdy nie łączy się z telefonem przez internet.", 12, false, "SxTextSecondary", new Thickness(0, 16, 0, 0)));
@@ -78,7 +79,12 @@ public sealed class PhoneLinkWindow : Window
     private void Refresh()
     {
         IReadOnlyList<string> urls = link.Urls;
-        status.Text = link.IsRunning ? "Łącze z telefonem działa i czeka w Twojej sieci domowej." : "Łącze z telefonem jest wyłączone (Ustawienia → Telefon) albo jeszcze się uruchamia.";
+        string connectionStatus = link.IsRunning
+            ? "Łącze z telefonem działa i czeka w Twojej sieci domowej."
+            : "Łącze z telefonem jest wyłączone (Ustawienia → Telefon) albo jeszcze się uruchamia.";
+        status.Text = string.IsNullOrWhiteSpace(link.DeviceStoreError)
+            ? connectionStatus
+            : connectionStatus + "\n\nOstrzeżenie: " + link.DeviceStoreError;
         addresses.Text = urls.Count == 0 ? "Brak adresu w sieci — połącz komputer z Wi‑Fi lub kablem." : string.Join("\n", urls);
         qr.Source = urls.Count == 0 ? null : RenderQr(urls[0]);
         qr.Visibility = qr.Source == null ? Visibility.Collapsed : Visibility.Visible;
@@ -88,9 +94,23 @@ public sealed class PhoneLinkWindow : Window
         if (list.Count == 0) devices.Children.Add(Text("Jeszcze żaden telefon — otwórz aplikację na telefonie.", 13, false, "SxTextSecondary", new Thickness(0, 6, 0, 0)));
         foreach (LinkDeviceInfo device in list)
         {
-            var row = new StackPanel { Margin = new Thickness(0, 8, 0, 0) };
-            row.Children.Add(Text(device.Name, 14, true, "SxTextPrimary"));
-            row.Children.Add(Text($"połączony {device.AddedAt.LocalDateTime:dd.MM.yyyy HH:mm} · ostatnio widziany {device.LastSeen.LocalDateTime:dd.MM HH:mm}", 12, false, "SxTextSecondary"));
+            var row = new Grid { Margin = new Thickness(0, 8, 0, 0) };
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            var details = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+            details.Children.Add(Text(device.Name, 14, true, "SxTextPrimary"));
+            details.Children.Add(Text($"połączony {device.AddedAt.LocalDateTime:dd.MM.yyyy HH:mm} · ostatnio widziany {device.LastSeen.LocalDateTime:dd.MM HH:mm}", 12, false, "SxTextSecondary"));
+            row.Children.Add(details);
+            var disconnectOne = new Button { Content = "Odłącz", MinWidth = 76, Margin = new Thickness(10, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+            disconnectOne.Style = TryFindResource("SxSecondaryButton") as Style;
+            disconnectOne.Click += (_, _) =>
+            {
+                if (MessageBox.Show(this, $"Odłączyć „{device.Name}”? Telefon będzie musiał ponownie uzyskać zgodę.", "Sentinel X", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes
+                    && !link.RemoveDevice(device.Id))
+                    MessageBox.Show(this, link.DeviceStoreError ?? "Nie udało się trwale odłączyć telefonu. Spróbuj ponownie.", "Sentinel X", MessageBoxButton.OK, MessageBoxImage.Error);
+            };
+            Grid.SetColumn(disconnectOne, 1);
+            row.Children.Add(disconnectOne);
             devices.Children.Add(row);
         }
     }

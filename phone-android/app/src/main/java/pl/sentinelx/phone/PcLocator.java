@@ -37,8 +37,10 @@ final class PcLocator {
 
     /** When a fingerprint is given only the PC that owns that certificate counts (so a neighbour's PC is never picked up by accident). */
     static Pc discover(String wantedFingerprint) {
-        List<Pc> found = discoverAll(wantedFingerprint, 2500);
-        return found.isEmpty() ? null : found.get(0);
+        for (Pc candidate : discoverAll(wantedFingerprint, 2500)) {
+            if (probe(candidate.host, candidate.port, candidate.fingerprint, 1500)) return candidate;
+        }
+        return null;
     }
 
     static List<Pc> discoverAll(String wantedFingerprint, int listenMs) {
@@ -57,7 +59,7 @@ final class PcLocator {
             }
             long until = System.currentTimeMillis() + listenMs;
             byte[] buffer = new byte[2048];
-            while (System.currentTimeMillis() < until) {
+            while (System.currentTimeMillis() < until && result.size() < 32) {
                 socket.setSoTimeout((int) Math.max(50, until - System.currentTimeMillis()));
                 DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
                 try {
@@ -69,9 +71,13 @@ final class PcLocator {
                     JSONObject json = new JSONObject(new String(packet.getData(), 0, packet.getLength(), StandardCharsets.UTF_8));
                     if (!"SentinelX".equals(json.optString("app"))) continue;
                     String fp = json.optString("fingerprint", "").toLowerCase(Locale.ROOT);
-                    if (fp.length() != 64) continue;
+                    if (!fp.matches("[0-9a-f]{64}")) continue;
                     if (wantedFingerprint != null && !wantedFingerprint.isEmpty() && !wantedFingerprint.equalsIgnoreCase(fp)) continue;
-                    result.add(new Pc(packet.getAddress().getHostAddress(), json.optInt("port", 43180), fp, json.optString("name", "")));
+                    int port = json.optInt("port", 43180);
+                    if (port < 1 || port > 65535) continue;
+                    String name = json.optString("name", "").replaceAll("\\p{Cntrl}", " ").trim();
+                    if (name.length() > 64) name = name.substring(0, 64);
+                    result.add(new Pc(packet.getAddress().getHostAddress(), port, fp, name));
                 } catch (Exception ignored) {
                     // not a Sentinel X answer
                 }
@@ -107,8 +113,12 @@ final class PcLocator {
 
     /** True when a Sentinel X with exactly this certificate answers on this address. */
     static boolean probe(String host, int port, String fingerprint) {
+        return probe(host, port, fingerprint, 3000);
+    }
+
+    static boolean probe(String host, int port, String fingerprint, int timeoutMs) {
         try {
-            String body = PinnedTls.getText("https://" + host + ":" + port + "/api/hello", fingerprint, null, 3000);
+            String body = PinnedTls.getText("https://" + host + ":" + port + "/api/hello", fingerprint, null, timeoutMs);
             return "SentinelX".equals(new JSONObject(body).optString("app"));
         } catch (Exception e) {
             return false;

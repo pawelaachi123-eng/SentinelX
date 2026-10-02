@@ -71,7 +71,7 @@ public partial class CommandCenterViewModel : ObservableObject, IDisposable
         SystemViewModel system, VoiceViewModel voiceViewModel, IHistoryService history, ConversationMemoryService memory, TaskService tasks,
         TaskViewModel taskPage, HistoryViewModel historyPage, GamingViewModel gamingPage, AiViewModel aiPage,
         ActionsViewModel actionsPage, DiagnosticViewModel diagnosticsPage, ToolsViewModel toolsPage,
-        MemoryArchiveService? archives = null)
+        AutomationViewModel automationPage, MemoryArchiveService? archives = null)
     {
         this.engine = engine; this.voice = voice; this.dispatcher = dispatcher; this.history = history; this.memory = memory; this.tasks = tasks; System = system; Voice = voiceViewModel;
         Sections =
@@ -85,6 +85,7 @@ public partial class CommandCenterViewModel : ObservableObject, IDisposable
             new CenterTab("ai", "✨", "AI", aiPage),
             new CenterTab("akcje", "⚡", "Akcje", actionsPage),
             new CenterTab("diagnostyka", "🩺", "Diagnostyka", diagnosticsPage),
+            new CenterTab("automations", "⏱", "Automatyzacje", automationPage),
             new CenterTab("narzedzia", "🧰", "Narzędzia", toolsPage)
         ];
         SelectedTab = Sections[0];

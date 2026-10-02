@@ -225,15 +225,23 @@ public class MainActivity extends Activity {
 
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-                Uri uri = request.getUrl();
-                return uri.getHost() == null || !uri.getHost().equals(session.host()); // never leave the PC's own page
+                return !isPinnedOrigin(request.getUrl()); // keep navigation on the exact pinned HTTPS origin
             }
 
             @Override
             public void onPageFinished(WebView view, String url) {
-                if (url != null && url.startsWith("https://")) hideStatus();
+                if (url != null && isPinnedOrigin(Uri.parse(url))) hideStatus();
             }
         });
+    }
+
+    private boolean isPinnedOrigin(Uri uri) {
+        return uri != null
+                && "https".equalsIgnoreCase(uri.getScheme())
+                && uri.getHost() != null
+                && uri.getHost().equalsIgnoreCase(session.host())
+                && uri.getPort() == session.port()
+                && uri.getUserInfo() == null;
     }
 
     private static String fingerprintOf(SslCertificate certificate) {
@@ -259,7 +267,13 @@ public class MainActivity extends Activity {
                     openPc();
                     return;
                 }
-                List<PcLocator.Pc> all = distinctByCertificate(PcLocator.discoverAll(session.fingerprint(), 2500));
+                List<PcLocator.Pc> candidates = distinctByCertificate(PcLocator.discoverAll(session.fingerprint(), 2500));
+                List<PcLocator.Pc> all = new ArrayList<>();
+                for (PcLocator.Pc candidate : candidates) {
+                    if (all.size() >= 8) break;
+                    // UDP discovery is unauthenticated. Verify the advertised fingerprint against TLS before trusting or loading the page.
+                    if (PcLocator.probe(candidate.host, candidate.port, candidate.fingerprint, 1500)) all.add(candidate);
+                }
                 if (all.size() == 1 || (!all.isEmpty() && session.hasPc())) {
                     PcLocator.Pc found = all.get(0);
                     session.savePc(found.host, found.port, found.fingerprint, found.name);

@@ -2,6 +2,12 @@ plugins {
     id 'com.android.application'
 }
 
+def releaseStorePath = System.getenv('SENTINELX_ANDROID_KEYSTORE')
+
+def releaseStorePassword = System.getenv('SENTINELX_ANDROID_STORE_PASSWORD')
+def releaseKeyAlias = System.getenv('SENTINELX_ANDROID_KEY_ALIAS')
+def releaseKeyPassword = System.getenv('SENTINELX_ANDROID_KEY_PASSWORD')
+
 android {
     namespace 'pl.sentinelx.phone'
     compileSdk 35
@@ -14,21 +20,24 @@ android {
         versionName '0.96.0'
     }
 
-    // Stały klucz podpisu (repozytorium prywatne): kolejne wersje instalują się na poprzednie bez odinstalowywania.
-    // To nie jest klucz do sklepu Play — aplikacja jest instalowana ręcznie z wydania na GitHubie.
-    signingConfigs {
-        release {
-            storeFile file('sentinelx-phone.p12')
-            storeType 'pkcs12'
-            storePassword 'sentinelx'
-            keyAlias 'sentinelx'
-            keyPassword 'sentinelx'
+    // Release signing is injected by CI from protected environment variables.
+    // Local builds without signing inputs remain unsigned; no key or password is stored in source.
+    if (releaseStorePath && releaseStorePassword && releaseKeyAlias && releaseKeyPassword) {
+        signingConfigs {
+            release {
+                storeFile file(releaseStorePath)
+                storeType 'pkcs12'
+                storePassword releaseStorePassword
+                keyAlias releaseKeyAlias
+                keyPassword releaseKeyPassword
+            }
         }
     }
 
     buildTypes {
         release {
-            signingConfig signingConfigs.release
+            if (releaseStorePath && releaseStorePassword && releaseKeyAlias && releaseKeyPassword)
+                signingConfig signingConfigs.release
             minifyEnabled false
         }
     }
