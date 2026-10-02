@@ -1,4 +1,4 @@
-# SENTINEL X 0.96 · KUŹNIA — Windows + telefon
+# SENTINEL X 0.97 · AURORA — Windows + telefon
 
 Lokalny asystent Windows 10/11 (C# 14, .NET 10, WPF) z aplikacją na telefon. **Nic nie trzeba pilnować:** instalujesz raz, a Sentinel sam startuje z Windows, sam pobiera i naprawia swój silnik AI, sam pilnuje komputera i daje znać na telefon. Poprzedni interfejs jest nadal dostępny przez `--legacy`.
 
@@ -18,7 +18,7 @@ Telefon pokazuje **to samo co komputer**: ten sam czat z Sentinelem (polecenia, 
 - **Opiekun** sprawdza co minutę, czy łącze z telefonem i silnik AI działają, i uruchamia je ponownie, gdy trzeba. Jedna linia statusu mówi „Wszystko działa samo” albo — uczciwie — co wymaga Twojej uwagi.
 - **Wake-on-LAN:** aplikacja na Androida może wybudzić komputer (o ile karta sieciowa i BIOS na to pozwalają).
 
-Szczegóły techniczne: [docs/PHONE-LINK.md](docs/PHONE-LINK.md) (protokół i bezpieczeństwo), [docs/ENGINE.md](docs/ENGINE.md) (silnik AI), [docs/TOOLS.md](docs/TOOLS.md) (katalog narzędzi), [docs/RELEASE-0.96.md](docs/RELEASE-0.96.md) (notatki wydania i ograniczenia).
+Szczegóły techniczne: [docs/PHONE-LINK.md](docs/PHONE-LINK.md), [docs/ENGINE.md](docs/ENGINE.md), [docs/TOOLS.md](docs/TOOLS.md), [docs/RELEASE-0.97.md](docs/RELEASE-0.97.md) (notatki wydania i ograniczenia).
 
 ### Plan B: zbuduj instalator u siebie (bez GitHub Actions)
 
@@ -28,6 +28,20 @@ powershell -ExecutionPolicy Bypass -File scripts\build-local.ps1 -Test
 ```
 
 Aplikację na Androida najłatwiej zbudować w wydaniu na GitHubie (workflow **Release**); lokalnie potrzebny jest Android Studio — zob. [phone-android/README.md](phone-android/README.md).
+
+
+## Nowe w 0.97 — AURORA: zupełnie nowy interfejs
+
+- **Paleta Aurora** — głębsza czerń nocy polarnej, akcenty cyjanu, fioletu, mięty i róży, świecące cienie na przyciskach i wybranych kartach.
+- **Szklane karty** z efektem aurory (`SxGlassCard`) w Centrum, Systemie, Głosie i na pasku bocznym.
+- **Trzy dekoracyjne poświaty aurory** za panelem treści (cyjan u góry, fiolet na dole, róż w rogu) — czysto dekoracyjne, nie przechwytują wejścia.
+- **Nowe bąbelki czatu**: użytkownik (prawo) w niebiesko-cyjanowym gradiencie z poświatą, asystent (lewo) w ciemnym szkle z zaokrąglonymi narożnikami. Badge „TY” / „SENTINEL” zamiast surowego tekstu roli. Pulsujący wskaźnik „generowanie”.
+- **Pasek wejścia** z przyciskiem mikrofonu, gradientowym przyciskiem Wyślij i lepiej wyodrębnionym przyciskiem zatrzymania.
+- **Przeprojektowany pasek boczny** z nowym logo, kafelkiem NA ŻYWO (CPU/RAM/GPU), badge statusu głosu i gradientowym przyciskiem EMERGENCY STOP.
+- **Strona Głosu** i **Strona Systemu** z kartami metryk w szklanym stylu, paskami postępu i ikonami gradientowymi.
+- **Wszystkie przyciski** mają subtelne świecące cienie przy najechaniu / zaznaczeniu; przycisk główny i niebezpieczny używają gradientów.
+- **Animacje**: nowe storyboardy `SxSlideUp` i `SxPulse`, ulepszone `SxFadeIn/FadeOut` z łagodniejszym easingiem.
+- Spójne marginesy (32 px), zaokrąglenia (do 20 px), typografia i wersja (0.97 · AURORA) w całym interfejsie.
 
 
 ## Nowe w 0.96 — KUŹNIA: podgląd decyzji, szukanie w zadaniach i 11 nowych narzędzi

@@ -1,7 +1,7 @@
 <UserControl xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:u="clr-namespace:SentinelX.Utilities" x:Class="SentinelX.Views.Pages.HistoryPage" u:PageTransitions.Enabled="True" u:UiInteraction.LoadedCommand="{Binding RefreshCommand}">
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-        <StackPanel Margin="28">
-            <TextBlock Text="History" Style="{StaticResource SxHeading}"/>
+        <StackPanel Margin="32">
+            <TextBlock Text="History" Style="{StaticResource SxTitleGradient}"/>
             <TextBlock Text="Trwała historia lokalna · dowody działań i pamięć rozmów" Style="{StaticResource SxCaption}" Margin="0,0,0,24"/>
             <DockPanel Margin="0,0,0,16">
                 <Button Content="Odśwież historię" Command="{Binding RefreshCommand}" DockPanel.Dock="Right" Margin="12,0,0,0"/>

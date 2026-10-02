@@ -1,5 +1,5 @@
 <Window x:Class="SentinelX.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Sentinel X • 0.85" Width="1260" Height="860" MinWidth="1000" MinHeight="720" WindowStartupLocation="CenterScreen"
+        Title="Sentinel X • 0.97 Aurora" Width="1280" Height="880" MinWidth="1000" MinHeight="720" WindowStartupLocation="CenterScreen"
         Background="{DynamicResource ShellBrush}" Foreground="{DynamicResource TextBrush}" FontFamily="Segoe UI" FontSize="14">
 <Window.Resources><ResourceDictionary><ResourceDictionary.MergedDictionaries><ResourceDictionary Source="Theme.xaml"/></ResourceDictionary.MergedDictionaries></ResourceDictionary></Window.Resources>
     <Grid Background="{DynamicResource ShellBrush}">
@@ -23,7 +23,7 @@
                     <TextBlock Text="LOKALNIE NA TWOIM PC" FontSize="10" Foreground="#FFC86B" FontWeight="Bold" Margin="0,0,0,8"/>
                     <Button Content="Schowaj do zasobnika" Click="Tray_Click" FontSize="12" Padding="8,7"/>
                     <Button Content="Zakończ program" Click="Exit_Click" FontSize="12" Padding="8,7"/>
-                    <TextBlock x:Name="ResourceUsageText" Text="Zasoby Sentinela: —" FontSize="10" Foreground="{DynamicResource Muted}" Margin="0,6,0,4"/><TextBlock Text="Wersja 0.82 • Windows x64" FontSize="10" Foreground="{DynamicResource Muted}" Margin="0,5,0,0"/>
+                    <TextBlock x:Name="ResourceUsageText" Text="Zasoby Sentinela: —" FontSize="10" Foreground="{DynamicResource Muted}" Margin="0,6,0,4"/><TextBlock Text="Wersja 0.97 Aurora • Windows x64" FontSize="10" Foreground="{DynamicResource Muted}" Margin="0,5,0,0"/>
                 </StackPanel>
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                     <StackPanel x:Name="Navigation">

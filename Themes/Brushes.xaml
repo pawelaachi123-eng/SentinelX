@@ -1,6 +1,70 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- ─── 0.97 AURORA GRADIENTS ─── -->
     <LinearGradientBrush x:Key="SxAccentGradient" StartPoint="0,0" EndPoint="1,1">
         <GradientStop Color="{DynamicResource SxAccentCyanColor}" Offset="0"/>
+        <GradientStop Color="{DynamicResource SxAccentGradMidColor}" Offset="0.55"/>
         <GradientStop Color="{DynamicResource SxAccentVioletColor}" Offset="1"/>
     </LinearGradientBrush>
+
+    <LinearGradientBrush x:Key="SxAuroraBackground" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Color="#07090F" Offset="0"/>
+        <GradientStop Color="#0B1020" Offset="0.4"/>
+        <GradientStop Color="#0D0C20" Offset="0.7"/>
+        <GradientStop Color="#081818" Offset="1"/>
+    </LinearGradientBrush>
+
+    <LinearGradientBrush x:Key="SxSidebarGradient" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="#0A0D17" Offset="0"/>
+        <GradientStop Color="#0B111E" Offset="0.5"/>
+        <GradientStop Color="#071215" Offset="1"/>
+    </LinearGradientBrush>
+
+    <LinearGradientBrush x:Key="SxGlassGradient" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Color="#1B2236E8" Offset="0"/>
+        <GradientStop Color="#121828CC" Offset="1"/>
+    </LinearGradientBrush>
+
+    <LinearGradientBrush x:Key="SxSendGradient" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Color="#22E0FF" Offset="0"/>
+        <GradientStop Color="#4C8BFF" Offset="0.5"/>
+        <GradientStop Color="#A878FF" Offset="1"/>
+    </LinearGradientBrush>
+
+    <LinearGradientBrush x:Key="SxDangerGradient" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Color="#FF5A6E" Offset="0"/>
+        <GradientStop Color="#C83054" Offset="1"/>
+    </LinearGradientBrush>
+
+    <LinearGradientBrush x:Key="SxVoiceMeterGradient" StartPoint="0,0" EndPoint="1,0">
+        <GradientStop Color="#22E0FF" Offset="0"/>
+        <GradientStop Color="#4BEFB9" Offset="0.6"/>
+        <GradientStop Color="#A878FF" Offset="1"/>
+    </LinearGradientBrush>
+
+    <LinearGradientBrush x:Key="SxHeaderGlow" StartPoint="0,0" EndPoint="1,0">
+        <GradientStop Color="#22E0FF20" Offset="0"/>
+        <GradientStop Color="#A878FF10" Offset="1"/>
+    </LinearGradientBrush>
+
+    <!-- 0.97 Aurora: user chat bubble (right side) -->
+    <LinearGradientBrush x:Key="SxUserBubbleGradient" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Color="{DynamicResource SxUserBubbleStartColor}" Offset="0"/>
+        <GradientStop Color="{DynamicResource SxUserBubbleEndColor}" Offset="1"/>
+    </LinearGradientBrush>
+
+    <!-- 0.97 Aurora: radial glows used in the decorative background ellipses -->
+    <RadialGradientBrush x:Key="SxAuroraCyanHalo" RadiusX="0.5" RadiusY="0.5" GradientOrigin="0.5,0.5">
+        <GradientStop Color="{DynamicResource SxAuroraCyanGlowColor}" Offset="0"/>
+        <GradientStop Color="{DynamicResource SxAuroraCyanMidColor}" Offset="0.4"/>
+        <GradientStop Color="Transparent" Offset="1"/>
+    </RadialGradientBrush>
+    <RadialGradientBrush x:Key="SxAuroraVioletHalo" RadiusX="0.5" RadiusY="0.5">
+        <GradientStop Color="{DynamicResource SxAuroraVioletGlowColor}" Offset="0"/>
+        <GradientStop Color="{DynamicResource SxAuroraMintGlowColor}" Offset="0.5"/>
+        <GradientStop Color="Transparent" Offset="1"/>
+    </RadialGradientBrush>
+    <RadialGradientBrush x:Key="SxAuroraRoseHalo" RadiusX="0.5" RadiusY="0.5">
+        <GradientStop Color="{DynamicResource SxAuroraRoseGlowColor}" Offset="0"/>
+        <GradientStop Color="Transparent" Offset="1"/>
+    </RadialGradientBrush>
 </ResourceDictionary>

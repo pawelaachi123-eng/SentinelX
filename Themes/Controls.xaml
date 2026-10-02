@@ -1,4 +1,6 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:u="clr-namespace:SentinelX.Utilities">
+
+    <!-- ═══ BUTTON ═══ -->
     <Style x:Key="SxSecondaryButton" TargetType="Button">
         <Setter Property="Background" Value="{DynamicResource SxSurface}"/>
         <Setter Property="Foreground" Value="{DynamicResource SxTextPrimary}"/>
@@ -7,24 +9,31 @@
         <Setter Property="FontSize" Value="14"/>
         <Setter Property="FontWeight" Value="SemiBold"/>
         <Setter Property="Padding" Value="16,10"/>
-        <Setter Property="MinHeight" Value="40"/>
+        <Setter Property="MinHeight" Value="42"/>
         <Setter Property="Cursor" Value="Hand"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
-                    <Border x:Name="border" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="12" Padding="{TemplateBinding Padding}">
+                    <Border x:Name="border" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="12" Padding="{TemplateBinding Padding}" SnapsToDevicePixels="True">
+                        <Border.Effect>
+                            <DropShadowEffect x:Name="shadow" Color="#000000" BlurRadius="0" ShadowDepth="0" Opacity="0"/>
+                        </Border.Effect>
                         <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="Center" RecognizesAccessKey="True"/>
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="border" Property="Opacity" Value="0.85"/>
-                            <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource SxAccentCyanDim}"/>
+                            <Setter TargetName="border" Property="Background" Value="{DynamicResource SxSurfaceHover}"/>
+                            <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource SxAccentCyan}"/>
+                            <Setter TargetName="shadow" Property="Color" Value="#22E0FF"/>
+                            <Setter TargetName="shadow" Property="BlurRadius" Value="10"/>
+                            <Setter TargetName="shadow" Property="Opacity" Value="0.25"/>
                         </Trigger>
                         <Trigger Property="IsKeyboardFocused" Value="True">
                             <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource SxAccentCyan}"/>
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
-                            <Setter TargetName="border" Property="Opacity" Value="0.7"/>
+                            <Setter TargetName="border" Property="Opacity" Value="0.82"/>
+                            <Setter TargetName="shadow" Property="BlurRadius" Value="0"/>
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter TargetName="border" Property="Opacity" Value="0.4"/>
@@ -36,40 +45,110 @@
         <Setter Property="HorizontalContentAlignment" Value="Center"/>
     </Style>
     <Style TargetType="Button" BasedOn="{StaticResource SxSecondaryButton}"/>
+
     <Style x:Key="SxPrimaryButton" TargetType="Button" BasedOn="{StaticResource SxSecondaryButton}">
-        <Setter Property="Background" Value="{StaticResource SxAccentGradient}"/>
-        <Setter Property="Foreground" Value="{DynamicResource SxWhite}"/>
+        <Setter Property="Background" Value="{StaticResource SxSendGradient}"/>
+        <Setter Property="Foreground" Value="#071018"/>
         <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="FontWeight" Value="Bold"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="12" Padding="{TemplateBinding Padding}" SnapsToDevicePixels="True">
+                        <Border.Effect>
+                            <DropShadowEffect x:Name="shadow" Color="#22E0FF" BlurRadius="14" ShadowDepth="0" Opacity="0.45"/>
+                        </Border.Effect>
+                        <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="Center" RecognizesAccessKey="True"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="border" Property="Opacity" Value="0.92"/>
+                            <Setter TargetName="shadow" Property="BlurRadius" Value="20"/>
+                            <Setter TargetName="shadow" Property="Opacity" Value="0.6"/>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="border" Property="Opacity" Value="0.78"/>
+                            <Setter TargetName="shadow" Property="BlurRadius" Value="6"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="border" Property="Opacity" Value="0.4"/>
+                            <Setter TargetName="shadow" Property="Opacity" Value="0"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
     </Style>
+
     <Style x:Key="SxDangerButton" TargetType="Button" BasedOn="{StaticResource SxSecondaryButton}">
         <Setter Property="Background" Value="{DynamicResource SxErrorDim}"/>
         <Setter Property="Foreground" Value="{DynamicResource SxWhite}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource SxError}"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="border" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1" CornerRadius="12" Padding="{TemplateBinding Padding}" SnapsToDevicePixels="True">
+                        <Border.Effect><DropShadowEffect x:Name="shadow" Color="#FF5A6E" BlurRadius="0" ShadowDepth="0" Opacity="0"/></Border.Effect>
+                        <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="border" Property="Background" Value="{DynamicResource SxError}"/>
+                            <Setter TargetName="shadow" Property="BlurRadius" Value="12"/>
+                            <Setter TargetName="shadow" Property="Opacity" Value="0.45"/>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="border" Property="Opacity" Value="0.8"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="border" Property="Opacity" Value="0.4"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
     </Style>
+
     <Style x:Key="SxGhostButton" TargetType="Button" BasedOn="{StaticResource SxSecondaryButton}">
         <Setter Property="Background" Value="{DynamicResource SxTransparent}"/>
         <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="Foreground" Value="{DynamicResource SxTextSecondary}"/>
-        <Setter Property="Padding" Value="10,6"/>
+        <Setter Property="Padding" Value="12,8"/>
+        <Setter Property="MinHeight" Value="34"/>
     </Style>
+
     <Style x:Key="SxIconButton" TargetType="Button" BasedOn="{StaticResource SxGhostButton}">
-        <Setter Property="Width" Value="40"/>
-        <Setter Property="Height" Value="40"/>
+        <Setter Property="Width" Value="42"/>
+        <Setter Property="Height" Value="42"/>
         <Setter Property="Padding" Value="6"/>
+        <Setter Property="FontSize" Value="16"/>
     </Style>
+
     <Style x:Key="SxPillButton" TargetType="Button" BasedOn="{StaticResource SxSecondaryButton}">
         <Setter Property="Padding" Value="20,8"/>
         <Setter Property="FontSize" Value="13"/>
+        <Setter Property="MinHeight" Value="36"/>
     </Style>
+
+    <Style x:Key="SxQuickAction" TargetType="Button" BasedOn="{StaticResource SxSecondaryButton}">
+        <Setter Property="Background" Value="{DynamicResource SxSurfaceActive}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource SxBorderSubtle}"/>
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="Padding" Value="14,9"/>
+        <Setter Property="MinHeight" Value="38"/>
+        <Setter Property="Margin" Value="0,0,8,8"/>
+    </Style>
+
+    <!-- ═══ SIDEBAR ITEM ═══ -->
     <Style x:Key="SxSidebarItem" TargetType="ListBoxItem">
         <Setter Property="Foreground" Value="{DynamicResource SxTextSecondary}"/>
-        <Setter Property="Height" Value="44"/>
+        <Setter Property="Height" Value="46"/>
         <Setter Property="Margin" Value="4,2"/>
         <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ListBoxItem">
-                    <Border x:Name="row" Background="{DynamicResource SxTransparent}" BorderBrush="{DynamicResource SxTransparent}" BorderThickness="3,0,0,0" CornerRadius="10" Padding="12,0">
+                    <Border x:Name="row" Background="{DynamicResource SxTransparent}" BorderBrush="{DynamicResource SxTransparent}" BorderThickness="3,0,0,0" CornerRadius="12" Padding="14,0">
                         <ContentPresenter VerticalAlignment="Center"/>
                     </Border>
                     <ControlTemplate.Triggers>
@@ -79,6 +158,11 @@
                         <Trigger Property="IsSelected" Value="True">
                             <Setter TargetName="row" Property="Background" Value="{DynamicResource SxSidebarActive}"/>
                             <Setter TargetName="row" Property="BorderBrush" Value="{DynamicResource SxAccentCyan}"/>
+                            <Setter TargetName="row" Property="Effect">
+                                <Setter.Value>
+                                    <DropShadowEffect Color="#22E0FF" BlurRadius="12" ShadowDepth="0" Opacity="0.35"/>
+                                </Setter.Value>
+                            </Setter>
                             <Setter Property="Foreground" Value="{DynamicResource SxAccentCyan}"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
@@ -86,35 +170,65 @@
             </Setter.Value>
         </Setter>
     </Style>
+
+    <!-- ═══ CARDS ═══ -->
     <Style x:Key="SxCard" TargetType="Border">
         <Setter Property="Background" Value="{DynamicResource SxSurface}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource SxBorderSubtle}"/>
         <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="CornerRadius" Value="16"/>
-        <Setter Property="Padding" Value="20"/>
+        <Setter Property="CornerRadius" Value="18"/>
+        <Setter Property="Padding" Value="22"/>
+        <Setter Property="SnapsToDevicePixels" Value="True"/>
     </Style>
+
     <Style x:Key="SxCardElevated" TargetType="Border" BasedOn="{StaticResource SxCard}">
+        <Setter Property="Background" Value="{DynamicResource SxAuroraPanel}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource SxBorder}"/>
+        <Setter Property="Effect">
+            <Setter.Value>
+                <DropShadowEffect Color="#000000" BlurRadius="24" ShadowDepth="4" Opacity="0.45"/>
+            </Setter.Value>
+        </Setter>
     </Style>
-    <Style x:Key="SxMetricCard" TargetType="Border" BasedOn="{StaticResource SxCard}"/>
+
+    <Style x:Key="SxGlassCard" TargetType="Border" BasedOn="{StaticResource SxCard}">
+        <Setter Property="Background" Value="{StaticResource SxGlassGradient}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource SxBorderGlow}"/>
+        <Setter Property="Effect">
+            <Setter.Value>
+                <DropShadowEffect Color="#22E0FF" BlurRadius="16" ShadowDepth="0" Opacity="0.10"/>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="SxMetricCard" TargetType="Border" BasedOn="{StaticResource SxCard}">
+        <Setter Property="Padding" Value="14"/>
+        <Setter Property="CornerRadius" Value="14"/>
+    </Style>
+
     <Style x:Key="SxBadge" TargetType="Border">
         <Setter Property="Background" Value="{DynamicResource SxSurfaceActive}"/>
         <Setter Property="CornerRadius" Value="20"/>
-        <Setter Property="Padding" Value="10,4"/>
+        <Setter Property="Padding" Value="12,6"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource SxBorderSubtle}"/>
+        <Setter Property="BorderThickness" Value="1"/>
     </Style>
+
+    <!-- ═══ TEXTBOX ═══ -->
     <Style x:Key="SxTextBox" TargetType="TextBox">
         <Setter Property="Background" Value="{DynamicResource SxSurface}"/>
         <Setter Property="Foreground" Value="{DynamicResource SxTextPrimary}"/>
         <Setter Property="CaretBrush" Value="{DynamicResource SxAccentCyan}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource SxBorder}"/>
         <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="Padding" Value="12,10"/>
-        <Setter Property="MinHeight" Value="40"/>
+        <Setter Property="Padding" Value="14,11"/>
+        <Setter Property="MinHeight" Value="42"/>
         <Setter Property="FontSize" Value="14"/>
+        <Setter Property="SelectionBrush" Value="#22E0FF44"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="TextBox">
-                    <Border x:Name="border" CornerRadius="10" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" Padding="{TemplateBinding Padding}">
+                    <Border x:Name="border" CornerRadius="14" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" Padding="{TemplateBinding Padding}" SnapsToDevicePixels="True">
                         <Grid>
                             <ScrollViewer x:Name="PART_ContentHost"/>
                             <TextBlock x:Name="hint" Text="{Binding Path=(u:InputHint.Text), RelativeSource={RelativeSource TemplatedParent}}" Foreground="{DynamicResource SxTextMuted}" IsHitTestVisible="False" Visibility="Collapsed" VerticalAlignment="Center"/>
@@ -126,6 +240,9 @@
                         </Trigger>
                         <Trigger Property="IsKeyboardFocusWithin" Value="True">
                             <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource SxAccentCyan}"/>
+                            <Setter TargetName="border" Property="Effect">
+                                <Setter.Value><DropShadowEffect Color="#22E0FF" BlurRadius="10" ShadowDepth="0" Opacity="0.3"/></Setter.Value>
+                            </Setter>
                         </Trigger>
                         <Trigger Property="Validation.HasError" Value="True">
                             <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource SxError}"/>
@@ -136,6 +253,8 @@
         </Setter>
     </Style>
     <Style TargetType="TextBox" BasedOn="{StaticResource SxTextBox}"/>
+
+    <!-- ═══ TOGGLE ═══ -->
     <Style x:Key="SxToggle" TargetType="CheckBox">
         <Setter Property="Foreground" Value="{DynamicResource SxTextPrimary}"/>
         <Setter Property="VerticalContentAlignment" Value="Center"/>
@@ -143,22 +262,19 @@
             <Setter.Value>
                 <ControlTemplate TargetType="CheckBox">
                     <StackPanel Orientation="Horizontal">
-                        <Border x:Name="track" Width="44" Height="24" CornerRadius="12" Background="{DynamicResource SxBorder}">
+                        <Border x:Name="track" Width="46" Height="24" CornerRadius="12" Background="{DynamicResource SxBorder}">
+                            <Border.Effect><DropShadowEffect x:Name="trackShadow" Color="#000000" BlurRadius="0" ShadowDepth="0" Opacity="0"/></Border.Effect>
                             <Ellipse x:Name="thumb" Width="18" Height="18" Fill="{DynamicResource SxWhite}" HorizontalAlignment="Left" Margin="3"/>
                         </Border>
                         <ContentPresenter Margin="12,0,0,0" VerticalAlignment="Center"/>
                     </StackPanel>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsChecked" Value="True">
-                            <Setter TargetName="track" Property="Background" Value="{DynamicResource SxAccentCyan}"/>
+                            <Setter TargetName="track" Property="Background" Value="{StaticResource SxAccentGradient}"/>
                             <Setter TargetName="thumb" Property="HorizontalAlignment" Value="Right"/>
-                        </Trigger>
-                        <Trigger Property="IsKeyboardFocused" Value="True">
-                            <Setter TargetName="track" Property="BorderThickness" Value="2"/>
-                            <Setter TargetName="track" Property="BorderBrush" Value="{DynamicResource SxTextPrimary}"/>
-                        </Trigger>
-                        <Trigger Property="IsEnabled" Value="False">
-                            <Setter Property="Opacity" Value="0.4"/>
+                            <Setter TargetName="trackShadow" Property="Color" Value="#22E0FF"/>
+                            <Setter TargetName="trackShadow" Property="BlurRadius" Value="8"/>
+                            <Setter TargetName="trackShadow" Property="Opacity" Value="0.5"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -166,47 +282,30 @@
         </Setter>
     </Style>
     <Style TargetType="CheckBox" BasedOn="{StaticResource SxToggle}"/>
-    <Style x:Key="SxProgressBar" TargetType="ProgressBar">
-        <Setter Property="Height" Value="6"/>
-        <Setter Property="Background" Value="{DynamicResource SxBorder}"/>
+
+    <!-- ═══ PROGRESSBAR ═══ -->
+    <Style TargetType="ProgressBar">
+        <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="Foreground" Value="{StaticResource SxAccentGradient}"/>
+        <Setter Property="Background" Value="{DynamicResource SxBorderSubtle}"/>
+        <Setter Property="Height" Value="8"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ProgressBar">
                     <Grid>
-                        <Border x:Name="PART_Track" CornerRadius="3" Background="{TemplateBinding Background}"/>
-                        <Border x:Name="PART_Indicator" HorizontalAlignment="Left" CornerRadius="3" Background="{TemplateBinding Foreground}"/>
+                        <Border x:Name="PART_Track" Background="{TemplateBinding Background}" CornerRadius="4"/>
+                        <Border x:Name="PART_Indicator" Background="{TemplateBinding Foreground}" CornerRadius="4" HorizontalAlignment="Left"/>
                     </Grid>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
     </Style>
-    <Style TargetType="ProgressBar" BasedOn="{StaticResource SxProgressBar}"/>
-    <Style TargetType="ComboBoxItem">
-        <Setter Property="Foreground" Value="{DynamicResource SxTextPrimary}"/>
-        <Setter Property="Padding" Value="12,8"/>
-        <Setter Property="Template">
-            <Setter.Value>
-                <ControlTemplate TargetType="ComboBoxItem">
-                    <Border x:Name="row" Padding="{TemplateBinding Padding}" Background="{DynamicResource SxTransparent}" CornerRadius="8">
-                        <ContentPresenter/>
-                    </Border>
-                    <ControlTemplate.Triggers>
-                        <Trigger Property="IsHighlighted" Value="True">
-                            <Setter TargetName="row" Property="Background" Value="{DynamicResource SxSurfaceHover}"/>
-                        </Trigger>
-                        <Trigger Property="IsSelected" Value="True">
-                            <Setter TargetName="row" Property="Background" Value="{DynamicResource SxAccentCyanDim}"/>
-                            <Setter Property="Foreground" Value="{DynamicResource SxWhite}"/>
-                        </Trigger>
-                    </ControlTemplate.Triggers>
-                </ControlTemplate>
-            </Setter.Value>
-        </Setter>
-    </Style>
+
+    <!-- ═══ COMBOBOX ═══ -->
     <Style x:Key="SxComboBox" TargetType="ComboBox">
         <Setter Property="Foreground" Value="{DynamicResource SxTextPrimary}"/>
-        <Setter Property="MinHeight" Value="40"/>
+        <Setter Property="Background" Value="{DynamicResource SxSurface}"/>
+        <Setter Property="MinHeight" Value="42"/>
         <Setter Property="MaxDropDownHeight" Value="320"/>
         <Setter Property="Template">
             <Setter.Value>
@@ -215,15 +314,16 @@
                         <ToggleButton Focusable="False" IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}">
                             <ToggleButton.Template>
                                 <ControlTemplate TargetType="ToggleButton">
-                                    <Border CornerRadius="10" BorderThickness="1" BorderBrush="{DynamicResource SxBorder}" Background="{DynamicResource SxSurface}" Padding="12,8">
-                                        <TextBlock Text="⌄" HorizontalAlignment="Right"/>
+                                    <Border CornerRadius="12" BorderThickness="1" BorderBrush="{DynamicResource SxBorder}" Background="{DynamicResource SxSurface}" Padding="12,10">
+                                        <TextBlock Text="⌄" HorizontalAlignment="Right" VerticalAlignment="Center" FontSize="16"/>
                                     </Border>
                                 </ControlTemplate>
                             </ToggleButton.Template>
                         </ToggleButton>
-                        <ContentPresenter Margin="12,8,32,8" VerticalAlignment="Center" IsHitTestVisible="False" Content="{TemplateBinding SelectionBoxItem}" ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"/>
+                        <ContentPresenter Margin="14,8,34,8" VerticalAlignment="Center" IsHitTestVisible="False" Content="{TemplateBinding SelectionBoxItem}" ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"/>
                         <Popup x:Name="PART_Popup" IsOpen="{TemplateBinding IsDropDownOpen}" Placement="Bottom" AllowsTransparency="True" Focusable="False">
-                            <Border Background="{DynamicResource SxSurface}" BorderBrush="{DynamicResource SxBorder}" BorderThickness="1" CornerRadius="12" Padding="4" MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}">
+                            <Border Background="{DynamicResource SxSurface}" BorderBrush="{DynamicResource SxBorder}" BorderThickness="1" CornerRadius="14" Padding="6" MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}" Margin="0,6,0,0">
+                                <Border.Effect><DropShadowEffect Color="#000000" BlurRadius="18" ShadowDepth="4" Opacity="0.5"/></Border.Effect>
                                 <ScrollViewer MaxHeight="320">
                                     <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Contained"/>
                                 </ScrollViewer>
@@ -235,29 +335,29 @@
         </Setter>
     </Style>
     <Style TargetType="ComboBox" BasedOn="{StaticResource SxComboBox}"/>
+
     <Style x:Key="SxScrollBarThumb" TargetType="Thumb">
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Thumb">
-                    <Border x:Name="b" Background="{DynamicResource SxTextMuted}" CornerRadius="3" Margin="1"/>
+                    <Border x:Name="b" Background="{DynamicResource SxTextMuted}" CornerRadius="4" Margin="2"/>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="b" Property="Background" Value="{DynamicResource SxTextSecondary}"/>
+                            <Setter TargetName="b" Property="Background" Value="{DynamicResource SxAccentCyan}"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
     </Style>
+
     <Style x:Key="SxScrollBar" TargetType="ScrollBar">
-        <Setter Property="Width" Value="8"/>
+        <Setter Property="Width" Value="10"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ScrollBar">
                     <Track x:Name="PART_Track" IsDirectionReversed="True" Orientation="{TemplateBinding Orientation}">
-                        <Track.Thumb>
-                            <Thumb Style="{StaticResource SxScrollBarThumb}"/>
-                        </Track.Thumb>
+                        <Track.Thumb><Thumb Style="{StaticResource SxScrollBarThumb}"/></Track.Thumb>
                     </Track>
                 </ControlTemplate>
             </Setter.Value>
@@ -265,17 +365,19 @@
         <Style.Triggers>
             <Trigger Property="Orientation" Value="Horizontal">
                 <Setter Property="Width" Value="Auto"/>
-                <Setter Property="Height" Value="8"/>
+                <Setter Property="Height" Value="10"/>
             </Trigger>
         </Style.Triggers>
     </Style>
     <Style TargetType="ScrollBar" BasedOn="{StaticResource SxScrollBar}"/>
+
     <Style x:Key="SxTooltip" TargetType="ToolTip">
         <Setter Property="Foreground" Value="{DynamicResource SxTextPrimary}"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ToolTip">
-                    <Border Background="{DynamicResource SxSurface}" BorderBrush="{DynamicResource SxBorder}" BorderThickness="1" CornerRadius="8" Padding="10,6">
+                    <Border Background="{DynamicResource SxSurfaceActive}" BorderBrush="{DynamicResource SxBorder}" BorderThickness="1" CornerRadius="10" Padding="12,8">
+                        <Border.Effect><DropShadowEffect Color="#000" BlurRadius="10" ShadowDepth="2" Opacity="0.5"/></Border.Effect>
                         <ContentPresenter/>
                     </Border>
                 </ControlTemplate>
@@ -283,29 +385,33 @@
         </Setter>
     </Style>
     <Style TargetType="ToolTip" BasedOn="{StaticResource SxTooltip}"/>
+
     <Style TargetType="DataGrid">
         <Setter Property="Background" Value="{DynamicResource SxSurface}"/>
         <Setter Property="Foreground" Value="{DynamicResource SxTextPrimary}"/>
         <Setter Property="RowBackground" Value="{DynamicResource SxSurface}"/>
-        <Setter Property="AlternatingRowBackground" Value="{DynamicResource SxSurface}"/>
+        <Setter Property="AlternatingRowBackground" Value="{DynamicResource SxSurfaceHover}"/>
         <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="GridLinesVisibility" Value="None"/>
         <Setter Property="HeadersVisibility" Value="Column"/>
         <Setter Property="AutoGenerateColumns" Value="False"/>
         <Setter Property="IsReadOnly" Value="True"/>
         <Setter Property="CanUserAddRows" Value="False"/>
-        <Setter Property="RowHeight" Value="40"/>
+        <Setter Property="RowHeight" Value="42"/>
         <Setter Property="EnableRowVirtualization" Value="True"/>
     </Style>
+
     <Style TargetType="DataGridColumnHeader">
         <Setter Property="Background" Value="{DynamicResource SxSurfaceActive}"/>
         <Setter Property="Foreground" Value="{DynamicResource SxTextSecondary}"/>
-        <Setter Property="Padding" Value="12,10"/>
+        <Setter Property="Padding" Value="14,10"/>
         <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
     </Style>
+
     <Style TargetType="DataGridCell">
         <Setter Property="BorderThickness" Value="0"/>
-        <Setter Property="Padding" Value="12,8"/>
+        <Setter Property="Padding" Value="14,8"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="DataGridCell">
@@ -317,38 +423,42 @@
         </Setter>
         <Style.Triggers>
             <Trigger Property="IsSelected" Value="True">
-                <Setter Property="Background" Value="{DynamicResource SxSidebarActive}"/>
+                <Setter Property="Background" Value="{DynamicResource SxAccentCyanDim}"/>
                 <Setter Property="Foreground" Value="{DynamicResource SxAccentCyan}"/>
             </Trigger>
         </Style.Triggers>
     </Style>
+
     <Style TargetType="ListBox">
         <Setter Property="Background" Value="{DynamicResource SxTransparent}"/>
         <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="Foreground" Value="{DynamicResource SxTextPrimary}"/>
     </Style>
+
     <Style x:Key="SxSlider" TargetType="Slider">
-        <Setter Property="MinHeight" Value="28"/>
+        <Setter Property="MinHeight" Value="30"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Slider">
                     <Grid Margin="8,0">
-                        <Border Background="{DynamicResource SxBorder}" Height="4" CornerRadius="2" VerticalAlignment="Center"/>
+                        <Border Background="{DynamicResource SxBorder}" Height="6" CornerRadius="3" VerticalAlignment="Center"/>
                         <Track x:Name="PART_Track" Minimum="{TemplateBinding Minimum}" Maximum="{TemplateBinding Maximum}" Value="{TemplateBinding Value}">
                             <Track.DecreaseRepeatButton>
                                 <RepeatButton Command="Slider.DecreaseLarge" Focusable="False">
                                     <RepeatButton.Template>
                                         <ControlTemplate TargetType="RepeatButton">
-                                            <Border Height="4" Background="{DynamicResource SxAccentCyan}" CornerRadius="2"/>
+                                            <Border Height="6" Background="{StaticResource SxAccentGradient}" CornerRadius="3"/>
                                         </ControlTemplate>
                                     </RepeatButton.Template>
                                 </RepeatButton>
                             </Track.DecreaseRepeatButton>
                             <Track.Thumb>
-                                <Thumb Width="18" Height="18">
+                                <Thumb Width="20" Height="20">
                                     <Thumb.Template>
                                         <ControlTemplate TargetType="Thumb">
-                                            <Ellipse Fill="{DynamicResource SxWhite}"/>
+                                            <Ellipse Fill="{DynamicResource SxWhite}">
+                                                <Ellipse.Effect><DropShadowEffect Color="#22E0FF" BlurRadius="8" ShadowDepth="0" Opacity="0.6"/></Ellipse.Effect>
+                                            </Ellipse>
                                         </ControlTemplate>
                                     </Thumb.Template>
                                 </Thumb>
@@ -356,9 +466,7 @@
                             <Track.IncreaseRepeatButton>
                                 <RepeatButton Command="Slider.IncreaseLarge" Focusable="False">
                                     <RepeatButton.Template>
-                                        <ControlTemplate TargetType="RepeatButton">
-                                            <Border Background="{DynamicResource SxTransparent}"/>
-                                        </ControlTemplate>
+                                        <ControlTemplate TargetType="RepeatButton"><Border Background="{DynamicResource SxTransparent}"/></ControlTemplate>
                                     </RepeatButton.Template>
                                 </RepeatButton>
                             </Track.IncreaseRepeatButton>
@@ -369,4 +477,53 @@
         </Setter>
     </Style>
     <Style TargetType="Slider" BasedOn="{StaticResource SxSlider}"/>
+
+    <Style TargetType="ComboBoxItem">
+        <Setter Property="Foreground" Value="{DynamicResource SxTextPrimary}"/>
+        <Setter Property="Padding" Value="12,10"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Margin" Value="2,1"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ComboBoxItem">
+                    <Border x:Name="b" CornerRadius="8" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
+                        <ContentPresenter/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsHighlighted" Value="True">
+                            <Setter TargetName="b" Property="Background" Value="{DynamicResource SxSurfaceHover}"/>
+                        </Trigger>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter TargetName="b" Property="Background" Value="{DynamicResource SxAccentCyanDim}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="ListBoxItem">
+        <Setter Property="Foreground" Value="{DynamicResource SxTextPrimary}"/>
+        <Setter Property="Padding" Value="10,8"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Margin" Value="2"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ListBoxItem">
+                    <Border x:Name="b" CornerRadius="8" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
+                        <ContentPresenter/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="b" Property="Background" Value="{DynamicResource SxSurfaceHover}"/>
+                        </Trigger>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter TargetName="b" Property="Background" Value="{DynamicResource SxAccentCyanDim}"/>
+                            <Setter Property="Foreground" Value="{DynamicResource SxAccentCyan}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
 </ResourceDictionary>

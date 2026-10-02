@@ -131,7 +131,14 @@ public sealed class CommandRouter
         if (text is "wersja" or "jaka wersja" or "wersja sentinel" or "wersja aplikacji")
             return "Sentinel X " + AppConstants.Version + " · " + systemInfo.GetWindowsVersion() + " · .NET " + Environment.Version;
         if (text is "co nowego" or "lista zmian" or "changelog" or "co sie zmienilo")
-            return "CO NOWEGO W 0.96 · KUŹNIA\n" +
+            return "CO NOWEGO W 0.97 · AURORA\n" +
+                "· Nowy interfejs AURORA: paleta nocy polarnej z akcentami cyjanu, fioletu i róży.\n" +
+                "· Szklane karty z poświatą (glassmorphism) i trzy aurorowe blaski w tle.\n" +
+                "· Przeprojektowane bąbelki czatu (użytkownik: gradient cyjan, asystent: ciemne szkło) oraz nowy pasek wejścia z przyciskiem mikrofonu.\n" +
+                "· Odświeżony pasek boczny z logo gradientowym, kafelkiem NA ŻYWO (CPU/RAM/GPU) i świecącymi przyciskami.\n" +
+                "· Strona Głosu i Systemu z kartami metryk i paskami postępu; wszystkie przyciski mają teraz świecące cienie.\n" +
+                "· Spójne marginesy, zaokrąglenia i animacje (w tym nowe SxPulse i SxSlideUp).\n" +
+                "\nCO NOWEGO W 0.96 · KUŹNIA\n" +
                 "· Podgląd decyzji: „jak to rozumiem: <polecenie>” pokazuje, co Sentinel by zrobił (literówka, narzędzie, pytanie, model AI) — niczego przy tym nie wykonuje ani nie zapisuje.\n" +
                 "· „szukaj w zadaniach: fraza” przeszukuje zadania (także zrobione) i przypomnienia; wcześniej przesłaniała je wyszukiwarka internetowa, a przypomnień nie obejmowało.\n" +
                 "· 11 nowych narzędzi w kategorii „Kuźnia 0.96”: nazwy zmiennych, kodowanie URL, czas Unix, najczęstsze słowa, rata kredytu, porównanie wersji, numerowanie i odwracanie wierszy, poprawa odstępów.\n" +
