@@ -43,6 +43,7 @@ Aplikację na Androida najłatwiej zbudować w wydaniu na GitHubie (workflow **R
 - **Ulepszenia odporności aplikacji Windows:** walidacja lokalizacji danych, bezpieczniejsze operacje na plikach/pobieranych komponentach oraz lepsze logowanie awarii.
 - **Publikowanie przez CI:** wersja Windows jest kompilowana, testowana i instalowana w smoke teście; build Androida jest weryfikowany w CI. Zwykłe buildy gałęzi nie tworzą wydania GitHub.
 - **Podpis Androida:** z repozytorium usunięto klucz historyczny, który nie powinien być zaufany. Oficjalny APK jest publikowany wyłącznie po weryfikacji nowego, trwałego klucza z chronionych sekretów; buildy gałęzi bez niego są podpisane kluczem tymczasowym i wymagają odinstalowania przed następną instalacją.
+- **0.98.0 przedpremierowe:** APK jest podpisany jednorazowym kluczem CI. Przed instalacją trzeba odinstalować poprzednią aplikację; może to usunąć lokalne dane. Kolejne APK również wymaga odinstalowania, dopóki nie będzie trwałego klucza.
 
 Szczegóły, ograniczenia i sposób pobrania: [docs/RELEASE-0.98.md](docs/RELEASE-0.98.md).
 

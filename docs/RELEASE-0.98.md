@@ -1,4 +1,4 @@
-# Sentinel X 0.98.0
+# Sentinel X 0.98.0 — wydanie przedpremierowe
 
 Notatki wydania dla asystenta Windows i aplikacji towarzyszącej na Androida.
 
@@ -8,23 +8,28 @@ Notatki wydania dla asystenta Windows i aplikacji towarzyszącej na Androida.
 - Dodano trwałą historię automatyzacji z ograniczonym rozmiarem i rzeczywistymi wynikami wykonania.
 - Wzmocniono parowanie i zarządzanie telefonem: trwałe wpisy urządzeń, odwoływanie dostępu, przechowywanie skrótu sekretu oraz ustawienia per urządzenie.
 - Ulepszono obsługę katalogów danych Windows, walidację operacji plikowych, bezpieczeństwo pobierania silnika, odzyskiwanie po błędach startu i diagnostykę awarii.
-- Dodano workflowy CI budujące i sprawdzające instalator Windows oraz APK Androida na gałęzi tej sesji. Zwykłe buildy gałęzi nie publikują wydania GitHub.
-- Usunięto z bieżącego drzewa historyczny magazyn klucza Androida. Oficjalne wydanie wymaga nowego, trwałego klucza w chronionych sekretach; APK z builda gałęzi może używać klucza jednorazowego i przed instalacją kolejnego takiego buildu wymaga odinstalowania poprzedniej aplikacji.
+- Dodano workflowy CI budujące i sprawdzające instalator Windows oraz APK Androida. Oficjalny proces wydania nadal wymaga przejścia testów Windows i weryfikacji APK.
+- Z repozytorium usunięto historyczny magazyn klucza Androida; nie jest używany.
 
-## Pobieranie
+## Pliki do pobrania
 
-Oficjalne pliki są dołączane do wydania GitHub oznaczonego tagiem `v0.98.0`, o ile przejdzie kontrola nowego, chronionego klucza APK:
+To wydanie `v0.98.0` jest przedpremierowe. Zawiera:
 
 - `SentinelX-0.98.0-win-x64-setup.exe` — instalator Windows x64 dla bieżącego użytkownika.
 - `SentinelX-0.98.0-win-x64-portable.zip` — przenośna wersja Windows x64.
 - `SentinelX-Phone-0.98.0.apk` — aplikacja na Androida 7+.
-- `SHA256SUMS.txt` — sumy kontrolne plików wydania.
+- `BUILD.txt` i `SHA256SUMS.txt` — informacje o buildzie oraz sumy kontrolne.
 
-Pliki Windows nie są podpisane certyfikatem wydawcy, więc SmartScreen może pokazać ostrzeżenie „Nieznany wydawca”. Zachowaj klucz użyty do podpisania APK, jeśli mają działać aktualizacje Androida bez odinstalowania. Nie używaj historycznego klucza z dawnych commitów repozytorium.
+Pliki Windows nie są podpisane certyfikatem wydawcy, więc SmartScreen może pokazać ostrzeżenie „Nieznany wydawca”.
+
+## Ważne: jednorazowy podpis APK
+
+Na wyraźne żądanie to wydanie używa świeżego, jednorazowego klucza utworzonego w GitHub Actions — bez trwałych sekretów i bez użycia historycznego klucza. CI weryfikuje podpis APK przed publikacją. Klucz jednorazowy nie pozwala zainstalować tej wersji jako aktualizacji APK podpisanego innym kluczem ani później aktualizować jej „na miejscu”.
+
+Przed instalacją trzeba odinstalować poprzednią aplikację Sentinel X. **Odinstalowanie może usunąć jej lokalne dane** — najpierw zabezpiecz potrzebne informacje i przygotuj się na ponowne parowanie z komputerem. Kolejna wersja także będzie wymagała odinstalowania, dopóki nie zostanie skonfigurowany trwały klucz w chronionych sekretach GitHub Actions.
 
 ## Znane ograniczenia
 
 - Automatyzacje działają tylko wtedy, gdy Sentinel X jest uruchomiony. Wyzwalacze oparte na procesach, urządzeniach i warunkach systemowych nie są dostępne.
 - Akcje automatyzacji są celowo ograniczone; nie można uruchamiać dowolnych skryptów, poleceń powłoki ani nieograniczonych procesów.
-- APK z buildów gałęzi może być podpisany tymczasowym kluczem, gdy chronione sekrety wydania nie są skonfigurowane. Taki plik służy do testów CI i nie jest zamienny z APK podpisanym trwałym kluczem wydania.
 - Temperatura GPU i FPS nie są gwarantowanymi metrykami; niedostępne wartości nie mogą być przedstawiane jako pomiary.
