@@ -13,7 +13,7 @@ public sealed class PhoneLinkWindow : Window
 {
     private readonly LinkService link;
     private readonly TextBlock status = new();
-    private readonly TextBlock addresses = new();
+    private readonly TextBox addresses = new();
     private readonly Image qr = new() { Width = 176, Height = 176, Stretch = Stretch.Uniform, HorizontalAlignment = HorizontalAlignment.Center };
     private readonly StackPanel devices = new();
     private readonly Border confirmation = new();
@@ -113,6 +113,9 @@ public sealed class PhoneLinkWindow : Window
         addresses.IsReadOnly = true;
         addresses.AcceptsReturn = true;
         addresses.MinHeight = 48;
+        addresses.BorderThickness = new Thickness(0);
+        addresses.Padding = new Thickness(0);
+        AutomationProperties.SetName(addresses, "Adres lokalnego łącza z telefonem");
         addresses.SetResourceReference(TextBox.BackgroundProperty, "SxBackground");
         addresses.SetResourceReference(TextBox.ForegroundProperty, "SxTextPrimary");
         instructions.Children.Add(addresses);
