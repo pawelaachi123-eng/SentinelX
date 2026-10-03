@@ -11,7 +11,9 @@ internal static class LinkJson
     public static readonly JsonSerializerOptions Options = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        PropertyNameCaseInsensitive = true,
         NumberHandling = JsonNumberHandling.AllowNamedFloatingPointLiterals,
+        Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase, allowIntegerValues: false) },
     };
 }
 
@@ -36,12 +38,12 @@ internal sealed class LinkRequest
 
     public string Q(string name) => Query.TryGetValue(name, out string? value) ? value : "";
 
-    /// <summary>Request body as a JSON object; an empty or malformed body yields an undefined element (every getter then returns empty).</summary>
-    public JsonElement Json()
+    /// <summary>Deserializes a v1 request contract; malformed or empty bodies are handled as client input errors by the endpoint.</summary>
+    public T? Deserialize<T>() where T : class
     {
-        if (Body.Length == 0) return default;
-        try { using JsonDocument document = JsonDocument.Parse(Body); return document.RootElement.Clone(); }
-        catch (JsonException) { return default; }
+        if (Body.Length == 0) return null;
+        try { return JsonSerializer.Deserialize<T>(Body, LinkJson.Options); }
+        catch (JsonException) { return null; }
     }
 }
 

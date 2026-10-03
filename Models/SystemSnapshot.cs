@@ -17,6 +17,16 @@ public sealed record SystemSnapshot(
     public string GpuText => Format(Gpu, "%");
     public string RamText => double.IsFinite(RamUsed) ? $"{RamUsed:F1} / {RamTotal:F1} GB" : "Niedostępne";
     public string VramText => "Niedostępne"; // No fabricated VRAM measurements.
+    public bool HasSample => Timestamp != DateTime.MinValue;
+    public string DiskSummaryText => !HasSample
+        ? "Oczekiwanie na pomiar"
+        : Disks.Count == 0 ? "Brak danych" : $"{Disks.Count} woluminów";
+    public string DiskEmptyMessage => HasSample
+        ? "Ostatni pomiar nie zwrócił dostępnych woluminów."
+        : "Oczekiwanie na pierwszy pomiar woluminów.";
+    public string ProcessEmptyMessage => HasSample
+        ? "Lista procesów jest pusta lub niedostępna. Sprawdź uprawnienia systemu."
+        : "Nie ma jeszcze listy procesów. Poczekaj na pierwszy pomiar systemu.";
     public string GamingText => string.IsNullOrEmpty(Game) ? "OFF" : Game;
     private static string Format(double value, string unit) => double.IsFinite(value) ? $"{value:F0}{unit}" : "Niedostępne";
 }

@@ -1,11 +1,10 @@
 name: Android phone app (build check)
 
-# Sprawdza, że aplikacja na telefon się buduje. Gotowy plik APK trafia do wydania razem z EXE (workflow „Release”).
-# Uruchamia się tylko, gdy zmienia się kod aplikacji na Androida — działa na Linuksie (najtańsze minuty).
+# Sprawdza, że aplikacja na telefon się buduje; gotowy APK jest artefaktem CI (7 dni) bez publikowania wydania.
+# Uruchamia się na każdym zwykłym pushu, aby razem z EXE udostępnić aktualny APK; działa na Linuksie.
 on:
   push:
     branches: [main, 'arena/**']
-    paths: ['phone-android/**', '.github/actions/build-apk/**', '.github/workflows/android-phone.yml']
   workflow_dispatch:
 
 permissions:
@@ -19,6 +18,11 @@ jobs:
   apk:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      SENTINELX_ANDROID_KEYSTORE_BASE64: ${{ secrets.SENTINELX_ANDROID_KEYSTORE_BASE64 }}
+      SENTINELX_ANDROID_STORE_PASSWORD: ${{ secrets.SENTINELX_ANDROID_STORE_PASSWORD }}
+      SENTINELX_ANDROID_KEY_ALIAS: ${{ secrets.SENTINELX_ANDROID_KEY_ALIAS }}
+      SENTINELX_ANDROID_KEY_PASSWORD: ${{ secrets.SENTINELX_ANDROID_KEY_PASSWORD }}
     steps:
       - uses: actions/checkout@v5
       - id: build
@@ -28,3 +32,9 @@ jobs:
         run: |
           sha=$(sha256sum "${{ steps.build.outputs.apk }}" | cut -d' ' -f1)
           echo "::notice title=APK zbudowany::${{ steps.build.outputs.apk }} · sha256 $sha"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sentinelx-phone-apk-${{ github.sha }}
+          path: ${{ steps.build.outputs.apk }}
+          if-no-files-found: error
+          retention-days: 7

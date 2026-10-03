@@ -59,9 +59,34 @@
                 </StackPanel>
             </Border>
 
+            <Border Style="{StaticResource SxCardElevated}" BorderBrush="{DynamicResource SxWarning}" Margin="0,0,0,16" Visibility="{Binding IsDeleteConfirmationOpen, Converter={StaticResource BoolToVisibility}}" AutomationProperties.LiveSetting="Polite">
+                <Border.InputBindings><KeyBinding Key="Escape" Command="{Binding CancelDeleteCommand}"/></Border.InputBindings>
+                <StackPanel>
+                    <TextBlock Text="Potwierdź usunięcie" Style="{StaticResource SxSectionTitle}"/>
+                    <TextBlock Text="{Binding DeleteConfirmationText}" TextWrapping="Wrap" Margin="0,4,0,12"/>
+                    <WrapPanel>
+                        <Button Content="Zostaw wpis" Command="{Binding CancelDeleteCommand}" Style="{StaticResource SxGhostButton}" Margin="0,0,8,0" u:UiInteraction.FocusOnVisible="True"/>
+                        <Button Content="Usuń trwale" Command="{Binding ConfirmDeleteCommand}" Style="{StaticResource SxDangerButton}"/>
+                    </WrapPanel>
+                </StackPanel>
+            </Border>
+
             <TextBlock Text="Zadania" Style="{StaticResource SxSectionTitle}" Margin="0,0,0,8"/>
-            <ItemsControl ItemsSource="{Binding Items}">
-                <ItemsControl.ItemTemplate>
+            <Border Background="{DynamicResource SxSurfaceActive}" CornerRadius="10" Padding="14" Margin="0,0,0,10" Visibility="{Binding HasItems, Converter={StaticResource InverseBooleanVisibility}}">
+                <TextBlock Text="Brak zadań dla wybranego filtra. Dodaj nowe zadanie u góry albo wybierz inny filtr." Style="{StaticResource SxCaption}" TextWrapping="Wrap"/>
+            </Border>
+            <ListBox ItemsSource="{Binding Items}" MaxHeight="480" BorderThickness="0" Background="Transparent" ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.CanContentScroll="True" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling" AutomationProperties.Name="Zadania">
+                <ListBox.ItemContainerStyle>
+                    <Style TargetType="ListBoxItem">
+                        <Setter Property="Padding" Value="0"/>
+                        <Setter Property="Margin" Value="0"/>
+                        <Setter Property="Background" Value="Transparent"/>
+                        <Setter Property="BorderThickness" Value="0"/>
+                        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                    </Style>
+                </ListBox.ItemContainerStyle>
+                <ListBox.ItemsPanel><ItemsPanelTemplate><VirtualizingStackPanel/></ItemsPanelTemplate></ListBox.ItemsPanel>
+                <ListBox.ItemTemplate>
                     <DataTemplate>
                         <Border Style="{StaticResource SxCard}" Margin="0,0,0,12">
                             <StackPanel>
@@ -75,12 +100,25 @@
                             </StackPanel>
                         </Border>
                     </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
+                </ListBox.ItemTemplate>
+            </ListBox>
 
             <TextBlock Text="Przypomnienia" Style="{StaticResource SxSectionTitle}" Margin="8,0,0,8"/>
-            <ItemsControl ItemsSource="{Binding Reminders}">
-                <ItemsControl.ItemTemplate>
+            <Border Background="{DynamicResource SxSurfaceActive}" CornerRadius="10" Padding="14" Margin="0,0,0,10" Visibility="{Binding HasReminders, Converter={StaticResource InverseBooleanVisibility}}">
+                <TextBlock Text="Nie ma przypomnień. Ustaw jedno u góry — Sentinel przypomina tylko wtedy, gdy aplikacja działa." Style="{StaticResource SxCaption}" TextWrapping="Wrap"/>
+            </Border>
+            <ListBox ItemsSource="{Binding Reminders}" MaxHeight="360" BorderThickness="0" Background="Transparent" ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.CanContentScroll="True" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling" AutomationProperties.Name="Przypomnienia">
+                <ListBox.ItemContainerStyle>
+                    <Style TargetType="ListBoxItem">
+                        <Setter Property="Padding" Value="0"/>
+                        <Setter Property="Margin" Value="0"/>
+                        <Setter Property="Background" Value="Transparent"/>
+                        <Setter Property="BorderThickness" Value="0"/>
+                        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                    </Style>
+                </ListBox.ItemContainerStyle>
+                <ListBox.ItemsPanel><ItemsPanelTemplate><VirtualizingStackPanel/></ItemsPanelTemplate></ListBox.ItemsPanel>
+                <ListBox.ItemTemplate>
                     <DataTemplate>
                         <Border Style="{StaticResource SxCard}" Margin="0,0,0,12">
                             <StackPanel>
@@ -92,8 +130,8 @@
                             </StackPanel>
                         </Border>
                     </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
+                </ListBox.ItemTemplate>
+            </ListBox>
         </StackPanel>
     </ScrollViewer>
 </UserControl>

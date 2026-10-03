@@ -17,6 +17,9 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
+      - name: Check release version consistency
+        run: python scripts/check-versions.py
+
       - name: Restore and build
         shell: pwsh
         run: |

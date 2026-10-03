@@ -76,7 +76,7 @@ public static class DecisionPreview
         if (Regex.IsMatch(normalized, @"^(?:szukaj w zadaniach|szukaj zadan(?:ia)?|znajdz zadanie)(?:[:\s]|$)"))
             return "Szukanie w zadaniach i przypomnieniach: tylko odczyt. Pokażę pasujące wpisy (także zrobione); każde słowo frazy musi w nich wystąpić. Format: „szukaj w zadaniach: fraza”.";
         if (Regex.IsMatch(normalized, @"^(?:dodaj|zrob|nowe) zadanie(?:[:\s]|$)"))
-            return "Dodanie zadania: wykonanie zapisze je w Centrum → Zadania (termin z tekstu, jeśli go rozpoznam).";
+            return "Dodanie zadania: wykonanie zapisze je na stronie Zadania (termin z tekstu, jeśli go rozpoznam).";
         if (Regex.IsMatch(normalized, @"^przypomnij(?:\s|$)"))
             return "Przypomnienie: najpierw zapytam o zgodę („tak” albo „nie”) i dopiero po „tak” zapiszę przypomnienie.";
 

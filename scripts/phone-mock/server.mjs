@@ -14,6 +14,7 @@ import { fileURLToPath } from 'node:url';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const WEB = path.resolve(here, '../../Phone/web');
+const API_VERSION = 1;
 const FP = (process.env.MOCK_FP || crypto.createHash('sha256').update('sentinelx-mock-cert').digest('hex')).toLowerCase();
 const APPROVE_MS = Number(process.env.MOCK_APPROVE_MS ?? 2500);
 const PORT = Number(process.argv[2] || process.env.PORT || 8088);
@@ -104,14 +105,17 @@ async function chat(req, res, text) {
 
 async function api(req, res, url) {
   const p = url.pathname;
-  if (p === '/api/hello') return json(res, 200, { app: 'SentinelX', api: 1, version: '0.94', name: 'PAWEL-PC', fingerprint: FP });
+  if (p === '/api/hello') return json(res, 200, { app: 'SentinelX', api: API_VERSION, version: '0.94', name: 'PAWEL-PC', fingerprint: FP,
+    capabilities: ['systemMetrics', 'processList', 'assistantChat', 'assistantControl', 'tasks', 'reminders', 'notes', 'alerts', 'deviceManagement'] });
   if (p === '/api/pair/request' && req.method === 'POST') {
     const b = await readBody(req); if (!b.nonce || !b.device) return json(res, 400, { error: 'Brak danych parowania.' });
     const id = 'p' + (++db.nextId); const nonce = b64u(crypto.randomBytes(16));
-    const pair = { id, device: String(b.device).slice(0, 32), nonce, state: 'pending', sas: sasFor(FP, b.nonce, nonce), at: Date.now() };
+    const allowedCapabilities = new Set(['notifications', 'voiceInput', 'wakeOnLan']);
+    const capabilities = Array.isArray(b.capabilities) ? [...new Set(b.capabilities.filter(x => typeof x === 'string' && allowedCapabilities.has(x)))].slice(0, 3) : [];
+    const pair = { id, device: String(b.device).slice(0, 32), capabilities, nonce, state: 'pending', sas: sasFor(FP, b.nonce, nonce), at: Date.now() };
     db.pairs.set(id, pair);
     console.log(`[pair] prośba od „${pair.device}” · kod ${pair.sas.slice(0, 3)} ${pair.sas.slice(3)}`);
-    if (APPROVE_MS >= 0 && APPROVE_MS !== 0) setTimeout(() => { pair.state = 'approved'; pair.token = b64u(crypto.randomBytes(32)); pair.deviceId = 'd' + (++db.nextId); db.tokens.set(pair.token, { id: pair.deviceId, name: pair.device, addedAt: Date.now(), lastSeen: Date.now() }); console.log('[pair] zatwierdzono'); }, APPROVE_MS);
+    if (APPROVE_MS >= 0 && APPROVE_MS !== 0) setTimeout(() => { pair.state = 'approved'; pair.token = b64u(crypto.randomBytes(32)); pair.deviceId = 'd' + (++db.nextId); db.tokens.set(pair.token, { id: pair.deviceId, name: pair.device, capabilities: pair.capabilities, addedAt: Date.now(), lastSeen: Date.now() }); console.log('[pair] zatwierdzono'); }, APPROVE_MS);
     else if (APPROVE_MS < 0) setTimeout(() => { pair.state = 'denied'; }, 1200);
     return json(res, 200, { id, nonce, expiresIn: 120, sas: pair.sas });
   }
@@ -130,7 +134,8 @@ async function api(req, res, url) {
       metrics: metrics(), engine: engine(),
       assistant: { busy: db.busy, stopped: db.stopped, pending: false, pendingSummary: '' },
       care: { ok: true, text: 'Wszystko działa samo · ostatnia kontrola ' + new Date().toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' }) },
-      counts: { tasks: db.tasks.length, reminders: db.reminders.length, notes: db.notes.length, alerts: db.alerts.length }, alertsLast: db.alertId
+      counts: { tasks: db.tasks.length, reminders: db.reminders.length, notes: db.notes.length, alerts: db.alerts.length }, alertsLast: db.alertId,
+      capabilities: ['systemMetrics', 'processList', 'assistantChat', 'assistantControl', 'tasks', 'reminders', 'notes', 'alerts', 'deviceManagement']
     });
   }
   if (p === '/api/chat' && req.method === 'POST') { const b = await readBody(req); return chat(req, res, String(b.text || '')); }
@@ -150,7 +155,7 @@ async function api(req, res, url) {
     if (!list.length && wait > 0) { await new Promise(ok => { const t = setTimeout(() => { waiters.delete(f); ok(); }, wait * 1000); const f = () => { clearTimeout(t); waiters.delete(f); ok(); }; waiters.add(f); req.on('close', f); }); list = pick(); }
     return json(res, 200, { alerts: list, last: db.alertId });
   }
-  if (p === '/api/devices') return json(res, 200, { devices: [...db.tokens.values()].map(d => ({ id: d.id, name: d.name, addedAt: iso(d.addedAt), lastSeen: iso(d.lastSeen), current: d === dev })) });
+  if (p === '/api/devices') return json(res, 200, { devices: [...db.tokens.values()].map(d => ({ id: d.id, name: d.name, addedAt: iso(d.addedAt), lastSeen: iso(d.lastSeen), current: d === dev, capabilities: d.capabilities || [] })) });
   if (p === '/api/unpair' && req.method === 'POST') { for (const [t, d] of db.tokens) if (d === dev) db.tokens.delete(t); return json(res, 200, { ok: true }); }
   if (p === '/api/mock/alert' && req.method === 'POST') { const b = await readBody(req); pushAlert(b.level || 'warn', b.title || 'Test', b.text || ''); return json(res, 200, { ok: true }); }
   return json(res, 404, { error: 'Nie znaleziono.' });

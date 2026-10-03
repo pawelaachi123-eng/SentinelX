@@ -45,6 +45,9 @@ public partial class TaskViewModel : ObservableObject, IDisposable
     private readonly List<string> projectIds = [];
     public IReadOnlyList<string> FilterOptions { get; } = [FilterToday, FilterAll, FilterOverdue, FilterDone];
     public IReadOnlyList<string> PriorityOptions { get; } = [TaskRecord.PriorityNormal, TaskRecord.PriorityLow, TaskRecord.PriorityHigh];
+    public bool HasItems => Items.Count > 0;
+    public bool HasReminders => Reminders.Count > 0;
+    public event Action? DashboardChanged;
 
     [ObservableProperty] private string filter = FilterToday;
     [ObservableProperty] private string status = "";
@@ -58,6 +61,10 @@ public partial class TaskViewModel : ObservableObject, IDisposable
     [ObservableProperty] private string newReminderWhen = "";
     [ObservableProperty] private string newReminderPreview = "";
     [ObservableProperty] private TaskItemViewModel? selectedTask;
+    [ObservableProperty] private TaskItemViewModel? pendingDeleteTask;
+    [ObservableProperty] private ReminderItemViewModel? pendingDeleteReminder;
+    [ObservableProperty] private string deleteConfirmationText = "";
+    [ObservableProperty] private bool isDeleteConfirmationOpen;
     [ObservableProperty] private string editorTitle = "";
     [ObservableProperty] private string editorDueText = "";
     [ObservableProperty] private string editorDuePreview = "";
@@ -104,7 +111,8 @@ public partial class TaskViewModel : ObservableObject, IDisposable
 
     private void RebuildProjects()
     {
-        string previous = newProjectIndex >= 0 && newProjectIndex < projectIds.Count ? projectIds[newProjectIndex] : "";
+        int selectedProjectIndex = NewProjectIndex;
+        string previous = selectedProjectIndex >= 0 && selectedProjectIndex < projectIds.Count ? projectIds[selectedProjectIndex] : "";
         projectIds.Clear(); projectIds.Add("");
         ProjectOptions.Clear(); ProjectOptions.Add("(bez projektu)");
         foreach (var project in projects.GetProjects()) { projectIds.Add(project.Id); ProjectOptions.Add(project.Name); }
@@ -120,6 +128,7 @@ public partial class TaskViewModel : ObservableObject, IDisposable
             (Items.Count == 0 && Reminders.Count == 0
                 ? "Brak pozycji dla tego filtra. Dodaj zadanie lub przypomnienie poniżej."
                 : $"Zadania: {Items.Count} na liście · Przypomnienia: {Reminders.Count} · wszystkie czasy to czas lokalny tego komputera.");
+        DashboardChanged?.Invoke();
     }
 
     private void RefreshItems()
@@ -135,16 +144,30 @@ public partial class TaskViewModel : ObservableObject, IDisposable
             _ => source,
         };
         var projectNames = projects.GetProjects(includeArchived: true).ToDictionary(x => x.Id, x => x.Name);
-        var items = source.Select(x => new TaskItemViewModel
-        {
-            Id = x.Id, Title = x.Title, Priority = x.Priority,
-            StatusLabel = x.Status,
-            MetaText = $"{(x.Priority == TaskRecord.PriorityHigh ? "‼ " : "")}{x.Status}{(x.DueAt != null ? $" · termin: {x.DueAt:dd.MM.yyyy HH:mm}{(x.DueAt.Value.Date < today && x.Status != TaskRecord.StatusDone ? " (po terminie)" : "")}" : "")}{(x.ProjectId.Length > 0 && projectNames.TryGetValue(x.ProjectId, out string? name) ? $" · projekt: {name}" : "")} · utworzone {x.CreatedAt:dd.MM.yyyy}",
-            StatusCycleLabel = x.Status == TaskRecord.StatusOpen ? "W toku" : x.Status == TaskRecord.StatusDoing ? "Zrobione ✓" : "Przywróć",
-        }).ToArray();
+        var items = source.Select(x => ToViewModel(x, projectNames, today)).ToArray();
         Items.Clear(); foreach (var item in items) Items.Add(item);
+        OnPropertyChanged(nameof(HasItems));
         if (SelectedTask != null && items.All(x => x.Id != SelectedTask.Id)) SelectedTask = null;
     }
+
+    /// <summary>Dashboard projection independent of the interactive task-page filter.</summary>
+    public IReadOnlyList<TaskItemViewModel> GetDashboardItems(int limit = 4)
+    {
+        if (limit <= 0) return Array.Empty<TaskItemViewModel>();
+        DateTime today = DateTime.Today;
+        var projectNames = projects.GetProjects(includeArchived: true).ToDictionary(x => x.Id, x => x.Name);
+        return tasks.GetTasks().Take(limit).Select(item => ToViewModel(item, projectNames, today)).ToArray();
+    }
+
+    private static TaskItemViewModel ToViewModel(TaskRecord task, IReadOnlyDictionary<string, string> projectNames, DateTime today) => new()
+    {
+        Id = task.Id,
+        Title = task.Title,
+        Priority = task.Priority,
+        StatusLabel = task.Status,
+        MetaText = $"{(task.Priority == TaskRecord.PriorityHigh ? "‼ " : "")}{task.Status}{(task.DueAt != null ? $" · termin: {task.DueAt:dd.MM.yyyy HH:mm}{(task.DueAt.Value.Date < today && task.Status != TaskRecord.StatusDone ? " (po terminie)" : "")}" : "")}{(task.ProjectId.Length > 0 && projectNames.TryGetValue(task.ProjectId, out string? name) ? $" · projekt: {name}" : "")} · utworzone {task.CreatedAt:dd.MM.yyyy}",
+        StatusCycleLabel = task.Status == TaskRecord.StatusOpen ? "W toku" : task.Status == TaskRecord.StatusDoing ? "Zrobione ✓" : "Przywróć",
+    };
 
     private void RefreshReminders()
     {
@@ -161,6 +184,7 @@ public partial class TaskViewModel : ObservableObject, IDisposable
             return new ReminderItemViewModel { Id = x.Id, Text = x.Text, NotifiedAt = x.NotifiedAt, Missed = x.Missed, MetaText = meta };
         }).ToArray();
         Reminders.Clear(); foreach (var reminder in reminders) Reminders.Add(reminder);
+        OnPropertyChanged(nameof(HasReminders));
     }
 
     [RelayCommand]
@@ -168,7 +192,8 @@ public partial class TaskViewModel : ObservableObject, IDisposable
     {
         string title = NewTitle;
         string dueText = NewDueText;
-        var projectId = newProjectIndex > 0 && newProjectIndex < projectIds.Count ? projectIds[newProjectIndex] : "";
+        int selectedProjectIndex = NewProjectIndex;
+        var projectId = selectedProjectIndex > 0 && selectedProjectIndex < projectIds.Count ? projectIds[selectedProjectIndex] : "";
         DateTime? due = null;
         if (dueText.Trim().Length > 0)
         {
@@ -178,8 +203,9 @@ public partial class TaskViewModel : ObservableObject, IDisposable
         var created = tasks.AddTask(title, NewPriority, due, projectId);
         if (created == null) { Status = tasks.LastStorageError ?? "Nie dodano zadania."; return; }
         NewTitle = "";
-        Status = due != null ? $"Dodano zadanie z terminem {due:dd.MM.yyyy HH:mm} (czas lokalny)." : "Dodano zadanie bez terminu.";
+        string result = due != null ? $"Dodano zadanie z terminem {due:dd.MM.yyyy HH:mm} (czas lokalny)." : "Dodano zadanie bez terminu.";
         Refresh();
+        Status = result;
     }
 
     [RelayCommand]
@@ -193,8 +219,9 @@ public partial class TaskViewModel : ObservableObject, IDisposable
         var created = tasks.AddReminder(text, parsed, "");
         if (created == null) { Status = tasks.LastStorageError ?? "Nie ustawiono przypomnienia."; return; }
         NewReminderText = ""; NewReminderWhen = "";
-        Status = $"Ustawiono przypomnienie na {description}. Zadziała tylko, gdy Sentinel jest uruchomiony; spóźnione pokażą się jako przegapione.";
+        string result = $"Ustawiono przypomnienie na {description}. Zadziała tylko, gdy Sentinel jest uruchomiony; spóźnione pokażą się jako przegapione.";
         Refresh();
+        Status = result;
     }
 
     [RelayCommand]
@@ -202,26 +229,65 @@ public partial class TaskViewModel : ObservableObject, IDisposable
     {
         if (task == null) return;
         string next = task.StatusLabel == TaskRecord.StatusOpen ? TaskRecord.StatusDoing : task.StatusLabel == TaskRecord.StatusDoing ? TaskRecord.StatusDone : TaskRecord.StatusOpen;
-        Status = tasks.SetTaskStatus(task.Id, next) ? $"Status: {next}." : "Nie zmieniono statusu.";
+        bool changed = tasks.SetTaskStatus(task.Id, next);
         Refresh();
+        Status = changed ? $"Status: {next}." : (tasks.LastStorageError ?? "Nie zmieniono statusu.");
     }
 
     [RelayCommand]
     private void DeleteTask(TaskItemViewModel? task)
     {
         if (task == null) return;
-        Status = tasks.DeleteTask(task.Id)
-            ? "Usunięto zadanie (nieodwracalnie; usunięty został wyłącznie ten wpis — eksporty i audyt pozostały)."
-            : "Nie usunięto — zadanie nie istnieje.";
-        Refresh();
+        PendingDeleteTask = task;
+        PendingDeleteReminder = null;
+        DeleteConfirmationText = $"Usunąć zadanie „{task.Title}”? Tej zmiany nie można cofnąć. Usunięty zostanie tylko ten wpis.";
+        IsDeleteConfirmationOpen = true;
     }
 
     [RelayCommand]
     private void DeleteReminder(ReminderItemViewModel? reminder)
     {
         if (reminder == null) return;
-        Status = tasks.DeleteReminder(reminder.Id) ? "Usunięto przypomnienie (nieodwracalnie, wyłącznie ten wpis)." : "Nie usunięto — przypomnienie nie istnieje.";
+        PendingDeleteTask = null;
+        PendingDeleteReminder = reminder;
+        DeleteConfirmationText = $"Usunąć przypomnienie „{reminder.Text}”? Tej zmiany nie można cofnąć.";
+        IsDeleteConfirmationOpen = true;
+    }
+
+    [RelayCommand]
+    private void CancelDelete()
+    {
+        IsDeleteConfirmationOpen = false;
+        PendingDeleteTask = null;
+        PendingDeleteReminder = null;
+        DeleteConfirmationText = "";
+    }
+
+    [RelayCommand]
+    private void ConfirmDelete()
+    {
+        string result;
+        if (PendingDeleteTask is { } task)
+        {
+            bool removed = tasks.DeleteTask(task.Id);
+            result = removed
+                ? "Usunięto zadanie (nieodwracalnie; tylko ten wpis — eksporty i audyt pozostały)."
+                : (tasks.LastStorageError ?? "Nie usunięto — zadanie nie istnieje.");
+        }
+        else if (PendingDeleteReminder is { } reminder)
+        {
+            bool removed = tasks.DeleteReminder(reminder.Id);
+            result = removed ? "Usunięto przypomnienie (nieodwracalnie, tylko ten wpis)." : (tasks.LastStorageError ?? "Nie usunięto — przypomnienie nie istnieje.");
+        }
+        else
+        {
+            Status = "Nie ma wybranego wpisu do usunięcia.";
+            CancelDelete();
+            return;
+        }
+        CancelDelete();
         Refresh();
+        Status = result;
     }
 
     [RelayCommand] private void SelectTask(TaskItemViewModel? task) { if (task != null) SelectedTask = task; }
@@ -235,12 +301,17 @@ public partial class TaskViewModel : ObservableObject, IDisposable
         if (EditorDueText.Trim().Length > 0)
         {
             if (!PolishTimeParser.TryParse(EditorDueText, DateTime.Now, out DateTime parsed, out string dueError))
-            { Status = $"Termin nieczytelny ({dueError}) — zmiana terminu pominięta. Tytuł: {(renamed ? "zapisany" : "bez zmian")}."; Refresh(); return; }
+            {
+                Refresh();
+                Status = $"Termin nieczytelny ({dueError}) — zmiana terminu pominięta. Tytuł: {(renamed ? "zapisany" : "bez zmian")}.";
+                return;
+            }
             newDue = parsed; dueChanged = true;
         }
         bool dueSet = dueChanged && tasks.SetTaskDue(SelectedTask.Id, newDue);
-        Status = renamed || dueSet ? "Zapisano zmiany zadania." : (tasks.LastStorageError ?? "Brak zmian do zapisania.");
+        string result = renamed || dueSet ? "Zapisano zmiany zadania." : (tasks.LastStorageError ?? "Brak zmian do zapisania.");
         Refresh();
+        Status = result;
     }
 
     public void Dispose()

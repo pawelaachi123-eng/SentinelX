@@ -5,4 +5,5 @@ public partial class OverlayWindow : Window
 {
     public OverlayWindow() => InitializeComponent();
     private void DragOverlay(object sender, MouseButtonEventArgs e) { if (e.ButtonState == MouseButtonState.Pressed) DragMove(); }
+    private void CloseOverlay(object sender, RoutedEventArgs e) => Close();
 }

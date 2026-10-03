@@ -3,6 +3,8 @@ package pl.sentinelx.phone;
 import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.drawable.GradientDrawable;
@@ -35,6 +37,7 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
@@ -46,7 +49,6 @@ import java.util.List;
  * listens for speech in Polish and can wake the PC up (Wake-on-LAN).
  */
 public class MainActivity extends Activity {
-    private static final int BG = 0xFF0D0F14;
     private static final int REQUEST_VOICE = 41;
     private static final int REQUEST_NOTIFICATIONS = 42;
 
@@ -72,9 +74,9 @@ public class MainActivity extends Activity {
         AlertJobService.schedule(this);
 
         root = new FrameLayout(this);
-        root.setBackgroundColor(BG);
+        root.setBackgroundColor(getColor(R.color.sx_background));
         web = new WebView(this);
-        web.setBackgroundColor(BG);
+        web.setBackgroundColor(getColor(R.color.sx_background));
         configureWeb();
         root.addView(web, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         overlay = buildOverlay();
@@ -120,18 +122,18 @@ public class MainActivity extends Activity {
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
         box.setGravity(Gravity.CENTER);
-        box.setBackgroundColor(BG);
+        box.setBackgroundColor(getColor(R.color.sx_background));
         box.setPadding(dp(28), dp(28), dp(28), dp(28));
         box.setClickable(true);
 
         overlayTitle = new TextView(this);
-        overlayTitle.setTextColor(0xFFE8ECF4);
+        overlayTitle.setTextColor(getColor(R.color.sx_text_primary));
         overlayTitle.setTextSize(22);
         overlayTitle.setGravity(Gravity.CENTER);
         overlayTitle.setTypeface(overlayTitle.getTypeface(), android.graphics.Typeface.BOLD);
 
         overlayText = new TextView(this);
-        overlayText.setTextColor(0xFF8B92A5);
+        overlayText.setTextColor(getColor(R.color.sx_text_secondary));
         overlayText.setTextSize(15);
         overlayText.setGravity(Gravity.CENTER);
         overlayText.setPadding(0, dp(10), 0, dp(18));
@@ -161,15 +163,16 @@ public class MainActivity extends Activity {
         b.setTextSize(15);
         b.setOnClickListener(listener);
         GradientDrawable shape = primary
-                ? new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT, new int[] { 0xFF00D4FF, 0xFF8B5CF6 })
+                ? new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
+                    new int[] { getColor(R.color.sx_accent_cyan), getColor(R.color.sx_accent_violet) })
                 : new GradientDrawable();
         shape.setCornerRadius(dp(14));
         if (!primary) {
-            shape.setColor(0xFF141820);
-            shape.setStroke(dp(1), 0xFF2A2F3C);
+            shape.setColor(getColor(R.color.sx_surface));
+            shape.setStroke(dp(1), getColor(R.color.sx_border));
         }
         b.setBackground(shape);
-        b.setTextColor(primary ? 0xFF04121A : 0xFFE8ECF4);
+        b.setTextColor(primary ? getColor(R.color.sx_on_accent) : getColor(R.color.sx_text_primary));
         return b;
     }
 
@@ -225,15 +228,23 @@ public class MainActivity extends Activity {
 
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-                Uri uri = request.getUrl();
-                return uri.getHost() == null || !uri.getHost().equals(session.host()); // never leave the PC's own page
+                return !isPinnedOrigin(request.getUrl()); // keep navigation on the exact pinned HTTPS origin
             }
 
             @Override
             public void onPageFinished(WebView view, String url) {
-                if (url != null && url.startsWith("https://")) hideStatus();
+                if (url != null && isPinnedOrigin(Uri.parse(url))) hideStatus();
             }
         });
+    }
+
+    private boolean isPinnedOrigin(Uri uri) {
+        return uri != null
+                && "https".equalsIgnoreCase(uri.getScheme())
+                && uri.getHost() != null
+                && uri.getHost().equalsIgnoreCase(session.host())
+                && uri.getPort() == session.port()
+                && uri.getUserInfo() == null;
     }
 
     private static String fingerprintOf(SslCertificate certificate) {
@@ -259,7 +270,13 @@ public class MainActivity extends Activity {
                     openPc();
                     return;
                 }
-                List<PcLocator.Pc> all = distinctByCertificate(PcLocator.discoverAll(session.fingerprint(), 2500));
+                List<PcLocator.Pc> candidates = distinctByCertificate(PcLocator.discoverAll(session.fingerprint(), 2500));
+                List<PcLocator.Pc> all = new ArrayList<>();
+                for (PcLocator.Pc candidate : candidates) {
+                    if (all.size() >= 8) break;
+                    // UDP discovery is unauthenticated. Verify the advertised fingerprint against TLS before trusting or loading the page.
+                    if (PcLocator.probe(candidate.host, candidate.port, candidate.fingerprint, 1500)) all.add(candidate);
+                }
                 if (all.size() == 1 || (!all.isEmpty() && session.hasPc())) {
                     PcLocator.Pc found = all.get(0);
                     session.savePc(found.host, found.port, found.fingerprint, found.name);
@@ -358,6 +375,13 @@ public class MainActivity extends Activity {
                 });
                 return;
             }
+            if (!PcLocator.probe(host, port, fp, 4000)) {
+                runOnUiThread(() -> {
+                    showOffline();
+                    Toast.makeText(this, "Pod tym adresem nie znaleziono Sentinel X zgodnego z API telefonu.", Toast.LENGTH_LONG).show();
+                });
+                return;
+            }
             session.savePc(host, port, fp, host);
             openPc();
         }, "sentinelx-address").start();
@@ -398,6 +422,21 @@ public class MainActivity extends Activity {
         if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(new String[] { Manifest.permission.POST_NOTIFICATIONS }, REQUEST_NOTIFICATIONS);
         }
+    }
+
+    private boolean notificationsAvailable() {
+        if (Build.VERSION.SDK_INT >= 33
+                && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) return false;
+        NotificationManager manager = getSystemService(NotificationManager.class);
+        if (manager == null || !manager.areNotificationsEnabled()) return false;
+        if (Build.VERSION.SDK_INT >= 26) {
+            NotificationChannel alerts = manager.getNotificationChannel(Notifier.CHANNEL_ALERTS);
+            NotificationChannel info = manager.getNotificationChannel(Notifier.CHANNEL_INFO);
+            boolean alertChannel = alerts != null && alerts.getImportance() != NotificationManager.IMPORTANCE_NONE;
+            boolean infoChannel = info != null && info.getImportance() != NotificationManager.IMPORTANCE_NONE;
+            return alertChannel || infoChannel;
+        }
+        return true;
     }
 
     private boolean voiceAvailable() {
@@ -476,10 +515,21 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public String savedToken() { return session.token(); }
 
+        /** Stable wire identifiers; the permission-dependent capabilities describe support, not server authorization. */
         @JavascriptInterface
-        public void saveSession(String token, String name, String pcName) {
-            if (token != null && !token.isEmpty()) session.saveToken(token, pcName);
-            AlertJobService.schedule(MainActivity.this);
+        public String capabilitiesJson() {
+            JSONArray capabilities = new JSONArray();
+            if (notificationsAvailable()) capabilities.put("notifications");
+            if (voiceAvailable()) capabilities.put("voiceInput");
+            capabilities.put("wakeOnLan");
+            return capabilities.toString();
+        }
+
+        @JavascriptInterface
+        public boolean saveSession(String token, String name, String pcName) {
+            boolean saved = token != null && !token.isEmpty() && session.saveToken(token, pcName);
+            if (saved) AlertJobService.schedule(MainActivity.this);
+            return saved;
         }
 
         @JavascriptInterface

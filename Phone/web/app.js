@@ -129,7 +129,17 @@ const Native = (() => {
     tlsFingerprint: () => String(call('tlsFingerprint') || ''),
     deviceName: () => String(call('deviceName') || ''),
     savedToken: () => String(call('savedToken') || ''),
-    saveSession: (token, name, pc) => call('saveSession', token, name, pc),
+    phoneCapabilities: () => {
+      try {
+        const values = JSON.parse(String(call('capabilitiesJson') || '[]'));
+        const known = new Set(['notifications', 'voiceInput', 'wakeOnLan']);
+        return Array.isArray(values) ? [...new Set(values.filter(x => typeof x === 'string' && known.has(x)))] : [];
+      } catch { return []; }
+    },
+    saveSession: (token, name, pc) => {
+      const result = call('saveSession', token, name, pc);
+      return result === undefined || result === true; // an older paired Android shell returned void here
+    },
     saveMac: mac => call('saveMac', mac),
     clearSession: () => call('clearSession'),
     hasVoice: () => !!call('hasVoice'),
@@ -140,9 +150,14 @@ const Native = (() => {
   };
 })();
 
+function reportedPhoneCapabilities() {
+  if (Native) return Native.phoneCapabilities();
+  return (window.SpeechRecognition || window.webkitSpeechRecognition) ? ['voiceInput'] : [];
+}
+
 /* ───────────── stan ───────────── */
 const S = {
-  token: store.get('token'), device: store.get('device'), pcName: store.get('pc'),
+  token: Native ? Native.savedToken() : store.get('token'), device: store.get('device'), pcName: store.get('pc'),
   tab: 'chat', online: true, busy: false, ctrl: null,
   speak: store.get('speak') === '1',
   state: null, tasks: null, notes: null, alerts: [], alertLast: 0, alertSeen: Number(store.get('alertSeen', '0')) || 0,
@@ -277,7 +292,7 @@ async function startPair() {
   S.pair = ctx;
   try {
     const nonce = b64uEnc(crypto.getRandomValues(new Uint8Array(16)));
-    const r = await api('api/pair/request', { method: 'POST', body: { device: name, nonce } });
+    const r = await api('api/pair/request', { method: 'POST', body: { device: name, nonce, capabilities: reportedPhoneCapabilities() } });
     if (ctx.cancelled) return;
     const fp = Native ? Native.tlsFingerprint() : '';
     let sas = r.sas;
@@ -297,8 +312,12 @@ async function startPair() {
       const st = await api('api/pair/status?id=' + encodeURIComponent(r.id));
       if (st.state === 'approved') {
         if (ctx.mismatch) { ui.pairMsg.textContent = 'Kody się różniały — połączenie odrzucone dla bezpieczeństwa.'; break; }
-        S.token = st.token; store.set('token', st.token);
-        if (Native) Native.saveSession(st.token, name, S.pcName || '');
+        S.token = st.token;
+        if (Native) {
+          store.del('token'); // the Android shell stores this credential encrypted by Android Keystore
+          if (!Native.saveSession(st.token, name, S.pcName || ''))
+            toast('Sesja tymczasowa', 'Nie udało się bezpiecznie zapisać tokenu. Po zamknięciu aplikacji może być konieczne ponowne parowanie.', 'warn');
+        } else store.set('token', st.token);
         S.pair = null;
         await afterPair();
         return;
@@ -390,6 +409,7 @@ function renderPc() {
   net.append(h('div', { text: m.network || 'Brak danych' }));
   const a = s.assistant || {};
   const stop = $('#btnStop');
+  stop.hidden = Array.isArray(s.capabilities) && !s.capabilities.includes('assistantControl');
   stop.textContent = a.stopped ? 'Wznów asystenta' : 'Awaryjny STOP asystenta';
   stop.className = a.stopped ? 'btn primary' : 'btn danger';
 }
@@ -714,9 +734,14 @@ function bind() {
 }
 async function boot() {
   bind(); loadChat(); initMic(); setBusy(false); renderNet();
-  // The app keeps a copy of the token: when the router gives the PC a new address the page origin changes and localStorage starts empty,
-  // but the phone must not ask for a new pairing just because of that.
-  if (!S.token && Native) { const saved = Native.savedToken(); if (saved) { S.token = saved; store.set('token', saved); } }
+  // Restore the native session from encrypted app storage. On upgrade, securely migrate an older WebView localStorage token once,
+  // then erase that plaintext copy; browsers without the bridge continue using origin-scoped localStorage.
+  if (Native) {
+    const legacyWebToken = store.get('token');
+    if (!S.token && legacyWebToken && Native.saveSession(legacyWebToken, Native.deviceName(), S.pcName || ''))
+      S.token = legacyWebToken;
+    store.del('token');
+  }
   if (!S.token) { showPair(); return; }
   try { await refreshState(true); enterMain(); }
   catch (e) { if (e instanceof ApiError && e.status === 401) return; enterMain(); }

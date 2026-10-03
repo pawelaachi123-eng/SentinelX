@@ -57,7 +57,8 @@ public sealed class AlertFeed
 
     private static string Clip(string? text, int max)
     {
-        string trimmed = (text ?? "").Trim();
+        string safe = new((text ?? "").Select(ch => char.IsControl(ch) ? ' ' : ch).ToArray());
+        string trimmed = safe.Trim();
         return trimmed.Length <= max ? trimmed : trimmed[..max];
     }
 }

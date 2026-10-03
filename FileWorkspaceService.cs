@@ -38,7 +38,7 @@ public sealed class FileWorkspaceService : Services.Files.IFileService
         var line = Regex.Match(command, @"^(?:zmień|zmien)\s+(\d+)\s+linie?\s+(?:na\s+)?([\s\S]+)$", RegexOptions.IgnoreCase);
         bool read = ConversationMemoryService.Normalize(command).Trim().TrimEnd('.') is "pokaz ten plik" or "przeczytaj ten plik";
         if (!create.Success && !write.Success && !line.Success && !read) return null;
-        if (read) return LastFile != null && File.Exists(LastFile) ? LastFile + "\n\n" + await File.ReadAllTextAsync(LastFile, token) : "Najpierw utwórz plik w tej rozmowie.";
+        if (read) return await ReadLastFileAsync(token);
         string id = history.CreateActionId();
         history.AddRunning(id, "FILE_WRITE", command);
         try
@@ -90,6 +90,42 @@ public sealed class FileWorkspaceService : Services.Files.IFileService
             history.AddResult(id, "FILE_WRITE", command, result); return "FAILED • " + id + "\n" + result.Message;
         }
     }
+    private async Task<string> ReadLastFileAsync(CancellationToken token)
+    {
+        string? path = LastFile;
+        if (string.IsNullOrWhiteSpace(path)) return "Najpierw utwórz plik w tej rozmowie.";
+        try
+        {
+            token.ThrowIfCancellationRequested();
+            var info = new FileInfo(path);
+            if (!info.Exists) return "Ostatnio utworzony plik już nie istnieje.";
+            if ((info.Attributes & FileAttributes.ReparsePoint) != 0)
+                return "Odmówiłem odczytu: ostatnio utworzony plik został zastąpiony dowiązaniem.";
+            if (info.Length > 1024 * 1024) return "Odmówiłem odczytu: plik przekracza limit 1 MB.";
+
+            await using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, useAsync: true);
+            if (stream.Length > 1024 * 1024) return "Odmówiłem odczytu: plik przekracza limit 1 MB.";
+            using var reader = new StreamReader(stream, Encoding.UTF8, detectEncodingFromByteOrderMarks: true, bufferSize: 4096, leaveOpen: true);
+            var content = new StringBuilder((int)Math.Min(stream.Length, 1024 * 1024));
+            var buffer = new char[16 * 1024];
+            while (true)
+            {
+                int count = await reader.ReadAsync(buffer.AsMemory(), token);
+                if (count == 0) break;
+                if (content.Length + count > 1024 * 1024)
+                    return "Odmówiłem odczytu: zawartość przekroczyła limit 1 MB podczas czytania.";
+                content.Append(buffer, 0, count);
+            }
+            token.ThrowIfCancellationRequested();
+            return path + "\n\n" + content;
+        }
+        catch (OperationCanceledException) { throw; }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            return "Nie udało się bezpiecznie odczytać ostatnio utworzonego pliku: " + ex.Message;
+        }
+    }
+
     private async Task<string> CopyOrMoveAsync(string command, string name, bool move, CancellationToken token)
     {
         string id = history.CreateActionId(), type = move ? "FILE_MOVE" : "FILE_COPY";

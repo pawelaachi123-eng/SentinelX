@@ -13,6 +13,7 @@
             </DockPanel>
             <TextBox x:Name="SearchInput" Text="{Binding Query, UpdateSourceTrigger=PropertyChanged}" u:InputHint.Text="Szukaj: pamięć, mikrofon, ustawienia…" u:UiInteraction.FocusOnVisible="True" AutomationProperties.Name="Szukaj polecenia lub strony" Margin="0,0,0,16">
                 <TextBox.InputBindings>
+                    <KeyBinding Key="Escape" Command="{Binding CloseCommand}"/>
                     <KeyBinding Key="Enter" Command="{Binding ChooseCommand}"/>
                     <KeyBinding Key="Down" Command="{Binding NextCommand}"/>
                     <KeyBinding Key="Up" Command="{Binding PreviousCommand}"/>

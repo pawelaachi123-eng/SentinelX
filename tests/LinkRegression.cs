@@ -1,4 +1,5 @@
 using System.IO;
+using System.Globalization;
 using System.Net;
 using System.Net.Http;
 using System.Net.Security;
@@ -6,6 +7,7 @@ using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using SentinelX.Core;
 using SentinelX.Models;
 using SentinelX.Services.Actions;
 using SentinelX.Services.Care;
@@ -39,6 +41,12 @@ internal static class LinkRegression
         public Task<IntentResult> ExecuteAsync(string input, CancellationToken token = default, bool fromVoice = false, Action<string>? onDelta = null)
         {
             Calls.Add((input, fromVoice));
+            if (input.Contains("big stream"))
+            {
+                const int answerLength = 300;
+                for (int i = 0; i < answerLength; i++) onDelta?.Invoke("x");
+                return Task.FromResult(new IntentResult(new string('x', answerLength)));
+            }
             if (input.Contains("stream"))
             {
                 foreach (string part in new[] { "Jeden ", "dwa ", "trzy" }) onDelta?.Invoke(part);
@@ -142,16 +150,80 @@ internal static class LinkRegression
         feed.Add("warn", "nowy", "alert");
         Check((await waiting).Count == 1 && feed.After(before)[0].Level == "warn", "long-polling returns as soon as an alert arrives");
         Check((await feed.WaitAfterAsync(feed.LastId, TimeSpan.FromMilliseconds(120), default)).Count == 0, "long-polling times out quietly");
+        var hostileAlert = feed.Add("warn", "Title" + (char)13 + (char)10 + new string('x', 130), "Body" + (char)13 + (char)10 + new string('y', 700));
+        Check(hostileAlert.Title.Length == 120 && hostileAlert.Text.Length == 600 &&
+              !hostileAlert.Title.Any(char.IsControl) && !hostileAlert.Text.Any(char.IsControl),
+            "phone notifications strip control characters and enforce field-size limits at the journal boundary");
 
         string deviceDirectory = Path.Combine(directory, "devices");
         var devices = new LinkDeviceStore(deviceDirectory);
-        (LinkDeviceInfo device, string token) = devices.Add("Telefon testowy");
+        var reportedCapabilities = new LinkPhoneCapabilities(Notifications: true, VoiceInput: false, WakeOnLan: true);
+        (LinkDeviceInfo device, string token) = devices.Add("Telefon testowy", reportedCapabilities);
         Check(devices.Validate(token)?.Id == device.Id && devices.Validate(token + "x") == null, "a token validates only for the phone it was issued to");
         Check(!File.ReadAllText(Path.Combine(deviceDirectory, "devices.json")).Contains(token), "only the hash of the token is stored on disk");
-        Check(new LinkDeviceStore(deviceDirectory).Validate(token)?.Name == "Telefon testowy", "paired phones survive a restart");
+        Check(new LinkDeviceStore(deviceDirectory).Validate(token)?.Name == "Telefon testowy"
+              && new LinkDeviceStore(deviceDirectory).Validate(token)?.Capabilities == reportedCapabilities,
+            "paired phones and their informational capabilities survive a restart");
         Check(devices.Remove(device.Id) && new LinkDeviceStore(deviceDirectory).Validate(token) == null, "removing a phone revokes its token");
+
+        string legacyDeviceDirectory = Path.Combine(directory, "legacy-devices");
+        Directory.CreateDirectory(legacyDeviceDirectory);
+        string legacyTimestamp = DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture);
+        File.WriteAllText(Path.Combine(legacyDeviceDirectory, "devices.json"),
+            "[{\"Id\":\"legacy\",\"Name\":\"Stary telefon\",\"TokenHash\":\"" + new string('a', 64) +
+            "\",\"AddedAt\":\"" + legacyTimestamp + "\",\"LastSeen\":\"" + legacyTimestamp + "\"}]");
+        Check(new LinkDeviceStore(legacyDeviceDirectory).List().Single().Capabilities == LinkPhoneCapabilities.None,
+            "a pre-capabilities device store remains readable after upgrade");
+
         for (int i = 0; i < 12; i++) devices.Add("Telefon " + i);
         Check(devices.List().Count == 10, "at most ten phones; the least recently used one is replaced");
+
+        string blockedRoot = Path.Combine(directory, "not-a-directory");
+        if (Directory.Exists(blockedRoot)) Directory.Delete(blockedRoot, true);
+        if (File.Exists(blockedRoot)) File.Delete(blockedRoot);
+        File.WriteAllText(blockedRoot, "test fixture");
+        var blockedStore = new LinkDeviceStore(Path.Combine(blockedRoot, "nested"));
+        bool addFailed = false;
+        try { blockedStore.Add("Niezapisany telefon"); }
+        catch (IOException) { addFailed = true; }
+        Check(addFailed && blockedStore.List().Count == 0 && blockedStore.LastError != null,
+            "a phone is not paired or issued a bearer token when the credential store cannot be written");
+
+        string revocationRoot = Path.Combine(directory, "revocation");
+        string preservedDeviceDirectory = revocationRoot + ".preserved";
+        if (Directory.Exists(revocationRoot)) Directory.Delete(revocationRoot, true);
+        if (File.Exists(revocationRoot)) File.Delete(revocationRoot);
+        if (Directory.Exists(preservedDeviceDirectory)) Directory.Delete(preservedDeviceDirectory, true);
+        if (File.Exists(preservedDeviceDirectory)) File.Delete(preservedDeviceDirectory);
+        var revocationStore = new LinkDeviceStore(revocationRoot);
+        (LinkDeviceInfo revocable, string revocationToken) = revocationStore.Add("Telefon do odłączenia");
+        Directory.Move(revocationRoot, preservedDeviceDirectory);
+        File.WriteAllText(revocationRoot, "test fixture blocks the store directory");
+        Check(!revocationStore.Remove(revocable.Id) && revocationStore.Validate(revocationToken)?.Id == revocable.Id && revocationStore.LastError != null,
+            "failed credential persistence is surfaced instead of reporting a durable revocation");
+        Check(new LinkDeviceStore(preservedDeviceDirectory).Validate(revocationToken)?.Id == revocable.Id,
+            "the old credential remains explicitly recoverable after a failed revocation write");
+        Check(!revocationStore.RemoveAll() && revocationStore.List().Count == 1,
+            "disconnect-all also reports a failed durable write and preserves the in-memory view");
+
+        string corruptDeviceDirectory = Path.Combine(directory, "corrupt-devices");
+        if (Directory.Exists(corruptDeviceDirectory)) Directory.Delete(corruptDeviceDirectory, true);
+        Directory.CreateDirectory(corruptDeviceDirectory);
+        File.WriteAllText(Path.Combine(corruptDeviceDirectory, "devices.json"), "{ invalid");
+        var corruptStore = new LinkDeviceStore(corruptDeviceDirectory);
+        Check(corruptStore.LastError != null && Directory.GetFiles(corruptDeviceDirectory, "devices.json.corrupt-*").Length == 1,
+            "an unreadable credential store is quarantined instead of silently replaced");
+        (LinkDeviceInfo recoveredDevice, string recoveredToken) = corruptStore.Add("Nowy telefon");
+        Check(new LinkDeviceStore(corruptDeviceDirectory).Validate(recoveredToken)?.Id == recoveredDevice.Id,
+            "a fresh pairing works after the damaged credential file has been preserved");
+
+        string oversizedDeviceDirectory = Path.Combine(directory, "oversized-devices");
+        if (Directory.Exists(oversizedDeviceDirectory)) Directory.Delete(oversizedDeviceDirectory, true);
+        Directory.CreateDirectory(oversizedDeviceDirectory);
+        File.WriteAllText(Path.Combine(oversizedDeviceDirectory, "devices.json"), new string('x', 256 * 1024 + 1));
+        var oversizedStore = new LinkDeviceStore(oversizedDeviceDirectory);
+        Check(oversizedStore.LastError != null && Directory.GetFiles(oversizedDeviceDirectory, "devices.json.corrupt-*").Length == 1,
+            "an oversized device store is detected and preserved before any new credentials can overwrite it");
 
         string certDirectory = Path.Combine(directory, "cert");
         using (var first = new LinkCertificate(certDirectory))
@@ -166,7 +238,10 @@ internal static class LinkRegression
         var memory = new ConversationMemoryService(Path.Combine(directory, "memory"));
         var api = new LinkApi(engine, new FakeMonitor(), tasks, memory, alerts,
             () => new LinkInfo("9.9", "ready", "gotowy", 1, "qwen3:1.7b", ["qwen3:1.7b"], true, "Wszystko działa samo"), () => ["https://127.0.0.1/"]);
-        using var service = new LinkService(api, ui, () => new LinkSettings { Port = 0, Discovery = false }, Path.Combine(directory, "link"));
+        string linkDirectory = Path.Combine(directory, "link");
+        if (Directory.Exists(linkDirectory)) Directory.Delete(linkDirectory, true);
+        if (File.Exists(linkDirectory)) File.Delete(linkDirectory);
+        using var service = new LinkService(api, ui, () => new LinkSettings { Port = 0, Discovery = false }, linkDirectory);
         await service.StartAsync(IPAddress.Loopback);
         Check(service.IsRunning && service.Port > 0 && service.Fingerprint.Length == 64, "the link starts and reports its certificate fingerprint");
 
@@ -186,27 +261,57 @@ internal static class LinkRegression
             Check(etag.Length > 0 && notModified.StatusCode == HttpStatusCode.NotModified, "unchanged assets are answered with 304");
         }
         Check((await anonymous.GetAsync("/nie-ma.js")).StatusCode == HttpStatusCode.NotFound, "an unknown file is a 404");
-        Check((await Get(anonymous, "api/hello")).Json.GetProperty("fingerprint").GetString() == service.Fingerprint, "the hello answer shows the pinned fingerprint");
+        JsonElement hello = (await Get(anonymous, "api/hello")).Json;
+        Check(hello.GetProperty("fingerprint").GetString() == service.Fingerprint && hello.GetProperty("api").GetInt32() == LinkProtocol.CurrentVersion,
+            "the typed hello contract retains API v1 and the pinned fingerprint");
+        Check(hello.GetProperty("version").GetString() == AppConstants.Version
+              && hello.GetProperty("capabilities").EnumerateArray().Any(x => x.GetString() == "assistantControl"),
+            "the hello contract reports the current app version and real host capabilities");
         using var wrongToken = Client(service, "zly-token");
         Check((await Get(anonymous, "api/state")).Status == 401 && (await Get(wrongToken, "api/state")).Status == 401, "no token or a wrong token is refused");
+
+        string legacyNonce = LinkDeviceStore.Base64Url(RandomNumberGenerator.GetBytes(16));
+        var legacyPairRequest = await Post(anonymous, "api/pair/request", new { device = "Klient API v1", nonce = legacyNonce });
+        Check(legacyPairRequest.Status == 200 && ui.Last?.Capabilities == LinkPhoneCapabilities.None,
+            "an API v1 client that omits the additive capabilities field can still request pairing");
+        string legacyPairId = legacyPairRequest.Json.GetProperty("id").GetString()!;
+        ui.Decide!(false);
+        Check((await Get(anonymous, "api/pair/status?id=" + legacyPairId)).Json.GetProperty("state").GetString() == "denied",
+            "the legacy pairing request follows the existing PC consent flow");
 
         // ---- pairing: request → code on the PC → one click → token, once
         byte[] fingerprint = Convert.FromHexString(service.Fingerprint);
         string clientNonce = LinkDeviceStore.Base64Url(RandomNumberGenerator.GetBytes(16));
-        var request = await Post(anonymous, "api/pair/request", new { device = "Telefon z testu", nonce = clientNonce });
+        string[] phoneCapabilities = ["notifications", "wakeOnLan", "futureCapability"];
+        var request = await Post(anonymous, "api/pair/request", new { device = "Telefon z testu", nonce = clientNonce, capabilities = phoneCapabilities });
         Check(request.Status == 200, "a phone may ask to be paired");
         string id = request.Json.GetProperty("id").GetString()!;
         string serverNonce = request.Json.GetProperty("nonce").GetString()!;
         string sas = request.Json.GetProperty("sas").GetString()!;
         string expected = LinkService.ComputeSas(fingerprint, LinkService.DecodeNonce(clientNonce)!, LinkService.DecodeNonce(serverNonce)!);
-        Check(sas == expected && ui.Last is { } shown && shown.Sas == expected && shown.DeviceName == "Telefon z testu",
-            "the window on the PC shows the same code the phone derives itself");
+        Check(sas == expected && ui.Last is { } shown && shown.Sas == expected && shown.DeviceName == "Telefon z testu"
+              && shown.Capabilities == new LinkPhoneCapabilities(Notifications: true, VoiceInput: false, WakeOnLan: true),
+            "the typed pairing consent shows the shared code and validated informational phone capabilities");
         Check((await Post(anonymous, "api/pair/request", new { device = "Drugi", nonce = clientNonce })).Status == 429, "a second request is refused while one is waiting for the user");
         Check((await Get(anonymous, "api/pair/status?id=" + id)).Json.GetProperty("state").GetString() == "pending", "the request waits for the click");
+        string blockedDevicePath = Path.Combine(linkDirectory, "devices.json");
+        Directory.CreateDirectory(blockedDevicePath); // Make the final rename fail after the one-time token has been generated.
+        ui.Decide!(true);
+        var persistenceDenied = await Get(anonymous, "api/pair/status?id=" + id);
+        Check(persistenceDenied.Json.GetProperty("state").GetString() == "denied" && !persistenceDenied.Json.TryGetProperty("token", out _)
+              && service.Devices.Count == 0 && service.DeviceStoreError != null,
+            "a pairing consent cannot issue a bearer token unless its hash is durably persisted");
+        Directory.Delete(blockedDevicePath);
+
+        var retryRequest = await Post(anonymous, "api/pair/request", new { device = "Telefon z testu", nonce = clientNonce, capabilities = phoneCapabilities });
+        Check(retryRequest.Status == 200, "pairing can be retried after the credential store is repaired");
+        id = retryRequest.Json.GetProperty("id").GetString()!;
         ui.Decide!(true);
         var approved = await Get(anonymous, "api/pair/status?id=" + id);
-        Check(approved.Json.GetProperty("state").GetString() == "approved", "after the click the phone is approved");
+        Check(approved.Json.GetProperty("state").GetString() == "approved", "after durable storage and the click the phone is approved");
         string phoneToken = approved.Json.GetProperty("token").GetString()!;
+        Check(service.Devices.Single().Capabilities == new LinkPhoneCapabilities(Notifications: true, VoiceInput: false, WakeOnLan: true),
+            "the PC stores only allowlisted, non-authorizing companion capability hints");
         Check((await Get(anonymous, "api/pair/status?id=" + id)).Json.GetProperty("state").GetString() == "expired", "the token is handed over exactly once");
 
         var deniedRequest = await Post(anonymous, "api/pair/request", new { device = "Obcy", nonce = LinkDeviceStore.Base64Url(RandomNumberGenerator.GetBytes(16)) });
@@ -220,11 +325,22 @@ internal static class LinkRegression
         var state = await Get(phone, "api/state");
         Check(state.Status == 200 && Math.Abs(state.Json.GetProperty("metrics").GetProperty("cpu").GetDouble() - 23.4) < 0.01
               && state.Json.GetProperty("pc").GetProperty("version").GetString() == "9.9" && state.Json.GetProperty("engine").GetProperty("state").GetString() == "ready",
-            "the state shows measurements, the engine and the version");
+            "the typed state contract shows measurements, the engine and the version");
+        Check(state.Json.GetProperty("capabilities").EnumerateArray().Any(x => x.GetString() == "notes")
+              && !state.Json.GetProperty("capabilities").EnumerateArray().Any(x => x.GetString() == "wakeOnLan"),
+            "the PC capability list describes host endpoints and does not claim phone-only functions");
 
+        Check((await Post(phone, "api/chat", new { text = (string?)null })).Status == 400
+              && (await Post(phone, "api/tasks", new { title = (string?)null, priority = (string?)null, due = (string?)null })).Status == 400,
+            "typed request contracts treat explicit null fields as invalid input instead of throwing");
         List<(string Name, JsonElement Data)> events = await PostSse(phone, "api/chat", new { text = "daj stream (strumień)" });
         Check(events[0].Name == "start" && events.Count(e => e.Name == "delta") == 3 && events[^1].Name == "done", "chat streams start, deltas and a final answer (got: " + string.Join(",", events.Select(e => e.Name)) + ")");
         Check(events[^1].Data.GetProperty("text").GetString() == "Jeden dwa trzy" && events[^1].Data.GetProperty("status").GetString() == "verified", "the final answer carries its proof status");
+        List<(string Name, JsonElement Data)> saturated = await PostSse(phone, "api/chat", new { text = "daj big stream" });
+        Check(saturated.Count(e => e.Name == "delta") == 128
+              && saturated[^1].Name == "done"
+              && saturated[^1].Data.GetProperty("text").GetString() == new string('x', 300),
+            "a saturated streaming queue remains bounded to 128 deltas while the final event preserves the full answer");
         Check(engine.Calls[^1].FromVoice, "commands from the phone are treated like voice: risky actions can only be confirmed on the PC");
         List<(string Name, JsonElement Data)> plain = await PostSse(phone, "api/chat", new { text = "ile ram" });
         Check(plain[^1].Name == "done" && plain[^1].Data.GetProperty("text").GetString() == "echo: ile ram", "a deterministic command answers in one piece");
@@ -285,7 +401,12 @@ internal static class LinkRegression
 
         // ---- unpairing
         var listed = await Get(phone, "api/devices");
-        Check(listed.Json.GetProperty("devices").EnumerateArray().Any(d => d.GetProperty("current").GetBoolean() && d.GetProperty("name").GetString() == "Telefon z testu"), "the phone sees itself in the list");
+        JsonElement pairedDevices = listed.Json.GetProperty("devices");
+        Check(pairedDevices.EnumerateArray().Any(d => d.GetProperty("current").GetBoolean() && d.GetProperty("name").GetString() == "Telefon z testu"),
+            "the phone sees itself in the list");
+        Check(pairedDevices[0].GetProperty("capabilities").EnumerateArray().Any(x => x.GetString() == "notifications")
+              && pairedDevices[0].GetProperty("capabilities").EnumerateArray().Any(x => x.GetString() == "wakeOnLan"),
+            "the paired-device response preserves its typed capability identifiers");
         Check((await Post(phone, "api/unpair", new { })).Status == 200 && (await Get(phone, "api/state")).Status == 401, "after unpairing the token stops working");
         Check(service.Devices.All(d => d.Name != "Telefon z testu"), "the PC forgot the phone");
 

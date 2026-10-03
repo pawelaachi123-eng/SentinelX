@@ -1,0 +1,137 @@
+<UserControl xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:u="clr-namespace:SentinelX.Utilities" x:Class="SentinelX.Views.Pages.AutomationPage" u:PageTransitions.Enabled="True">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="28">
+            <TextBlock Text="Automatyzacje" Style="{StaticResource SxHeading}"/>
+            <TextBlock Text="KIEDY · WYKONAJ — obecnie: ręcznie, przy starcie Sentinel albo codziennie o wybranej godzinie. Reguły działają tylko wtedy, gdy aplikacja pozostaje uruchomiona." Style="{StaticResource SxCaption}" TextWrapping="Wrap" Margin="0,0,0,12"/>
+            <TextBlock Text="{Binding StorageStatus}" Style="{StaticResource SxCaption}" TextWrapping="Wrap" Margin="0,0,0,8" AutomationProperties.LiveSetting="Polite"/>
+            <ProgressBar IsIndeterminate="True" Height="3" Margin="0,0,0,16" Visibility="{Binding IsRunning, Converter={StaticResource BoolToVisibility}}" AutomationProperties.Name="Automatyzacja jest wykonywana"/>
+
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="360"/>
+                    <ColumnDefinition Width="18"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <Border Grid.Column="0" Style="{StaticResource SxCard}" VerticalAlignment="Top">
+                    <StackPanel>
+                        <TextBlock Text="{Binding EditorTitle}" Style="{StaticResource SxSectionTitle}"/>
+                        <TextBlock Text="Nazwa" Style="{StaticResource SxCaption}" Margin="0,14,0,5"/>
+                        <TextBox Text="{Binding RuleName, UpdateSourceTrigger=PropertyChanged}" u:InputHint.Text="Np. Otwórz Discord rano" AutomationProperties.Name="Nazwa automatyzacji"/>
+
+                        <TextBlock Text="Wyzwalacz" Style="{StaticResource SxCaption}" Margin="0,12,0,5"/>
+                        <ComboBox ItemsSource="{Binding TriggerOptions}" SelectedItem="{Binding SelectedTrigger}" AutomationProperties.Name="Wyzwalacz automatyzacji"/>
+                        <TextBlock Text="{Binding SelectedTrigger.Help}" Style="{StaticResource SxCaption}" TextWrapping="Wrap" Margin="0,6,0,0"/>
+                        <StackPanel Visibility="{Binding IsDailySchedule, Converter={StaticResource BoolToVisibility}}" Margin="0,10,0,0">
+                            <TextBlock Text="Godzina lokalna (24 h)" Style="{StaticResource SxCaption}" Margin="0,0,0,5"/>
+                            <TextBox Text="{Binding ScheduleTime, UpdateSourceTrigger=PropertyChanged}" u:InputHint.Text="HH:mm, np. 09:30" AutomationProperties.Name="Godzina uruchomienia"/>
+                        </StackPanel>
+
+                        <Separator Margin="0,16,0,12"/>
+                        <TextBlock Text="Akcje · wykonują się po kolei" Style="{StaticResource SxSectionTitle}"/>
+                        <ComboBox ItemsSource="{Binding ActionOptions}" SelectedItem="{Binding SelectedAction}" DisplayMemberPath="Label" AutomationProperties.Name="Typ akcji" Margin="0,10,0,0"/>
+                        <TextBlock Text="{Binding SelectedAction.Description}" Style="{StaticResource SxCaption}" TextWrapping="Wrap" Margin="0,5,0,0"/>
+                        <TextBox Text="{Binding NewActionParameter, UpdateSourceTrigger=PropertyChanged}" u:InputHint.Text="Aplikacja, adres HTTP/HTTPS lub treść powiadomienia" AutomationProperties.Name="Parametr nowej akcji" Margin="0,10,0,0"/>
+                        <Button Content="Dodaj akcję do sekwencji" Command="{Binding AddActionCommand}" Margin="0,8,0,6"/>
+                        <ItemsControl ItemsSource="{Binding DraftActions}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Style="{StaticResource SxCard}" Padding="10" Margin="0,4,0,0">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel>
+                                                <ComboBox ItemsSource="{Binding DataContext.ActionOptions, RelativeSource={RelativeSource AncestorType=UserControl}}" SelectedValuePath="Id" SelectedValue="{Binding ActionId, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Typ zapisanej akcji"/>
+                                                <TextBox Text="{Binding Parameter, UpdateSourceTrigger=PropertyChanged}" TextWrapping="Wrap" MinHeight="36" Margin="0,6,0,0" AutomationProperties.Name="Parametr akcji"/>
+                                            </StackPanel>
+                                            <Button Grid.Column="1" Content="Usuń" Command="{Binding DataContext.RemoveActionCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" Style="{StaticResource SxGhostButton}" Margin="8,0,0,0" VerticalAlignment="Top"/>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBlock Text="{Binding DraftActions.Count, StringFormat={}{0} akcji w szkicu · limit 5}" Style="{StaticResource SxCaption}" Margin="0,8,0,0"/>
+                        <CheckBox Content="Włącz wyzwalacz po zapisaniu" IsChecked="{Binding RuleEnabled}" Margin="0,14,0,8"/>
+                        <WrapPanel>
+                            <Button Content="Zapisz" Command="{Binding SaveRuleCommand}" Style="{StaticResource SxPrimaryButton}" Margin="0,0,8,6"/>
+                            <Button Content="Nowa" Command="{Binding NewRuleCommand}" Margin="0,0,8,6"/>
+                            <Button Content="Wczytaj zaznaczoną" Command="{Binding EditSelectedCommand}" Margin="0,0,0,6"/>
+                        </WrapPanel>
+                        <TextBlock Text="{Binding Status}" Foreground="{DynamicResource SxAccentCyan}" TextWrapping="Wrap" Margin="0,8,0,0"/>
+                    </StackPanel>
+                </Border>
+
+                <StackPanel Grid.Column="2">
+                    <Border Style="{StaticResource SxCard}" Margin="0,0,0,14">
+                        <StackPanel>
+                            <TextBlock Text="Zapisane automatyzacje" Style="{StaticResource SxSectionTitle}"/>
+                            <TextBlock Text="{Binding Rules.Count, StringFormat={}{0} reguł · bez uruchamiania powłoki systemowej}" Style="{StaticResource SxCaption}" Margin="0,4,0,10"/>
+                            <Border Background="{DynamicResource SxSurfaceActive}" CornerRadius="10" Padding="12" Margin="0,0,0,10" Visibility="{Binding HasRules, Converter={StaticResource InverseBooleanVisibility}}">
+                                <TextBlock Text="Nie ma jeszcze automatyzacji. Utwórz regułę po lewej — nic nie uruchomi się bez zapisu i wybranego wyzwalacza." Style="{StaticResource SxCaption}" TextWrapping="Wrap"/>
+                            </Border>
+                            <ListBox ItemsSource="{Binding Rules}" SelectedItem="{Binding SelectedRule}" MaxHeight="280" AutomationProperties.Name="Zapisane automatyzacje">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Padding="10" Margin="0,3" Background="{DynamicResource SxSurface}" CornerRadius="8">
+                                            <StackPanel>
+                                                <DockPanel>
+                                                    <TextBlock Text="{Binding EnabledText}" Style="{StaticResource SxCaption}" DockPanel.Dock="Right"/>
+                                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                                </DockPanel>
+                                                <TextBlock Text="{Binding TriggerText}" Style="{StaticResource SxCaption}" Margin="0,4,0,0"/>
+                                                <TextBlock Text="{Binding ActionsText}" TextWrapping="Wrap" FontSize="12" Margin="0,4,0,0"/>
+                                                <TextBlock Text="{Binding LastRunText}" Style="{StaticResource SxCaption}" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                            <WrapPanel Margin="0,10,0,0">
+                                <Button Content="Uruchom teraz" Command="{Binding RunSelectedCommand}" Style="{StaticResource SxPrimaryButton}" Margin="0,0,8,6"/>
+                                <Button Content="Anuluj wykonanie" Command="{Binding CancelSelectedCommand}" IsEnabled="{Binding IsRunning}" Margin="0,0,8,6"/>
+                                <Button Content="Włącz / wyłącz" Command="{Binding ToggleEnabledCommand}" Margin="0,0,8,6"/>
+                                <Button Content="Usuń regułę" Command="{Binding DeleteSelectedCommand}" Style="{StaticResource SxDangerButton}" Margin="0,0,8,6"/>
+                            </WrapPanel>
+                            <Border Style="{StaticResource SxCardElevated}" BorderBrush="{DynamicResource SxWarning}" Margin="0,12,0,0" Visibility="{Binding IsDeleteConfirmationOpen, Converter={StaticResource BoolToVisibility}}" AutomationProperties.LiveSetting="Polite">
+                                <Border.InputBindings><KeyBinding Key="Escape" Command="{Binding CancelDeleteCommand}"/></Border.InputBindings>
+                                <StackPanel>
+                                    <TextBlock Text="Potwierdź usunięcie" Style="{StaticResource SxSectionTitle}"/>
+                                    <TextBlock Text="{Binding DeleteConfirmationText}" TextWrapping="Wrap" Margin="0,4,0,12"/>
+                                    <WrapPanel>
+                                        <Button Content="Zostaw regułę" Command="{Binding CancelDeleteCommand}" Style="{StaticResource SxGhostButton}" Margin="0,0,8,0" u:UiInteraction.FocusOnVisible="True"/>
+                                        <Button Content="Usuń automatyzację" Command="{Binding ConfirmDeleteSelectedCommand}" Style="{StaticResource SxDangerButton}"/>
+                                    </WrapPanel>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource SxCard}">
+                        <StackPanel>
+                            <TextBlock Text="Ostatnie wykonania" Style="{StaticResource SxSectionTitle}"/>
+                            <TextBlock Text="Historia lokalna, maksymalnie 500 wpisów. Wynik zawiera status, liczbę ukończonych akcji, czas i błąd (jeśli wystąpił)." Style="{StaticResource SxCaption}" TextWrapping="Wrap" Margin="0,4,0,10"/>
+                            <ItemsControl ItemsSource="{Binding History}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border BorderBrush="{DynamicResource SxBorderSubtle}" BorderThickness="0,0,0,1" Padding="0,9">
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding Detail}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                                <TextBlock Text="{Binding Result}" Style="{StaticResource SxCaption}" TextWrapping="Wrap" Margin="0,3,0,0"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <Border Background="{DynamicResource SxSurfaceActive}" CornerRadius="10" Padding="12" Visibility="{Binding HasHistory, Converter={StaticResource InverseBooleanVisibility}}">
+                                <TextBlock Text="Nie ma jeszcze wykonań. Historia pojawi się po ręcznym uruchomieniu albo zadziałaniu włączonego harmonogramu." Style="{StaticResource SxCaption}" TextWrapping="Wrap"/>
+                            </Border>
+                            <TextBlock Text="Historia nie zawiera treści rozmów ani danych z mikrofonu." Style="{StaticResource SxCaption}" Margin="0,8,0,0"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Grid>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

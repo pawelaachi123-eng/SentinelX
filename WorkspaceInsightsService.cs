@@ -211,9 +211,9 @@ public sealed class WorkspaceInsightsService
 
     public string SearchAll(string query)
     {
-        string needle = ConversationMemoryService.Normalize(query ?? "");
+        string searchQuery = query ?? "";
+        string needle = ConversationMemoryService.Normalize(searchQuery);
         if (needle.Length < 2) return "Podaj co najmniej 2 znaki do wyszukania.";
-        DateTime now = NowProvider();
         var builder = new StringBuilder();
         int total = 0;
 
@@ -224,7 +224,7 @@ public sealed class WorkspaceInsightsService
             builder.AppendLine("Wspomnienia (" + notes.Length + "):");
             foreach (var note in notes) builder.AppendLine("· " + Truncate(note.Text, 140) + (note.Category.Length > 0 ? "  [" + note.Category + "]" : ""));
         }
-        var turns = memory.SearchConversation(query, 5);
+        var turns = memory.SearchConversation(searchQuery, 5);
         if (turns.Count > 0)
         {
             total += turns.Count;
@@ -255,7 +255,7 @@ public sealed class WorkspaceInsightsService
             foreach (var snapshot in foundSnapshots) builder.AppendLine("· " + snapshot.Label + "  [" + snapshot.CapturedAt.ToString("dd.MM.yyyy HH:mm") + "]");
         }
         if (total == 0)
-            return "Nic nie pasuje do „" + query + "” w danych lokalnych (wspomnienia, aktywna rozmowa, zadania, projekty, odczyty).\n" +
+            return "Nic nie pasuje do „" + searchQuery + "” w danych lokalnych (wspomnienia, aktywna rozmowa, zadania, projekty, odczyty).\n" +
                 "Szukanie jest dopasowaniem tekstu po normalizacji — bez literówek, odmiany i synonimów.";
         return "Znalezione w danych lokalnych (" + total + " trafień, do 5 w każdej kategorii):\n" + builder.ToString().TrimEnd();
     }
