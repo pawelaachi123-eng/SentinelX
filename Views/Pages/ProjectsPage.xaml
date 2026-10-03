@@ -59,7 +59,7 @@
                 </StackPanel>
             </Border>
 
-            <ItemsControl ItemsSource="{Binding Cards}">
+            <ItemsControl ItemsSource="{Binding Cards}" AutomationProperties.Name="Lista projektów">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
                         <Border Style="{StaticResource SxCard}" Margin="0,0,0,12">
@@ -82,6 +82,15 @@
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
+            <Border Background="{DynamicResource SxSurfaceActive}" CornerRadius="12" Padding="16" Margin="0,0,0,16">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                        <Style.Triggers><DataTrigger Binding="{Binding Cards.Count}" Value="0"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <TextBlock Text="Brak projektów w tym widoku. Utwórz projekt powyżej albo zmień filtr archiwum." Style="{StaticResource SxCaption}" TextWrapping="Wrap"/>
+            </Border>
         </StackPanel>
     </ScrollViewer>
 </UserControl>

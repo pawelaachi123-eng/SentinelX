@@ -22,6 +22,7 @@ public sealed class LinkService : IDisposable
     public const int DefaultPort = 43180;
     public const int DiscoveryPort = 43181;
     private const int MaxConnections = 32;
+    private const int MaxRateKeys = 1024;
     private static readonly TimeSpan PairLifetime = TimeSpan.FromSeconds(120);
 
     private sealed class PairEntry
@@ -36,6 +37,7 @@ public sealed class LinkService : IDisposable
         public PairingState State = PairingState.Pending;
         public string? Token;
         public string? DeviceId;
+        public LinkPhoneCapabilities Capabilities = LinkPhoneCapabilities.None;
     }
 
     private sealed class Bucket
@@ -55,6 +57,7 @@ public sealed class LinkService : IDisposable
     private readonly Dictionary<string, Bucket> pollRates = new(StringComparer.Ordinal);
     private readonly Dictionary<string, Bucket> authFailures = new(StringComparer.Ordinal);
     private readonly LinkDeviceStore devices;
+    private readonly LinkReplayGuard replayGuard;
     private LinkCertificate? certificate;
     private TcpListener? listener;
     private UdpClient? discovery;
@@ -71,6 +74,7 @@ public sealed class LinkService : IDisposable
         this.settings = settings;
         this.directory = directory ?? Path.Combine(AppPaths.Root, "Link");
         devices = new LinkDeviceStore(this.directory);
+        replayGuard = new LinkReplayGuard(this.directory);
         devices.Changed += OnDevicesChanged;
     }
 
@@ -83,8 +87,21 @@ public sealed class LinkService : IDisposable
     public string Status { get { lock (gate) return status; } }
     public IReadOnlyList<string> Urls => IsRunning ? LinkNetwork.BuildUrls(Port) : [];
     public IReadOnlyList<LinkDeviceInfo> Devices => devices.List();
-    public bool RemoveDevice(string id) => devices.Remove(id);
-    public void RemoveAllDevices() => devices.RemoveAll();
+    public string? DeviceStoreError => devices.LastError;
+    public string? ReplayStoreError => replayGuard.LastError;
+    public bool RemoveDevice(string id)
+    {
+        bool removed = devices.Remove(id);
+        if (removed) _ = api.CancelDeviceTransfersAsync(id);
+        return removed;
+    }
+    public bool RemoveAllDevices()
+    {
+        string[] ids = devices.List().Select(x => x.Id).ToArray();
+        bool removed = devices.RemoveAll();
+        if (removed) foreach (string id in ids) _ = api.CancelDeviceTransfersAsync(id);
+        return removed;
+    }
 
     // ------------------------------------------------------------------ lifecycle
 
@@ -247,7 +264,7 @@ public sealed class LinkService : IDisposable
             AppLog.Write(ex);
             if (!response.Started)
             {
-                try { await response.WriteJsonAsync(500, new { error = "Błąd wewnętrzny komputera." }, CancellationToken.None).ConfigureAwait(false); }
+                try { await response.WriteJsonAsync(500, new LinkErrorResponse("Błąd wewnętrzny komputera."), CancellationToken.None).ConfigureAwait(false); }
                 catch (Exception inner) when (inner is IOException or ObjectDisposedException or SocketException) { }
             }
         }
@@ -260,14 +277,15 @@ public sealed class LinkService : IDisposable
         if (!req.Path.StartsWith("/api/", StringComparison.Ordinal))
         {
             if (req.Method is "GET" or "HEAD") await ServeStaticAsync(req, res, ct).ConfigureAwait(false);
-            else await res.WriteJsonAsync(405, new { error = "Metoda niedozwolona." }, ct).ConfigureAwait(false);
+            else await res.WriteJsonAsync(405, new LinkErrorResponse("Metoda niedozwolona."), ct).ConfigureAwait(false);
             return;
         }
 
         switch (req.Path)
         {
             case "/api/hello" when req.Method is "GET" or "HEAD":
-                await res.WriteJsonAsync(200, new { app = "SentinelX", api = 1, version = AppConstants.Version, name = Environment.MachineName, fingerprint = cert.Fingerprint }, ct).ConfigureAwait(false);
+                await res.WriteJsonAsync(200, new LinkHelloResponse("SentinelX", LinkProtocol.CurrentVersion, AppConstants.Version,
+                    Environment.MachineName, cert.Fingerprint, LinkProtocol.HostCapabilities), ct).ConfigureAwait(false);
                 return;
             case "/api/pair/request" when req.Method == "POST":
                 await PairRequestAsync(req, res, cert, ct).ConfigureAwait(false);
@@ -280,27 +298,59 @@ public sealed class LinkService : IDisposable
         LinkDeviceInfo? device = Authenticate(req);
         if (device == null)
         {
-            await res.WriteJsonAsync(401, new { error = "unauthorized" }, ct).ConfigureAwait(false);
+            await res.WriteJsonAsync(401, new LinkErrorResponse("unauthorized"), ct).ConfigureAwait(false);
             return;
         }
+
+        if ((req.Method is "POST" or "PUT" or "DELETE") && req.RequestId.Length > 0)
+        {
+            switch (replayGuard.TryConsume(device.Id, req.RequestId))
+            {
+                case ReplayDecision.Accepted: break;
+                case ReplayDecision.Invalid:
+                    await res.WriteJsonAsync(400, new LinkErrorResponse("Nieprawidłowy identyfikator żądania."), ct).ConfigureAwait(false); return;
+                case ReplayDecision.Replayed:
+                    await res.WriteJsonAsync(409, new LinkErrorResponse("To żądanie było już obsłużone; każda zmiana wymaga nowego identyfikatora."), ct).ConfigureAwait(false); return;
+                case ReplayDecision.Full:
+                    await res.WriteJsonAsync(429, new LinkErrorResponse("Limit ochrony przed powtórzeniami został osiągnięty."), ct).ConfigureAwait(false); return;
+                case ReplayDecision.StorageFailure:
+                    await res.WriteJsonAsync(503, new LinkErrorResponse(replayGuard.LastError ?? "Nie można bezpiecznie zapisać identyfikatora żądania."), ct).ConfigureAwait(false); return;
+            }
+        }
+
         switch (req.Path)
         {
             case "/api/devices" when req.Method == "GET":
-                await res.WriteJsonAsync(200, new
-                {
-                    devices = devices.List().Select(d => new
-                    {
-                        id = d.Id, name = d.Name, addedAt = d.AddedAt.ToString("O", CultureInfo.InvariantCulture),
-                        lastSeen = d.LastSeen.ToString("O", CultureInfo.InvariantCulture), current = d.Id == device.Id
-                    }).ToArray()
-                }, ct).ConfigureAwait(false);
+                await res.WriteJsonAsync(200, new LinkDevicesResponse(devices.List().Select(d => new LinkDeviceSummary(
+                    d.Id, d.Name, d.AddedAt.ToString("O", CultureInfo.InvariantCulture), d.LastSeen.ToString("O", CultureInfo.InvariantCulture),
+                    d.Id == device.Id, d.Capabilities.ToWireValues())).ToArray()), ct).ConfigureAwait(false);
+                return;
+            case "/api/devices/rotate" when req.Method == "POST":
+                if (req.RequestId.Length is < 20 or > 64)
+                { await res.WriteJsonAsync(400, new LinkErrorResponse("Obrót tokenu wymaga identyfikatora żądania."), ct).ConfigureAwait(false); return; }
+                string? rotatedToken = devices.RotateToken(device.Id, out string rotateError);
+                if (rotatedToken == null)
+                { await res.WriteJsonAsync(503, new LinkErrorResponse(rotateError), ct).ConfigureAwait(false); return; }
+                await res.WriteJsonAsync(200, new LinkTokenRotationResponse(true, rotatedToken, device.Id), ct).ConfigureAwait(false);
+                return;
+            case "/api/devices/revoke" when req.Method == "POST":
+                LinkDeviceRequest? revoke = req.Deserialize<LinkDeviceRequest>();
+                string revokeId = revoke?.Id?.Trim() ?? "";
+                if (revokeId.Length == 0 || revokeId == device.Id)
+                { await res.WriteJsonAsync(400, new LinkErrorResponse("Wybierz inne urządzenie. Aby odłączyć ten telefon, użyj osobnej opcji."), ct).ConfigureAwait(false); return; }
+                if (!devices.Remove(revokeId))
+                { await res.WriteJsonAsync(404, new LinkErrorResponse("Nie znaleziono urządzenia lub nie udało się trwale unieważnić jego tokenu."), ct).ConfigureAwait(false); return; }
+                await api.CancelDeviceTransfersAsync(revokeId, ct).ConfigureAwait(false);
+                await res.WriteJsonAsync(200, new LinkOkResponse(true), ct).ConfigureAwait(false);
                 return;
             case "/api/unpair" when req.Method == "POST":
-                devices.Remove(device.Id);
-                await res.WriteJsonAsync(200, new { ok = true }, ct).ConfigureAwait(false);
+                if (!devices.Remove(device.Id))
+                { await res.WriteJsonAsync(503, new LinkErrorResponse("Nie udało się trwale unieważnić tokenu tego telefonu."), ct).ConfigureAwait(false); return; }
+                await api.CancelDeviceTransfersAsync(device.Id, ct).ConfigureAwait(false);
+                await res.WriteJsonAsync(200, new LinkOkResponse(true), ct).ConfigureAwait(false);
                 return;
         }
-        await api.HandleAsync(req, res, ct).ConfigureAwait(false);
+        await api.HandleAsync(req, res, ct, device.Id).ConfigureAwait(false);
     }
 
     private static async Task ServeStaticAsync(LinkRequest req, LinkResponse res, CancellationToken ct)
@@ -332,12 +382,12 @@ public sealed class LinkService : IDisposable
 
     private async Task PairRequestAsync(LinkRequest req, LinkResponse res, LinkCertificate cert, CancellationToken ct)
     {
-        JsonElement body = req.Json();
-        string device = SafeName(Str(body, "device"));
-        byte[]? clientNonce = DecodeNonce(Str(body, "nonce"));
+        LinkPairRequest? body = req.Deserialize<LinkPairRequest>();
+        string device = SafeName(body?.Device ?? "");
+        byte[]? clientNonce = DecodeNonce(body?.Nonce ?? "");
         if (clientNonce == null)
         {
-            await res.WriteJsonAsync(400, new { error = "Niepoprawna prośba o parowanie." }, ct).ConfigureAwait(false);
+            await res.WriteJsonAsync(400, new LinkErrorResponse("Niepoprawna prośba o parowanie."), ct).ConfigureAwait(false);
             return;
         }
 
@@ -357,22 +407,24 @@ public sealed class LinkService : IDisposable
                 Id = Convert.ToHexString(RandomNumberGenerator.GetBytes(8)).ToLowerInvariant(),
                 Device = device, Remote = ip, ServerNonce = LinkDeviceStore.Base64Url(serverNonce),
                 CreatedAt = DateTimeOffset.Now, ExpiresAt = DateTimeOffset.Now + PairLifetime,
-                Sas = ComputeSas(cert.FingerprintBytes, clientNonce, serverNonce)
+                Sas = ComputeSas(cert.FingerprintBytes, clientNonce, serverNonce),
+                Capabilities = LinkPhoneCapabilities.FromWire(body?.Capabilities)
             };
             if (refusal == null) pairs[entry.Id] = entry;
         }
         if (refusal != null)
         {
-            await res.WriteJsonAsync(429, new { error = refusal }, ct).ConfigureAwait(false);
+            await res.WriteJsonAsync(429, new LinkErrorResponse(refusal), ct).ConfigureAwait(false);
             return;
         }
 
-        try { approvalUi.ShowRequest(new PairingRequestInfo(entry.Id, entry.Device, ip, entry.Sas, entry.ExpiresAt), approved => Decide(entry.Id, approved)); }
+        try { approvalUi.ShowRequest(new PairingRequestInfo(entry.Id, entry.Device, ip, entry.Sas, entry.ExpiresAt)
+            { Capabilities = entry.Capabilities }, approved => Decide(entry.Id, approved)); }
         catch (Exception ex)
         {
             AppLog.Write(ex);
             lock (gate) entry.State = PairingState.Denied;
-            await res.WriteJsonAsync(500, new { error = "Komputer nie mógł pokazać okna zgody. Uruchom Sentinel X na pulpicie i spróbuj ponownie." }, ct).ConfigureAwait(false);
+            await res.WriteJsonAsync(500, new LinkErrorResponse("Komputer nie mógł pokazać okna zgody. Uruchom Sentinel X na pulpicie i spróbuj ponownie."), ct).ConfigureAwait(false);
             return;
         }
         string requestId = entry.Id;
@@ -382,7 +434,7 @@ public sealed class LinkService : IDisposable
             ExpirePending(requestId);
         });
         RaiseChanged();
-        await res.WriteJsonAsync(200, new { id = entry.Id, nonce = entry.ServerNonce, expiresIn = (int)PairLifetime.TotalSeconds, sas = entry.Sas }, ct).ConfigureAwait(false);
+        await res.WriteJsonAsync(200, new LinkPairStartedResponse(entry.Id, entry.ServerNonce, (int)PairLifetime.TotalSeconds, entry.Sas), ct).ConfigureAwait(false);
     }
 
     private async Task PairStatusAsync(LinkRequest req, LinkResponse res, CancellationToken ct)
@@ -394,24 +446,24 @@ public sealed class LinkService : IDisposable
         string id = req.Q("id");
         lock (gate)
         {
-            if (OverLimitLocked(pollRates, ip, 240, TimeSpan.FromMinutes(1))) { payload = new { error = "Za dużo zapytań." }; code = 429; }
+            if (OverLimitLocked(pollRates, ip, 240, TimeSpan.FromMinutes(1))) { payload = new LinkErrorResponse("Za dużo zapytań."); code = 429; }
             else
             {
                 CountLocked(pollRates, ip, TimeSpan.FromMinutes(1));
-                if (!pairs.TryGetValue(id, out PairEntry? entry)) { payload = new { error = "Nieznana prośba." }; code = 404; }
+                if (!pairs.TryGetValue(id, out PairEntry? entry)) { payload = new LinkErrorResponse("Nieznana prośba."); code = 404; }
                 else
                 {
                     if (entry.State == PairingState.Pending && DateTimeOffset.Now > entry.ExpiresAt) { entry.State = PairingState.Expired; closeUi = true; }
                     switch (entry.State)
                     {
                         case PairingState.Approved when entry.Token != null:
-                            payload = new { state = "approved", token = entry.Token, deviceId = entry.DeviceId };
+                            payload = new LinkPairingStateResponse("approved", entry.Token, entry.DeviceId);
                             entry.Token = null; // delivered exactly once
                             break;
-                        case PairingState.Approved: payload = new { state = "expired" }; break;
-                        case PairingState.Denied: payload = new { state = "denied" }; break;
-                        case PairingState.Expired: payload = new { state = "expired" }; break;
-                        default: payload = new { state = "pending" }; break;
+                        case PairingState.Approved: payload = new LinkPairingStateResponse("expired"); break;
+                        case PairingState.Denied: payload = new LinkPairingStateResponse("denied"); break;
+                        case PairingState.Expired: payload = new LinkPairingStateResponse("expired"); break;
+                        default: payload = new LinkPairingStateResponse("pending"); break;
                     }
                 }
             }
@@ -429,10 +481,19 @@ public sealed class LinkService : IDisposable
             else if (!approved) entry.State = PairingState.Denied;
             else
             {
-                (LinkDeviceInfo device, string token) = devices.Add(entry.Device);
-                entry.DeviceId = device.Id;
-                entry.Token = token;
-                entry.State = PairingState.Approved;
+                try
+                {
+                    (LinkDeviceInfo device, string token) = devices.Add(entry.Device, entry.Capabilities);
+                    entry.DeviceId = device.Id;
+                    entry.Token = token;
+                    entry.State = PairingState.Approved;
+                }
+                catch (Exception ex)
+                {
+                    // Do not hand a one-time bearer token to the phone unless its hash was durably saved.
+                    entry.State = PairingState.Denied;
+                    AppLog.Write("Devices", "Error", "Phone pairing was denied because its credentials could not be persisted.", ex);
+                }
             }
         }
         RaiseChanged();
@@ -485,10 +546,6 @@ public sealed class LinkService : IDisposable
         return Regex.IsMatch(trimmed, @"^[\p{L}\p{N} _.\-]{1,32}$", RegexOptions.CultureInvariant) ? trimmed : "Telefon";
     }
 
-    private static string Str(JsonElement element, string name) =>
-        element.ValueKind == JsonValueKind.Object && element.TryGetProperty(name, out JsonElement value) && value.ValueKind == JsonValueKind.String
-            ? value.GetString() ?? "" : "";
-
     // ------------------------------------------------------------------ limits
 
     private static bool OverLimitLocked(Dictionary<string, Bucket> map, string key, int limit, TimeSpan window) =>
@@ -496,8 +553,17 @@ public sealed class LinkService : IDisposable
 
     private static void CountLocked(Dictionary<string, Bucket> map, string key, TimeSpan window)
     {
-        if (!map.TryGetValue(key, out Bucket? bucket) || DateTimeOffset.Now - bucket.Start >= window)
-            map[key] = bucket = new Bucket { Start = DateTimeOffset.Now };
+        DateTimeOffset now = DateTimeOffset.Now;
+        if (!map.TryGetValue(key, out Bucket? bucket) || now - bucket.Start >= window)
+        {
+            if (!map.ContainsKey(key) && map.Count >= MaxRateKeys)
+            {
+                foreach (string stale in map.Where(x => now - x.Value.Start > TimeSpan.FromMinutes(2)).Select(x => x.Key).ToArray()) map.Remove(stale);
+                if (map.Count >= MaxRateKeys)
+                    map.Remove(map.MinBy(x => x.Value.Start).Key);
+            }
+            map[key] = bucket = new Bucket { Start = now };
+        }
         bucket.Count++;
     }
 
@@ -529,7 +595,8 @@ public sealed class LinkService : IDisposable
                 if (!LinkNetwork.IsTrusted(received.RemoteEndPoint.Address) || !received.Buffer.AsSpan().SequenceEqual(probe)) continue;
                 if (DateTimeOffset.Now - windowStart > TimeSpan.FromSeconds(1)) { windowStart = DateTimeOffset.Now; window = 0; }
                 if (++window > 20) continue;
-                byte[] reply = JsonSerializer.SerializeToUtf8Bytes(new { app = "SentinelX", api = 1, name = Environment.MachineName, port = Port, fingerprint });
+                byte[] reply = JsonSerializer.SerializeToUtf8Bytes(
+                    new LinkDiscoveryResponse("SentinelX", LinkProtocol.CurrentVersion, Environment.MachineName, Port, fingerprint), LinkJson.Options);
                 await udp.SendAsync(reply, reply.Length, received.RemoteEndPoint).ConfigureAwait(false);
             }
         }

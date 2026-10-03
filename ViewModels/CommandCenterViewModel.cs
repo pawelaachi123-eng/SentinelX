@@ -9,10 +9,6 @@ using SentinelX.Services.History;
 using SentinelX.Services.Voice;
 namespace SentinelX.ViewModels;
 
-/// <summary>One tab of the Centrum hub: an emoji icon (no text label, per the 0.91 design),
-/// a tooltip and the page view-model shown when the icon is selected.</summary>
-public sealed record CenterTab(string Key, string Icon, string Label, object ViewModel);
-
 /// <summary>One row of the „//” palette above the chat input.</summary>
 public sealed record SlashItem(SlashEntry Entry) { public string Display => "//" + Entry.Trigger; }
 
@@ -50,44 +46,12 @@ public partial class CommandCenterViewModel : ObservableObject, IDisposable
     private bool streamPending;
     private string lastUserInput = "";
 
-    /// <summary>Centrum tabs: chat plus every panel that used to be a top-level page. Icons only.</summary>
-    public IReadOnlyList<CenterTab> Sections { get; }
-    [ObservableProperty] private CenterTab? selectedTab;
-    public bool IsChatTab => SelectedTab?.Key == "rozmowa";
-    /// <summary>Null while chat is visible — binding this to the sub-page ContentControl keeps the
-    /// template engine from instantiating Centrum inside itself (the chat tab maps to this VM).</summary>
-    public object? SubTabContent => IsChatTab ? null : SelectedTab?.ViewModel;
-    partial void OnSelectedTabChanged(CenterTab? value) { OnPropertyChanged(nameof(IsChatTab)); OnPropertyChanged(nameof(SubTabContent)); }
-    [RelayCommand]
-    private void SelectTab(string key)
-    {
-        var tab = Sections.FirstOrDefault(x => x.Key == key);
-        if (tab != null) SelectedTab = tab;
-    }
-    [RelayCommand]
-    private void ShowChat() => SelectedTab = Sections.First(x => x.Key == "rozmowa");
-
     public CommandCenterViewModel(IActionEngine engine, IVoiceService voice, IUiDispatcher dispatcher,
         SystemViewModel system, VoiceViewModel voiceViewModel, IHistoryService history, ConversationMemoryService memory, TaskService tasks,
-        TaskViewModel taskPage, HistoryViewModel historyPage, GamingViewModel gamingPage, AiViewModel aiPage,
-        ActionsViewModel actionsPage, DiagnosticViewModel diagnosticsPage, ToolsViewModel toolsPage,
         MemoryArchiveService? archives = null)
     {
         this.engine = engine; this.voice = voice; this.dispatcher = dispatcher; this.history = history; this.memory = memory; this.tasks = tasks; System = system; Voice = voiceViewModel;
-        Sections =
-        [
-            new CenterTab("rozmowa", "💬", "Rozmowa", this),
-            new CenterTab("zadania", "📓", "Zadania", taskPage),
-            new CenterTab("historia", "🕘", "Historia", historyPage),
-            new CenterTab("glos", "🎤", "Głos", voiceViewModel),
-            new CenterTab("system", "🖥", "System", system),
-            new CenterTab("gry", "🎮", "Gaming", gamingPage),
-            new CenterTab("ai", "✨", "AI", aiPage),
-            new CenterTab("akcje", "⚡", "Akcje", actionsPage),
-            new CenterTab("diagnostyka", "🩺", "Diagnostyka", diagnosticsPage),
-            new CenterTab("narzedzia", "🧰", "Narzędzia", toolsPage)
-        ];
-        SelectedTab = Sections[0];
+        // The chat is a focused, standalone page; navigation shortcuts route through NavigationRequested.
         VoiceActive = Voice.State != VoiceState.Off;
         Voice.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(Voice.State)) VoiceActive = Voice.State != VoiceState.Off; };
         foreach (var entry in history.ReadConversation().TakeLast(100)) Messages.Add(new(entry.Role, entry.Text, entry.Timestamp));
@@ -157,8 +121,7 @@ public partial class CommandCenterViewModel : ObservableObject, IDisposable
         if (UserInput.StartsWith("//", StringComparison.Ordinal)) UserInput = "";
     }
 
-    /// <summary>Executes the highlighted // entry. Commands run through the normal engine path,
-    /// tabs switch inside Centrum, pages raise a navigation event — nothing runs on its own.</summary>
+    /// <summary>Executes the highlighted // entry. Commands use the normal engine path; destinations navigate only after explicit selection.</summary>
     [RelayCommand]
     private async Task SlashChooseAsync()
     {
@@ -168,7 +131,6 @@ public partial class CommandCenterViewModel : ObservableObject, IDisposable
         switch (entry.Kind)
         {
             case SlashKind.Command: await SubmitAsync(entry.Target, displayText: "//" + entry.Trigger); break;
-            case SlashKind.Tab: SelectTab(entry.Target); Status = "Centrum → " + entry.Label + "."; break;
             case SlashKind.Page: NavigationRequested?.Invoke(entry.Target); break;
         }
     }
@@ -198,7 +160,6 @@ public partial class CommandCenterViewModel : ObservableObject, IDisposable
         {
             var entry = SlashCatalog.TryResolve(input[2..].Trim());
             if (entry is { Kind: SlashKind.Command }) { await SubmitAsync(entry.Target, displayText: input); return; }
-            if (entry is { Kind: SlashKind.Tab }) { SelectTab(entry.Target); Status = "Centrum → " + entry.Label + "."; return; }
             if (entry is { Kind: SlashKind.Page }) { NavigationRequested?.Invoke(entry.Target); return; }
             await SubmitAsync(input); // unknown shortcut: the engine answers honestly with the closest matches
             return;

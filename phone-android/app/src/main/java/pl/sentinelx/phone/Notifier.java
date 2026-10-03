@@ -12,8 +12,8 @@ import android.os.Build;
 
 /** Shows the PC's alerts as normal Android notifications. */
 final class Notifier {
-    private static final String CHANNEL_ALERTS = "alerts";
-    private static final String CHANNEL_INFO = "info";
+    static final String CHANNEL_ALERTS = "alerts";
+    static final String CHANNEL_INFO = "info";
 
     private Notifier() { }
 

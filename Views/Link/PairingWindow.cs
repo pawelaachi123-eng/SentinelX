@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Automation;
 using System.Windows.Input;
 using System.Windows.Threading;
 using SentinelX.Services.Link;
@@ -34,12 +35,15 @@ public sealed class PairingWindow : Window
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
         Topmost = true;
         SetResourceReference(BackgroundProperty, "SxBackground");
+        FontFamily = TryFindResource("SxFontFamily") as System.Windows.Media.FontFamily ?? new System.Windows.Media.FontFamily("Segoe UI");
+        AutomationProperties.SetName(this, "Telefon prosi o połączenie z Sentinel X");
 
         string code = info.Sas.Length == 6 ? info.Sas[..3] + " " + info.Sas[3..] : info.Sas;
         var panel = new StackPanel { Margin = new Thickness(26) };
         panel.Children.Add(Text("Telefon prosi o połączenie", 22, true, "SxTextPrimary"));
         panel.Children.Add(Text($"Urządzenie: {info.DeviceName}", 14, false, "SxTextSecondary", new Thickness(0, 10, 0, 0)));
         panel.Children.Add(Text($"Adres w sieci: {info.RemoteAddress}", 13, false, "SxTextSecondary", new Thickness(0, 2, 0, 0)));
+        panel.Children.Add(Text($"Zgłoszone funkcje (informacyjnie): {info.Capabilities.Describe()}", 12, false, "SxTextSecondary", new Thickness(0, 2, 0, 0)));
 
         var codeBox = new Border { Margin = new Thickness(0, 18, 0, 0), Padding = new Thickness(16), CornerRadius = new CornerRadius(12), BorderThickness = new Thickness(1) };
         codeBox.SetResourceReference(Border.BackgroundProperty, "SxSurface");
@@ -59,12 +63,15 @@ public sealed class PairingWindow : Window
         panel.Children.Add(countdown);
 
         var buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 16, 0, 0) };
-        var deny = new Button { Content = "Odrzuć", Margin = new Thickness(0, 0, 10, 0), MinWidth = 110 };
+        var deny = new Button { Content = "Odrzuć", Margin = new Thickness(0, 0, 10, 0), MinWidth = 110, IsCancel = true };
+        AutomationProperties.SetName(deny, "Odrzuć prośbę o połączenie");
         deny.Style = TryFindResource("SxSecondaryButton") as Style;
         deny.Click += (_, _) => Answer(false);
         allow.Content = "Zezwól";
         allow.MinWidth = 130;
+        allow.IsDefault = true;
         allow.IsEnabled = false;
+        AutomationProperties.SetName(allow, "Zezwól temu telefonowi na połączenie");
         allow.Style = TryFindResource("SxPrimaryButton") as Style;
         allow.Click += (_, _) => Answer(true);
         buttons.Children.Add(deny);
@@ -81,7 +88,7 @@ public sealed class PairingWindow : Window
             Report(false);
         };
         timer.Tick += (_, _) => OnTick();
-        Loaded += (_, _) => { OnTick(); timer.Start(); };
+        Loaded += (_, _) => { OnTick(); timer.Start(); deny.Focus(); };
     }
 
     private static TextBlock Text(string text, double size, bool bold, string brushKey, Thickness? margin = null)

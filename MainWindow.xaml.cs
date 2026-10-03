@@ -151,7 +151,11 @@ public partial class MainWindow : Window
         LastTranscriptText.Text = "Ostatnia wypowiedź: " + (voice.LastTranscript.Length > 0 ? voice.LastTranscript : "—") + "\n" + voice.LastDecision;
         VoiceDetailText.Text = voice.IsListening ? $"{voice.CurrentRawDbfs:0.0} dBFS • AGC {voice.CurrentGain:0.0}× • {(voice.IsCalibrating ? "kalibracja" : voice.SpeechDetected ? "mowa" : "cisza")} • kolejka {voice.QueueDepth}/5 • ASR {voice.LastRecognitionMilliseconds} ms" : "Mikrofon wyłączony";
         if (voice.IsClipping) VoiceDetailText.Text += " • przesterowanie";
-        double interval = gaming.IsGaming() ? settings.Settings.Resources.GamingMonitorIntervalSeconds : settings.Settings.Resources.MonitorIntervalSeconds;
+        string game = gaming.GetRunningGame();
+        bool gameDetectionAvailable = gaming.DetectionAvailable;
+        double interval = gameDetectionAvailable && string.IsNullOrEmpty(game)
+            ? settings.Settings.Resources.MonitorIntervalSeconds
+            : settings.Settings.Resources.GamingMonitorIntervalSeconds;
         if (DateTime.Now - lastTick < TimeSpan.FromSeconds(interval)) return;
         lastTick = DateTime.Now;
         float cpu = monitor.GetCpuUsage(); double ram = monitor.GetRamUsagePercent();
@@ -166,13 +170,14 @@ public partial class MainWindow : Window
         RamBar.Value = double.IsFinite(ram) ? Math.Clamp(ram, 0, 100) : 0;
         RamBar.ToolTip = Format(ram, "%") + " z " + Format(monitor.GetTotalRamGB(), " GB", 1);
         UptimeText.Text = systemInfo.GetUptime();
-        string game = gaming.GetRunningGame();
-        GamingText.Text = string.IsNullOrEmpty(game)
-            ? $"Nie wykryto gry. GPU: {Format(gpu, "%")}. Lokalne komendy działają bez modelu AI; proste pytania idą kodem."
-            : $"Wykryta gra: {game}. GPU: {Format(gpu, "%")}. AI auto preferuje lżejszy model przy obciążeniu.";
+        GamingText.Text = !gameDetectionAvailable
+            ? $"Wykrywanie gier niedostępne; używam ustawień oszczędnych. GPU: {Format(gpu, "%")}."
+            : string.IsNullOrEmpty(game)
+                ? $"Nie wykryto gry. GPU: {Format(gpu, "%")}. Lokalne komendy działają bez modelu AI; proste pytania idą kodem."
+                : $"Wykryta gra: {game}. GPU: {Format(gpu, "%")}. AI auto preferuje lżejszy model przy obciążeniu.";
         overlay?.Update(overlayMetric.ToUpperInvariant(), overlayMetric == "ram" ? Format(monitor.GetUsedRamGB(), " GB", 1) : Format(cpu, "%"));
         if (voice.IsListening && !voice.IsWakeOnlyMode && !busy && !speaking && DateTime.Now > activeUntil) SetStandby();
-        tray?.UpdateState(voice.IsListening, emergency, game.Length > 0); UpdatePermission();
+        tray?.UpdateState(voice.IsListening, emergency, game.Length > 0, gameDetectionAvailable); UpdatePermission();
         if (settings.Settings.WatchEnabled &&
             ((float.IsFinite(cpu) && cpu >= settings.Settings.Watch.CpuAlertPercent) ||
              (double.IsFinite(ram) && ram >= settings.Settings.Watch.RamAlertPercent)))

@@ -6,7 +6,9 @@ using Microsoft.Win32;
 using SentinelX.Core;
 using SentinelX.Models;
 using SentinelX.Services.Actions;
+using SentinelX.Services.Automation;
 using SentinelX.Services.Monitoring;
+using SentinelX.Services.Notifications;
 using SentinelX.Services.Settings;
 using SentinelX.Services.Voice;
 using SentinelX.Views.Overlay;
@@ -16,7 +18,8 @@ namespace SentinelX.Services.Desktop;
 /// <summary>Owns Windows interop and UI lifetime; no business logic in window code-behind.</summary>
 public sealed class DesktopService(ISettingsService settings, IActionEngine engine, IVoiceService voice,
     ISystemMonitorService monitor, IUiDispatcher dispatcher, OverlayViewModel overlayVm,
-    Services.Link.AlertFeed alerts, Views.Link.LinkUi linkUi) : IDesktopService, IDisposable
+    Services.Link.AlertFeed alerts, INotificationService notifications, AutomationService automations,
+    Views.Link.LinkUi linkUi) : IDesktopService, IDisposable
 {
     private Window? window;
     private TrayService? tray;
@@ -43,6 +46,7 @@ public sealed class DesktopService(ISettingsService settings, IActionEngine engi
         settings.Changed += ApplySettings;
         monitor.Updated += MetricsUpdated;
         engine.Changed += StateChanged; voice.Changed += StateChanged;
+        notifications.Published += NotificationPublished;
         SystemEvents.UserPreferenceChanged += PreferencesChanged;
         ApplySettings();
     }
@@ -75,6 +79,7 @@ public sealed class DesktopService(ISettingsService settings, IActionEngine engi
         }
         catch (Exception ex) { SetStatus("Zasobnik niedostępny; zamknięcie zakończy aplikację. " + ex.Message); }
         monitor.Start();
+        automations.Start();
         // Started by Windows (autostart): stay quietly in the tray; the phone and the assistant work without a window.
         if ((settings.Current.Startup.StartMinimized || App.AutostartLaunch) && tray != null) window.Hide();
         if (settings.Current.Startup.StartVoiceOnLaunch)
@@ -95,7 +100,12 @@ public sealed class DesktopService(ISettingsService settings, IActionEngine engi
         if (!exiting && settings.Current.Ui.CloseToTray && tray != null) { args.Cancel = true; window?.Hide(); return; }
         exiting = true; engine.EmergencyStop(); voice.Stop(); overlay?.Close(); Application.Current.Shutdown();
     }
-    private void StateChanged() => dispatcher.Post(() => tray?.UpdateState(voice.State != VoiceState.Off, engine.IsStopped, !string.IsNullOrEmpty(monitor.Current.Game)));
+    private void StateChanged() => dispatcher.Post(() => tray?.UpdateState(voice.State != VoiceState.Off, engine.IsStopped,
+        !string.IsNullOrEmpty(monitor.Current.Game), monitor.Current.GamingDetectionAvailable));
+    private void NotificationPublished(AppNotification notification) => dispatcher.Post(() =>
+    {
+        if (!disposed) tray?.ShowInfo(notification.Title, notification.Message);
+    });
     private void MetricsUpdated(SystemSnapshot snapshot) => dispatcher.Post(() =>
     {
         StateChanged();
@@ -116,7 +126,8 @@ public sealed class DesktopService(ISettingsService settings, IActionEngine engi
                 alerts.Add("warn", "Wysokie obciążenie komputera", message + " — utrzymuje się dłużej niż " + watch.MinSecondsBeforeAlert + " s.");
             }
         }
-        Application.Current.Resources["SxAnimationsEnabled"] = settings.Current.Ui.AnimationsEnabled && string.IsNullOrEmpty(snapshot.Game);
+        Application.Current.Resources["SxAnimationsEnabled"] = settings.Current.Ui.AnimationsEnabled
+            && snapshot.GamingDetectionAvailable && string.IsNullOrEmpty(snapshot.Game);
     });
     private void ApplySettings()
     {
@@ -134,7 +145,8 @@ public sealed class DesktopService(ISettingsService settings, IActionEngine engi
         palette = new ResourceDictionary { Source = new Uri($"Themes/{theme}.xaml", UriKind.Relative) };
         dictionaries.Add(palette);
         Application.Current.Resources["SxAccentCyanColor"] = (Color)ColorConverter.ConvertFromString(settings.Current.Ui.AccentColor);
-        Application.Current.Resources["SxAnimationsEnabled"] = settings.Current.Ui.AnimationsEnabled && string.IsNullOrEmpty(monitor.Current.Game);
+        Application.Current.Resources["SxAnimationsEnabled"] = settings.Current.Ui.AnimationsEnabled
+            && monitor.Current.GamingDetectionAvailable && string.IsNullOrEmpty(monitor.Current.Game);
         if (overlay != null) ApplyOverlay();
         if (Environment.GetEnvironmentVariable("SENTINEL_UI_SMOKE") == "1") return;
         bool desired = settings.Current.Startup.StartWithWindows;
@@ -162,8 +174,32 @@ public sealed class DesktopService(ISettingsService settings, IActionEngine engi
         if (overlay != null) { overlay.Close(); overlay = null; return; }
         overlay = new OverlayWindow { DataContext = overlayVm };
         overlay.Closed += (_, _) => overlay = null;
+        overlay.DragCompleted += OverlayDragCompleted;
         overlay.Show(); ApplyOverlay();
     }
+
+    private void OverlayDragCompleted(double left, double top)
+    {
+        if (overlay == null || disposed) return;
+        Rect workArea = SystemParameters.WorkArea;
+        string position = OverlayPositionPolicy.GetNearestCorner(left, top, overlay.ActualWidth, overlay.ActualHeight,
+            workArea.Left, workArea.Top, workArea.Width, workArea.Height);
+        string previous = settings.Current.Ui.OverlayPosition;
+        if (position == previous) { ApplyOverlay(); return; }
+
+        settings.Current.Ui.OverlayPosition = position;
+        settings.Save();
+        if (settings.LastError is { } error)
+        {
+            settings.Current.Ui.OverlayPosition = previous;
+            ApplyOverlay();
+            SetStatus("Nie udało się zapisać pozycji nakładki: " + error);
+            return;
+        }
+        ApplyOverlay();
+        SetStatus("Pozycja nakładki zapisana: " + position + ".");
+    }
+
     private void SetStatus(string status) => dispatcher.Post(() => { Status = status; StatusChanged?.Invoke(); });
     public void Exit() { exiting = true; window?.Close(); }
     public void Dispose()
@@ -171,6 +207,7 @@ public sealed class DesktopService(ISettingsService settings, IActionEngine engi
         if (disposed) return;
         disposed = true; exiting = true;
         settings.Changed -= ApplySettings; monitor.Updated -= MetricsUpdated; engine.Changed -= StateChanged; voice.Changed -= StateChanged;
+        notifications.Published -= NotificationPublished;
         SystemEvents.UserPreferenceChanged -= PreferencesChanged;
         if (window != null) { window.Closing -= Closing; window.SourceInitialized -= SourceInitialized; window.Loaded -= Loaded; window.StateChanged -= WindowStateChanged; }
         hotkeys?.Dispose(); tray?.Dispose(); overlay?.Close();

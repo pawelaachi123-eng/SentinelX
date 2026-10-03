@@ -4,6 +4,7 @@ using SentinelX.Core;
 using SentinelX.Services.Engine;
 using SentinelX.Services.Link;
 using SentinelX.Services.Settings;
+using SentinelX.Services.Notifications;
 
 namespace SentinelX.Services.Care;
 
@@ -17,6 +18,7 @@ public sealed class CareService : IDisposable
     private readonly IEngineService engine;
     private readonly AlertFeed alerts;
     private readonly TaskService tasks;
+    private readonly INotificationService? notifications;
     private readonly object gate = new();
     private readonly SemaphoreSlim tick = new(1, 1);
     private Timer? timer;
@@ -31,13 +33,15 @@ public sealed class CareService : IDisposable
     private DateTime lastEngineAlert = DateTime.MinValue;
     private DateTime lastDiskAlert = DateTime.MinValue;
 
-    public CareService(ISettingsService settings, LinkService link, IEngineService engine, AlertFeed alerts, TaskService tasks)
+    public CareService(ISettingsService settings, LinkService link, IEngineService engine, AlertFeed alerts, TaskService tasks,
+        INotificationService? notifications = null)
     {
         this.settings = settings;
         this.link = link;
         this.engine = engine;
         this.alerts = alerts;
         this.tasks = tasks;
+        this.notifications = notifications;
     }
 
     public event Action? Changed;
@@ -93,8 +97,12 @@ public sealed class CareService : IDisposable
         return "TELEFON\nAndroid: otwórz aplikację „Sentinel X Telefon” — sama znajdzie ten komputer, a tu wystarczy kliknąć „Zezwól”.\niPhone i przeglądarka: zeskanuj kod QR z okna „Telefon” (zasobnik → Telefon…) albo wpisz adres.\n" + address + "\n" + phones;
     }
 
-    private void OnReminder(string line) =>
-        alerts.Add("info", "Przypomnienie", line.Replace("⏰", "").Trim());
+    private void OnReminder(string line)
+    {
+        string message = line.Replace("⏰", "").Trim();
+        if (notifications != null) notifications.Publish("Tasks", "Przypomnienie", message);
+        else alerts.Add("info", "Przypomnienie", message);
+    }
 
     private void OnEngineChanged() => RaiseChanged();
 

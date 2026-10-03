@@ -14,6 +14,9 @@
             <c:VoiceStateToBrushConverter x:Key="VoiceBrush"/>
             <c:RiskLevelToBrushConverter x:Key="RiskBrush"/>
             <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
+            <c:InverseBooleanConverter x:Key="InverseBoolean"/>
+            <c:InverseBooleanVisibilityConverter x:Key="InverseBooleanVisibility"/>
+            <c:EmptyStringToVisibilityConverter x:Key="EmptyStringToVisibility"/>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

@@ -36,6 +36,14 @@ const shaOk = await page.evaluate(() => {
 let shaAll = true;
 for (const [n, hex] of shaOk) { const b = Buffer.alloc(n); for (let i = 0; i < n; i++) b[i] = (i * 31 + 7) & 255; if (crypto.createHash('sha256').update(b).digest('hex') !== hex) { shaAll = false; console.log('SHA mismatch at', n); } }
 ok(shaAll, 'SHA-256 w JS zgodny z Node dla długości 0..1000');
+const streamBytes = Buffer.alloc(1000000); for (let i = 0; i < streamBytes.length; i++) streamBytes[i] = (i * 19 + 3) & 255;
+const streamedHash = await page.evaluate(() => {
+  const data = new Uint8Array(1000000); for (let i = 0; i < data.length; i++) data[i] = (i * 19 + 3) & 255;
+  const state = window.__sx.SHA.create();
+  for (let offset = 0; offset < data.length;) { const size = Math.min((offset % 997) + 1, data.length - offset); state.update(data.subarray(offset, offset + size)); offset += size; }
+  return Array.from(state.digest(), x => x.toString(16).padStart(2, '0')).join('');
+});
+ok(streamedHash === crypto.createHash('sha256').update(streamBytes).digest('hex'), 'SHA-256 przyrostowy zgodny z Node dla porcjowanego pliku 1 MB');
 const fp = crypto.createHash('sha256').update('sentinelx-mock-cert').digest('hex');
 const nA = crypto.randomBytes(16).toString('base64url'), nB = crypto.randomBytes(16).toString('base64url');
 const sasBrowser = await page.evaluate((fp, a, b) => window.__sx.computeSas(fp, a, b), fp, nA, nB);
@@ -59,8 +67,10 @@ await page.waitForSelector('#pairWait:not([hidden])');
 const sasShown = (await text('#sas')).replace(/\s/g, '');
 ok(/^\d{6}$/.test(sasShown), 'kod potwierdzenia ma 6 cyfr: ' + sasShown);
 await shot('02-wait');
-await page.waitForSelector('#view-chat:not([hidden])', { timeout: 15000 });
+await page.waitForSelector('#view-home:not([hidden])', { timeout: 15000 });
 ok((await text('#pcName')) === 'PAWEL-PC', 'po zatwierdzeniu nagłówek pokazuje nazwę komputera');
+ok((await text('#homePcState')) === 'Online', 'HOME pokazuje bieżący status PC');
+await page.click('#tabs button[data-tab=ai]');
 await wait(400);
 await shot('03-chat-empty');
 
@@ -97,9 +107,43 @@ ok((await text('#engine')).includes('qwen3:4b-instruct'), 'karta silnika AI poka
 ok((await text('#care')).includes('działa samo'), 'karta autopilota widoczna');
 await wait(500); await shot('05-pc');
 await page.evaluate(() => document.querySelector('#view-pc').scrollTo(0, 9999)); await wait(300); await shot('05b-pc-bottom');
+// ---- zasilanie: typowane operacje, dwa jawne potwierdzenia, atrapa niczego nie wyłącza
+await page.click('#btnRestartPc'); await page.waitForSelector('.modal .btn.danger');
+await page.click('.modal .btn.danger'); await page.waitForSelector('.modal .btn.danger');
+await page.click('.modal .btn.danger');
+await page.waitForFunction(() => [...document.querySelectorAll('.toast')].some(x => x.textContent.includes('PC przyjął operację')), { timeout: 4000 });
+ok(true, 'restart wymaga dwóch potwierdzeń i wysyła wyłącznie typowaną akcję');
+
+// ---- transfer plików: porcje, SHA-256 oraz weryfikacja pobrania
+await page.click('#tabs button[data-tab=menu]'); await page.click('#view-menu [data-goto=files]');
+await page.waitForFunction(() => document.querySelector('#fileList').textContent.includes('Nie ma jeszcze') || document.querySelector('#fileList').textContent.includes('plik'), { timeout: 5000 });
+const uploadPath = '/tmp/sentinelx-phone-upload-test.bin';
+const testBytes = Buffer.alloc(110000); for (let i = 0; i < testBytes.length; i++) testBytes[i] = (i * 17 + 31) & 255;
+fs.writeFileSync(uploadPath, testBytes);
+await (await page.$('#fileInput')).uploadFile(uploadPath);
+await page.click('#btnUpload');
+await page.waitForFunction(() => document.querySelector('#fileList').textContent.includes('sentinelx-phone-upload-test.bin'), { timeout: 10000 });
+ok((await text('#fileList')).includes(crypto.createHash('sha256').update(testBytes).digest('hex').slice(0, 16)), 'wysłany plik ma skrót SHA-256 zgodny z Node');
+await page._client().send('Page.setDownloadBehavior', { behavior: 'allow', downloadPath: out });
+await page.click('#fileList button[aria-label^="Pobierz"]');
+await page.waitForFunction(() => [...document.querySelectorAll('.toast')].some(x => x.textContent.includes('Plik pobrany i zweryfikowany')), { timeout: 10000 });
+await wait(500);
+const downloadedPath = out + 'sentinelx-phone-upload-test.bin';
+ok(fs.existsSync(downloadedPath) && fs.readFileSync(downloadedPath).equals(testBytes), 'pobrany plik jest ponownie zweryfikowany i identyczny');
+// ---- automatyzacje korzystają z katalogu typowanych akcji
+await page.click('#tabs button[data-tab=menu]'); await page.click('#view-menu [data-goto=automations]');
+await page.waitForFunction(() => document.querySelector('#automationAction').options.length > 0, { timeout: 5000 });
+await page.type('#automationName', 'Testowy URL');
+await page.select('#automationAction', 'open-url'); await page.type('#automationParameter', 'https://example.com/');
+await page.click('#btnAutomationAddStep'); await page.click('#btnAutomationSave');
+await page.waitForFunction(() => document.querySelector('#automationList').textContent.includes('Testowy URL'), { timeout: 5000 });
+await page.click('#automationList .automation-actions button'); await page.waitForSelector('.modal .btn.danger'); await page.click('.modal .btn.danger');
+await page.waitForFunction(() => document.querySelector('#automationHistory').textContent.includes('SUCCESS'), { timeout: 5000 });
+ok(true, 'automatyzacja zapisana z katalogu, potwierdzona i raportowana w historii');
 
 // ---- zadania
-await page.click('#tabs button[data-tab=tasks]');
+await page.click('#tabs button[data-tab=menu]')
+await page.click('#view-menu [data-goto=tasks]');
 await page.waitForSelector('#taskList .item');
 await page.type('#taskTitle', 'Kupić kabel HDMI');
 await page.click('#taskForm button[type=submit]');
@@ -115,7 +159,8 @@ await page.waitForFunction(() => document.querySelector('#remList').textContent.
 ok(true, 'przypomnienie dodane'); await wait(300); await shot('06-tasks');
 
 // ---- notatki
-await page.click('#tabs button[data-tab=notes]');
+await page.click('#tabs button[data-tab=menu]')
+await page.click('#view-menu [data-goto=notes]');
 await page.waitForSelector('#noteList .item');
 await page.type('#noteText', 'Zielony kabel to zasilanie monitora');
 await page.click('#noteForm button[type=submit]');
@@ -125,40 +170,89 @@ await page.waitForFunction(() => document.querySelectorAll('#noteList .item').le
 ok(true, 'notatka dodana, wyszukiwanie działa'); await wait(200); await shot('07-notes');
 
 // ---- alerty
-await page.click('#tabs button[data-tab=chat]');
+await page.click('#tabs button[data-tab=ai]');
 pushAlert('warn', 'Wysokie obciążenie', 'CPU 96% · RAM 91% przez dłużej niż 15 s.');
 await page.waitForFunction(() => !document.querySelector('#badgeAlerts').hidden, { timeout: 8000 });
 ok(true, 'nowy alert pojawił się jako znaczek na zakładce (long-poll)');
 await page.waitForSelector('.toast'); await shot('08-toast');
-await page.click('#tabs button[data-tab=alerts]'); await wait(300);
+await page.click('#tabs button[data-tab=menu]')
+await page.click('#view-menu [data-goto=alerts]'); await wait(300);
 ok((await text('#alertList')).includes('Wysokie obciążenie'), 'alert widoczny na liście');
 await shot('09-alerts');
+
+// ---- rotacja tokenu zachowuje tożsamość telefonu
+await page.click('#btnSettings'); await page.waitForSelector('#btnRotateToken:not([hidden])');
+const tokenBeforeRotate = await page.evaluate(() => localStorage.getItem('sx.token'));
+await page.click('#btnRotateToken'); await page.waitForSelector('.modal .btn.danger'); await page.click('.modal .btn.danger');
+await page.waitForFunction(oldToken => !!localStorage.getItem('sx.token') && localStorage.getItem('sx.token') !== oldToken, { timeout: 5000 }, tokenBeforeRotate);
+const tokenAfterRotate = await page.evaluate(() => localStorage.getItem('sx.token'));
+ok(!!tokenAfterRotate && tokenAfterRotate !== tokenBeforeRotate, 'po rotacji zapisano nowy token i zachowano sparowanie');
+await page.click('#btnSettings'); // do HOME
 
 // ---- aplikacja na Androida: kopia tokenu w aplikacji chroni przed ponownym parowaniem po zmianie adresu IP komputera
 const savedToken = await page.evaluate(() => localStorage.getItem('sx.token'));
 ok(!!savedToken, 'token jest w pamięci strony');
 await page.evaluateOnNewDocument(tok => {
   window.SXNative = {
-    savedToken: () => tok, tlsFingerprint: () => '', deviceName: () => 'Pixel test', saveSession() {}, saveMac() {}, clearSession() {},
-    hasVoice: () => false, startVoice() {}, canWake: () => true, wakePc() { window.__woke = true; }, rediscover() { window.__rediscovered = true; }
+    savedToken: () => tok, tlsFingerprint: () => '', deviceName: () => 'Pixel test', saveSession() { return true; }, saveMac() {}, clearSession() {},
+    isOfflineMode: () => false, networkStatusJson: () => JSON.stringify({ type: 'wifi', connected: true, internet: true, addresses: ['192.168.1.99'] }),
+    capabilitiesJson: () => JSON.stringify(['notifications', 'voiceInput', 'wakeOnLan']), hasVoice: () => false, startVoice() {}, canWake: () => true, wakePc() { window.__woke = true; }, rediscover() { window.__rediscovered = true; },
+    downloadFile(id, name, sha256) {
+      window.__nativeDownloadArgs = { id, name, sha256 }; window.__nativeDownloadCount = (window.__nativeDownloadCount || 0) + 1;
+      if (window.__nativeDownloadCount === 1) setTimeout(() => window.onNativeDownloadComplete(true, false, 'Zapisano przez atrapę SAF; SHA-256 zgodny.'), 100);
+      return true;
+    },
+    cancelDownload() { window.__nativeDownloadCancelled = true; setTimeout(() => window.onNativeDownloadComplete(false, true, 'Pobieranie anulowano.'), 100); }
   };
 }, savedToken);
 await page.evaluate(() => localStorage.clear());
 await page.reload({ waitUntil: 'load' });
-await page.waitForSelector('#view-chat:not([hidden])', { timeout: 8000 });
+await page.waitForSelector('#view-home:not([hidden])', { timeout: 8000 });
 ok(true, 'po zmianie adresu (pusty localStorage) aplikacja wraca do czatu bez ponownego parowania');
 await page.click('#btnSettings'); await page.waitForSelector('#setInfo .kv');
 ok((await text('#setInfo')).includes('Android') && !(await page.$eval('#btnWake', e => e.hidden)), 'w aplikacji ustawienia pokazują Androida i przycisk wybudzania');
 await page.click('#btnWake'); ok(await page.evaluate(() => window.__woke === true), 'przycisk wybudzania woła most natywny');
 await page.click('#btnSettings'); // przełącznik: wyjdź z ustawień, dalszy test otworzy je ponownie
+await page.click('#tabs button[data-tab=menu]'); await page.click('#view-menu [data-goto=files]');
+await page.waitForSelector('#fileList button[aria-label^="Pobierz"]', { timeout: 5000 });
+await page.click('#fileList button[aria-label^="Pobierz"]');
+await page.waitForFunction(() => window.__nativeDownloadCount === 1 && [...document.querySelectorAll('.toast')].some(x => x.textContent.includes('SAF; SHA-256 zgodny')), { timeout: 5000 });
+ok(await page.evaluate(() => window.__nativeDownloadArgs?.name === 'sentinelx-phone-upload-test.bin'), 'Android WebView przekazuje wyłącznie ID, nazwę i oczekiwany SHA-256 do natywnego transferu');
+await page.click('#fileList button[aria-label^="Pobierz"]'); await page.click('#btnUploadCancel');
+await page.waitForFunction(() => window.__nativeDownloadCancelled === true && [...document.querySelectorAll('.toast')].some(x => x.textContent.includes('Pobieranie anulowano.')), { timeout: 5000 });
+ok(true, 'pobieranie natywne można anulować przez most aplikacji');
+await page.click('#fileList button[aria-label^="Usuń"]'); await page.waitForSelector('.modal .btn.danger'); await page.click('.modal .btn.danger');
+await page.waitForFunction(() => !document.querySelector('#fileList').textContent.includes('sentinelx-phone-upload-test.bin'), { timeout: 5000 });
+ok(true, 'plik można usunąć z dedykowanego katalogu transferów');
 
 // ---- ustawienia + odłączenie
 await page.click('#btnSettings'); await page.waitForSelector('#setInfo .kv'); await wait(400); await shot('10-settings');
+await page.$eval('#btnUnpair', e => e.scrollIntoView({ block: 'center' })); await wait(100);
 await page.click('#btnUnpair'); await page.waitForSelector('.modal .btn.danger'); await shot('11-confirm');
 await page.click('.modal .btn.danger');
 await page.waitForSelector('#view-pair:not([hidden])', { timeout: 4000 });
 ok(true, 'odłączenie wraca do ekranu parowania');
 ok(!(await page.evaluate(() => localStorage.getItem('sx.token'))), 'token usunięty z pamięci telefonu');
+
+// ---- natywny dashboard pozostaje użyteczny bez sieci i bez sparowania
+const offlinePage = await browser.newPage();
+await offlinePage.evaluateOnNewDocument(() => {
+  localStorage.clear();
+  window.SXNative = {
+    isApp: () => true, isOfflineMode: () => true, networkStatusJson: () => JSON.stringify({ type: 'wifi', connected: true, internet: false, addresses: ['192.168.1.55'] }),
+    savedToken: () => '', deviceName: () => 'Pixel offline', tlsFingerprint: () => '', capabilitiesJson: () => '[]',
+    canWake: () => false, rediscover() {}
+  };
+});
+await offlinePage.goto(base, { waitUntil: 'load' });
+await offlinePage.waitForSelector('#view-home:not([hidden])', { timeout: 5000 });
+ok(await offlinePage.$eval('#view-pair', e => e.hidden), 'offline APK otwiera lokalny Controller zamiast zatrzymywać się na parowaniu');
+ok((await offlinePage.$eval('#homePcState', e => e.textContent)) === 'Offline — bez sparowania', 'offline dashboard jasno raportuje brak sparowania');
+await offlinePage.click('#tabs button[data-tab=menu]'); await offlinePage.click('#view-menu [data-goto=files]');
+ok(await offlinePage.$eval('#btnUpload', e => e.disabled), 'transfer plików jest zablokowany offline (bez fałszywego powodzenia)');
+await offlinePage.click('#tabs button[data-tab=menu]'); await offlinePage.click('#view-menu [data-goto=station]');
+ok((await offlinePage.$eval('#view-station', e => e.textContent)).includes('Nie skonfigurowano'), 'Station jasno oznacza brak backendu i nie pokazuje atrap odczytów');
+await offlinePage.close();
 
 await browser.close(); server.close();
 console.log(problems.length ? `\n${problems.length} PROBLEM(Y):\n - ` + problems.join('\n - ') : '\nWSZYSTKIE TESTY INTERFEJSU PRZESZŁY');

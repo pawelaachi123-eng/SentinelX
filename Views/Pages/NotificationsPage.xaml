@@ -1,0 +1,92 @@
+<UserControl xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:u="clr-namespace:SentinelX.Utilities" x:Class="SentinelX.Views.Pages.NotificationsPage" u:PageTransitions.Enabled="True" u:UiInteraction.LoadedCommand="{Binding MarkReadCommand}" AutomationProperties.Name="Powiadomienia">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="28">
+            <DockPanel Margin="0,0,0,6">
+                <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
+                    <Button Content="Odśwież" Command="{Binding RefreshCommand}" Style="{StaticResource SxGhostButton}" Margin="0,0,8,0"/>
+                    <Button Content="Oznacz jako przeczytane" Command="{Binding MarkReadCommand}" IsEnabled="{Binding HasUnread}"/>
+                </StackPanel>
+                <TextBlock Text="Powiadomienia" Style="{StaticResource SxHeading}"/>
+            </DockPanel>
+            <TextBlock Text="Alerty z Watch, przypomnień, automatyzacji i połączenia z telefonem" Style="{StaticResource SxCaption}" Margin="0,0,0,8"/>
+            <TextBlock Text="Wpisy są tymczasowe i przechowywane tylko w pamięci bieżącej sesji. Zamknięcie aplikacji je usuwa." Style="{StaticResource SxCaption}" Margin="0,0,0,20"/>
+
+            <Border Style="{StaticResource SxCard}" Margin="0,0,0,16" AutomationProperties.LiveSetting="Polite">
+                <StackPanel>
+                    <TextBlock Text="{Binding Status}" TextWrapping="Wrap"/>
+                    <TextBlock Text="{Binding UnreadCount, StringFormat={}{0} nieprzeczytanych}" Style="{StaticResource SxCaption}" Margin="0,6,0,0"/>
+                </StackPanel>
+            </Border>
+
+            <ItemsControl ItemsSource="{Binding Items}" AutomationProperties.Name="Ostatnie powiadomienia">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border Background="{DynamicResource SxSurface}" BorderThickness="1" CornerRadius="14" Padding="18" Margin="0,0,0,10">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="BorderBrush" Value="{DynamicResource SxBorderSubtle}"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Level}" Value="warn">
+                                            <Setter Property="BorderBrush" Value="{DynamicResource SxWarning}"/>
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding Level}" Value="error">
+                                            <Setter Property="BorderBrush" Value="{DynamicResource SxError}"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Border Width="34" Height="34" CornerRadius="17" Background="{DynamicResource SxSurfaceActive}" VerticalAlignment="Top" Margin="0,0,14,0">
+                                    <TextBlock Text="●" FontSize="13" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Foreground" Value="{DynamicResource SxAccentCyan}"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Level}" Value="warn">
+                                                        <Setter Property="Foreground" Value="{DynamicResource SxWarning}"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding Level}" Value="error">
+                                                        <Setter Property="Foreground" Value="{DynamicResource SxError}"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </Border>
+                                <StackPanel Grid.Column="1">
+                                    <DockPanel Margin="0,0,0,6">
+                                        <TextBlock Text="{Binding At, StringFormat={}{0:dd.MM.yyyy HH:mm:ss}}" Style="{StaticResource SxCaption}" DockPanel.Dock="Right" Margin="16,0,0,0"/>
+                                        <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                    </DockPanel>
+                                    <TextBlock Text="{Binding Text}" TextWrapping="Wrap"/>
+                                    <TextBlock Text="{Binding Level, StringFormat=Poziom: {0}}" Style="{StaticResource SxCaption}" Margin="0,8,0,0"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <Border Background="{DynamicResource SxSurfaceActive}" CornerRadius="14" Padding="20" Margin="0,0,0,16">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding Items.Count}" Value="0">
+                                <Setter Property="Visibility" Value="Visible"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <StackPanel>
+                    <TextBlock Text="Tu jest spokojnie" FontSize="16" FontWeight="SemiBold"/>
+                    <TextBlock Text="Nowe alerty pojawią się tutaj, gdy monitor obciążenia, przypomnienie, automatyzacja lub telefon zgłoszą coś ważnego." Style="{StaticResource SxCaption}" Margin="0,6,0,0"/>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

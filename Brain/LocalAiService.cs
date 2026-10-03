@@ -260,7 +260,11 @@ public sealed class LocalAiService : IDisposable
 
     public void CancelCurrentRequest()
     {
-        lock (syncRoot) currentRequest?.Cancel();
+        CancellationTokenSource? request;
+        lock (syncRoot) request = currentRequest;
+        try { request?.Cancel(); }
+        catch (ObjectDisposedException) { }
+        catch (AggregateException ex) { AppLog.Write("AI", "Warning", "An AI cancellation callback failed.", ex); }
     }
 
     public async Task UnloadModelAsync(string model)
@@ -288,12 +292,17 @@ public sealed class LocalAiService : IDisposable
         double ram = systemMonitor?.GetRamUsagePercent() ?? double.NaN;
         float cpu = systemMonitor?.GetCpuUsage() ?? float.NaN;
         float gpu = systemMonitor?.GetGpuUsagePercent() ?? float.NaN;
-        return EvaluatePressure(game, ram, cpu, gpu, config, out reason);
+        return EvaluatePressure(game, ram, cpu, gpu, config, gamingMode.DetectionAvailable, out reason);
     }
 
-    internal static bool EvaluatePressure(string game, double ram, double cpu, double gpu, AiSettings config, out string reason)
+    internal static bool EvaluatePressure(string game, double ram, double cpu, double gpu, AiSettings config, out string reason) =>
+        EvaluatePressure(game, ram, cpu, gpu, config, gameDetectionAvailable: true, out reason);
+
+    internal static bool EvaluatePressure(string game, double ram, double cpu, double gpu, AiSettings config,
+        bool gameDetectionAvailable, out string reason)
     {
         var parts = new List<string>();
+        if (!gameDetectionAvailable) parts.Add("wykrywanie gier niedostępne");
         if (!string.IsNullOrWhiteSpace(game)) parts.Add("gra: " + game);
         if (double.IsFinite(ram) && ram >= config.RamPressurePercent) parts.Add($"RAM {ram:0}%");
         if (double.IsFinite(cpu) && cpu >= config.CpuPressurePercent) parts.Add($"CPU {cpu:0}%");

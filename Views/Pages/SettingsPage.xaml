@@ -1,45 +1,82 @@
-<UserControl xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:u="clr-namespace:SentinelX.Utilities" x:Class="SentinelX.Views.Pages.SettingsPage" u:PageTransitions.Enabled="True">
+<UserControl xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:u="clr-namespace:SentinelX.Utilities" x:Class="SentinelX.Views.Pages.SettingsPage" u:PageTransitions.Enabled="True" AutomationProperties.Name="Ustawienia Sentinel X">
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
         <StackPanel Margin="28">
-            <TextBlock Text="Settings" Style="{StaticResource SxHeading}"/>
-            <TextBlock Text="Ustawienia zachowują format istniejącej instalacji · JSON + kopia zapasowa" Style="{StaticResource SxCaption}" Margin="0,0,0,24"/>
-            <TextBox Text="{Binding Search, UpdateSourceTrigger=PropertyChanged}" u:InputHint.Text="Szukaj…" AutomationProperties.Name="Szukaj ustawień" ToolTip="Szukaj: mikrofon, VAD, model, motyw…" Margin="0,0,0,16"/>
-            <DockPanel Margin="0,0,0,16">
-                <Button Content="Przywróć sekcję" Command="{Binding ResetSectionCommand}" DockPanel.Dock="Right" Margin="12,0,0,0"/>
-                <ComboBox ItemsSource="{Binding Sections}" SelectedItem="{Binding SelectedSection}" AutomationProperties.Name="Sekcja do przywrócenia"/>
+            <DockPanel Margin="0,0,0,18">
+                <Border Style="{StaticResource SxBadge}" DockPanel.Dock="Right" VerticalAlignment="Center">
+                    <TextBlock Text="LOKALNE USTAWIENIA" FontSize="10" Foreground="{DynamicResource SxAccentCyan}"/>
+                </Border>
+                <StackPanel>
+                    <TextBlock Text="Ustawienia" Style="{StaticResource SxHeading}"/>
+                    <TextBlock Text="Dostosuj głos, AI, urządzenia i prywatność. Zmiany są walidowane przed zapisem." Style="{StaticResource SxCaption}" Margin="0,3,0,0"/>
+                </StackPanel>
             </DockPanel>
-            <TextBlock Text="{Binding Status}" Style="{StaticResource SxCaption}" Margin="0,0,0,16"/>
-            <ItemsControl ItemsSource="{Binding FilteredFields}">
+
+            <Border Style="{StaticResource SxCardElevated}" Padding="16" Margin="0,0,0,18">
+                <StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                        <TextBox Text="{Binding Search, UpdateSourceTrigger=PropertyChanged}" u:InputHint.Text="Szukaj ustawień…" AutomationProperties.Name="Szukaj ustawień według nazwy lub opisu" ToolTip="Przeszukuje etykiety, kategorie i opisy ustawień"/>
+                        <Button Grid.Column="1" Content="Wyczyść" Command="{Binding ClearSearchCommand}" Style="{StaticResource SxGhostButton}" Margin="8,0,0,0" ToolTip="Wyczyść wyszukiwanie"/>
+                    </Grid>
+                    <Grid Margin="0,12,0,0">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="220"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                        <TextBlock Text="Kategoria" Style="{StaticResource SxCaption}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                        <ComboBox Grid.Column="1" ItemsSource="{Binding Sections}" SelectedItem="{Binding SelectedSection, Mode=TwoWay}" AutomationProperties.Name="Filtruj kategorię ustawień"/>
+                        <Button Grid.Column="2" Content="Przywróć kategorię" Command="{Binding ResetSectionCommand}" Style="{StaticResource SxGhostButton}" Margin="10,0,0,0" ToolTip="Przywraca wartości domyślne wybranej kategorii"/>
+                        <TextBlock Grid.Column="3" Text="{Binding Status}" Style="{StaticResource SxCaption}" TextWrapping="Wrap" VerticalAlignment="Center" Margin="14,0,0,0" AutomationProperties.LiveSetting="Polite"/>
+                    </Grid>
+                    <Border Style="{StaticResource SxCardElevated}" BorderBrush="{DynamicResource SxWarning}" Margin="0,12,0,0" Visibility="{Binding IsResetConfirmationOpen, Converter={StaticResource BoolToVisibility}}" AutomationProperties.LiveSetting="Polite">
+                        <Border.InputBindings><KeyBinding Key="Escape" Command="{Binding CancelResetCommand}"/></Border.InputBindings>
+                        <StackPanel>
+                            <TextBlock Text="Potwierdź przywrócenie ustawień" Style="{StaticResource SxSectionTitle}"/>
+                            <TextBlock Text="{Binding ResetConfirmationText}" TextWrapping="Wrap" Margin="0,4,0,12"/>
+                            <WrapPanel>
+                                <Button Content="Anuluj" Command="{Binding CancelResetCommand}" Style="{StaticResource SxGhostButton}" Margin="0,0,8,0" u:UiInteraction.FocusOnVisible="True"/>
+                                <Button Content="Przywróć wartości domyślne" Command="{Binding ConfirmResetSectionCommand}" Style="{StaticResource SxDangerButton}"/>
+                            </WrapPanel>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Border>
+
+            <TextBlock Text="Brak ustawień pasujących do wyszukiwania. Zmień kategorię albo usuń część hasła." Style="{StaticResource SxCaption}" TextWrapping="Wrap" HorizontalAlignment="Center" Margin="12,40" Visibility="{Binding FilteredFields.IsEmpty, Converter={StaticResource BoolToVisibility}}"/>
+
+            <ItemsControl ItemsSource="{Binding FilteredFields}" AutomationProperties.Name="Ustawienia według kategorii">
                 <ItemsControl.GroupStyle>
                     <GroupStyle>
                         <GroupStyle.HeaderTemplate>
                             <DataTemplate>
-                                <TextBlock Text="{Binding Name}" Style="{StaticResource SxSectionTitle}" Margin="0,20,0,12"/>
+                                <DockPanel Margin="0,20,0,12">
+                                    <Border Width="3" Height="18" Background="{DynamicResource SxAccentCyan}" CornerRadius="2" Margin="0,0,10,0"/>
+                                    <TextBlock Text="{Binding Name}" Style="{StaticResource SxSectionTitle}" VerticalAlignment="Center"/>
+                                </DockPanel>
                             </DataTemplate>
                         </GroupStyle.HeaderTemplate>
                     </GroupStyle>
                 </ItemsControl.GroupStyle>
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <Border Style="{StaticResource SxCard}" Padding="20,16" Margin="0,0,0,8">
+                        <Border Style="{StaticResource SxCard}" Padding="18" Margin="0,0,0,9">
                             <Grid>
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="220"/>
-                                    <ColumnDefinition Width="100"/>
+                                    <ColumnDefinition Width="1.2*"/>
+                                    <ColumnDefinition Width="1*"/>
+                                    <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
-                                <StackPanel Margin="0,0,20,0">
-                                    <TextBlock Text="{Binding Label}" FontWeight="SemiBold"/>
-                                    <TextBlock Text="{Binding Description}" Style="{StaticResource SxCaption}" Margin="0,6,0,0"/>
+                                <StackPanel Margin="0,0,18,0" VerticalAlignment="Top">
+                                    <TextBlock Text="{Binding Label}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                    <TextBlock Text="{Binding Description}" Style="{StaticResource SxCaption}" Margin="0,6,0,0" TextWrapping="Wrap"/>
                                 </StackPanel>
-                                <StackPanel Grid.Column="1">
-                                    <Slider Minimum="{Binding Minimum}" Maximum="{Binding Maximum}" Value="{Binding NumericValue}" Visibility="{Binding IsSlider, Converter={StaticResource BoolToVisibility}}" AutomationProperties.Name="{Binding Label}"/>
-                                    <TextBox Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="{Binding Label}" Visibility="{Binding IsText, Converter={StaticResource BoolToVisibility}}"/>
-                                    <ComboBox ItemsSource="{Binding Choices}" SelectedItem="{Binding Value}" AutomationProperties.Name="{Binding Label}" Visibility="{Binding IsChoice, Converter={StaticResource BoolToVisibility}}"/>
-                                    <CheckBox IsChecked="{Binding Enabled}" AutomationProperties.Name="{Binding Label}" VerticalAlignment="Center" Margin="0,8" Visibility="{Binding IsToggle, Converter={StaticResource BoolToVisibility}}"/>
-                                    <TextBlock Text="{Binding Error}" Foreground="{DynamicResource SxWarning}" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                <StackPanel Grid.Column="1" VerticalAlignment="Top">
+                                    <Slider Minimum="{Binding Minimum}" Maximum="{Binding Maximum}" Value="{Binding NumericValue, UpdateSourceTrigger=PropertyChanged}" Visibility="{Binding IsSlider, Converter={StaticResource BoolToVisibility}}" AutomationProperties.Name="{Binding Label}" ToolTip="Przeciągnij, a następnie zapisz wartość"/>
+                                    <TextBox Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="{Binding Label}" ToolTip="Wpisz wartość i zapisz" Visibility="{Binding IsText, Converter={StaticResource BoolToVisibility}}" Margin="0,2,0,0"/>
+                                    <ComboBox ItemsSource="{Binding Choices}" SelectedItem="{Binding Value, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="{Binding Label}" Visibility="{Binding IsChoice, Converter={StaticResource BoolToVisibility}}"/>
+                                    <CheckBox Content="Włączone" IsChecked="{Binding Enabled, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="{Binding Label}" VerticalAlignment="Center" Margin="0,8" Visibility="{Binding IsToggle, Converter={StaticResource BoolToVisibility}}"/>
+                                    <TextBlock Text="{Binding Error}" Foreground="{DynamicResource SxWarning}" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0" Visibility="{Binding Error, Converter={StaticResource EmptyStringToVisibility}}"/>
+                                    <TextBlock Text="Zapisano" Foreground="{DynamicResource SxSuccess}" FontSize="11" Margin="0,4,0,0" Visibility="{Binding IsSaved, Converter={StaticResource BoolToVisibility}}" AutomationProperties.LiveSetting="Polite"/>
                                 </StackPanel>
-                                <Button Grid.Column="2" Content="Zapisz" Command="{Binding SaveCommand}" Margin="12,0,0,0" VerticalAlignment="Top"/>
+                                <Button Grid.Column="2" Content="Zapisz" Command="{Binding SaveCommand}" Style="{StaticResource SxPrimaryButton}" Margin="12,0,0,0" VerticalAlignment="Top" ToolTip="Sprawdź i zapisz to ustawienie"/>
+
                             </Grid>
                         </Border>
                     </DataTemplate>

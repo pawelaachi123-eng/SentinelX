@@ -35,6 +35,8 @@ internal static class AiReliabilityTestRunner
             Check("cloud and embedding excluded", LocalAiService.SelectModels(models, false, "").All(x => !x.Contains("cloud") && !x.Contains("embed")));
             Check("pressure uses configured thresholds", LocalAiService.EvaluatePressure("", 72, 20, 10, new AiSettings { RamPressurePercent = 70 }, out var reason) && reason.Contains("RAM"));
             Check("unavailable sensor is not pressure", !LocalAiService.EvaluatePressure("", double.NaN, double.NaN, double.NaN, config, out _));
+            Check("unavailable game detection selects conservative mode", LocalAiService.EvaluatePressure("", double.NaN, double.NaN, double.NaN,
+                config, false, out reason) && reason.Contains("niedostępne"));
             Check("game activates light mode", LocalAiService.EvaluatePressure("test-game", 20, 20, 20, config, out reason) && reason.Contains("test-game"));
             Check("unrelated old context removed", !LocalAiService.BuildUserPrompt("Dlaczego kruki zostają w Polsce?", "Stary tekst: Microsoft pomaga w pracy naprawić internet.", false).Contains("Microsoft"));
             Check("follow-up retains context", LocalAiService.BuildUserPrompt("Rozwiń poprzedni temat", "Microsoft pomaga w pracy naprawić internet.", false).Contains("Microsoft"));

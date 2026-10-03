@@ -1,112 +1,213 @@
+using System.Windows;
+using System.ComponentModel;
+using System.Windows.Data;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SentinelX.Core;
 using SentinelX.Services.Actions;
 using SentinelX.Services.Desktop;
 using SentinelX.Services.Settings;
-namespace SentinelX.ViewModels;
-public sealed record NavItem(string Key, string Icon, string Label, object ViewModel);
 
-/// <summary>0.95: one tile of the live theme switcher in the sidebar (value = what settings store).</summary>
+namespace SentinelX.ViewModels;
+
+public sealed record NavItem(string Key, string Icon, string Label, string Group, object ViewModel);
+
+/// <summary>A theme selector item; Value is the persisted setting key.</summary>
 public sealed record ThemeOption(string Value, string Icon, string Label);
+
 public partial class MainViewModel : ObservableObject, IDisposable
 {
     private readonly IActionEngine engine;
     private readonly IDesktopService desktop;
     private readonly IUiDispatcher dispatcher;
     private readonly ISettingsService settings;
+    private readonly CommandCenterViewModel commandCenter;
+    private readonly HomeViewModel home;
+    private readonly ProjectViewModel projectPage;
+
     public string Version => AppConstants.Version;
     public IReadOnlyList<NavItem> NavItems { get; }
+    public ICollectionView NavigationView { get; }
     public VoiceViewModel Voice { get; }
-    /// <summary>0.95: live CPU/RAM/GPU tiles in the sidebar, the same source as the System tab.</summary>
     public SystemViewModel System { get; }
-    /// <summary>0.95: the Tools catalogue page (sidebar „Narzędzia” and the 🧰 tab in Centrum).</summary>
     public ToolsViewModel Tools { get; }
+    public HomeViewModel Home => home;
+    public DevicesViewModel Devices { get; }
+    public NotificationsViewModel Notifications { get; }
+    public CommandPaletteViewModel Palette { get; }
+    public ReadinessViewModel Readiness { get; }
+
     public IReadOnlyList<ThemeOption> ThemeOptions { get; } =
     [
         new("Dark", "🌙", "Ciemny"),
-        new("Deep Dark", "⚫", "Czarny"),
+        new("Deep Dark", "◐", "Głęboka czerń"),
         new("Light", "☀", "Jasny"),
-        new("System", "🖥", "Jak Windows")
+        new("System", "▣", "Jak Windows")
     ];
+
     [ObservableProperty] private ThemeOption? currentTheme;
-    public CommandPaletteViewModel Palette { get; }
-    public ReadinessViewModel Readiness { get; }
-    private readonly CommandCenterViewModel commandCenter;
     [ObservableProperty] private NavItem? selectedItem;
     [ObservableProperty] private object? currentPage;
     [ObservableProperty] private bool isStopped;
+    [ObservableProperty] private bool isSidebarCollapsed;
     [ObservableProperty] private string desktopStatus = "";
 
-    /// <summary>0.91 · CENTRUM: every former top-level page key now lives as an icon tab inside Centrum.
-    /// Palette entries, readiness cards and legacy navigation keep working through this map.</summary>
-    private static readonly Dictionary<string, string> CenterTabByLegacyKey = new(StringComparer.Ordinal)
+    public GridLength SidebarWidth => IsSidebarCollapsed ? new GridLength(76) : new GridLength(248);
+
+    private static readonly Dictionary<string, string> NavigationAliases = new(StringComparer.OrdinalIgnoreCase)
     {
-        ["command"] = "rozmowa", ["tasks"] = "zadania", ["history"] = "historia", ["voice"] = "glos",
-        ["system"] = "system", ["gaming"] = "gry", ["ai"] = "ai", ["actions"] = "akcje", ["diagnostics"] = "diagnostyka"
+        ["chat"] = "command", ["centrum"] = "command", ["rozmowa"] = "command",
+        ["automations"] = "automation", ["narzedzia"] = "tools", ["glos"] = "voice",
+        ["gry"] = "gaming", ["diagnostyka"] = "diagnostics", ["historia"] = "history",
+        ["ustawienia"] = "settings", ["gotowosc"] = "readiness"
     };
 
     public MainViewModel(IActionEngine engine, IDesktopService desktop, IUiDispatcher dispatcher,
-        CommandCenterViewModel command, SystemViewModel system, GamingViewModel gaming,
-        VoiceViewModel voice, AiViewModel ai, ActionsViewModel actions, HistoryViewModel history, SettingsViewModel settings,
-        CommandPaletteViewModel palette, ReadinessViewModel readiness, MemoryViewModel memory, ProjectViewModel projects, TaskViewModel tasks,
-        DiagnosticViewModel diagnostics, ToolsViewModel tools, ISettingsService settingsService)
+        CommandCenterViewModel command, HomeViewModel home, SystemViewModel system,
+        GamingViewModel gaming, VoiceViewModel voice, AiViewModel ai, ActionsViewModel actions,
+        HistoryViewModel history, SettingsViewModel settingsPage, CommandPaletteViewModel palette,
+        ReadinessViewModel readiness, MemoryViewModel memory, ProjectViewModel projects,
+        TaskViewModel tasks, DiagnosticViewModel diagnostics, ToolsViewModel tools,
+        AutomationViewModel automation, DevicesViewModel devices, NotificationsViewModel notifications,
+        ISettingsService settingsService)
     {
-        this.engine = engine; this.desktop = desktop; this.dispatcher = dispatcher; this.settings = settingsService;
-        Voice = voice; Palette = palette; Readiness = readiness; commandCenter = command; System = system; Tools = tools;
-        Palette.Chosen += PaletteChosen; Readiness.OpenSectionRequested += Navigate; commandCenter.NavigationRequested += Navigate;
+        this.engine = engine;
+        this.desktop = desktop;
+        this.dispatcher = dispatcher;
+        settings = settingsService;
+        commandCenter = command;
+        this.home = home;
+        projectPage = projects;
+        Voice = voice;
+        System = system;
+        Tools = tools;
+        Devices = devices;
+        Notifications = notifications;
+        Palette = palette;
+        Readiness = readiness;
+
         NavItems =
         [
-            new NavItem("command", "⌘", "Centrum", command),
-            new NavItem("tools", "🧰", "Narzędzia", tools),
-            new NavItem("memory", "▤", "Pamięć", memory),
-            new NavItem("projects", "▣", "Projekty", projects),
-            new NavItem("settings", "⚙", "Ustawienia", settings)
+            new("home", "⌂", "Start", "PULPIT", home),
+            new("command", "✦", "Asystent", "PULPIT", command),
+
+            new("system", "▦", "Komputer", "KOMPUTER", system),
+            new("gaming", "ϟ", "Wydajność", "KOMPUTER", gaming),
+            new("voice", "◉", "Głos", "KOMPUTER", voice),
+            new("devices", "⌁", "Urządzenia", "KOMPUTER", devices),
+
+            new("automation", "⏱", "Automatyzacje", "PRACA", automation),
+            new("tasks", "☷", "Zadania", "PRACA", tasks),
+            new("actions", "↗", "Akcje", "PRACA", actions),
+            new("history", "◷", "Aktywność", "PRACA", history),
+
+            new("ai", "✧", "AI lokalne", "NARZĘDZIA I DANE", ai),
+            new("diagnostics", "⌕", "Diagnostyka", "NARZĘDZIA I DANE", diagnostics),
+            new("tools", "⌘", "Narzędzia", "NARZĘDZIA I DANE", tools),
+            new("projects", "▣", "Projekty", "NARZĘDZIA I DANE", projects),
+            new("memory", "▤", "Pamięć", "NARZĘDZIA I DANE", memory),
+
+            new("notifications", "◌", "Powiadomienia", "SYSTEM", notifications),
+            new("settings", "⚙", "Ustawienia", "SYSTEM", settingsPage)
         ];
+
+        NavigationView = CollectionViewSource.GetDefaultView(NavItems);
+        NavigationView.GroupDescriptions.Add(new PropertyGroupDescription(nameof(NavItem.Group)));
         CurrentTheme = ThemeOptions.FirstOrDefault(option => option.Value == settingsService.Current.Ui.Theme) ?? ThemeOptions[0];
-        SelectedItem = NavItems[0]; Readiness.IsOpen = command.Messages.Count == 0; engine.Changed += Sync; desktop.StatusChanged += DesktopChanged;
-        // Referenced so DI keeps constructing the cached page VMs (they live inside Centrum's tabs now).
-        _ = gaming; _ = ai; _ = actions; _ = history; _ = tasks; _ = diagnostics;
+        SelectedItem = NavItems[0];
+        // Readiness refreshes at startup, but stays non-modal so the Home dashboard remains the first visible surface.
+        Readiness.IsOpen = false;
+
+        engine.Changed += Sync;
+        settings.Changed += SettingsChanged;
+        desktop.StatusChanged += DesktopChanged;
+        Palette.Chosen += PaletteChosen;
+        Readiness.OpenSectionRequested += Navigate;
+        commandCenter.NavigationRequested += Navigate;
+        home.NavigationRequested += Navigate;
+        projectPage.NavigationRequested += Navigate;
     }
+
     partial void OnSelectedItemChanged(NavItem? value)
     {
         if (value == null) return;
         CurrentPage = value.ViewModel;
-        if (value.ViewModel is HistoryViewModel history && !history.RefreshCommand.IsRunning) history.RefreshCommand.Execute(null);
+        if (value.ViewModel is HistoryViewModel history && !history.RefreshCommand.IsRunning)
+            history.RefreshCommand.Execute(null);
     }
+
+    partial void OnIsSidebarCollapsedChanged(bool value) => OnPropertyChanged(nameof(SidebarWidth));
+
     private void Navigate(string key)
     {
-        if (CenterTabByLegacyKey.TryGetValue(key, out string? tab))
+        string resolved = NavigationAliases.GetValueOrDefault(key, key);
+        if (resolved == "readiness")
         {
-            SelectedItem = NavItems[0]; // Centrum
-            commandCenter.SelectTabCommand.Execute(tab);
+            OpenReadiness();
             return;
         }
-        SelectedItem = NavItems.FirstOrDefault(x => x.Key == key) ?? SelectedItem;
+        SelectedItem = NavItems.FirstOrDefault(item => string.Equals(item.Key, resolved, StringComparison.OrdinalIgnoreCase)) ?? SelectedItem;
     }
+
     private void PaletteChosen(Models.PaletteEntry entry)
     {
         if (entry.PageKey != null) Navigate(entry.PageKey);
-        else if (entry.CommandText != null) { Navigate("command"); commandCenter.StageCommand(entry.CommandText); }
+        else if (entry.CommandText != null)
+        {
+            Navigate("command");
+            commandCenter.StageCommand(entry.CommandText);
+        }
     }
-    /// <summary>0.95: switching the tile changes the palette, the Fluent mode and persists the choice;
-    /// the change is visible immediately because the shell listens for settings changes.</summary>
+
     partial void OnCurrentThemeChanged(ThemeOption? value)
     {
         if (value == null || settings.Current.Ui.Theme == value.Value) return;
+        string previous = settings.Current.Ui.Theme;
         settings.Current.Ui.Theme = value.Value;
         settings.Save();
-        DesktopStatus = "Motyw: " + value.Label + " — zapisany w ustawieniach.";
+        if (settings.LastError is { } failure)
+        {
+            settings.Current.Ui.Theme = previous;
+            CurrentTheme = ThemeOptions.FirstOrDefault(option => option.Value == previous);
+            DesktopStatus = failure;
+            return;
+        }
+        DesktopStatus = "Motyw „" + value.Label + "” zapisany.";
     }
 
-    [RelayCommand] private void OpenTools() { SelectedItem = NavItems.FirstOrDefault(item => item.Key == "tools") ?? SelectedItem; }
+    [RelayCommand] private void ToggleSidebar() => IsSidebarCollapsed = !IsSidebarCollapsed;
+    [RelayCommand] private void OpenTools() => Navigate("tools");
+    [RelayCommand] private void OpenNotifications() => Navigate("notifications");
+    [RelayCommand] private void ToggleVoice()
+    {
+        if (Voice.State == Models.VoiceState.Off) Voice.StartCommand.Execute(null);
+        else Voice.StopCommand.Execute(null);
+    }
     [RelayCommand] private void OpenPalette() { Readiness.IsOpen = false; Palette.Open(); }
     [RelayCommand] private void OpenReadiness() { Palette.CloseCommand.Execute(null); Readiness.IsOpen = true; }
     [RelayCommand] private Task InitializeAsync() => Readiness.RefreshCommand.ExecuteAsync(null);
+
     private void Sync() => dispatcher.Post(() => IsStopped = engine.IsStopped);
+    private void SettingsChanged() => dispatcher.Post(() =>
+    {
+        ThemeOption? matching = ThemeOptions.FirstOrDefault(option => string.Equals(option.Value, settings.Current.Ui.Theme, StringComparison.OrdinalIgnoreCase));
+        if (matching != null && CurrentTheme?.Value != matching.Value) CurrentTheme = matching;
+    });
     private void DesktopChanged() => dispatcher.Post(() => DesktopStatus = desktop.Status);
     [RelayCommand] private void EmergencyStop() => engine.EmergencyStop();
     [RelayCommand] private void Resume() => engine.Resume();
     [RelayCommand] private void Exit() => desktop.Exit();
-    public void Dispose() { engine.Changed -= Sync; desktop.StatusChanged -= DesktopChanged; Palette.Chosen -= PaletteChosen; Readiness.OpenSectionRequested -= Navigate; commandCenter.NavigationRequested -= Navigate; Readiness.RefreshCommand.Cancel(); }
+
+    public void Dispose()
+    {
+        engine.Changed -= Sync;
+        settings.Changed -= SettingsChanged;
+        desktop.StatusChanged -= DesktopChanged;
+        Palette.Chosen -= PaletteChosen;
+        Readiness.OpenSectionRequested -= Navigate;
+        commandCenter.NavigationRequested -= Navigate;
+        home.NavigationRequested -= Navigate;
+        projectPage.NavigationRequested -= Navigate;
+        Readiness.RefreshCommand.Cancel();
+    }
 }

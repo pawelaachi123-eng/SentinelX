@@ -220,3 +220,40 @@ input[type=datetime-local]{color-scheme:dark}
 
 /* ekran parowania: bez wskaźnika łączności i ustawień */
 #app[data-state=pair] .top-actions{visibility:hidden}
+
+/* Controller: dashboard, network, station, files i automatyzacje */
+.home-status-title{font-size:22px;font-weight:700;letter-spacing:.2px;margin:1px 0 2px}
+.home-status .m{font-size:12.5px;color:var(--text2);overflow-wrap:anywhere}
+.home-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.home-actions .btn{flex:1 1 auto}
+.quick-grid,.menu-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.quick-link,.menu-link{min-width:0;text-align:left;color:var(--text);cursor:pointer;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:3px;min-height:76px}
+.quick-link b,.menu-link b{font-size:14px;letter-spacing:.3px}
+.quick-link small,.menu-link small{font:12px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--text2)}
+.quick-link:active,.menu-link:active{border-color:var(--cyan)}
+.station-summary{font-size:13.5px;line-height:1.55;color:var(--text2)}
+.station-summary b{color:var(--text)}
+.station-summary code{font:12px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--cyan);overflow-wrap:anywhere}
+#networkPhone .kv,#networkPc .kv{align-items:flex-start}
+#networkPhone .kv span:last-child,#networkPc .kv span:last-child{max-width:66%;font-variant-numeric:tabular-nums}
+#fileInput{font-size:14px;padding:8px}
+input[type=file]::file-selector-button{border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:8px;padding:8px 10px;margin-right:9px}
+input[type=time]{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:var(--r-sm);padding:11px 12px;color:var(--text);color-scheme:dark}
+.progress-label{font-size:12.5px;color:var(--text2);margin-top:4px;overflow-wrap:anywhere}
+.file-row .mono{font:11px/1.4 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.15px}
+.automation-row{border-bottom:1px solid var(--border2);padding:4px 0 10px}
+.automation-row:last-child{border-bottom:0}
+.automation-row>.item{border-bottom:0;padding:8px 0}
+.automation-actions{display:flex;align-items:center;justify-content:flex-end;gap:6px;flex-wrap:wrap}
+.automation-actions .btn{min-width:0}
+.mini-toggle{display:inline-flex;align-items:center;gap:5px;color:var(--text2);font-size:12px;padding:0 5px}
+.mini-toggle input{accent-color:var(--cyan);width:17px;height:17px}
+#automationDraft{background:var(--bg);box-shadow:none}
+#automationTime{min-height:44px}
+#pcActions .hint{margin:0 4px 4px}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+@media(max-width:360px){
+  .quick-grid,.menu-grid{gap:7px}
+  .quick-link,.menu-link{padding:11px;min-height:72px}
+  .automation-actions .btn{padding:7px 9px;font-size:13px}
+}

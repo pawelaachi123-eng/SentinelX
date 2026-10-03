@@ -3,6 +3,6 @@ namespace SentinelX.Core;
 public static class AppConstants
 {
     public const string Name = "SENTINEL X";
-    // Do not downgrade existing installations to the prompt's older 0.77 release.
-    public const string Version = "0.96 · KUŹNIA";
+    // The desktop project is the release-version authority; scripts/check-versions.py guards this runtime-facing copy.
+    public const string Version = "1.0.0";
 }

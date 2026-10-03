@@ -13,6 +13,7 @@ public sealed class ActionEngine(IIntentRouter router, SentinelToolboxService to
     private readonly object gate = new();
     private CancellationTokenSource? active;
     private bool stopped;
+    private bool cancelling;
     private ActionRecord? currentAction;
     private bool streaming;
     private readonly List<ActionRecord> tracked = [];
@@ -42,6 +43,7 @@ public sealed class ActionEngine(IIntentRouter router, SentinelToolboxService to
         lock (gate)
         {
             if (stopped) return new("STOP blokuje nowe akcje. Użyj przycisku Wznów.");
+            if (cancelling) return new("Kończę anulowanie poprzedniej akcji. Spróbuj ponownie za chwilę.");
             if (active != null) return new("Trwa zadanie. Poczekaj lub je anuluj.");
             source = active = CancellationTokenSource.CreateLinkedTokenSource(token);
             currentAction = record;
@@ -54,8 +56,13 @@ public sealed class ActionEngine(IIntentRouter router, SentinelToolboxService to
             bool first;
             lock (gate) { first = !streaming; streaming = true; }
             if (first) PublishChanged();
-            try { StreamDelta?.Invoke(chunk); onDelta?.Invoke(chunk); }
-            catch (Exception observerError) { AppLog.Write(observerError); }
+            foreach (Action<string> observer in StreamDelta?.GetInvocationList() ?? [])
+            {
+                try { observer(chunk); }
+                catch (Exception observerError) { AppLog.Write("AI", "Warning", "A streamed-answer observer failed.", observerError); }
+            }
+            try { onDelta?.Invoke(chunk); }
+            catch (Exception observerError) { AppLog.Write("AI", "Warning", "The streamed-answer callback failed.", observerError); }
         }
         using var tickerStop = new CancellationTokenSource();
         var ticker = UpdateElapsedAsync(record, clock, tickerStop.Token);
@@ -201,17 +208,45 @@ public sealed class ActionEngine(IIntentRouter router, SentinelToolboxService to
     }
     public void Cancel()
     {
-        lock (gate) { if (active != null && currentAction != null) currentAction.Phase = "Anulowanie · oczekiwanie na zatrzymanie narzędzia"; active?.Cancel(); }
-        ai.Cancel(); toolbox.CancelAllTasks(); toolbox.CancelPendingAction();
-        ActionRecord[] waiting;
-        lock (gate) waiting = tracked.Where(x => x.Status == ActionStatus.WaitingPermission).ToArray();
-        foreach (var task in waiting)
+        CancellationTokenSource? request;
+        lock (gate)
         {
-            task.Status = ActionStatus.Cancelled; task.FinishedAt = DateTime.Now;
-            task.Phase = "Oczekująca zgoda anulowana"; task.Evidence = "Anulowano oczekiwanie na zgodę. Wcześniej zatwierdzone lub ukończone kroki nie są cofane — sprawdź ich historię.";
-            Persist(task, task.Evidence);
+            if (cancelling) return;
+            cancelling = true;
+            request = active;
+            if (request != null && currentAction != null)
+                currentAction.Phase = "Anulowanie · oczekiwanie na zatrzymanie narzędzia";
         }
-        PublishChanged();
+
+        try
+        {
+            try { request?.Cancel(); }
+            catch (ObjectDisposedException) { }
+            catch (AggregateException ex) { AppLog.Write("AI", "Warning", "An action cancellation callback failed.", ex); }
+            try { ai.Cancel(); }
+            catch (Exception ex) { AppLog.Write("AI", "Warning", "AI request cancellation failed.", ex); }
+            try { toolbox.CancelAllTasks(); }
+            catch (Exception ex) { AppLog.Write("AI", "Warning", "Background action cancellation failed.", ex); }
+            try { toolbox.CancelPendingAction(); }
+            catch (Exception ex) { AppLog.Write("AI", "Warning", "Pending permission cancellation failed.", ex); }
+
+            ActionRecord[] waiting;
+            lock (gate) waiting = tracked.Where(x => x.Status == ActionStatus.WaitingPermission).ToArray();
+            foreach (ActionRecord task in waiting)
+            {
+                task.Status = ActionStatus.Cancelled;
+                task.FinishedAt = DateTime.Now;
+                task.Phase = "Oczekująca zgoda anulowana";
+                task.Evidence = "Anulowano oczekiwanie na zgodę. Wcześniej zatwierdzone lub ukończone kroki nie są cofane — sprawdź ich historię.";
+                try { Persist(task, task.Evidence); }
+                catch (Exception ex) { AppLog.Write("AI", "Error", "Could not persist a cancelled permission request.", ex); }
+            }
+        }
+        finally
+        {
+            lock (gate) cancelling = false;
+            PublishChanged();
+        }
     }
     private void PublishChanged()
     {

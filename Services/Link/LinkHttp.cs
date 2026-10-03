@@ -11,7 +11,9 @@ internal static class LinkJson
     public static readonly JsonSerializerOptions Options = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        PropertyNameCaseInsensitive = true,
         NumberHandling = JsonNumberHandling.AllowNamedFloatingPointLiterals,
+        Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase, allowIntegerValues: false) },
     };
 }
 
@@ -35,13 +37,14 @@ internal sealed class LinkRequest
     }
 
     public string Q(string name) => Query.TryGetValue(name, out string? value) ? value : "";
+    public string RequestId => Headers.TryGetValue("X-Sentinel-Request-Id", out string? value) ? value.Trim() : "";
 
-    /// <summary>Request body as a JSON object; an empty or malformed body yields an undefined element (every getter then returns empty).</summary>
-    public JsonElement Json()
+    /// <summary>Deserializes a v1 request contract; malformed or empty bodies are handled as client input errors by the endpoint.</summary>
+    public T? Deserialize<T>() where T : class
     {
-        if (Body.Length == 0) return default;
-        try { using JsonDocument document = JsonDocument.Parse(Body); return document.RootElement.Clone(); }
-        catch (JsonException) { return default; }
+        if (Body.Length == 0) return null;
+        try { return JsonSerializer.Deserialize<T>(Body, LinkJson.Options); }
+        catch (JsonException) { return null; }
     }
 }
 
@@ -131,9 +134,9 @@ internal sealed class LinkResponse
 {
     private static readonly Dictionary<int, string> Reasons = new()
     {
-        [200] = "OK", [204] = "No Content", [304] = "Not Modified", [400] = "Bad Request", [401] = "Unauthorized", [403] = "Forbidden",
-        [404] = "Not Found", [405] = "Method Not Allowed", [408] = "Request Timeout", [411] = "Length Required",
-        [413] = "Payload Too Large", [429] = "Too Many Requests", [500] = "Internal Server Error", [503] = "Service Unavailable"
+        [200] = "OK", [202] = "Accepted", [204] = "No Content", [304] = "Not Modified", [400] = "Bad Request", [401] = "Unauthorized", [403] = "Forbidden",
+        [404] = "Not Found", [405] = "Method Not Allowed", [408] = "Request Timeout", [409] = "Conflict", [411] = "Length Required",
+        [413] = "Payload Too Large", [422] = "Unprocessable Content", [429] = "Too Many Requests", [500] = "Internal Server Error", [503] = "Service Unavailable"
     };
     private const string HtmlPolicy = "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'";
 
@@ -167,6 +170,29 @@ internal sealed class LinkResponse
 
     public Task WriteJsonAsync(int status, object value, CancellationToken token) =>
         WriteAsync(status, "application/json; charset=utf-8", JsonSerializer.SerializeToUtf8Bytes(value, LinkJson.Options), token);
+
+    /// <summary>Streams a bounded, server-owned file without loading it into memory as one byte array.</summary>
+    public async Task WriteFileAsync(int status, FileStream file, CancellationToken token)
+    {
+        long length = file.Length;
+        const string contentType = "application/octet-stream";
+        var head = new StringBuilder();
+        head.Append("HTTP/1.1 ").Append(status).Append(' ').Append(Reasons.GetValueOrDefault(status, "OK")).Append("\r\n");
+        head.Append("Content-Type: ").Append(contentType).Append("\r\n");
+        head.Append("Content-Length: ").Append(length).Append("\r\n");
+        head.Append("Cache-Control: no-store\r\nConnection: close\r\nX-Content-Type-Options: nosniff\r\nReferrer-Policy: no-referrer\r\n\r\n");
+        Started = true;
+        await stream.WriteAsync(Encoding.ASCII.GetBytes(head.ToString()), token).ConfigureAwait(false);
+        if (!headOnly)
+        {
+            file.Position = 0;
+            byte[] buffer = new byte[64 * 1024];
+            int read;
+            while ((read = await file.ReadAsync(buffer.AsMemory(), token).ConfigureAwait(false)) > 0)
+                await stream.WriteAsync(buffer.AsMemory(0, read), token).ConfigureAwait(false);
+        }
+        await stream.FlushAsync(token).ConfigureAwait(false);
+    }
 
     public async Task StartSseAsync(CancellationToken token)
     {

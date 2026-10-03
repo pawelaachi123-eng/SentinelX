@@ -16,6 +16,9 @@ public partial class HistoryViewModel : ObservableObject
     public ObservableCollection<ActionHistoryEntry> Entries { get; } = [];
     public ObservableCollection<ConversationMemoryEntry> Conversation { get; } = [];
     public ICollectionView FilteredEntries { get; }
+    public bool HasActions => Entries.Count > 0;
+    public bool HasFilteredOutEntries => HasActions && FilteredEntries.IsEmpty;
+    public bool HasConversation => Conversation.Count > 0;
     [ObservableProperty] private string search = "";
     [ObservableProperty] private string status = "Odśwież, aby wczytać historię lokalną.";
     [ObservableProperty] private ActionHistoryEntry? selectedEntry;
@@ -27,7 +30,12 @@ public partial class HistoryViewModel : ObservableObject
             ConversationMemoryService.Normalize($"{entry.ActionId} {entry.RequestId} {entry.Command} {entry.Status} {entry.Evidence}")
                 .Contains(ConversationMemoryService.Normalize(Search), StringComparison.Ordinal);
     }
-    partial void OnStatusFilterChanged(string value) => FilteredEntries.Refresh();
+    partial void OnStatusFilterChanged(string value) => RefreshFilter();
+    private void RefreshFilter()
+    {
+        FilteredEntries.Refresh();
+        OnPropertyChanged(nameof(HasFilteredOutEntries));
+    }
     [RelayCommand] private async Task ExportAsync(string format)
     {
         if (format is not ("json" or "csv")) return;
@@ -38,7 +46,7 @@ public partial class HistoryViewModel : ObservableObject
         }
         catch (Exception ex) { ExportSummary = "Błąd eksportu: " + ex.Message; }
     }
-    partial void OnSearchChanged(string value) => FilteredEntries.Refresh();
+    partial void OnSearchChanged(string value) => RefreshFilter();
     [RelayCommand] private async Task RefreshAsync()
     {
         try
@@ -47,6 +55,9 @@ public partial class HistoryViewModel : ObservableObject
             var conversation = await Task.Run(history.ReadConversation);
             Entries.Clear(); foreach (var entry in actions) Entries.Add(entry);
             Conversation.Clear(); foreach (var entry in conversation) Conversation.Add(entry);
+            OnPropertyChanged(nameof(HasActions));
+            OnPropertyChanged(nameof(HasFilteredOutEntries));
+            OnPropertyChanged(nameof(HasConversation));
             Status = history.StorageError ?? $"{Entries.Count} ostatnich akcji · {Conversation.Count} wiadomości · tylko dane lokalne";
         }
         catch (Exception ex) { Status = "Błąd odczytu historii: " + ex.Message; }

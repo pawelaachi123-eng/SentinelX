@@ -1,5 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="bg">#0D0F14</color>
-    <color name="ic_background">#0D0F14</color>
+    <!-- Semantic companions to Themes/Colors.xaml and Phone/web/app.css. -->
+    <color name="sx_background">#0D0F14</color>
+    <color name="sx_surface">#141820</color>
+    <color name="sx_border">#2A2F3C</color>
+    <color name="sx_text_primary">#E8ECF4</color>
+    <color name="sx_text_secondary">#8B92A5</color>
+    <color name="sx_accent_cyan">#00D4FF</color>
+    <color name="sx_accent_violet">#8B5CF6</color>
+    <color name="sx_on_accent">#04121A</color>
+    <color name="ic_background">@color/sx_background</color>
 </resources>

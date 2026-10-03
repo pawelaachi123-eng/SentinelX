@@ -41,18 +41,22 @@ public static class CommandCatalog
         new("Sekundy na czas", "3661 → 1 h 1 min 1 s · i odwrotnie", "sekundy czas godziny minuty", CommandText: "sekundy: "),
         new("Moc hasła", "Entropia i typowe słabości · hasła nie zapisuję", "moc hasla sila entropia", CommandText: "moc hasla: "),
         new("Kod QR", "Tekst albo sieć Wi-Fi → PNG zapisany lokalnie", "qr kod kodem wifi", CommandText: "qr: "),
-        new("Centrum", "Rozmowa i lokalne polecenia — wszystkie zakładki w jednym miejscu", "czat chat rozmowa centrum center", PageKey: "command"),
+        new("Start", "Pulpit: wydajność komputera, zadania, aktywność i szybki dostęp", "home start glowna pulpit dashboard", PageKey: "home"),
+        new("Asystent", "Rozmowa i lokalne polecenia", "czat chat rozmowa centrum center", PageKey: "command"),
+        new("Urządzenia", "Połączenie z telefonem w sieci lokalnej i sparowane urządzenia", "telefon phone link urzadzenia devices pairing", PageKey: "devices"),
+        new("Automatyzacje", "Przepływy i harmonogramy — przegląd, uruchomienie i historia", "automatyzacje automation flows rules", PageKey: "automation"),
+        new("Powiadomienia", "Alerty z bieżącej sesji: Watch, przypomnienia i połączenie", "powiadomienia notifications alert watch", PageKey: "notifications"),
         new("Pamięć", "Wspomnienia, profil i prywatność", "pamiec memory wspomnienia", PageKey: "memory"),
         new("Projekty", "Kontekst projektów i ich notatki", "projekt projects kontekst", PageKey: "projects"),
         new("Zadania", "Zadania, terminy i przypomnienia", "zadania task przypomnienia", PageKey: "tasks"),
         new("Diagnostyka", "Odczyty stanu i ich porównania", "diagnostyka snapshot odczyt porownanie", PageKey: "diagnostics"),
-        new("System", "CPU, RAM, dyski, sieć i procesy", "monitor statystyki", PageKey: "system"),
-        new("Gaming", "Wykrywanie gry i nakładka z metrykami", "gra cs2 overlay nakladka", PageKey: "gaming"),
-        new("Voice", "Mikrofon, modele i kalibracja głosu", "glos mikrofon vad asr voice", PageKey: "voice"),
-        new("AI", "Wbudowany silnik AI i wybór modelu", "silnik model ai ollama llama", PageKey: "ai"),
-        new("Actions", "Zadania, zgody i dowody wykonania", "akcje zadania uprawnienia permission dowody", PageKey: "actions"),
-        new("History", "Historia akcji i rozmów", "historia audit log", PageKey: "history"),
-        new("Settings", "Konfiguracja i walidacja ustawień", "ustawienia settings motyw wyglad", PageKey: "settings")
+        new("Komputer", "CPU, RAM, dyski, sieć i procesy", "monitor statystyki system komputer", PageKey: "system"),
+        new("Wydajność", "Wykrywanie gry i nakładka z metrykami", "gra cs2 overlay nakladka gaming", PageKey: "gaming"),
+        new("Głos", "Mikrofon, modele i kalibracja głosu", "glos mikrofon vad asr voice", PageKey: "voice"),
+        new("AI lokalne", "Wbudowany silnik AI i wybór modelu", "silnik model ai ollama llama", PageKey: "ai"),
+        new("Akcje", "Zadania, zgody i dowody wykonania", "akcje zadania uprawnienia permission dowody actions", PageKey: "actions"),
+        new("Aktywność", "Historia akcji i rozmów", "historia audit log history", PageKey: "history"),
+        new("Ustawienia", "Konfiguracja i walidacja ustawień", "ustawienia settings motyw wyglad", PageKey: "settings")
     ];
     public static IReadOnlyList<PaletteEntry> Search(string query)
     {

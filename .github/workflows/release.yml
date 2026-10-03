@@ -5,10 +5,12 @@ name: Release (EXE installer, portable ZIP, phone APK, checksums)
 #   - workflow_dispatch  → ręczne wydanie pod wskazanym tagiem (puste pole = v<wersja z SENTINEL-X.csproj>).
 #   - push na gałąź arena/** z napisem [release] w komunikacie commita → wydanie przedpremierowe v<wersja>
 #     (dla agentów i skryptów, które mogą pushować, ale nie mogą uruchamiać workflowów ręcznie).
-#     Push bez tego napisu nie robi nic — zadania są pomijane i nie zużywają minut.
-# Jedno wydanie zawiera komplet: instalator EXE, wersję przenośną ZIP, aplikację na Androida (APK) i sumy kontrolne.
-# Zadania Windows (EXE) i Linux (APK) są niezależne i dokładają pliki do tego samego wydania (nic nie jest kasowane).
-# Nic nie jest publikowane bez zielonych testów: architektura, kompilacja, smoke UI, testy silnika AI i łącza z telefonem, regresja.
+#   - [release-ephemeral] jawnie dopuszcza jednorazowy klucz APK wyłącznie w przedpremierowym buildzie;
+#     aktualizacje wymagają odinstalowania aplikacji. Bez znacznika wymagany jest klucz trwały.
+#     Zwykły push bez [release] nie publikuje niczego.
+# Jedno wydanie zawiera komplet: instalator EXE, wersję przenośną ZIP, APK i sumy kontrolne.
+# Windows i Android budują osobne artefakty; osobny job publikuje dopiero po sukcesie obu, bez nadpisywania istniejących wydań.
+# Oficjalny APK wymaga nowego, trwałego klucza z chronionych sekretów — stary klucz z repozytorium nie jest już używany.
 on:
   push:
     tags: ['v*.*.*']
@@ -33,10 +35,65 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  windows:
+  signing-check:
     if: github.event_name != 'push' || startsWith(github.ref, 'refs/tags/') || contains(github.event.head_commit.message, '[release]')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      SENTINELX_ANDROID_KEYSTORE_BASE64: ${{ secrets.SENTINELX_ANDROID_KEYSTORE_BASE64 }}
+      SENTINELX_ANDROID_STORE_PASSWORD: ${{ secrets.SENTINELX_ANDROID_STORE_PASSWORD }}
+      SENTINELX_ANDROID_KEY_PASSWORD: ${{ secrets.SENTINELX_ANDROID_KEY_PASSWORD }}
+      ALLOW_EPHEMERAL_SIGNING: ${{ github.event_name == 'push' && github.ref_type == 'branch' && contains(github.event.head_commit.message, '[release-ephemeral]') && secrets.SENTINELX_ANDROID_KEYSTORE_BASE64 == '' }}
+    steps:
+      - name: Require a protected, persistent Android signing key before a release
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "$SENTINELX_ANDROID_KEYSTORE_BASE64" || -z "$SENTINELX_ANDROID_STORE_PASSWORD" || -z "$SENTINELX_ANDROID_KEY_PASSWORD" ]]; then
+            if [[ "$ALLOW_EPHEMERAL_SIGNING" == 'true' ]]; then
+              echo '::warning title=Jednorazowy podpis APK::Na jawne żądanie tworzę przedpremierowe wydanie z nowym kluczem jednorazowym CI. Aktualizacja wymaga odinstalowania aplikacji; historyczny klucz nie jest używany.'
+              exit 0
+            fi
+            echo '::error title=Brak bezpiecznego klucza APK::Wydanie wymaga nowych, trwałych sekretów Androida. Nie używaj starego klucza z repozytorium.'
+            exit 1
+          fi
+      - uses: actions/setup-java@v4
+        if: env.SENTINELX_ANDROID_KEYSTORE_BASE64 != ''
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Validate keystore, alias and private-key password without printing credentials
+        if: env.SENTINELX_ANDROID_KEYSTORE_BASE64 != ''
+        shell: bash
+        env:
+          SENTINELX_ANDROID_KEY_ALIAS: ${{ secrets.SENTINELX_ANDROID_KEY_ALIAS }}
+        run: |
+          set -euo pipefail
+          ks="$RUNNER_TEMP/sentinelx-release-check.p12"
+          alias="${SENTINELX_ANDROID_KEY_ALIAS:-sentinelx}"
+          printf '%s' "$SENTINELX_ANDROID_KEYSTORE_BASE64" | base64 --decode > "$ks"
+          if ! keytool -list -keystore "$ks" -storetype PKCS12 -storepass "$SENTINELX_ANDROID_STORE_PASSWORD" -alias "$alias" >/dev/null 2>&1; then
+            echo '::error title=Podpis APK::Nieprawidłowy magazyn, hasło lub alias klucza Androida.'
+            exit 1
+          fi
+          if ! keytool -certreq -keystore "$ks" -storetype PKCS12 -storepass "$SENTINELX_ANDROID_STORE_PASSWORD" \
+              -keypass "$SENTINELX_ANDROID_KEY_PASSWORD" -alias "$alias" -file "$RUNNER_TEMP/sentinelx-release-check.csr" >/dev/null 2>&1; then
+            echo '::error title=Podpis APK::Nieprawidłowe hasło klucza prywatnego Androida.'
+            exit 1
+          fi
+          rm -f "$ks" "$RUNNER_TEMP/sentinelx-release-check.csr"
+          echo '::notice title=Podpis APK::Nowy klucz trwały jest poprawny; poświadczenia nie zostały wypisane.'
+
+  windows:
+    needs: signing-check
+    if: github.event_name != 'push' || startsWith(github.ref, 'refs/tags/') || contains(github.event.head_commit.message, '[release]')
+    permissions:
+      contents: read
     runs-on: windows-latest
     timeout-minutes: 45
+    env:
+      ALLOW_EPHEMERAL_SIGNING: ${{ github.event_name == 'push' && github.ref_type == 'branch' && contains(github.event.head_commit.message, '[release-ephemeral]') && secrets.SENTINELX_ANDROID_KEYSTORE_BASE64 == '' }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-dotnet@v5
@@ -44,6 +101,8 @@ jobs:
           dotnet-version: 10.0.x
       - name: Portable architecture checks
         run: python scripts/check-architecture.py
+      - name: Release version consistency
+        run: python scripts/check-versions.py
       - name: Bundled AI engine (llama.cpp - pinned, SHA-256 verified, started with --version)
         shell: pwsh
         run: ./scripts/fetch-llama.ps1
@@ -117,6 +176,11 @@ jobs:
           Compress-Archive -Path 'bin/portable/*' -DestinationPath "dist/SentinelX-$version-win-x64-portable.zip" -Force
           $installer = Get-ChildItem 'bin/installer/*.exe' | Select-Object -First 1
           Copy-Item $installer.FullName "dist/SentinelX-$version-win-x64-setup.exe"
+          if ($env:ALLOW_EPHEMERAL_SIGNING -eq 'true') {
+            $androidSigningNote = "APK: podpis jednorazowym kluczem CI; instalacja kolejnej wersji wymaga odinstalowania aplikacji (co może usunąć jej dane)."
+          } else {
+            $androidSigningNote = "APK: trwały klucz z chronionych sekretów; zachowaj go do aktualizacji Androida."
+          }
           @(
             "SENTINEL X $version",
             "commit: $commit",
@@ -126,6 +190,7 @@ jobs:
             "dane: wszystko zostaje lokalnie w %LocalAppData%\SentinelX (rozmowy, wspomnienia, raporty, archiwa)",
             "AI: wbudowany silnik (llama.cpp) — modele Qwen3 pobierają się same, bez Ollamy i bez chmury",
             "telefon: aplikacja na Androida (SentinelX-Phone-$version.apk) albo przeglądarka; zgoda to jedno kliknięcie na komputerze",
+            $androidSigningNote,
             "portable: rozpakuj ZIP i uruchom SentinelX.exe (bez instalacji)",
             "instalator: instalacja per-user, bez uprawnień administratora"
           ) | Set-Content 'dist/BUILD.txt' -Encoding utf8
@@ -134,74 +199,12 @@ jobs:
           } | Set-Content 'dist/SHA256SUMS.txt'
           Get-Content 'dist/SHA256SUMS.txt'
           Get-Content 'dist/SHA256SUMS.txt' | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
-      - name: Publish milestone release (version tag)
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
+      - uses: actions/upload-artifact@v4
         with:
-          files: dist/*
-          generate_release_notes: true
-          body: |
-            ## Pliki do pobrania
-
-            | Plik | Co to jest |
-            | --- | --- |
-            | `SentinelX-*-win-x64-setup.exe` | **Instalator na komputer** (per-user, bez uprawnień administratora). Dwuklik i gotowe — reszta dzieje się sama. |
-            | `SentinelX-Phone-*.apk` | **Aplikacja na telefon z Androidem 7+.** Otwórz ją przy włączonym Sentinel X na komputerze — sama znajdzie komputer. |
-            | `SentinelX-*-win-x64-portable.zip` | Wersja przenośna: rozpakuj i uruchom `SentinelX.exe`. |
-            | `SHA256SUMS.txt`, `BUILD.txt` | Sumy kontrolne i metryka buildu. |
-
-            ## Uczciwie o ograniczeniach
-
-            - **Pliki nie są podpisane cyfrowo.** Windows SmartScreen pokaże ostrzeżenie „Nieznany wydawca”, a Android zapyta o instalację z nieznanego źródła.
-            - Silnik AI jest wbudowany (llama.cpp). Modele Qwen3 (ok. 1,1 GB i ok. 2,5 GB na mocniejszych komputerach) pobierają się same w tle po pierwszym uruchomieniu.
-            - Telefon łączy się z komputerem w sieci domowej (Wi‑Fi). Przez internet — tylko przez własną sieć prywatną (np. Tailscale).
-            - Wersja testowana w CI na `windows-latest` (Windows Server 2022). Telefon i prawdziwy komputer użytkownika potwierdzą resztę.
-      - name: Publish release on demand (workflow_dispatch or a branch push marked [release])
-        if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/'))
-        shell: pwsh
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          [xml]$project = Get-Content SENTINEL-X.csproj
-          $version = $project.Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
-          $commit = (git rev-parse --short HEAD)
-          $tag = '${{ inputs.tag }}'
-          if ([string]::IsNullOrWhiteSpace($tag)) { $tag = "v$version" }
-          $prerelease = '${{ inputs.prerelease }}' -ne 'false'
-          $files = @(Get-ChildItem dist -File | ForEach-Object { $_.FullName })
-          Write-Output "release: tag=$tag version=$version commit=$commit prerelease=$prerelease"
-          Write-Output "assets: $($files -join ', ')"
-          if ($files.Count -lt 4) { throw 'Missing release assets in dist/' }
-          $notes = @(
-            "Sentinel X **$version** · commit ``$commit``",
-            '',
-            '| Plik | Co to jest |',
-            '| --- | --- |',
-            "| ``SentinelX-$version-win-x64-setup.exe`` | **Instalator na komputer** (per-user, bez uprawnień administratora) — dwuklik i gotowe. |",
-            "| ``SentinelX-Phone-$version.apk`` | **Aplikacja na telefon z Androidem 7+** — sama znajdzie komputer w sieci. |",
-            "| ``SentinelX-$version-win-x64-portable.zip`` | Wersja przenośna (rozpakuj i uruchom ``SentinelX.exe``). |",
-            '| ``SHA256SUMS.txt`` / ``BUILD.txt`` | Sumy kontrolne i metryka buildu. |',
-            '',
-            'Bez podpisu cyfrowego — SmartScreen pokaże „Nieznany wydawca”, Android zapyta o instalację z nieznanego źródła.',
-            'Silnik AI jest wbudowany (bez Ollamy); modele pobierają się same po pierwszym uruchomieniu. Dane zostają lokalnie w %LOCALAPPDATA%\SentinelX.'
-          ) -join "`n"
-          # Zadanie Androida może już było utworzyć to wydanie: wtedy tylko dokładamy pliki (nic nie kasujemy).
-          gh release view $tag *> $null
-          if ($LASTEXITCODE -ne 0) {
-            $create = @('release', 'create', $tag, '--target', $env:GITHUB_SHA, '--title', "SentinelX $version ($commit)", '--notes', $notes)
-            if ($prerelease) { $create += '--prerelease' }
-            & gh @create
-            if ($LASTEXITCODE -ne 0) {
-              gh release view $tag *> $null
-              if ($LASTEXITCODE -ne 0) { throw "Nie udało się utworzyć wydania $tag" }
-            }
-          } else {
-            gh release edit $tag --notes $notes | Out-Null
-          }
-          & gh release upload $tag @files --clobber
-          if ($LASTEXITCODE -ne 0) { throw "Nie udało się wgrać plików do wydania $tag" }
-          $assets = gh release view $tag --json assets --jq '.assets[].name' 2>&1
-          Write-Output "assets in release: $($assets -join ', ')"
+          name: sentinelx-release-windows-${{ github.sha }}
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 3
       - uses: actions/upload-artifact@v4
         continue-on-error: true  # limit magazynu artefaktów nie może zamieniać wyników testów na czerwone
         if: always()
@@ -211,33 +214,122 @@ jobs:
           retention-days: 2
 
   android:
+    needs: signing-check
     if: github.event_name != 'push' || startsWith(github.ref, 'refs/tags/') || contains(github.event.head_commit.message, '[release]')
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    env:
+      SENTINELX_ANDROID_KEYSTORE_BASE64: ${{ secrets.SENTINELX_ANDROID_KEYSTORE_BASE64 }}
+      SENTINELX_ANDROID_STORE_PASSWORD: ${{ secrets.SENTINELX_ANDROID_STORE_PASSWORD }}
+      SENTINELX_ANDROID_KEY_ALIAS: ${{ secrets.SENTINELX_ANDROID_KEY_ALIAS }}
+      SENTINELX_ANDROID_KEY_PASSWORD: ${{ secrets.SENTINELX_ANDROID_KEY_PASSWORD }}
+      ALLOW_EPHEMERAL_SIGNING: ${{ github.event_name == 'push' && github.ref_type == 'branch' && contains(github.event.head_commit.message, '[release-ephemeral]') && secrets.SENTINELX_ANDROID_KEYSTORE_BASE64 == '' }}
     steps:
       - uses: actions/checkout@v5
       - id: build
         uses: ./.github/actions/build-apk
-      - name: Publish the APK to the release
+        with:
+          require-stable-signing: ${{ env.ALLOW_EPHEMERAL_SIGNING != 'true' }}
+      - name: Package validated APK and checksum for the publisher
+        shell: bash
+        run: |
+          set -euo pipefail
+          version=$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' SENTINEL-X.csproj | head -n 1)
+          mkdir -p dist
+          apk="SentinelX-Phone-$version.apk"
+          cp "${{ steps.build.outputs.apk }}" "dist/$apk"
+          (cd dist && sha256sum "$apk" > "$apk.sha256")
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sentinelx-release-phone-${{ github.sha }}
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 3
+
+  publish:
+    needs: [windows, android]
+    if: github.event_name != 'push' || startsWith(github.ref, 'refs/tags/') || contains(github.event.head_commit.message, '[release]')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v4
+        with:
+          name: sentinelx-release-windows-${{ github.sha }}
+          path: dist
+      - uses: actions/download-artifact@v4
+        with:
+          name: sentinelx-release-phone-${{ github.sha }}
+          path: dist
+      - name: Validate complete assets, then create a new release without clobbering existing releases
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
           INPUT_TAG: ${{ inputs.tag }}
           INPUT_PRERELEASE: ${{ inputs.prerelease }}
+          ALLOW_EPHEMERAL_SIGNING: ${{ github.event_name == 'push' && github.ref_type == 'branch' && contains(github.event.head_commit.message, '[release-ephemeral]') && secrets.SENTINELX_ANDROID_KEYSTORE_BASE64 == '' }}
         run: |
           set -euo pipefail
           version=$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' SENTINEL-X.csproj | head -n 1)
-          tag="${INPUT_TAG:-}"
-          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then tag="${GITHUB_REF_NAME}"; fi
-          if [ -z "$tag" ]; then tag="v$version"; fi
-          apk="SentinelX-Phone-$version.apk"
-          cp "${{ steps.build.outputs.apk }}" "$apk"
-          sha256sum "$apk" > "$apk.sha256"
-          if ! gh release view "$tag" >/dev/null 2>&1; then
-            flag=""
-            if [ "${INPUT_PRERELEASE:-true}" != "false" ]; then flag="--prerelease"; fi
-            # the Windows job may create the same release at the same moment: whoever is second just uploads
-            gh release create "$tag" --target "$GITHUB_SHA" --title "SentinelX $version" --notes "Wydanie w przygotowaniu — pliki dołączają się automatycznie." $flag || gh release view "$tag" >/dev/null
+          expected_tag="v$version"
+          if [[ "$GITHUB_REF_TYPE" == 'tag' ]]; then
+            tag="$GITHUB_REF_NAME"
+          else
+            tag="${INPUT_TAG:-$expected_tag}"
           fi
-          gh release upload "$tag" "$apk" "$apk.sha256" --clobber
-          echo "::notice title=APK w wydaniu::$tag → $apk"
+          if [[ "$tag" != "$expected_tag" || ! "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error title=Nieprawidłowa wersja wydania::Tag '$tag' musi odpowiadać wersji $expected_tag w SENTINEL-X.csproj."
+            exit 1
+          fi
+          if [[ "$GITHUB_REF_TYPE" != 'tag' ]] && git rev-parse --quiet --verify "refs/tags/$tag" >/dev/null; then
+            echo "::error title=Tag już istnieje::Nie tworzę wydania z istniejącego tagu. Uruchom workflow z poprawnego tagu albo zwiększ wersję."
+            exit 1
+          fi
+          apk="SentinelX-Phone-$version.apk"
+          installer="SentinelX-$version-win-x64-setup.exe"
+          portable="SentinelX-$version-win-x64-portable.zip"
+          for file in "$apk" "$installer" "$portable" BUILD.txt SHA256SUMS.txt; do
+            if [[ ! -f "dist/$file" ]]; then
+              echo "::error title=Brak zasobu wydania::Brakuje dist/$file; publikacja została wstrzymana."
+              exit 1
+            fi
+          done
+          (cd dist && sha256sum --check SHA256SUMS.txt)
+          (cd dist && sha256sum --check "$apk.sha256")
+          (cd dist && sha256sum "$apk" >> SHA256SUMS.txt)
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "::error title=Wydanie już istnieje::$tag nie zostanie nadpisane. Użyj nowej wersji/tagu."
+            exit 1
+          fi
+          notes_file="docs/RELEASE-${version%.*}.md"
+          if [[ -f "$notes_file" ]]; then
+            release_notes=$(cat "$notes_file")
+          else
+            release_notes="Sentinel X $version. Pełna lista plików i sum kontrolnych znajduje się w załącznikach wydania."
+          fi
+          if [[ "$ALLOW_EPHEMERAL_SIGNING" == 'true' ]]; then
+            signing_note='APK podpisano nowym, jednorazowym kluczem CI na jawne żądanie. To wydanie przedpremierowe; przed instalacją kolejnej wersji trzeba odinstalować aplikację, co może usunąć jej dane. Nie użyto historycznego klucza.'
+          else
+            signing_note='APK podpisano trwałym kluczem z chronionych sekretów. Wydanie powstało po zielonych testach kompilacji, UI i regresji na Windows.'
+          fi
+          notes=$(cat <<EOF
+          $release_notes
+
+          $signing_note
+          EOF
+          )
+          prerelease_args=()
+          if [[ "$ALLOW_EPHEMERAL_SIGNING" == 'true' ]]; then
+            prerelease_args+=(--prerelease)
+          elif [[ "$GITHUB_REF_TYPE" != 'tag' && "${INPUT_PRERELEASE:-true}" != 'false' ]]; then
+            prerelease_args+=(--prerelease)
+          fi
+          gh release create "$tag" --target "$GITHUB_SHA" --title "SentinelX $version" --notes "$notes" "${prerelease_args[@]}"
+          mapfile -t files < <(find dist -maxdepth 1 -type f | sort)
+          gh release upload "$tag" "${files[@]}"
+          echo "::notice title=Wydanie opublikowane::$tag · ${#files[@]} plików"
+          printf '%s\n' "$tag" "${files[@]}" >> "$GITHUB_STEP_SUMMARY"

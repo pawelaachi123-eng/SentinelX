@@ -63,8 +63,35 @@
       <p class="foot" id="pairMsg" role="status"></p>
     </section>
 
-    <!-- CZAT -->
-    <section id="view-chat" class="view" hidden>
+    <!-- PULPIT HOME -->
+    <section id="view-home" class="view scroll" hidden>
+      <div class="card home-status">
+        <div class="status-line"><span class="dot" id="homePcDot"></span><div class="grow"><div class="kicker">Komputer</div><div class="home-status-title" id="homePcState">Sprawdzam…</div><div class="m" id="homePcHint">Status połączenia i ostatnia synchronizacja</div></div></div>
+        <div class="row home-actions">
+          <button class="btn ghost sm" id="btnHomeReconnect" type="button">Znajdź PC</button>
+          <button class="btn ghost sm" id="btnHomeWake" type="button" hidden>Wake-on-LAN</button>
+          <button class="btn primary sm" data-goto="ai" type="button">Sentinel AI</button>
+        </div>
+      </div>
+      <h3 class="flush">Bieżące metryki <span class="tag" id="homeMetricTime">—</span></h3>
+      <div class="grid2">
+        <div class="card metric"><div class="k">Procesor</div><div class="v" id="homeCpu">–</div><div class="bar"><i id="homeCpuBar"></i></div></div>
+        <div class="card metric"><div class="k">Pamięć RAM</div><div class="v" id="homeRam">–</div><div class="bar"><i id="homeRamBar"></i></div></div>
+      </div>
+      <h3>Ostatnie zdarzenia</h3>
+      <div class="card list" id="homeEvents"></div>
+      <h3>Szybkie przejścia</h3>
+      <div class="quick-grid">
+        <button class="card quick-link" data-goto="pc" type="button"><b>PC</b><small>Stan i sterowanie</small></button>
+        <button class="card quick-link" data-goto="network" type="button"><b>Network</b><small>Połączenie i adresy</small></button>
+        <button class="card quick-link" data-goto="tasks" type="button"><b>Zadania</b><small>Lista i przypomnienia</small></button>
+        <button class="card quick-link" data-goto="alerts" type="button"><b>Alerty</b><small>Zdarzenia z PC</small></button>
+      </div>
+      <div class="card station-summary"><div class="kicker">Sentinel Station</div><div id="homeStationState">Brak backendu Station — wymagane sparowane urządzenie i jego API.</div></div>
+    </section>
+
+    <!-- SENTINEL AI -->
+    <section id="view-ai" class="view" hidden>
       <div id="chatList" class="chat" role="log" aria-live="polite" aria-label="Rozmowa z Sentinel"></div>
     </section>
 
@@ -86,8 +113,89 @@
       <div class="card" id="care"></div>
       <h3>Sieć</h3>
       <div class="card" id="net"></div>
+      <h3>Dodatkowe dane</h3>
+      <div class="card list" id="pcDetails"></div>
       <div class="actions" id="pcActions">
         <button class="btn danger" id="btnStop" type="button">Awaryjny STOP asystenta</button>
+        <button class="btn ghost" id="btnLockPc" type="button">Zablokuj PC</button>
+        <button class="btn danger" id="btnRestartPc" type="button">Uruchom PC ponownie</button>
+        <button class="btn danger" id="btnShutdownPc" type="button">Wyłącz PC</button>
+        <p class="hint">Restart i wyłączenie wymagają dwóch potwierdzeń, a Windows dostaje wyłącznie typowaną operację z 30-sekundowym opóźnieniem.</p>
+      </div>
+    </section>
+
+    <!-- STATION: jawnie bez danych, dopóki nie ma backendu -->
+    <section id="view-station" class="view scroll" hidden>
+      <div class="card station-summary">
+        <div class="status-line"><span class="dot warn"></span><div><div class="kicker">Sentinel Station</div><b>Nie skonfigurowano</b></div></div>
+        <p>Ta aplikacja nie wykryła sparowanej Station ani usługi telemetrycznej. Nie pokazujemy fikcyjnych odczytów i nie wysyłamy poleceń do nieznanego sprzętu.</p>
+      </div>
+      <h3>Wymagany backend</h3>
+      <div class="card list">
+        <div class="item"><div class="grow"><div class="t">Parowanie i autoryzacja urządzenia</div><div class="m">Osobny klucz urządzenia, TLS lub lokalny bezpieczny kanał oraz możliwość unieważnienia.</div></div></div>
+        <div class="item"><div class="grow"><div class="t">Moduły i czujniki</div><div class="m">Rozszerzalne identyfikatory czujników (np. temperatura, ruch, przyciski, LED, ekran, buzzer) raportowane przez Station.</div></div></div>
+        <div class="item"><div class="grow"><div class="t">Zdarzenia zamiast szybkiego pollingu</div><div class="m">Próbkowanie i częstotliwość ustala Station; telefon subskrybuje zmiany i nie udaje, że sterowanie zadziałało.</div></div></div>
+      </div>
+      <p class="hint pad">Do działania potrzebny jest komputer Sentinel X z obsługą Station albo kompatybilny kontroler ESP32/Raspberry Pi. Bieżąca wersja nie ma takiego endpointu.</p>
+    </section>
+
+    <!-- NETWORK -->
+    <section id="view-network" class="view scroll" hidden>
+      <div class="row between"><h3 class="flush">Telefon</h3><button class="btn ghost sm" id="btnNetworkRefresh" type="button">Odśwież</button></div>
+      <div class="card list" id="networkPhone"></div>
+      <h3>Komputer i łącze</h3>
+      <div class="card list" id="networkPc"></div>
+      <div class="card station-summary"><b>Wi‑Fi + Ethernet:</b> telefon i PC mogą używać różnych interfejsów, jeśli router/VLAN/firewall przepuszcza ruch lokalny. Discovery nie zakłada stałego IP. Zdalne połączenie wykonuj wyłącznie przez własny, uwierzytelniony VPN/tunel; panel nie jest wystawiany publicznie.</div>
+      <div class="actions"><button class="btn ghost" id="btnNetworkFind" type="button">Ponownie znajdź komputer</button></div>
+    </section>
+
+    <!-- FILES -->
+    <section id="view-files" class="view scroll" hidden>
+      <div class="card station-summary"><b>Transfer do PC.</b> Każdy plik ma limit 25 MiB, porcje 40 KiB i kontrolę SHA‑256. PC zapisuje wyłącznie do własnego katalogu <code>PhoneTransfers/Files</code>; telefon widzi tylko swoje pliki.</div>
+      <form class="card form" id="fileUploadForm">
+        <div class="kicker">Wyślij bezpiecznie</div>
+        <input id="fileInput" type="file" aria-label="Wybierz plik" required>
+        <div class="row"><button class="btn primary" type="submit" id="btnUpload">Wyślij plik</button><button class="btn ghost" id="btnUploadCancel" type="button" hidden>Anuluj transfer</button></div>
+        <div id="fileUploadProgress" hidden><div class="progress-label" id="fileProgressLabel">Przygotowanie…</div><div class="prog"><i id="fileProgressBar"></i></div></div>
+      </form>
+      <div class="row between"><h3 class="flush">Historia plików</h3><button class="btn ghost sm" id="btnFilesRefresh" type="button">Odśwież</button></div>
+      <div class="card list" id="fileList"></div>
+      <p class="hint pad">Zapis wymaga sparowania z działającym Sentinel X na PC. Nie zapisujemy poza dedykowanym katalogiem i nie przyjmujemy ścieżek z telefonu.</p>
+    </section>
+
+    <!-- AUTOMATIONS -->
+    <section id="view-automations" class="view scroll" hidden>
+      <div class="card station-summary">Automatyzacje wykonuje PC przez istniejący, typowany rejestr Sentinel. Nie ma poleceń shell/PowerShell ani dowolnych argumentów.</div>
+      <form class="card form" id="automationForm" autocomplete="off">
+        <div class="kicker" id="automationFormTitle">Nowa automatyzacja</div>
+        <input id="automationName" type="text" maxlength="80" placeholder="Nazwa" aria-label="Nazwa automatyzacji" required>
+        <select id="automationTrigger" aria-label="Wyzwalacz"><option value="manual">Ręcznie</option><option value="applicationStartup">Przy uruchomieniu PC</option><option value="dailySchedule">Codziennie o wybranej porze</option></select>
+        <input id="automationTime" type="time" aria-label="Godzina codziennego uruchomienia" hidden>
+        <label class="field"><span>Dozwolona akcja</span><select id="automationAction" aria-label="Typ dozwolonej akcji"></select></label>
+        <input id="automationParameter" type="text" maxlength="2048" placeholder="Parametr walidowany przez PC" aria-label="Parametr akcji">
+        <div class="hint" id="automationActionHelp">Wybierz akcję z katalogu PC.</div>
+        <button class="btn ghost" id="btnAutomationAddStep" type="button">Dodaj akcję do reguły</button>
+        <div class="card list" id="automationDraft"></div>
+        <label class="toggle"><span><b>Włącz automatyzację</b><small>Reguły startowe/codzienne wykonuje Sentinel na PC.</small></span><input type="checkbox" id="automationEnabled"></label>
+        <div class="row"><button class="btn primary" type="submit" id="btnAutomationSave">Zapisz regułę</button><button class="btn ghost" id="btnAutomationClear" type="button">Wyczyść</button></div>
+      </form>
+      <h3>Zapisane</h3>
+      <div class="card list" id="automationList"></div>
+      <h3>Historia wykonań</h3>
+      <div class="card list" id="automationHistory"></div>
+    </section>
+
+    <!-- MENU I FUNKCJE ZACHOWANE Z POPRZEDNIEJ WERSJI -->
+    <section id="view-menu" class="view scroll" hidden>
+      <h3 class="flush">Controller</h3>
+      <div class="menu-grid">
+        <button class="card menu-link" data-goto="station" type="button"><b>STATION</b><small>Moduły i czujniki — wymaga backendu</small></button>
+        <button class="card menu-link" data-goto="files" type="button"><b>FILES</b><small>Bezpieczny transfer plików</small></button>
+        <button class="card menu-link" data-goto="automations" type="button"><b>AUTOMATIONS</b><small>Reguły PC z allowlisty</small></button>
+        <button class="card menu-link" data-goto="tasks" type="button"><b>Zadania</b><small>Zadania i przypomnienia</small></button>
+        <button class="card menu-link" data-goto="notes" type="button"><b>Notatki</b><small>Wspólne notatki PC/telefonu</small></button>
+        <button class="card menu-link" data-goto="alerts" type="button"><b>Zdarzenia</b><small>Alerty z PC</small></button>
+        <button class="card menu-link" data-goto="settings" type="button"><b>SETTINGS</b><small>Sesja i urządzenia</small></button>
       </div>
     </section>
 
@@ -144,7 +252,10 @@
       <div class="card list" id="setInfo"></div>
       <label class="card toggle"><span><b>Czytaj odpowiedzi na głos</b><small>Używa głosu telefonu</small></span><input type="checkbox" id="optSpeak"></label>
       <div class="card list" id="setDevices"></div>
+      <h3>Bezpieczeństwo sesji</h3>
+      <div class="card station-summary">Możesz odnowić token tego telefonu albo unieważnić inny sparowany telefon. Zmiany wymagają działającego, sparowanego PC.</div>
       <div class="actions">
+        <button class="btn ghost" id="btnRotateToken" type="button">Odśwież token tego telefonu</button>
         <button class="btn ghost" id="btnWake" type="button" hidden>Wybudź komputer (Wake-on-LAN)</button>
         <button class="btn ghost" id="btnFind" type="button" hidden>Znajdź komputer w sieci</button>
         <button class="btn danger" id="btnUnpair" type="button">Odłącz ten telefon</button>
@@ -166,11 +277,11 @@
       </div>
     </form>
     <nav class="tabs" id="tabs" aria-label="Sekcje" hidden>
-      <button type="button" data-tab="chat" aria-label="Czat"><svg viewBox="0 0 24 24"><use href="#i-chat"/></svg><span>Czat</span></button>
-      <button type="button" data-tab="pc" aria-label="Komputer"><svg viewBox="0 0 24 24"><use href="#i-monitor"/></svg><span>Komputer</span></button>
-      <button type="button" data-tab="tasks" aria-label="Zadania"><svg viewBox="0 0 24 24"><use href="#i-check"/></svg><span>Zadania</span></button>
-      <button type="button" data-tab="notes" aria-label="Notatki"><svg viewBox="0 0 24 24"><use href="#i-note"/></svg><span>Notatki</span></button>
-      <button type="button" data-tab="alerts" aria-label="Alerty"><svg viewBox="0 0 24 24"><use href="#i-bell"/></svg><span>Alerty</span><b class="badge" id="badgeAlerts" hidden>0</b></button>
+      <button type="button" data-tab="home" aria-label="HOME"><svg viewBox="0 0 24 24"><use href="#i-home"/></svg><span>HOME</span></button>
+      <button type="button" data-tab="pc" aria-label="PC"><svg viewBox="0 0 24 24"><use href="#i-monitor"/></svg><span>PC</span></button>
+      <button type="button" data-tab="network" aria-label="NETWORK"><svg viewBox="0 0 24 24"><use href="#i-network"/></svg><span>NETWORK</span></button>
+      <button type="button" data-tab="ai" aria-label="SENTINEL AI"><svg viewBox="0 0 24 24"><use href="#i-chat"/></svg><span>AI</span></button>
+      <button type="button" data-tab="menu" aria-label="Więcej sekcji"><svg viewBox="0 0 24 24"><use href="#i-menu"/></svg><span>WIĘCEJ</span><b class="badge" id="badgeAlerts" hidden>0</b></button>
     </nav>
   </footer>
 </div>
@@ -189,6 +300,9 @@
     <symbol id="i-check" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="3.5"/><path d="m8 12.2 2.7 2.7L16 9.5"/></symbol>
     <symbol id="i-note" viewBox="0 0 24 24"><path d="M6 3h8.5L19 7.5V21H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/></symbol>
     <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 16v-5a6 6 0 1 1 12 0v5l1.5 2h-15z"/><path d="M10 21a2 2 0 0 0 4 0"/></symbol>
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="m3 10 9-7 9 7M5 9v12h14V9M9 21v-7h6v7"/></symbol>
+    <symbol id="i-network" viewBox="0 0 24 24"><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="m8.3 10.8 7.4-3.6M8.3 13.2l7.4 3.6"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
     <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></symbol>
     <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></symbol>
     <symbol id="i-up" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></symbol>

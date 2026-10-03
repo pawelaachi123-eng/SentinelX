@@ -78,38 +78,67 @@ const SHA = (() => {
   const frac = x => x - Math.floor(x);
   primes.forEach((p, i) => { K[i] = Math.floor(frac(Math.cbrt(p)) * 4294967296); if (i < 8) H0[i] = Math.floor(frac(Math.sqrt(p)) * 4294967296); });
   const rotr = (x, n) => (x >>> n) | (x << (32 - n));
-  return function sha256(bytes) {
-    const len = bytes.length, total = ((len + 9 + 63) >> 6) << 6;
-    const buf = new Uint8Array(total); buf.set(bytes); buf[len] = 0x80;
-    const dv = new DataView(buf.buffer);
-    dv.setUint32(total - 8, Math.floor(len / 536870912), false);
-    dv.setUint32(total - 4, (len << 3) >>> 0, false);
-    const H = Uint32Array.from(H0), w = new Uint32Array(64);
-    for (let o = 0; o < total; o += 64) {
-      for (let i = 0; i < 16; i++) w[i] = dv.getUint32(o + i * 4, false);
-      for (let i = 16; i < 64; i++) {
-        const s0 = rotr(w[i - 15], 7) ^ rotr(w[i - 15], 18) ^ (w[i - 15] >>> 3);
-        const s1 = rotr(w[i - 2], 17) ^ rotr(w[i - 2], 19) ^ (w[i - 2] >>> 10);
-        w[i] = (w[i - 16] + s0 + w[i - 7] + s1) >>> 0;
-      }
-      let [a, b, c, d, e, f, g, hh] = H;
-      for (let i = 0; i < 64; i++) {
-        const S1 = rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25), ch = (e & f) ^ (~e & g);
-        const t1 = (hh + S1 + ch + K[i] + w[i]) >>> 0;
-        const S0 = rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22), mj = (a & b) ^ (a & c) ^ (b & c);
-        const t2 = (S0 + mj) >>> 0;
-        hh = g; g = f; f = e; e = (d + t1) >>> 0; d = c; c = b; b = a; a = (t1 + t2) >>> 0;
-      }
-      H[0] += a; H[1] += b; H[2] += c; H[3] += d; H[4] += e; H[5] += f; H[6] += g; H[7] += hh;
+  function compress(H, bytes, offset) {
+    const dv = new DataView(bytes.buffer, bytes.byteOffset + offset, 64), w = new Uint32Array(64);
+    for (let i = 0; i < 16; i++) w[i] = dv.getUint32(i * 4, false);
+    for (let i = 16; i < 64; i++) {
+      const s0 = rotr(w[i - 15], 7) ^ rotr(w[i - 15], 18) ^ (w[i - 15] >>> 3);
+      const s1 = rotr(w[i - 2], 17) ^ rotr(w[i - 2], 19) ^ (w[i - 2] >>> 10);
+      w[i] = (w[i - 16] + s0 + w[i - 7] + s1) >>> 0;
     }
-    const out = new Uint8Array(32); const odv = new DataView(out.buffer);
-    H.forEach((x, i) => odv.setUint32(i * 4, x >>> 0, false));
-    return out;
-  };
+    let [a, b, c, d, e, f, g, hh] = H;
+    for (let i = 0; i < 64; i++) {
+      const S1 = rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25), ch = (e & f) ^ (~e & g);
+      const t1 = (hh + S1 + ch + K[i] + w[i]) >>> 0;
+      const S0 = rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22), mj = (a & b) ^ (a & c) ^ (b & c);
+      const t2 = (S0 + mj) >>> 0;
+      hh = g; g = f; f = e; e = (d + t1) >>> 0; d = c; c = b; b = a; a = (t1 + t2) >>> 0;
+    }
+    H[0] = (H[0] + a) >>> 0; H[1] = (H[1] + b) >>> 0; H[2] = (H[2] + c) >>> 0; H[3] = (H[3] + d) >>> 0;
+    H[4] = (H[4] + e) >>> 0; H[5] = (H[5] + f) >>> 0; H[6] = (H[6] + g) >>> 0; H[7] = (H[7] + hh) >>> 0;
+  }
+  function create() {
+    const H = Uint32Array.from(H0), tail = new Uint8Array(64);
+    let tailLength = 0, byteLength = 0, finished = false;
+    const hasher = {
+      update(input) {
+        if (finished) throw new Error('SHA-256 state is already finalized');
+        const bytes = input instanceof Uint8Array ? input : new Uint8Array(input);
+        byteLength += bytes.length;
+        let offset = 0;
+        if (tailLength) {
+          const take = Math.min(64 - tailLength, bytes.length);
+          tail.set(bytes.subarray(0, take), tailLength); tailLength += take; offset += take;
+          if (tailLength === 64) { compress(H, tail, 0); tailLength = 0; }
+        }
+        while (offset + 64 <= bytes.length) { compress(H, bytes, offset); offset += 64; }
+        if (offset < bytes.length) { tail.set(bytes.subarray(offset), 0); tailLength = bytes.length - offset; }
+        return hasher;
+      },
+      digest() {
+        if (finished) throw new Error('SHA-256 state is already finalized');
+        finished = true;
+        const padded = new Uint8Array(tailLength < 56 ? 64 : 128);
+        padded.set(tail.subarray(0, tailLength)); padded[tailLength] = 0x80;
+        const dv = new DataView(padded.buffer), bits = byteLength * 8;
+        dv.setUint32(padded.length - 8, Math.floor(byteLength / 536870912) >>> 0, false);
+        dv.setUint32(padded.length - 4, bits >>> 0, false);
+        for (let offset = 0; offset < padded.length; offset += 64) compress(H, padded, offset);
+        const out = new Uint8Array(32), outView = new DataView(out.buffer);
+        H.forEach((value, i) => outView.setUint32(i * 4, value, false));
+        return out;
+      }
+    };
+    return hasher;
+  }
+  const sha256 = bytes => create().update(bytes).digest();
+  sha256.create = create;
+  return sha256;
 })();
 const b64uEnc = b => btoa(String.fromCharCode(...b)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 const b64uDec = s => { s = s.replace(/-/g, '+').replace(/_/g, '/'); while (s.length % 4) s += '='; return Uint8Array.from(atob(s), c => c.charCodeAt(0)); };
 const hexDec = s => Uint8Array.from((s.match(/../g) || []).map(x => parseInt(x, 16)));
+const freshRequestId = () => b64uEnc(crypto.getRandomValues(new Uint8Array(24)));
 function computeSas(fpHex, nonceA, nonceB) {
   const fp = hexDec(fpHex), a = b64uDec(nonceA), b = b64uDec(nonceB);
   const all = new Uint8Array(fp.length + a.length + b.length); all.set(fp); all.set(a, fp.length); all.set(b, fp.length + a.length);
@@ -126,28 +155,59 @@ const Native = (() => {
   const call = (name, ...args) => { try { return typeof n[name] === 'function' ? n[name](...args) : undefined; } catch { return undefined; } };
   return {
     isApp: true,
+    offlineMode: () => !!call('isOfflineMode'),
+    networkStatus: () => {
+      try { const value = JSON.parse(String(call('networkStatusJson') || '{}')); return value && typeof value === 'object' ? value : {}; }
+      catch { return {}; }
+    },
     tlsFingerprint: () => String(call('tlsFingerprint') || ''),
     deviceName: () => String(call('deviceName') || ''),
     savedToken: () => String(call('savedToken') || ''),
-    saveSession: (token, name, pc) => call('saveSession', token, name, pc),
+    phoneCapabilities: () => {
+      try {
+        const values = JSON.parse(String(call('capabilitiesJson') || '[]'));
+        const known = new Set(['notifications', 'voiceInput', 'wakeOnLan']);
+        return Array.isArray(values) ? [...new Set(values.filter(x => typeof x === 'string' && known.has(x)))] : [];
+      } catch { return []; }
+    },
+    saveSession: (token, name, pc) => {
+      const result = call('saveSession', token, name, pc);
+      return result === undefined || result === true; // an older paired Android shell returned void here
+    },
     saveMac: mac => call('saveMac', mac),
     clearSession: () => call('clearSession'),
     hasVoice: () => !!call('hasVoice'),
     startVoice: () => call('startVoice'),
     canWake: () => !!call('canWake'),
     wakePc: () => call('wakePc'),
+    startDownload: (id, name, sha256) => call('downloadFile', id, name, sha256) === true,
+    cancelDownload: () => call('cancelDownload'),
     rediscover: () => call('rediscover')
   };
 })();
 
+function reportedPhoneCapabilities() {
+  if (Native) return Native.phoneCapabilities();
+  return (window.SpeechRecognition || window.webkitSpeechRecognition) ? ['voiceInput'] : [];
+}
+
 /* ───────────── stan ───────────── */
 const S = {
-  token: store.get('token'), device: store.get('device'), pcName: store.get('pc'),
-  tab: 'chat', online: true, busy: false, ctrl: null,
-  speak: store.get('speak') === '1',
-  state: null, tasks: null, notes: null, alerts: [], alertLast: 0, alertSeen: Number(store.get('alertSeen', '0')) || 0,
-  chat: [], pair: null, offlineSince: 0, booted: false
+  token: Native ? Native.savedToken() : store.get('token'), device: store.get('device'), pcName: store.get('pc'),
+  tab: store.get('lastTab', 'home'), online: !(Native && Native.offlineMode()), busy: false, ctrl: null,
+  speak: store.get('speak') === '1', offlineMode: !!(Native && Native.offlineMode()),
+  state: null, cachedSnapshot: null, lastLatencyMs: null, wakeRequestedAt: Number(store.get('wakeRequestedAt', '0')) || 0,
+  tasks: null, notes: null, alerts: [], alertLast: 0, alertSeen: Number(store.get('alertSeen', '0')) || 0,
+  files: null, fileChunkBytes: 40 * 1024, fileUploadId: '', fileAbortController: null, nativeDownloadActive: false,
+  automations: null, automationDraftActions: [], automationEditingId: '',
+  chat: [], pair: null, offlineSince: Native && Native.offlineMode() ? Date.now() : 0, booted: false
 };
+try { S.cachedSnapshot = JSON.parse(store.get('dashboardSnapshot', 'null')); } catch { S.cachedSnapshot = null; }
+try {
+  const cachedAlerts = JSON.parse(store.get('alertsCache', '[]'));
+  if (Array.isArray(cachedAlerts)) { S.alerts = cachedAlerts.slice(0, 100); S.alertLast = S.alerts.reduce((last, item) => Math.max(last, Number(item.id) || 0), 0); }
+} catch { S.alerts = []; }
+if (!['home', 'pc', 'network', 'ai', 'menu', 'station', 'files', 'automations', 'tasks', 'notes', 'alerts', 'settings'].includes(S.tab)) S.tab = 'home';
 const ui = {}; // referencje do elementów
 
 class ApiError extends Error { constructor(status, message) { super(message); this.status = status; } }
@@ -156,13 +216,15 @@ async function api(path, { method = 'GET', body, signal, raw = false } = {}) {
   const headers = { Accept: 'application/json' };
   if (S.token) headers.Authorization = 'Bearer ' + S.token;
   if (body !== undefined) headers['Content-Type'] = 'application/json';
-  let res;
+  if (!['GET', 'HEAD', 'OPTIONS'].includes(method.toUpperCase())) headers['X-Sentinel-Request-Id'] = freshRequestId();
+  let res; const started = performance.now();
   try {
     res = await fetch(path, { method, headers, body: body !== undefined ? JSON.stringify(body) : undefined, signal, cache: 'no-store' });
   } catch (e) {
     if (e.name !== 'AbortError') setOnline(false);
     throw e;
   }
+  if (!path.startsWith('api/alerts')) S.lastLatencyMs = Math.max(0, Math.round(performance.now() - started));
   setOnline(true);
   if (res.status === 401 && S.token) { unauthorized(); throw new ApiError(401, 'Brak autoryzacji'); }
   if (raw) return res;
@@ -175,15 +237,18 @@ async function api(path, { method = 'GET', body, signal, raw = false } = {}) {
 function friendly(e) {
   if (e instanceof ApiError) return e.message;
   if (e && e.name === 'AbortError') return 'Przerwano.';
-  return 'Brak połączenia z komputerem. Sprawdź, czy jest włączony i w tej samej sieci Wi‑Fi.';
+  return 'Brak połączenia z PC. Sprawdź lokalną sieć (Wi‑Fi/Ethernet), zaporę lub skonfigurowany prywatny VPN.';
 }
 
 /* ───────────── łączność ───────────── */
 function setOnline(on) {
-  if (S.online === on) return;
+  if (S.online === on) { if (S.tab === 'home') renderHome(); return; }
   S.online = on;
   S.offlineSince = on ? 0 : Date.now();
   renderNet();
+  if (S.tab === 'home') renderHome();
+  if (S.tab === 'pc') renderPc();
+  if (S.tab === 'network') renderNetwork();
   if (!on) retryLoop();
 }
 function renderNet() {
@@ -194,7 +259,7 @@ function renderNet() {
   else {
     ui.banner.hidden = false;
     ui.banner.className = 'banner err';
-    ui.banner.textContent = 'Brak połączenia z komputerem. Sprawdź, czy jest włączony i w tej samej sieci Wi‑Fi — łączę ponownie…';
+    ui.banner.textContent = 'PC jest nieosiągalny. Sprawdź lokalną sieć (telefon może używać Wi‑Fi, a PC Ethernet) albo własny VPN — próbuję ponownie z oszczędnym odstępem…';
   }
 }
 let retrying = false;
@@ -202,11 +267,15 @@ async function retryLoop() {
   if (retrying) return; retrying = true;
   try {
     while (!S.online) {
-      await sleep(3000);
-      try { await fetch('api/hello', { cache: 'no-store' }).then(r => { if (r.ok) setOnline(true); }); } catch { /* dalej offline */ }
-      if (!S.online && Native && Date.now() - S.offlineSince > 15000) { Native.rediscover(); S.offlineSince = Date.now(); }
+      await sleep(document.hidden ? 60000 : (Native ? 30000 : 12000));
+      if (document.hidden) break;
+      const probe = new AbortController(), timeout = setTimeout(() => probe.abort(), 5000);
+      try { const response = await fetch('api/hello', { cache: 'no-store', signal: probe.signal }); if (response.ok) setOnline(true); }
+      catch { /* następna próba z ograniczoną częstotliwością */ }
+      finally { clearTimeout(timeout); }
+      if (!S.online && Native && Date.now() - S.offlineSince > 90000) { Native.rediscover(); S.offlineSince = Date.now(); }
     }
-    if (S.token) { refreshState(); if (S.tab !== 'chat') loadTab(S.tab); }
+    if (S.token && S.online) { refreshState(); if (S.tab !== 'ai') loadTab(S.tab); }
   } finally { retrying = false; }
 }
 function unauthorized() {
@@ -224,24 +293,33 @@ function toast(title, text = '', level = 'info', ms = 5200) {
 }
 
 /* ───────────── nawigacja ───────────── */
-const VIEWS = ['pair', 'chat', 'pc', 'tasks', 'notes', 'alerts', 'settings'];
+const VIEWS = ['pair', 'home', 'pc', 'station', 'network', 'ai', 'files', 'automations', 'menu', 'tasks', 'notes', 'alerts', 'settings'];
+const MENU_VIEWS = new Set(['station', 'files', 'automations', 'tasks', 'notes', 'alerts', 'settings']);
 function showView(name) {
   $('#app').dataset.state = name === 'pair' ? 'pair' : 'main';
-  for (const v of VIEWS) $('#view-' + v).hidden = v !== name;
+  for (const view of VIEWS) $('#view-' + view).hidden = view !== name;
   const inMain = name !== 'pair';
   ui.tabs.hidden = !inMain;
-  ui.composer.hidden = name !== 'chat';
+  ui.composer.hidden = name !== 'ai';
   ui.btnSettings.classList.toggle('on', name === 'settings');
-  $$('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === name));
+  const navSelection = MENU_VIEWS.has(name) ? 'menu' : name;
+  $$('#tabs button').forEach(button => button.classList.toggle('on', button.dataset.tab === navSelection));
 }
 function go(tab) {
-  S.tab = tab;
+  if (!VIEWS.includes(tab) || tab === 'pair') return;
+  S.tab = tab; store.set('lastTab', tab);
   showView(tab);
   loadTab(tab);
-  if (tab === 'chat') scrollChat(true);
+  if (tab === 'ai') scrollChat(true);
 }
 function loadTab(tab) {
-  if (tab === 'pc') refreshState();
+  if (tab === 'home') renderHome();
+  else if (tab === 'pc') { refreshState(); renderPc(); }
+  else if (tab === 'station') renderStation();
+  else if (tab === 'network') renderNetwork();
+  else if (tab === 'ai') { renderChat(); if (S.token) refreshState(); }
+  else if (tab === 'files') loadFiles();
+  else if (tab === 'automations') loadAutomations();
   else if (tab === 'tasks') loadTasks();
   else if (tab === 'notes') loadNotes();
   else if (tab === 'alerts') { const seen = S.alertSeen; renderAlerts(seen); markAlertsRead(); }
@@ -277,7 +355,7 @@ async function startPair() {
   S.pair = ctx;
   try {
     const nonce = b64uEnc(crypto.getRandomValues(new Uint8Array(16)));
-    const r = await api('api/pair/request', { method: 'POST', body: { device: name, nonce } });
+    const r = await api('api/pair/request', { method: 'POST', body: { device: name, nonce, capabilities: reportedPhoneCapabilities() } });
     if (ctx.cancelled) return;
     const fp = Native ? Native.tlsFingerprint() : '';
     let sas = r.sas;
@@ -297,8 +375,12 @@ async function startPair() {
       const st = await api('api/pair/status?id=' + encodeURIComponent(r.id));
       if (st.state === 'approved') {
         if (ctx.mismatch) { ui.pairMsg.textContent = 'Kody się różniały — połączenie odrzucone dla bezpieczeństwa.'; break; }
-        S.token = st.token; store.set('token', st.token);
-        if (Native) Native.saveSession(st.token, name, S.pcName || '');
+        S.token = st.token;
+        if (Native) {
+          store.del('token'); // the Android shell stores this credential encrypted by Android Keystore
+          if (!Native.saveSession(st.token, name, S.pcName || ''))
+            toast('Sesja tymczasowa', 'Nie udało się bezpiecznie zapisać tokenu. Po zamknięciu aplikacji może być konieczne ponowne parowanie.', 'warn');
+        } else store.set('token', st.token);
         S.pair = null;
         await afterPair();
         return;
@@ -329,9 +411,20 @@ async function refreshState(force = false) {
   try {
     const s = await api('api/state');
     S.state = s;
+    if (S.wakeRequestedAt) { S.wakeRequestedAt = 0; store.del('wakeRequestedAt'); }
     if (s.pc && s.pc.name) { S.pcName = s.pc.name; store.set('pc', s.pc.name); }
     if (s.pc && s.pc.mac && s.pc.mac.length && Native) Native.saveMac(s.pc.mac[0]);
-    renderHeader(); if (S.tab === 'pc') renderPc(); if (S.tab === 'settings') renderSettings();
+    S.cachedSnapshot = {
+      pc: { name: s.pc?.name || S.pcName, version: s.pc?.version || '', uptime: s.pc?.uptime || '', time: s.pc?.time || '' },
+      metrics: { cpu: s.metrics?.cpu, ramUsed: s.metrics?.ramUsed, ramTotal: s.metrics?.ramTotal, network: s.metrics?.network || '' },
+      savedAt: Date.now()
+    };
+    store.set('dashboardSnapshot', JSON.stringify(S.cachedSnapshot));
+    renderHeader();
+    if (S.tab === 'home') renderHome();
+    if (S.tab === 'pc') renderPc();
+    if (S.tab === 'network') renderNetwork();
+    if (S.tab === 'settings') renderSettings();
     return s;
   } finally { S.stateBusy = false; }
 }
@@ -349,7 +442,16 @@ function setBar(id, v) {
   b.style.width = val + '%'; b.parentElement.classList.toggle('hot', val >= 85);
 }
 function renderPc() {
-  const s = S.state; if (!s || !s.metrics) return;
+  const s = S.state;
+  if (!s || !s.metrics) {
+    const details = $('#pcDetails'); details.replaceChildren(
+      kv('Status', pcStatusLabel()), kv('Komputer', S.pcName || 'Nieznany'),
+      kv('Ostatni pomiar', S.cachedSnapshot?.savedAt ? fmtWhen(new Date(S.cachedSnapshot.savedAt).toISOString()) : 'Brak danych'),
+      kv('Temperatura', 'Niedostępna — bieżący PC backend nie udostępnia czujnika temperatury'));
+    $('#btnStop').hidden = true; $('#btnStop').disabled = true;
+    for (const id of ['btnLockPc', 'btnRestartPc', 'btnShutdownPc']) { $('#' + id).hidden = true; $('#' + id).disabled = true; }
+    return;
+  }
   const m = s.metrics;
   $('#mCpu').textContent = Number.isFinite(m.cpu) ? nf(m.cpu) + '%' : '–'; setBar('bCpu', m.cpu);
   const rp = m.ramTotal > 0 ? m.ramUsed / m.ramTotal * 100 : NaN;
@@ -388,10 +490,78 @@ function renderPc() {
 
   const net = $('#net'); net.replaceChildren();
   net.append(h('div', { text: m.network || 'Brak danych' }));
+  const details = $('#pcDetails'); details.replaceChildren(
+    kv('Status', pcStatusLabel()), kv('Uptime', s.pc?.uptime || 'Niedostępny'),
+    kv('Sieć PC', m.network || 'Brak danych'),
+    kv('Adresy PC', (s.pc?.addresses || []).join(' · ') || 'Brak adresów LAN'),
+    kv('Ostatni pomiar', s.pc?.time ? fmtWhen(s.pc.time) : 'Brak znacznika czasu'),
+    kv('Temperatura', 'Niedostępna — aktualny dostawca telemetryczny nie raportuje temperatury'));
   const a = s.assistant || {};
   const stop = $('#btnStop');
+  stop.hidden = Array.isArray(s.capabilities) && !s.capabilities.includes('assistantControl');
+  stop.disabled = !S.online;
   stop.textContent = a.stopped ? 'Wznów asystenta' : 'Awaryjny STOP asystenta';
   stop.className = a.stopped ? 'btn primary' : 'btn danger';
+  const powerAvailable = Array.isArray(s.capabilities) && s.capabilities.includes('powerControl');
+  for (const id of ['btnLockPc', 'btnRestartPc', 'btnShutdownPc']) {
+    const button = $('#' + id); button.hidden = !powerAvailable; button.disabled = !S.online;
+  }
+}
+
+function pcStatusLabel() {
+  if (S.online && S.token) return 'Online';
+  if (S.wakeRequestedAt && Date.now() - S.wakeRequestedAt < 120000) return 'Uruchamianie';
+  if (!S.token) return Native && Native.offlineMode() ? 'Offline — bez sparowania' : 'Nie sparowano';
+  if (S.offlineSince && Date.now() - S.offlineSince > 120000) return 'Nieosiągalny';
+  return 'Offline';
+}
+function renderHome() {
+  const status = pcStatusLabel();
+  const dot = $('#homePcDot');
+  dot.className = 'dot ' + (status === 'Online' ? 'ok' : status === 'Uruchamianie' ? 'warn' : 'error');
+  $('#homePcState').textContent = status;
+  $('#homePcHint').textContent = S.online && S.state?.pc?.time
+    ? 'Ostatnia synchronizacja: ' + fmtWhen(S.state.pc.time)
+    : S.cachedSnapshot?.savedAt ? 'Ostatnie znane dane: ' + fmtWhen(new Date(S.cachedSnapshot.savedAt).toISOString()) : 'Brak danych z PC — panel i ustawienia nadal są dostępne.';
+  const metrics = S.state?.metrics || S.cachedSnapshot?.metrics || {};
+  const cpu = Number.isFinite(metrics.cpu) ? metrics.cpu : NaN;
+  const ram = Number.isFinite(metrics.ramUsed) && Number.isFinite(metrics.ramTotal) && metrics.ramTotal > 0 ? metrics.ramUsed / metrics.ramTotal * 100 : NaN;
+  $('#homeCpu').textContent = Number.isFinite(cpu) ? nf(cpu) + '%' : '–'; setBar('homeCpuBar', cpu);
+  $('#homeRam').textContent = Number.isFinite(ram) ? nf(ram) + '%' : '–'; setBar('homeRamBar', ram);
+  $('#homeMetricTime').textContent = S.state?.pc?.time ? fmtTime(S.state.pc.time) : S.cachedSnapshot?.savedAt ? fmtWhen(new Date(S.cachedSnapshot.savedAt).toISOString()) : 'brak pomiaru';
+  const events = $('#homeEvents'); events.replaceChildren();
+  S.alerts.slice(0, 4).forEach(a => events.append(h('div', { class: 'item' }, h('span', { class: 'dot ' + (a.level || 'info') }),
+    h('div', { class: 'grow' }, h('div', { class: 't', text: a.title }), h('div', { class: 'm', text: a.text })), h('div', { class: 'r', text: fmtWhen(a.at) }))));
+  if (!events.children.length) events.append(h('div', { class: 'empty', text: S.online ? 'Brak nowych zdarzeń.' : 'Zdarzenia pokażemy ponownie po odzyskaniu łącza; nie generujemy przykładowych wpisów.' }));
+  $('#btnHomeWake').hidden = !(Native && Native.canWake());
+  $('#btnHomeReconnect').textContent = Native ? 'Znajdź PC' : 'Odśwież';
+  $('#btnHomeReconnect').disabled = !Native;
+}
+function renderStation() {
+  $('#homeStationState').textContent = 'Brak sparowanej Station/API. Odczyty i sterowanie pozostają niedostępne.';
+}
+function renderNetwork() {
+  const phone = $('#networkPhone'); phone.replaceChildren();
+  const local = Native ? Native.networkStatus() : {};
+  const labels = { wifi: 'Wi‑Fi', ethernet: 'Ethernet', vpn: 'VPN', cellular: 'Sieć komórkowa', bluetooth: 'Bluetooth', offline: 'Brak aktywnej sieci', unknown: 'Nieznany' };
+  phone.append(kv('Łącze', labels[local.type] || (Native ? 'Inne' : 'PWA — informacje ograniczone')),
+    kv('Sieć aktywna', local.connected ? 'Tak' : Native ? 'Nie' : 'Nieznane'),
+    kv('Dostęp do Internetu', local.internet ? 'Potwierdzony' : local.connected ? 'Brak / niepotwierdzony — LAN może nadal działać' : 'Nieznany'),
+    kv('Adresy telefonu', Array.isArray(local.addresses) && local.addresses.length ? local.addresses.join(' · ') : Native ? 'Brak lokalnego adresu' : 'Prywatność przeglądarki ukrywa lokalny adres'),
+    kv('Skanowanie sieci', 'Nie skanujemy urządzeń ani obcych podsieci'));
+  const pc = S.state?.pc || S.cachedSnapshot?.pc || {};
+  const addresses = S.state?.pc?.addresses || [];
+  const net = $('#networkPc'); net.replaceChildren(
+    kv('Połączenie z PC', S.online && S.token ? 'TLS · sparowany komputer' : pcStatusLabel()),
+    kv('Nazwa PC', pc.name || S.pcName || '—'),
+    kv('Adresy PC', addresses.length ? addresses.join(' · ') : 'Dostępne po połączeniu z PC'),
+    kv('Interfejs PC', S.state?.metrics?.network || S.cachedSnapshot?.metrics?.network || 'Brak raportu'),
+    kv('Latencja API', S.lastLatencyMs == null ? 'Brak pomiaru' : S.lastLatencyMs + ' ms'),
+    kv('TLS', location.protocol === 'https:' ? 'Szyfrowane; Android przypina certyfikat PC' : 'Połączenie nie jest TLS'));
+}
+function rediscoverPc() {
+  if (Native) { Native.rediscover(); toast('Szukam komputera', 'Discovery lokalne; adres może się zmieniać przez DHCP.', 'info', 3000); }
+  else location.reload();
 }
 
 /* ───────────── czat ───────────── */
@@ -599,8 +769,10 @@ function ingestAlerts(list, initial) {
   for (const a of list) if (!S.alerts.some(x => x.id === a.id)) { S.alerts.push(a); fresh.push(a); }
   S.alerts.sort((x, y) => y.id - x.id); S.alerts = S.alerts.slice(0, 100);
   if (list.length) S.alertLast = Math.max(S.alertLast, ...list.map(a => a.id));
+  if (fresh.length) store.set('alertsCache', JSON.stringify(S.alerts));
   if (!initial && S.tab !== 'alerts') fresh.slice(-2).forEach(a => toast(a.title, a.text, a.level === 'error' ? 'error' : a.level === 'warn' ? 'warn' : 'info'));
   if (S.tab === 'alerts') { const seen = S.alertSeen; renderAlerts(seen); markAlertsRead(); }
+  if (S.tab === 'home') renderHome();
   updateBadge();
 }
 function markAlertsRead() { if (S.alerts.length) { S.alertSeen = Math.max(S.alertSeen, S.alerts[0].id); store.set('alertSeen', S.alertSeen); } updateBadge(); }
@@ -627,25 +799,312 @@ async function alertLoop() {
   } finally { alertsRunning = false; }
 }
 
+/* ───────────── bezpieczny transfer plików ───────────── */
+const MAX_PHONE_FILE_BYTES = 25 * 1024 * 1024;
+function bytesHex(bytes) { return Array.from(bytes, b => b.toString(16).padStart(2, '0')).join(''); }
+function bytesBase64(bytes) {
+  let binary = '';
+  for (let offset = 0; offset < bytes.length; offset += 0x8000)
+    binary += String.fromCharCode(...bytes.subarray(offset, Math.min(bytes.length, offset + 0x8000)));
+  return btoa(binary);
+}
+function formatBytes(size) { return size < 1024 * 1024 ? nf(size / 1024, 1) + ' KiB' : nf(size / (1024 * 1024), 2) + ' MiB'; }
+function setFileProgress(text, percent) {
+  const row = $('#fileUploadProgress'); row.hidden = false;
+  $('#fileProgressLabel').textContent = text;
+  $('#fileProgressBar').style.width = Math.max(0, Math.min(100, percent)) + '%';
+}
+window.onNativeDownloadProgress = (received, total) => {
+  if (!S.nativeDownloadActive) return;
+  const done = Math.max(0, Number(received) || 0), size = Math.max(0, Number(total) || 0);
+  setFileProgress('Pobieranie i kontrola SHA‑256 · ' + formatBytes(done) + (size ? ' / ' + formatBytes(size) : ''), size ? done * 100 / size : 0);
+};
+window.onNativeDownloadComplete = (ok, cancelled, message) => {
+  if (!S.nativeDownloadActive) return;
+  S.nativeDownloadActive = false; S.fileAbortController = null;
+  $('#btnUpload').disabled = !S.token || !S.online; $('#fileInput').disabled = !S.token || !S.online;
+  $('#btnUploadCancel').hidden = true; $('#fileUploadProgress').hidden = true;
+  toast(ok ? 'Plik pobrany i zweryfikowany' : cancelled ? 'Pobieranie anulowane' : 'Pobieranie pliku', String(message || ''), ok ? 'ok' : cancelled ? 'warn' : 'error', 5000);
+};
+async function sha256File(file, signal) {
+  const state = SHA.create(), step = 256 * 1024;
+  for (let offset = 0; offset < file.size; offset += step) {
+    if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
+    const bytes = new Uint8Array(await file.slice(offset, Math.min(file.size, offset + step)).arrayBuffer());
+    state.update(bytes);
+    setFileProgress('Sprawdzanie SHA-256 · ' + formatBytes(Math.min(file.size, offset + bytes.length)) + ' / ' + formatBytes(file.size), 20 * Math.min(1, (offset + bytes.length) / file.size));
+  }
+  return bytesHex(state.digest());
+}
+async function loadFiles() {
+  if (!S.token) { S.files = null; renderFiles(); return; }
+  try {
+    S.files = await api('api/files');
+    S.fileChunkBytes = Number(S.files.chunkBytes) || 40 * 1024;
+    renderFiles();
+  } catch (e) {
+    S.files = null; renderFiles();
+    if (!(e instanceof ApiError && e.status === 401)) toast('FILES', friendly(e), 'warn');
+  }
+}
+function renderFiles() {
+  const list = $('#fileList'); list.replaceChildren();
+  const transferBlocked = !S.token || !S.online || !!S.fileAbortController;
+  $('#fileInput').disabled = transferBlocked;
+  $('#btnUpload').disabled = transferBlocked;
+  if (!S.token) { list.append(h('div', { class: 'empty', text: 'Sparuj telefon z PC, aby rozpocząć transfer.' })); return; }
+  if (!S.online) list.append(h('div', { class: 'empty', text: 'Transfer wyłączony do czasu odzyskania bezpiecznego połączenia z PC.' }));
+  if (S.files && Array.isArray(S.files.files)) S.files.files.forEach(file => list.append(h('div', { class: 'item file-row' },
+    h('div', { class: 'grow' }, h('div', { class: 't', text: file.name }),
+      h('div', { class: 'm', text: formatBytes(file.size) + ' · ' + fmtWhen(file.uploadedAt) }),
+      h('div', { class: 'm mono', text: 'SHA‑256 ' + String(file.sha256 || '').slice(0, 16) + '…' })),
+    h('button', { class: 'mini', type: 'button', 'aria-label': 'Pobierz ' + file.name, onclick: () => downloadFile(file) }, h('span', { text: '↓' })),
+    h('button', { class: 'mini', type: 'button', 'aria-label': 'Usuń ' + file.name, onclick: () => deleteFile(file) }, icon('i-trash')))));
+  if (!S.files?.files?.length) list.append(h('div', { class: 'empty', text: S.online ? 'Nie ma jeszcze wysłanych plików.' : 'Historia plików pojawi się po połączeniu z PC.' }));
+}
+async function uploadFile(file) {
+  if (!file || !S.token || !S.online || S.fileAbortController) return;
+  if (file.size < 1 || file.size > MAX_PHONE_FILE_BYTES) { toast('FILES', 'Limit pliku to 25 MiB.', 'warn'); return; }
+  const ctrl = new AbortController(); S.fileAbortController = ctrl; S.fileUploadId = '';
+  $('#btnUpload').disabled = true; $('#btnUploadCancel').hidden = false;
+  try {
+    setFileProgress('Przygotowanie skrótu…', 0);
+    const sha256 = await sha256File(file, ctrl.signal);
+    const started = await api('api/files/upload/start', { method: 'POST', body: { name: file.name, size: file.size, sha256 }, signal: ctrl.signal });
+    S.fileUploadId = started.id;
+    const chunkBytes = Math.min(40 * 1024, Number(started.chunkBytes) || S.fileChunkBytes);
+    const count = Math.ceil(file.size / chunkBytes);
+    for (let index = 0, offset = 0; offset < file.size; index++, offset += chunkBytes) {
+      if (ctrl.signal.aborted) throw new DOMException('Aborted', 'AbortError');
+      const data = new Uint8Array(await file.slice(offset, Math.min(file.size, offset + chunkBytes)).arrayBuffer());
+      const chunk = await api('api/files/upload/chunk', { method: 'POST', body: { id: started.id, index, data: bytesBase64(data) }, signal: ctrl.signal });
+      const sent = Math.min(file.size, offset + data.length);
+      setFileProgress(`Wysyłanie · część ${index + 1}/${count} · ${formatBytes(sent)} / ${formatBytes(file.size)}`, 20 + (80 * sent / file.size));
+      if (chunk.done) S.fileUploadId = '';
+    }
+    toast('Plik zweryfikowany', file.name + ' · SHA‑256 zgodny', 'ok');
+    await loadFiles();
+  } catch (e) {
+    if (S.fileUploadId) {
+      const id = S.fileUploadId; S.fileUploadId = '';
+      try { await api('api/files/upload/cancel', { method: 'POST', body: { id } }); } catch { /* limit czasowy PC posprząta niedokończony transfer */ }
+    }
+    toast(e?.name === 'AbortError' ? 'Transfer anulowany' : 'Transfer pliku', friendly(e), e?.name === 'AbortError' ? 'warn' : 'error');
+    if (e?.name === 'AbortError') await loadFiles();
+  } finally {
+    S.fileAbortController = null; $('#btnUpload').disabled = !S.token || !S.online; $('#btnUploadCancel').hidden = true;
+    $('#fileInput').disabled = !S.token || !S.online; $('#fileInput').value = ''; $('#fileUploadProgress').hidden = true;
+  }
+}
+async function downloadFile(file) {
+  if (!S.token || !S.online) { toast('FILES', 'Pobieranie wymaga połączenia z PC.', 'warn'); return; }
+  if (S.fileAbortController) { toast('FILES', 'Zakończ lub anuluj bieżący transfer.', 'warn'); return; }
+  if (Native) {
+    S.nativeDownloadActive = true; S.fileAbortController = { abort: () => Native.cancelDownload() };
+    $('#btnUpload').disabled = true; $('#fileInput').disabled = true; $('#btnUploadCancel').hidden = false;
+    setFileProgress('Wybierz miejsce zapisu na telefonie…', 0);
+    if (!Native.startDownload(file.id, file.name, file.sha256)) {
+      S.nativeDownloadActive = false; S.fileAbortController = null; $('#btnUpload').disabled = false; $('#fileInput').disabled = false; $('#btnUploadCancel').hidden = true; $('#fileUploadProgress').hidden = true;
+      toast('Pobieranie pliku', 'Ta wersja Androida nie udostępnia bezpiecznego zapisu plików.', 'error');
+    }
+    return;
+  }
+  const ctrl = new AbortController(); S.fileAbortController = ctrl; $('#btnUpload').disabled = true; $('#fileInput').disabled = true; $('#btnUploadCancel').hidden = false;
+  try {
+    setFileProgress('Pobieranie „' + file.name + '”…', 0);
+    const response = await api('api/files/download?id=' + encodeURIComponent(file.id), { raw: true, signal: ctrl.signal });
+    if (!response.ok) { let message = 'Nie udało się pobrać pliku.'; try { message = (await response.json()).error || message; } catch { } throw new ApiError(response.status, message); }
+    const parts = [], hasher = SHA.create(), reader = response.body?.getReader();
+    let received = 0; const total = Number(response.headers.get('content-length')) || Number(file.size) || 0;
+    if (reader) {
+      while (true) {
+        if (ctrl.signal.aborted) throw new DOMException('Aborted', 'AbortError');
+        const { value, done } = await reader.read(); if (done) break;
+        parts.push(value); hasher.update(value); received += value.length;
+        setFileProgress('Pobieranie i kontrola · ' + formatBytes(received) + (total ? ' / ' + formatBytes(total) : ''), total ? 100 * received / total : 40);
+      }
+    } else {
+      const bytes = new Uint8Array(await response.arrayBuffer()); parts.push(bytes); hasher.update(bytes); received = bytes.length;
+    }
+    const actualHash = bytesHex(hasher.digest());
+    if (!file.sha256 || actualHash.toLowerCase() !== String(file.sha256).toLowerCase()) throw new ApiError(409, 'SHA‑256 pliku nie zgadza się z historią PC; plik nie został zapisany.');
+    const url = URL.createObjectURL(new Blob(parts));
+    const anchor = h('a', { href: url, download: file.name }); document.body.append(anchor); anchor.click(); anchor.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    toast('Plik pobrany i zweryfikowany', file.name + ' · ' + formatBytes(received), 'ok', 4000);
+  } catch (e) { toast(e?.name === 'AbortError' ? 'Pobieranie anulowane' : 'Pobieranie pliku', friendly(e), e?.name === 'AbortError' ? 'warn' : 'error'); }
+  finally { S.fileAbortController = null; $('#btnUpload').disabled = !S.token || !S.online; $('#fileInput').disabled = !S.token || !S.online; $('#btnUploadCancel').hidden = true; $('#fileUploadProgress').hidden = true; }
+}
+async function deleteFile(file) {
+  if (!(await ask('Usunąć „' + file.name + '” z katalogu transferów PC?', 'Usuń plik'))) return;
+  try { await api('api/files/delete', { method: 'POST', body: { id: file.id } }); await loadFiles(); toast('Plik usunięty', file.name, 'ok', 2500); }
+  catch (e) { toast('FILES', friendly(e), 'error'); }
+}
+
+/* ───────────── automatyzacje PC z katalogu typowanych akcji ───────────── */
+const triggerNames = { manual: 'Ręcznie', applicationStartup: 'Przy starcie PC', dailySchedule: 'Codziennie' };
+async function loadAutomations() {
+  if (!S.token) { S.automations = null; renderAutomations(); return; }
+  try { S.automations = await api('api/automations'); renderAutomations(); }
+  catch (e) { S.automations = null; renderAutomations(); if (!(e instanceof ApiError && e.status === 401)) toast('AUTOMATIONS', friendly(e), 'warn'); }
+}
+function renderAutomationDraft() {
+  const box = $('#automationDraft'); box.replaceChildren();
+  S.automationDraftActions.forEach((step, index) => {
+    const descriptor = (S.automations?.actions || []).find(x => x.id === step.actionId);
+    box.append(h('div', { class: 'item' }, h('div', { class: 'grow' },
+      h('div', { class: 't', text: descriptor?.name || step.actionId }), h('div', { class: 'm', text: step.parameter || '(bez parametru)' })),
+      h('button', { class: 'mini', type: 'button', 'aria-label': 'Usuń akcję', onclick: () => { S.automationDraftActions.splice(index, 1); renderAutomationDraft(); } }, icon('i-trash'))));
+  });
+  if (!S.automationDraftActions.length) box.append(h('div', { class: 'empty', text: 'Dodaj co najmniej jedną akcję z katalogu PC.' }));
+}
+function renderAutomations() {
+  const catalog = S.automations;
+  const select = $('#automationAction'), oldAction = select.value; select.replaceChildren();
+  (catalog?.actions || []).forEach(action => select.append(h('option', { value: action.id, text: action.name + ' · ' + action.category })));
+  if ((catalog?.actions || []).some(x => x.id === oldAction)) select.value = oldAction;
+  const list = $('#automationList'); list.replaceChildren();
+  (catalog?.rules || []).forEach(item => {
+    const rule = item.rule, running = !!item.running;
+    const trigger = triggerNames[rule.trigger] || rule.trigger;
+    const details = trigger === 'Codziennie' ? trigger + ' o ' + rule.scheduleTime : trigger;
+    const row = h('div', { class: 'automation-row' },
+      h('div', { class: 'item' }, h('span', { class: 'dot ' + (running ? 'warn' : rule.enabled ? 'ok' : 'info') }),
+        h('div', { class: 'grow' }, h('div', { class: 't', text: rule.name }), h('div', { class: 'm', text: details + ' · ' + (rule.actions || []).length + ' akcji · ' + (rule.lastRunStatus || 'bez wykonań') })),
+        h('button', { class: 'mini', type: 'button', 'aria-label': 'Edytuj ' + rule.name, onclick: () => editAutomation(rule) }, h('span', { text: '✎' }))),
+      h('div', { class: 'row automation-actions' },
+        h('label', { class: 'mini-toggle' }, h('input', { type: 'checkbox', checked: !!rule.enabled, 'aria-label': 'Włącz ' + rule.name, onchange: e => setAutomationEnabled(rule.id, e.target.checked) }), h('span', { text: 'Włącz' })),
+        running ? h('button', { class: 'btn ghost sm', type: 'button', text: 'Anuluj', onclick: () => cancelAutomation(rule.id) })
+          : h('button', { class: 'btn ghost sm', type: 'button', text: 'Uruchom', onclick: () => runAutomation(rule) }),
+        h('button', { class: 'btn ghost sm', type: 'button', text: 'Usuń', onclick: () => deleteAutomation(rule) })));
+    list.append(row);
+  });
+  if (!list.children.length) list.append(h('div', { class: 'empty', text: catalog?.available ? 'Brak zapisanych reguł.' : 'Połącz się z PC; obecna wersja nie udostępnia katalogu automatyzacji.' }));
+  const history = $('#automationHistory'); history.replaceChildren();
+  (catalog?.history || []).slice(0, 20).forEach(run => {
+    history.append(h('div', { class: 'item' },
+      h('span', { class: 'dot ' + (run.status === 'SUCCESS' ? 'ok' : run.status === 'CANCELLED' ? 'warn' : 'error') }),
+      h('div', { class: 'grow' },
+        h('div', { class: 't', text: run.ruleName + ' · ' + run.status }),
+        h('div', { class: 'm', text: (run.result || run.error || '') + ' · ' + fmtWhen(run.startedAt) }))));
+  });
+  if (!history.children.length) history.append(h('div', { class: 'empty', text: 'Brak wykonań.' }));
+  const enabled = !!catalog?.available && Array.isArray(catalog.actions) && catalog.actions.length > 0;
+  $('#automationForm').querySelectorAll('input,select,button').forEach(control => { if (control.id !== 'btnAutomationClear') control.disabled = !enabled; });
+  if (catalog?.actions?.length) updateAutomationActionHelp();
+  renderAutomationDraft();
+}
+function updateAutomationActionHelp() {
+  const action = (S.automations?.actions || []).find(x => x.id === $('#automationAction').value);
+  $('#automationActionHelp').textContent = action ? action.description + (action.requiredPermission ? ' · Uprawnienie: ' + action.requiredPermission : '') : 'Wybierz akcję z katalogu PC.';
+}
+function editAutomation(rule) {
+  S.automationEditingId = rule.id; S.automationDraftActions = (rule.actions || []).map(x => ({ actionId: x.actionId, parameter: x.parameter }));
+  $('#automationName').value = rule.name; $('#automationTrigger').value = rule.trigger;
+  $('#automationTime').value = rule.scheduleTime || ''; $('#automationTime').hidden = rule.trigger !== 'dailySchedule'; $('#automationTime').required = rule.trigger === 'dailySchedule';
+  $('#automationEnabled').checked = !!rule.enabled; $('#automationFormTitle').textContent = 'Edytuj automatyzację';
+  $('#btnAutomationSave').textContent = 'Zapisz zmiany'; renderAutomationDraft(); $('#automationForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+function clearAutomationForm() {
+  S.automationEditingId = ''; S.automationDraftActions = [];
+  $('#automationForm').reset(); $('#automationTime').hidden = true; $('#automationTime').required = false; $('#automationFormTitle').textContent = 'Nowa automatyzacja';
+  $('#btnAutomationSave').textContent = 'Zapisz regułę'; renderAutomationDraft();
+}
+async function saveAutomation(event) {
+  event.preventDefault();
+  const payload = {
+    id: S.automationEditingId || null, name: $('#automationName').value.trim(), trigger: $('#automationTrigger').value,
+    scheduleTime: $('#automationTime').value, enabled: $('#automationEnabled').checked, actions: S.automationDraftActions
+  };
+  if (!payload.actions.length) { toast('AUTOMATIONS', 'Dodaj co najmniej jedną akcję.', 'warn'); return; }
+  try { await api('api/automations/save', { method: 'POST', body: payload }); toast('Automatyzacja zapisana', 'PC zweryfikował regułę i jej akcje.', 'ok'); clearAutomationForm(); await loadAutomations(); }
+  catch (e) { toast('Nie zapisano reguły', friendly(e), 'error'); }
+}
+async function runAutomation(rule) {
+  if (!(await ask('Uruchomić teraz „' + rule.name + '”? PC wykona tylko zapisane akcje z katalogu.', 'Uruchom'))) return;
+  try { const result = await api('api/automations/run', { method: 'POST', body: { id: rule.id } }); toast('Automatyzacja · ' + result.status, result.message, result.status === 'SUCCESS' ? 'ok' : 'warn'); await loadAutomations(); }
+  catch (e) { toast('AUTOMATIONS', friendly(e), 'error'); }
+}
+async function cancelAutomation(id) {
+  try { await api('api/automations/cancel', { method: 'POST', body: { id } }); toast('Wysłano anulowanie', 'Ukończone efekty nie są cofane.', 'warn'); await loadAutomations(); }
+  catch (e) { toast('AUTOMATIONS', friendly(e), 'error'); }
+}
+async function setAutomationEnabled(id, enabled) {
+  try { await api('api/automations/enabled', { method: 'POST', body: { id, enabled } }); await loadAutomations(); }
+  catch (e) { toast('AUTOMATIONS', friendly(e), 'error'); await loadAutomations(); }
+}
+async function deleteAutomation(rule) {
+  if (!(await ask('Usunąć regułę „' + rule.name + '”?', 'Usuń'))) return;
+  try { await api('api/automations/delete', { method: 'POST', body: { id: rule.id } }); await loadAutomations(); }
+  catch (e) { toast('AUTOMATIONS', friendly(e), 'error'); }
+}
+
+/* ───────────── zdalne zasilanie: challenge jednorazowy + podwójne potwierdzenie ───────────── */
+async function runPowerAction(action) {
+  const labels = { lock: 'zablokować', restart: 'uruchomić ponownie', shutdown: 'wyłączyć' };
+  const label = labels[action]; if (!label || !S.online) return;
+  const destructive = action !== 'lock';
+  if (!(await ask(`Czy na pewno chcesz ${label} komputer ${S.pcName || 'Sentinel X'}?`, destructive ? 'Przygotuj operację' : 'Dalej'))) return;
+  try {
+    const prepared = await api('api/power/prepare', { method: 'POST', body: { action } });
+    if (!prepared.challenge) throw new ApiError(502, 'PC nie przygotował jednorazowego potwierdzenia.');
+    if (!(await ask(`Ostatnie potwierdzenie: ${label} komputer. ${destructive ? 'Operacja jest opóźniona o 30 sekund.' : 'Zablokuje to bieżącą sesję użytkownika.'}`, destructive ? 'Potwierdź i wykonaj' : 'Zablokuj PC'))) return;
+    const result = await api('api/power/execute', { method: 'POST', body: { action, challenge: prepared.challenge } });
+    if (action === 'restart') { S.wakeRequestedAt = Date.now(); store.set('wakeRequestedAt', S.wakeRequestedAt); }
+    toast(result.ok ? 'PC przyjął operację' : 'Operacja odrzucona', result.message || '', result.ok ? 'warn' : 'error', 7000);
+  } catch (e) { toast('Sterowanie PC', friendly(e), 'error'); }
+}
+
 /* ───────────── ustawienia ───────────── */
 function kv(k, v) { return h('div', { class: 'kv' }, h('span', { text: k }), h('span', { text: v })); }
 function renderSettings() {
   const s = S.state || {}; const pc = s.pc || {};
   const info = $('#setInfo'); info.replaceChildren(
-    kv('Komputer', S.pcName || '–'), kv('Adres', location.host), kv('Wersja Sentinel', pc.version || '–'),
-    kv('Ten telefon', S.device || '–'), kv('Połączenie', location.protocol === 'https:' ? 'szyfrowane (TLS)' : 'bez szyfrowania'),
+    kv('Komputer', S.pcName || '–'), kv('Adres', Native && Native.offlineMode() ? 'Panel lokalny (offline)' : location.host), kv('Wersja Sentinel', pc.version || '–'),
+    kv('Ten telefon', S.device || '–'), kv('Połączenie', location.protocol === 'https:' ? 'TLS' : 'Brak TLS w przeglądarce'),
     kv('Aplikacja', Native ? 'Android' : 'przeglądarka'));
   $('#optSpeak').checked = S.speak;
   $('#btnWake').hidden = !(Native && Native.canWake());
   $('#btnFind').hidden = !Native;
+  $('#btnRotateToken').hidden = !S.token;
+  $('#btnRotateToken').disabled = !S.online;
+  $('#btnUnpair').hidden = !S.token;
   const about = $('#setAbout');
-  about.textContent = Native ? 'Aplikacja sprawdza alerty w tle co kilkanaście minut i pokazuje je jako powiadomienia.'
+  about.textContent = Native ? 'Token Androida jest przechowywany przez Keystore. Alerty w tle odświeża harmonogram systemowy, a widok sieci nie odczytuje SSID ani MAC.'
     : /iPhone|iPad/.test(navigator.userAgent) ? 'Na iPhonie: Udostępnij → „Do ekranu początkowego”, aby mieć Sentinel jak aplikację.'
-      : 'Wskazówka: w menu przeglądarki wybierz „Dodaj do ekranu głównego”.';
+      : 'Wskazówka: w menu przeglądarki wybierz „Dodaj do ekranu głównego”. Token przeglądarki pozostaje w jej lokalnym magazynie.';
+  const box = $('#setDevices');
+  if (!S.token) { box.replaceChildren(h('div', { class: 'empty', text: 'Lista urządzeń jest dostępna po sparowaniu.' })); return; }
+  box.replaceChildren(h('div', { class: 'kicker', style: 'padding-top:10px', text: 'Sparowane telefony' }));
   api('api/devices').then(r => {
-    const box = $('#setDevices'); box.replaceChildren(h('div', { class: 'kicker', style: 'padding-top:10px', text: 'Sparowane telefony' }));
-    (r.devices || []).forEach(d => box.append(h('div', { class: 'item' }, h('div', { class: 'grow' }, h('div', { class: 't', text: d.name + (d.current ? ' (ten telefon)' : '') }), h('div', { class: 'm', text: 'ostatnio: ' + fmtWhen(d.lastSeen) })))));
-  }).catch(() => {});
+    box.replaceChildren(h('div', { class: 'kicker', style: 'padding-top:10px', text: 'Sparowane telefony' }));
+    (r.devices || []).forEach(d => box.append(h('div', { class: 'item' },
+      h('div', { class: 'grow' }, h('div', { class: 't', text: d.name + (d.current ? ' (ten telefon)' : '') }), h('div', { class: 'm', text: 'ostatnio: ' + fmtWhen(d.lastSeen) })),
+      d.current ? null : h('button', { class: 'btn danger sm', type: 'button', text: 'Unieważnij', onclick: () => revokeDevice(d) }))));
+    if (!r.devices?.length) box.append(h('div', { class: 'empty', text: 'Brak sparowanych urządzeń.' }));
+  }).catch(e => { box.replaceChildren(h('div', { class: 'empty', text: friendly(e) })); });
+}
+async function rotateToken() {
+  if (!(await ask('Odnowić token tego telefonu? Stary token zostanie unieważniony od razu.', 'Odśwież token'))) return;
+  const button = $('#btnRotateToken'); button.disabled = true;
+  try {
+    const response = await api('api/devices/rotate', { method: 'POST', body: {} });
+    if (!response.token) throw new Error('PC nie zwrócił nowego tokenu.');
+    S.token = response.token;
+    if (Native) {
+      store.del('token');
+      if (!Native.saveSession(response.token, S.device || Native.deviceName(), S.pcName || ''))
+        toast('Token odnowiony tymczasowo', 'Nie udało się zapisać go w Android Keystore. Pozostaw aplikację otwartą i ponownie sparuj po jej zamknięciu.', 'warn', 8000);
+      else toast('Token odnowiony', 'Stary token został unieważniony.', 'ok');
+    } else { store.set('token', response.token); toast('Token odnowiony', 'Stary token został unieważniony.', 'ok'); }
+    await refreshState(true); renderSettings();
+  } catch (e) { toast('Nie odnowiono tokenu', friendly(e), 'error'); }
+  finally { button.disabled = !S.online; }
+}
+async function revokeDevice(device) {
+  if (!(await ask('Unieważnić token telefonu „' + device.name + '”? Jego aktywne transfery zostaną anulowane.', 'Unieważnij'))) return;
+  try { await api('api/devices/revoke', { method: 'POST', body: { id: device.id } }); toast('Telefon odłączony', device.name, 'ok'); renderSettings(); }
+  catch (e) { toast('Nie odłączono telefonu', friendly(e), 'error'); }
 }
 async function unpair() {
   if (!(await ask('Odłączyć ten telefon od komputera? Aby wrócić, trzeba będzie zatwierdzić parowanie na komputerze.', 'Odłącz'))) return;
@@ -657,9 +1116,10 @@ async function unpair() {
 /* ───────────── start ───────────── */
 function enterMain() {
   S.booted = true;
-  go(S.tab === 'pair' || !S.tab ? 'chat' : S.tab);
-  renderChat(); renderHeader(); scrollChat(true);
+  go(S.tab === 'pair' || !S.tab ? 'home' : S.tab);
+  renderChat(); renderHeader(); scrollChat(true); updateBadge();
   alertLoop();
+  if (!S.online) retryLoop();
 }
 function bind() {
   Object.assign(ui, {
@@ -668,7 +1128,8 @@ function bind() {
     btnSettings: $('#btnSettings'), pairName: $('#pairName'), btnPair: $('#btnPair'), pairMsg: $('#pairMsg'), badge: $('#badgeAlerts'), noteSearch: $('#noteSearch')
   });
   $$('#tabs button').forEach(b => b.addEventListener('click', () => go(b.dataset.tab)));
-  ui.btnSettings.addEventListener('click', () => go(S.tab === 'settings' ? 'chat' : 'settings'));
+  $$('[data-goto]').forEach(button => button.addEventListener('click', () => go(button.dataset.goto)));
+  ui.btnSettings.addEventListener('click', () => go(S.tab === 'settings' ? 'home' : 'settings'));
   ui.btnPair.addEventListener('click', startPair);
   $('#btnPairCancel').addEventListener('click', () => { stopPair(); showPair(); });
   ui.composer.addEventListener('submit', e => { e.preventDefault(); if (S.busy) stopChat(); else sendChat(ui.input.value); });
@@ -701,12 +1162,35 @@ function bind() {
     try { await api('api/control', { method: 'POST', body: { action: stopped ? 'resume' : 'stop' } }); await refreshState(true); toast(stopped ? 'Asystent wznowiony' : 'Asystent zatrzymany', '', stopped ? 'ok' : 'warn', 2500); }
     catch (err) { toast('STOP', friendly(err), 'error'); }
   });
+  $('#btnLockPc').addEventListener('click', () => runPowerAction('lock'));
+  $('#btnRestartPc').addEventListener('click', () => runPowerAction('restart'));
+  $('#btnShutdownPc').addEventListener('click', () => runPowerAction('shutdown'));
+  $('#btnHomeWake').addEventListener('click', () => { if (Native && Native.canWake()) { Native.wakePc(); S.wakeRequestedAt = Date.now(); store.set('wakeRequestedAt', S.wakeRequestedAt); toast('Wysłano sygnał Wake-on-LAN', 'PC musi obsługiwać i mieć włączone WoL.', 'info'); renderHome(); } });
+  $('#btnWake').addEventListener('click', () => { if (Native && Native.canWake()) { Native.wakePc(); S.wakeRequestedAt = Date.now(); store.set('wakeRequestedAt', S.wakeRequestedAt); toast('Wysłano sygnał Wake-on-LAN', 'PC musi obsługiwać i mieć włączone WoL.', 'info'); } });
+  $('#btnFind').addEventListener('click', rediscoverPc);
+  $('#btnHomeReconnect').addEventListener('click', rediscoverPc);
+  $('#btnNetworkFind').addEventListener('click', rediscoverPc);
+  $('#btnNetworkRefresh').addEventListener('click', () => { renderNetwork(); if (S.token) refreshState(true).catch(() => {}); });
+  $('#btnFilesRefresh').addEventListener('click', loadFiles);
+  $('#fileUploadForm').addEventListener('submit', event => { event.preventDefault(); uploadFile($('#fileInput').files?.[0]); });
+  $('#btnUploadCancel').addEventListener('click', () => { if (S.fileAbortController) S.fileAbortController.abort(); });
+  $('#automationForm').addEventListener('submit', saveAutomation);
+  $('#automationTrigger').addEventListener('change', event => { $('#automationTime').hidden = event.target.value !== 'dailySchedule'; $('#automationTime').required = event.target.value === 'dailySchedule'; });
+  $('#automationAction').addEventListener('change', updateAutomationActionHelp);
+  $('#btnAutomationAddStep').addEventListener('click', () => {
+    const actionId = $('#automationAction').value, parameter = $('#automationParameter').value.trim();
+    if (!actionId || !parameter) { toast('AUTOMATIONS', 'Wybierz akcję i podaj jej parametr.', 'warn'); return; }
+    if (S.automationDraftActions.length >= 5) { toast('AUTOMATIONS', 'Limit to 5 akcji na regułę.', 'warn'); return; }
+    S.automationDraftActions.push({ actionId, parameter }); $('#automationParameter').value = ''; renderAutomationDraft();
+  });
+  $('#btnAutomationClear').addEventListener('click', clearAutomationForm);
+  $('#btnRotateToken').addEventListener('click', rotateToken);
   $('#optSpeak').addEventListener('change', e => { S.speak = e.target.checked; store.set('speak', S.speak ? '1' : '0'); if (!S.speak && 'speechSynthesis' in window) speechSynthesis.cancel(); });
   $('#btnUnpair').addEventListener('click', unpair);
-  $('#btnWake').addEventListener('click', () => { Native.wakePc(); toast('Wysłano sygnał budzenia', 'Komputer włączy się za chwilę, o ile ma włączone Wake-on-LAN.', 'info'); });
-  $('#btnFind').addEventListener('click', () => { Native.rediscover(); toast('Szukam komputera w sieci…', '', 'info', 2500); });
-  document.addEventListener('visibilitychange', () => { if (!document.hidden && S.token) { refreshState(); alertLoop(); } });
-  window.addEventListener('online', () => { if (S.token) refreshState(true).catch(() => {}); });
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) { if (S.token) refreshState(); if (S.token) alertLoop(); if (!S.online) retryLoop(); }
+  });
+  window.addEventListener('online', () => { if (S.token) refreshState(true).catch(() => {}); if (!S.online) retryLoop(); });
   if (window.visualViewport) {
     const vv = () => document.documentElement.style.setProperty('--vvh', window.visualViewport.height + 'px');
     window.visualViewport.addEventListener('resize', vv); vv();
@@ -714,16 +1198,28 @@ function bind() {
 }
 async function boot() {
   bind(); loadChat(); initMic(); setBusy(false); renderNet();
-  // The app keeps a copy of the token: when the router gives the PC a new address the page origin changes and localStorage starts empty,
-  // but the phone must not ask for a new pairing just because of that.
-  if (!S.token && Native) { const saved = Native.savedToken(); if (saved) { S.token = saved; store.set('token', saved); } }
-  if (!S.token) { showPair(); return; }
+  // Restore the native session from encrypted app storage. On upgrade, securely migrate an older WebView localStorage token once,
+  // then erase that plaintext copy; browsers without the bridge continue using origin-scoped localStorage.
+  if (Native) {
+    const legacyWebToken = store.get('token');
+    if (!S.token && legacyWebToken && Native.saveSession(legacyWebToken, Native.deviceName(), S.pcName || ''))
+      S.token = legacyWebToken;
+    store.del('token');
+  }
+  if (!S.token) {
+    if (Native && Native.offlineMode()) { S.online = false; enterMain(); return; }
+    showPair(); return;
+  }
   try { await refreshState(true); enterMain(); }
   catch (e) { if (e instanceof ApiError && e.status === 401) return; enterMain(); }
 }
-/* odświeżanie: co 3 s w widoku "Komputer", w pozostałych co ~15 s (pasek u góry) */
+/* Niski polling: PC co 15 s w otwartym widoku, tło panelu co 60 s; alerty korzystają z long-poll. */
 let tick = 0;
-setInterval(() => { if (!S.token || document.hidden) return; tick++; if (S.tab === 'pc' || tick % 5 === 0) refreshState().catch(() => {}); }, 3000);
+setInterval(() => {
+  if (!S.token || document.hidden || !S.online) return;
+  tick++;
+  if (S.tab === 'pc' || tick % 4 === 0) refreshState().catch(() => {});
+}, 15000);
 
 window.__sx = { computeSas, SHA, b64uEnc, b64uDec, S }; // do testów
 boot();

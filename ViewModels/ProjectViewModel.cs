@@ -31,6 +31,7 @@ public partial class ProjectViewModel : ObservableObject, IDisposable
     private readonly ProjectService projects;
     private readonly ConversationMemoryService memory;
     private readonly IUiDispatcher dispatcher;
+    private string? statusOverride;
 
     public ObservableCollection<ProjectCardViewModel> Cards { get; } = [];
 
@@ -44,6 +45,7 @@ public partial class ProjectViewModel : ObservableObject, IDisposable
     [ObservableProperty] private string summaryText = "";
     [ObservableProperty] private bool showArchived;
     public bool HasSummary => SummaryText.Length > 0;
+    public event Action<string>? NavigationRequested;
 
     public ProjectViewModel(ProjectService projects, ConversationMemoryService memory, IUiDispatcher dispatcher)
     {
@@ -87,26 +89,32 @@ public partial class ProjectViewModel : ObservableObject, IDisposable
         ActiveLine = activeProject == null
             ? "Brak aktywnego projektu — wspomnienia i rozmowy są globalne."
             : $"Aktywny projekt: {activeProject.Name}. Kontekst AI obejmuje tylko globalne wpisy i wpisy tego projektu; rozmowy z innych projektów nie trafiają do modelu.";
-        Status = projects.LastStorageError ?? memory.LastStorageError ??
+        Status = statusOverride ?? projects.LastStorageError ?? memory.LastStorageError ??
             (Cards.Count == 0 ? "Nie ma jeszcze żadnego projektu. Utwórz pierwszy poniżej." : $"Projekty: {Cards.Count} · projekty nie usuwają danych — archiwizacja tylko je ukrywa.");
+    }
+
+    private void SetStatus(string message)
+    {
+        statusOverride = message;
+        Status = message;
     }
 
     [RelayCommand] private void Create()
     {
         string name = NewName;
         var created = projects.Create(name, NewDescription, activate: true);
-        if (created == null) { Status = projects.LastStorageError ?? "Nie utworzono projektu."; return; }
+        if (created == null) { SetStatus(projects.LastStorageError ?? "Nie utworzono projektu."); return; }
         NewName = ""; NewDescription = "";
-        Status = $"Utworzono i aktywowano projekt „{created.Name}”. Nowa rozmowa trafi do niego automatycznie.";
+        SetStatus($"Utworzono i aktywowano projekt „{created.Name}”. Nowa rozmowa trafi do niego automatycznie.");
         Refresh();
     }
 
     [RelayCommand] private void SaveSelected()
     {
-        if (SelectedCard == null) { Status = "Wybierz projekt z listy."; return; }
+        if (SelectedCard == null) { SetStatus("Wybierz projekt z listy."); return; }
         bool renamed = projects.Rename(SelectedCard.Id, EditorName);
         bool described = projects.SetDescription(SelectedCard.Id, EditorDescription);
-        Status = renamed || described ? "Zapisano zmiany projektu." : (projects.LastStorageError ?? "Brak zmian do zapisania.");
+        SetStatus(renamed || described ? "Zapisano zmiany projektu." : (projects.LastStorageError ?? "Brak zmian do zapisania."));
         Refresh();
     }
 
@@ -119,23 +127,23 @@ public partial class ProjectViewModel : ObservableObject, IDisposable
             ProjectRecord.StatusPaused => ProjectRecord.StatusActive,
             _ => ProjectRecord.StatusActive,
         };
-        Status = projects.SetStatus(card.Id, next) ? $"Status projektu: {next}." : "Nie zmieniono statusu.";
+        SetStatus(projects.SetStatus(card.Id, next) ? $"Status projektu: {next}." : "Nie zmieniono statusu.");
         Refresh();
     }
 
     [RelayCommand] private void ToggleActive(ProjectCardViewModel? card)
     {
         if (card == null) return;
-        if (card.IsActive) { projects.Deactivate(); Status = "Kontekst projektu wyłączony — wracasz do globalnej pamięci."; }
-        else Status = projects.Activate(card.Id) ? $"Aktywowano projekt „{card.Name}”." : projects.LastStorageError ?? "Nie udało się aktywować projektu.";
+        if (card.IsActive) { projects.Deactivate(); SetStatus("Kontekst projektu wyłączony — wracasz do globalnej pamięci."); }
+        else SetStatus(projects.Activate(card.Id) ? $"Aktywowano projekt „{card.Name}”." : projects.LastStorageError ?? "Nie udało się aktywować projektu.");
         Refresh();
     }
 
     [RelayCommand] private void ToggleArchive(ProjectCardViewModel? card)
     {
         if (card == null) return;
-        if (card.IsArchived) Status = projects.Restore(card.Id) ? "Projekt przywrócony ze stanu ukrycia." : "Nie udało się przywrócić projektu.";
-        else Status = projects.Archive(card.Id) ? "Projekt zarchiwizowany. Wszystkie notatki i rozmowy są zachowane." : "Nie udało się zarchiwizować projektu.";
+        if (card.IsArchived) SetStatus(projects.Restore(card.Id) ? "Projekt przywrócony ze stanu ukrycia." : "Nie udało się przywrócić projektu.");
+        else SetStatus(projects.Archive(card.Id) ? "Projekt zarchiwizowany. Wszystkie notatki i rozmowy są zachowane." : "Nie udało się zarchiwizować projektu.");
         Refresh();
     }
 
@@ -145,16 +153,16 @@ public partial class ProjectViewModel : ObservableObject, IDisposable
         memory.StartNewSession();
         // StartNewSession already stamps the active project; override only when creating for a different one.
         memory.AssignConversationToProject(memory.ActiveSessionId, card.Id);
-        Status = $"Nowa rozmowa w projekcie „{card.Name}” — wpisz coś w centrum poleceń, aby ją napełnić.";
+        SetStatus($"Nowa rozmowa w projekcie „{card.Name}” — wpisz wiadomość w Asystencie, aby ją napełnić.");
         Refresh();
     }
 
     [RelayCommand] private void AssignActiveConversation(ProjectCardViewModel? card)
     {
         if (card == null) return;
-        Status = memory.AssignConversationToProject(memory.ActiveSessionId, card.Id)
+        SetStatus(memory.AssignConversationToProject(memory.ActiveSessionId, card.Id)
             ? $"Aktywna rozmowa przypisana do projektu „{card.Name}”."
-            : "Rozmowa już należy do tego projektu.";
+            : "Rozmowa już należy do tego projektu.");
         Refresh();
     }
 
@@ -163,7 +171,7 @@ public partial class ProjectViewModel : ObservableObject, IDisposable
         if (card == null) return;
         var notes = memory.GetNotes().Where(x => x.ProjectId == card.Id).ToArray();
         var conversations = memory.GetConversationsForProject(card.Id);
-        Status = projects.Export(card.Id, notes, conversations);
+        SetStatus(projects.Export(card.Id, notes, conversations));
         Refresh();
     }
 
@@ -173,12 +181,17 @@ public partial class ProjectViewModel : ObservableObject, IDisposable
         if (card == null) return;
         var lines = new List<string> { $"Projekt „{card.Name}” — ostatni punkt pracy (z zapisanych danych):" };
         var conversations = memory.GetConversationsForProject(card.Id);
+        bool resumeConversation = false;
         if (conversations.Count == 0) lines.Add("• Brak rozmów przypisanych do tego projektu.");
         else
         {
             var last = conversations[0];
             lines.Add($"• Ostatnia rozmowa: „{last.Title}” (ostatnio {last.LastActiveAt:dd.MM.yyyy HH:mm}).");
-            if (memory.ResumeSession(last.Id, out string reason)) lines.Add($"• Wznawiam tę rozmowę w centrum poleceń.");
+            string reason = "";
+            resumeConversation = memory.ActiveSessionId == last.Id;
+            if (!resumeConversation) resumeConversation = memory.ResumeSession(last.Id, out reason);
+            if (resumeConversation)
+                lines.Add("• Rozmowa jest aktywna lub została wznowiona. Otwieram asystenta z jej zapisanym kontekstem.");
             else lines.Add($"• Nie wznowiono rozmowy: {reason}");
         }
         var recentNotes = memory.GetNotes().Where(x => x.ProjectId == card.Id && x.SupersededAt == null).OrderByDescending(x => x.UpdatedAt ?? x.Timestamp).Take(3).ToArray();
@@ -186,6 +199,7 @@ public partial class ProjectViewModel : ObservableObject, IDisposable
         else lines.AddRange(recentNotes.Select(x => $"• Notatka ({(x.UpdatedAt ?? x.Timestamp):dd.MM HH:mm}): {x.Text}"));
         SummaryText = string.Join("\n", lines);
         Refresh();
+        if (resumeConversation) NavigationRequested?.Invoke("command");
     }
 
     partial void OnShowArchivedChanged(bool value) => Refresh();

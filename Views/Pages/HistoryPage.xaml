@@ -1,7 +1,7 @@
 <UserControl xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:u="clr-namespace:SentinelX.Utilities" x:Class="SentinelX.Views.Pages.HistoryPage" u:PageTransitions.Enabled="True" u:UiInteraction.LoadedCommand="{Binding RefreshCommand}">
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
         <StackPanel Margin="28">
-            <TextBlock Text="History" Style="{StaticResource SxHeading}"/>
+            <TextBlock Text="Aktywność" Style="{StaticResource SxHeading}"/>
             <TextBlock Text="Trwała historia lokalna · dowody działań i pamięć rozmów" Style="{StaticResource SxCaption}" Margin="0,0,0,24"/>
             <DockPanel Margin="0,0,0,16">
                 <Button Content="Odśwież historię" Command="{Binding RefreshCommand}" DockPanel.Dock="Right" Margin="12,0,0,0"/>
@@ -17,13 +17,35 @@
             <Border Style="{StaticResource SxCard}" Margin="0,0,0,16">
                 <StackPanel>
                     <TextBlock Text="Akcje · ostatnie 200" Style="{StaticResource SxSectionTitle}"/>
-                    <DataGrid ItemsSource="{Binding FilteredEntries}" SelectedItem="{Binding SelectedEntry}" Height="280">
+                    <DataGrid ItemsSource="{Binding FilteredEntries}" SelectedItem="{Binding SelectedEntry}" Height="280" AutomationProperties.Name="Ostatnie 200 akcji">
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="Czas" Binding="{Binding Timestamp, StringFormat=MM-dd HH:mm:ss}" Width="135"/>
                             <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="130"/>
                             <DataGridTextColumn Header="Polecenie" Binding="{Binding Command}" Width="*"/>
                         </DataGrid.Columns>
                     </DataGrid>
+                    <TextBlock Text="Brak zapisanych akcji. Wykonane działania pojawią się po odświeżeniu historii." TextWrapping="Wrap" Margin="0,8,0,0">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource SxCaption}">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasActions}" Value="False"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                    <TextBlock Text="Brak wyników dla bieżącego filtra. Wyczyść wyszukiwanie lub wybierz „Wszystkie”." TextWrapping="Wrap" Margin="0,8,0,0">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource SxCaption}">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasFilteredOutEntries}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
                     <TextBlock Text="{Binding SelectedEntry.RequestId, StringFormat=ID polecenia: {0}}" Style="{StaticResource SxCaption}" Margin="0,12,0,0"/>
                     <TextBlock Text="{Binding SelectedEntry.ActionId}" Style="{StaticResource SxCaption}" Margin="0,16,0,8"/>
                     <TextBox Text="{Binding SelectedEntry.Evidence, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" MaxHeight="200" VerticalScrollBarVisibility="Auto"/>
@@ -32,7 +54,7 @@
             <Border Style="{StaticResource SxCard}" Margin="0,0,0,16">
                 <StackPanel>
                     <TextBlock Text="Historia rozmowy" Style="{StaticResource SxSectionTitle}"/>
-                    <ItemsControl ItemsSource="{Binding Conversation}">
+                    <ItemsControl ItemsSource="{Binding Conversation}" AutomationProperties.Name="Ostatnie wiadomości rozmowy">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <StackPanel Margin="0,0,0,16">
@@ -42,6 +64,14 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
+                    <TextBlock Text="Brak zapisanych wiadomości w historii rozmowy." TextWrapping="Wrap" Margin="0,8,0,0">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource SxCaption}">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers><DataTrigger Binding="{Binding HasConversation}" Value="False"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
                 </StackPanel>
             </Border>
         </StackPanel>

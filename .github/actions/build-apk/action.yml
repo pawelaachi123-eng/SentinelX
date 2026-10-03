@@ -1,7 +1,12 @@
 name: Build Sentinel X phone APK
 description: >
-  Builds and signs phone-android (Gradle, no third-party libraries) and returns the APK path.
-  Runs on ubuntu-latest (Android SDK and licences are preinstalled there; Linux minutes cost half of Windows ones).
+  Builds and signs phone-android with a protected release key when supplied, otherwise with a per-run CI key.
+  The per-run key never enters the repository; APKs signed this way need uninstalling before installing a later CI build.
+inputs:
+  require-stable-signing:
+    description: Fail unless stable signing secrets were provided (use for official release workflows when configured).
+    required: false
+    default: 'false'
 outputs:
   apk:
     description: Path of the signed APK
@@ -17,20 +22,61 @@ runs:
       with:
         gradle-version: '8.9'
         cache-disabled: true
-    - name: Check the signing key (a new one is created only if this one cannot be read)
+    - name: Verify shared release version
       shell: bash
+      run: python3 scripts/check-versions.py
+    - name: Prepare protected or ephemeral signing key
+      shell: bash
+      env:
+        REQUIRE_STABLE_SIGNING: ${{ inputs.require-stable-signing }}
       run: |
-        ks=phone-android/app/sentinelx-phone.p12
-        if ! keytool -list -keystore "$ks" -storetype PKCS12 -storepass sentinelx -alias sentinelx >/dev/null 2>&1; then
-          echo "::warning title=Klucz podpisu APK::Nie mogę odczytać klucza — tworzę nowy. Telefon trzeba wtedy raz odinstalować przed aktualizacją."
-          rm -f "$ks"
-          keytool -genkeypair -keystore "$ks" -storetype PKCS12 -storepass sentinelx -keypass sentinelx -alias sentinelx \
-            -keyalg RSA -keysize 2048 -validity 36500 -dname "CN=SentinelX Phone, O=SentinelX"
+        set -euo pipefail
+        ks="$RUNNER_TEMP/sentinelx-phone-release.p12"
+        alias="${SENTINELX_ANDROID_KEY_ALIAS:-sentinelx}"
+        is_ephemeral=false
+        if [[ -n "${SENTINELX_ANDROID_KEYSTORE_BASE64:-}" ]]; then
+          : "${SENTINELX_ANDROID_STORE_PASSWORD:?Missing protected keystore password}"
+          : "${SENTINELX_ANDROID_KEY_PASSWORD:?Missing protected key password}"
+          printf '%s' "$SENTINELX_ANDROID_KEYSTORE_BASE64" | base64 --decode > "$ks"
+          keytool -list -keystore "$ks" -storetype PKCS12 -storepass "$SENTINELX_ANDROID_STORE_PASSWORD" -alias "$alias" >/dev/null 2>&1 || {
+            echo '::error title=Podpis APK::Chroniony klucz Androida jest nieprawidłowy lub nie zawiera oczekiwanego aliasu.'
+            exit 1
+          }
+          store_password="$SENTINELX_ANDROID_STORE_PASSWORD"
+          key_password="$SENTINELX_ANDROID_KEY_PASSWORD"
+          echo '::notice title=Podpis APK::Używam klucza udostępnionego przez chronione sekrety GitHub Actions.'
+        else
+          if [[ "$REQUIRE_STABLE_SIGNING" == 'true' ]]; then
+            echo '::error title=Podpis APK::Brak sekretów SENTINELX_ANDROID_KEYSTORE_BASE64, SENTINELX_ANDROID_STORE_PASSWORD i SENTINELX_ANDROID_KEY_PASSWORD.'
+            exit 1
+          fi
+          store_password="$(openssl rand -hex 24)"
+          key_password="$store_password"
+          is_ephemeral=true
+          alias='sentinelx'
+          keytool -genkeypair -keystore "$ks" -storetype PKCS12 -storepass "$store_password" -keypass "$key_password" \
+            -alias "$alias" -keyalg RSA -keysize 2048 -validity 36500 -dname 'CN=Sentinel X Phone, O=Sentinel X' >/dev/null 2>&1
+          echo '::warning title=Podpis APK::Nie skonfigurowano trwałego klucza GitHub Actions. Ten APK jest podpisany kluczem jednorazowym i wymaga odinstalowania przed instalacją kolejnego APK z CI.'
         fi
+        if [[ -z "$alias" || ${#alias} -gt 80 || "$alias$store_password$key_password" =~ [[:cntrl:]] ]]; then
+          echo '::error title=Podpis APK::Alias i hasła nie mogą zawierać znaków sterujących.'
+          exit 1
+        fi
+        if [[ "$is_ephemeral" == 'true' ]]; then
+          printf '::add-mask::%s\n' "$store_password"
+          printf '::add-mask::%s\n' "$key_password"
+        fi
+        {
+          printf 'SENTINELX_ANDROID_KEYSTORE=%s\n' "$ks"
+          printf 'SENTINELX_ANDROID_STORE_PASSWORD=%s\n' "$store_password"
+          printf 'SENTINELX_ANDROID_KEY_ALIAS=%s\n' "$alias"
+          printf 'SENTINELX_ANDROID_KEY_PASSWORD=%s\n' "$key_password"
+        } >> "$GITHUB_ENV"
     - name: Build and sign the APK
       shell: bash
       working-directory: phone-android
       run: |
+        set -euo pipefail
         if ! gradle --no-daemon --console=plain assembleRelease > ../gradle.log 2>&1; then
           tail -n 100 ../gradle.log
           msg=$(tail -n 60 ../gradle.log | python3 -c 'import sys; t = sys.stdin.read(); print(t.replace("%", "%25").replace("\r", "").replace("\n", "%0A"))')
@@ -38,11 +84,30 @@ runs:
           exit 1
         fi
         tail -n 8 ../gradle.log
-    - name: Locate the APK
+    - name: Locate the signed APK
       id: find
       shell: bash
       run: |
-        apk=$(ls phone-android/app/build/outputs/apk/release/*.apk | head -n 1)
-        test -f "$apk" || { echo "::error::Gradle nie wyprodukował pliku APK"; exit 1; }
+        set -euo pipefail
+        mapfile -t apks < <(find phone-android/app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' | sort)
+        if [[ ${#apks[@]} -ne 1 ]]; then
+          echo "::error::Oczekiwano jednego pliku APK, znaleziono ${#apks[@]}"
+          exit 1
+        fi
+        apk="${apks[0]}"
+        if command -v apksigner >/dev/null 2>&1; then
+          apksigner verify "$apk" >/dev/null
+        else
+          sdk="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          signer=""
+          if [[ -n "$sdk" && -d "$sdk/build-tools" ]]; then
+            signer=$(find "$sdk/build-tools" -maxdepth 2 -type f -name apksigner | sort -V | tail -n 1)
+          fi
+          if [[ -z "$signer" ]]; then
+            echo '::error::Android SDK apksigner is missing; refusing to publish an unverified APK.'
+            exit 1
+          fi
+          "$signer" verify "$apk" >/dev/null
+        fi
         echo "apk=$apk" >> "$GITHUB_OUTPUT"
         echo "APK: $apk ($(du -h "$apk" | cut -f1))"
