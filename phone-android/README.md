@@ -5,8 +5,9 @@ Cienka aplikacja Android (Java, **bez bibliotek zewnętrznych**, minSdk 24, targ
 ## Jak dostać APK
 
 - **Z wydania na GitHubie:** plik `SentinelX-Phone-<wersja>.apk` (budowany przez workflow *Release*, job `android`). Zainstaluj, zezwalając na instalację z nieznanego źródła.
-- **Z Android Studio:** *Open* → folder `phone-android` → *Build → Build APK*. Gradle pobierze wtyczkę Androida (AGP 8.7.3) z Google Maven.
-- **Z wiersza poleceń** (JDK 17, Android SDK, Gradle 8.9): `cd phone-android && gradle assembleRelease` → `app/build/outputs/apk/release/app-release.apk`.
+- **Z Android Studio:** *Open* → folder `phone-android` → *Build → Build APK* (wariant debug). Gradle pobierze wtyczkę Androida (AGP 8.7.3) z Google Maven.
+- **Z wiersza poleceń** (JDK 17, Android SDK, Gradle 8.9): `cd phone-android && gradle assembleDebug` → `app/build/outputs/apk/debug/app-debug.apk`; `gradle assembleRelease` → `app/build/outputs/apk/release/app-release.apk`.
+- **Z CI:** zwykły push buduje, weryfikuje podpis i publikuje oba warianty jako osobne artefakty na 7 dni.
 
 ## Podpis
 
@@ -29,4 +30,4 @@ Poprzedni klucz był przechowywany w kodzie z hasłem zapisanym w pliku Gradle, 
 
 ## Sprawdzone i niesprawdzone
 
-Kod Androida nie był kompilowany lokalnie w tym środowisku (brak Android SDK/JDK); ostatnie poprawki połączenia i sesji nie mają jeszcze wyniku kompilatora. Po pushu workflow CI uruchamia Gradle, weryfikuje podpis APK (`apksigner`) i zachowuje artefakt przez 7 dni. Na prawdziwym telefonie trzeba jeszcze sprawdzić: wykrywanie, parowanie, powiadomienia (Android 13+ pyta o zgodę), Wake-on-LAN.
+Kod Androida nie jest kompilowany lokalnie w tym środowisku (brak Android SDK/JDK). Workflow CI uruchamia Gradle dla wariantów debug i release, weryfikuje podpis obu APK (`apksigner`) i zachowuje osobne artefakty przez 7 dni. Na prawdziwym telefonie trzeba jeszcze sprawdzić: wykrywanie, parowanie, powiadomienia (Android 13+ pyta o zgodę), Wake-on-LAN.

@@ -1,7 +1,7 @@
 name: Android phone app (build check)
 
-# Sprawdza, że aplikacja na telefon się buduje; gotowy APK jest artefaktem CI (7 dni) bez publikowania wydania.
-# Uruchamia się na każdym zwykłym pushu, aby razem z EXE udostępnić aktualny APK; działa na Linuksie.
+# Buduje APK debug i podpisany APK release; oba są artefaktami CI (7 dni), bez publikowania wydania.
+# Uruchamia się na każdym zwykłym pushu, aby razem z EXE udostępnić aktualne APK; działa na Linuksie.
 on:
   push:
     branches: [main, 'arena/**']
@@ -27,14 +27,53 @@ jobs:
       - uses: actions/checkout@v5
       - id: build
         uses: ./.github/actions/build-apk
+      - name: Build and verify Android debug APK
+        shell: bash
+        working-directory: phone-android
+        run: |
+          set -euo pipefail
+          if ! gradle --no-daemon --console=plain assembleDebug > ../gradle-debug.log 2>&1; then
+            tail -n 100 ../gradle-debug.log
+            exit 1
+          fi
+          tail -n 8 ../gradle-debug.log
+          apk='app/build/outputs/apk/debug/app-debug.apk'
+          if [[ ! -s "$apk" ]]; then
+            echo '::error::Android debug APK was not produced.'
+            exit 1
+          fi
+          if command -v apksigner >/dev/null 2>&1; then
+            signer=$(command -v apksigner)
+          else
+            sdk="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+            signer=''
+            if [[ -n "$sdk" && -d "$sdk/build-tools" ]]; then
+              signer=$(find "$sdk/build-tools" -maxdepth 2 -type f -name apksigner | sort -V | tail -n 1)
+            fi
+          fi
+          if [[ -z "$signer" ]]; then
+            echo '::error::Android SDK apksigner is missing; refusing to publish an unverified debug APK.'
+            exit 1
+          fi
+          "$signer" verify "$apk" >/dev/null
+          echo "Verified signed debug APK: $apk ($(du -h "$apk" | cut -f1))"
       - name: Summary
         shell: bash
         run: |
           sha=$(sha256sum "${{ steps.build.outputs.apk }}" | cut -d' ' -f1)
-          echo "::notice title=APK zbudowany::${{ steps.build.outputs.apk }} · sha256 $sha"
+          debug='phone-android/app/build/outputs/apk/debug/app-debug.apk'
+          debug_sha=$(sha256sum "$debug" | cut -d' ' -f1)
+          echo "::notice title=APK release zbudowany::${{ steps.build.outputs.apk }} · sha256 $sha"
+          echo "::notice title=APK debug zbudowany::$debug · sha256 $debug_sha"
       - uses: actions/upload-artifact@v4
         with:
           name: sentinelx-phone-apk-${{ github.sha }}
           path: ${{ steps.build.outputs.apk }}
+          if-no-files-found: error
+          retention-days: 7
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sentinelx-phone-debug-apk-${{ github.sha }}
+          path: phone-android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 7
