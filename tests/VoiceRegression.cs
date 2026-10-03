@@ -206,7 +206,7 @@ internal static class VoiceRegression
             Check(capture.RecognitionSuppressed && voice.Lifecycle.State == VoiceStateKind.SPEAKING && output.SpeakCalls == 1,
                 "TTS suppresses microphone feedback and publishes SPEAKING");
             output.Fail("fake asynchronous synthesis failure");
-            Check(!capture.RecognitionSuppressed && voice.State == VoiceState.Active && voice.Lifecycle.State == VoiceState.LISTENING,
+            Check(!capture.RecognitionSuppressed && voice.State == VoiceState.Active && voice.Lifecycle.State == VoiceStateKind.LISTENING,
                 "asynchronous TTS failure restores microphone recognition and listening state");
 
             capture.EmitTranscript("Sentinel off");
@@ -218,16 +218,16 @@ internal static class VoiceRegression
             Check(commands.SequenceEqual(["ile mam ramu"]) && voice.State == VoiceState.Active,
                 "a normal wake-word utterance is stripped once and dispatched through the command event");
             capture.EmitProcessing(true);
-            Check(voice.Lifecycle.State == VoiceState.TRANSCRIBING, "ASR processing is reflected as an explicit lifecycle state");
+            Check(voice.Lifecycle.State == VoiceStateKind.TRANSCRIBING, "ASR processing is reflected as an explicit lifecycle state");
             engine.SetBusy(true, streaming: true);
-            Check(voice.Lifecycle.State == VoiceState.THINKING, "active engine streaming is reflected as THINKING");
+            Check(voice.Lifecycle.State == VoiceStateKind.THINKING, "active engine streaming is reflected as THINKING");
             engine.SetBusy(false);
-            Check(voice.Lifecycle.State == VoiceState.LISTENING, "engine completion restores voice listening state");
+            Check(voice.Lifecycle.State == VoiceStateKind.LISTENING, "engine completion restores voice listening state");
             capture.EmitProcessing(false);
             Check(changed > 0, "voice lifecycle updates reach subsequent observers even when one UI observer fails");
 
             voice.Stop();
-            Check(voice.State == VoiceState.Off && !capture.IsListening && voice.Lifecycle.State == VoiceState.OFF,
+            Check(voice.State == VoiceState.Off && !capture.IsListening && voice.Lifecycle.State == VoiceStateKind.OFF,
                 "explicit microphone stop closes capture and resets lifecycle state");
             Check(!capture.RecognitionSuppressed, "stopping speech cannot leave recognition suppressed");
         }
