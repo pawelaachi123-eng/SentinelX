@@ -70,6 +70,7 @@ internal static class VoiceRegression
         public void CalibrateNoise() { }
         public void EmitTranscript(string text) => SpeechRecognized?.Invoke(text);
         public void EmitProcessing(bool active) => RecognitionProcessingChanged?.Invoke(active);
+        public void EmitStatus(string status) => StatusChanged?.Invoke(status);
         public void EmitDeviceFailure(string message)
         {
             IsListening = false;
@@ -194,6 +195,8 @@ internal static class VoiceRegression
             Check(capture.InitializeCalls == 1 && capture.IsListening && capture.IsWakeOnlyMode, "start uses local models and enters wake-only capture");
             Check(voice.State == VoiceState.Standby && voice.Lifecycle.State == VoiceStateKind.STANDBY, "successful start publishes explicit standby state");
             Check(voice.Lifecycle.MicrophoneOpen, "published standby state accurately reports the open wake-word microphone");
+            capture.EmitStatus("test capture status");
+            Check(voice.Status == "test capture status", "capture status events reach the voice service and UI");
 
             capture.EmitTranscript("rozmowa w tle");
             Check(commands.Count == 0 && voice.State == VoiceState.Standby, "speech without a whole-word wake phrase never reaches command routing");

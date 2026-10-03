@@ -17,8 +17,8 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 35
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-dotnet@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 10.0.x
       - name: Portable architecture checks
@@ -120,7 +120,7 @@ jobs:
             }
             throw "Installed application smoke failed: $($p.ExitCode)"
           }
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: success()
         with:
           name: sentinelx-windows-x64-installer-${{ github.sha }}
@@ -129,7 +129,7 @@ jobs:
             bin/installer/SHA256SUMS.txt
           if-no-files-found: error
           retention-days: 7
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         continue-on-error: true  # limit magazynu artefaktów nie może zamieniać wyników testów na czerwone
         if: always()
         with:

@@ -24,7 +24,7 @@ jobs:
       SENTINELX_ANDROID_KEY_ALIAS: ${{ secrets.SENTINELX_ANDROID_KEY_ALIAS }}
       SENTINELX_ANDROID_KEY_PASSWORD: ${{ secrets.SENTINELX_ANDROID_KEY_PASSWORD }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - id: build
         uses: ./.github/actions/build-apk
       - name: Build and verify Android debug APK
@@ -65,13 +65,13 @@ jobs:
           debug_sha=$(sha256sum "$debug" | cut -d' ' -f1)
           echo "::notice title=APK release zbudowany::${{ steps.build.outputs.apk }} · sha256 $sha"
           echo "::notice title=APK debug zbudowany::$debug · sha256 $debug_sha"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: sentinelx-phone-apk-${{ github.sha }}
           path: ${{ steps.build.outputs.apk }}
           if-no-files-found: error
           retention-days: 7
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: sentinelx-phone-debug-apk-${{ github.sha }}
           path: phone-android/app/build/outputs/apk/debug/app-debug.apk
