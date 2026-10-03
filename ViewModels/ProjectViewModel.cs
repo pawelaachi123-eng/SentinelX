@@ -187,11 +187,11 @@ public partial class ProjectViewModel : ObservableObject, IDisposable
         {
             var last = conversations[0];
             lines.Add($"• Ostatnia rozmowa: „{last.Title}” (ostatnio {last.LastActiveAt:dd.MM.yyyy HH:mm}).");
-            if (memory.ResumeSession(last.Id, out string reason) || reason == "Ta rozmowa jest już aktywna.")
-            {
+            string reason = "";
+            resumeConversation = memory.ActiveSessionId == last.Id;
+            if (!resumeConversation) resumeConversation = memory.ResumeSession(last.Id, out reason);
+            if (resumeConversation)
                 lines.Add("• Rozmowa jest aktywna lub została wznowiona. Otwieram asystenta z jej zapisanym kontekstem.");
-                resumeConversation = true;
-            }
             else lines.Add($"• Nie wznowiono rozmowy: {reason}");
         }
         var recentNotes = memory.GetNotes().Where(x => x.ProjectId == card.Id && x.SupersededAt == null).OrderByDescending(x => x.UpdatedAt ?? x.Timestamp).Take(3).ToArray();
