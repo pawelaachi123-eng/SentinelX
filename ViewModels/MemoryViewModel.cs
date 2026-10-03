@@ -35,8 +35,13 @@ public partial class MemoryViewModel : ObservableObject, IDisposable
     private readonly MemoryActionService memoryActions;
     private readonly ISettingsService settings;
     private readonly IUiDispatcher dispatcher;
+    private string? statusOverride;
+    private bool hasAnyNotes;
     public ObservableCollection<MemoryItemViewModel> Items { get; } = [];
     public ObservableCollection<ConversationListItem> Conversations { get; } = [];
+    public bool HasAnyNotes => hasAnyNotes;
+    public bool HasNoResults => hasAnyNotes && Items.Count == 0;
+    public bool HasConversations => Conversations.Count > 0;
     public ObservableCollection<string> Trace { get; } = [];
     public IReadOnlyList<string> FilterOptions { get; }
     public IReadOnlyList<string> CategoryOptions => ConversationMemoryService.Categories;
@@ -83,6 +88,7 @@ public partial class MemoryViewModel : ObservableObject, IDisposable
             MetaText = $"{(x.Id == active ? "▶ aktywna · " : "")}utworzona {x.CreatedAt:dd.MM.yyyy} · ostatnio {x.LastActiveAt:dd.MM HH:mm}"
         }).ToArray();
         Conversations.Clear(); foreach (var item in conversations) Conversations.Add(item);
+        OnPropertyChanged(nameof(HasConversations));
         Trace.Clear();
         if (memory.PrivacyContextVisible)
         {
@@ -94,14 +100,21 @@ public partial class MemoryViewModel : ObservableObject, IDisposable
         var s = settings.Current.Memory;
         PrivacyLine = $"Zapis rozmów: {On(s.SaveConversations)} · AI czyta historię: {On(s.UseHistoryForAi)} · Zapis wspomnień: {On(s.SaveMemories)} · AI czyta wspomnienia: {On(s.UseMemoriesForAi)} · Retencja: {(s.RetentionDays > 0 ? s.RetentionDays + " dni" : "bezterminowa")}";
         UpdateConflicts();
-        Status = memory.LastStorageError ?? $"Wspomnienia: {Items.Count} · Rozmowy: {conversations.Length} · Zmiany konfiguracji działają od razu, bez restartu.";
+        Status = memory.LastStorageError ?? statusOverride ?? $"Wspomnienia: {Items.Count} · Rozmowy: {conversations.Length} · Zmiany konfiguracji działają od razu, bez restartu.";
+    }
+
+    private void SetStatus(string message)
+    {
+        statusOverride = message;
+        Status = message;
     }
 
     private static string On(bool value) => value ? "wł" : "wył";
 
     private void RefreshItems()
     {
-        IEnumerable<ConversationMemoryEntry> source = string.IsNullOrWhiteSpace(Search) ? memory.GetNotes() : memory.SearchNotes(Search);
+        var allNotes = memory.GetNotes();
+        IEnumerable<ConversationMemoryEntry> source = string.IsNullOrWhiteSpace(Search) ? allNotes : memory.SearchNotes(Search);
         if (CategoryFilter is not null && CategoryFilter != AllCategories) source = source.Where(x => x.Category == CategoryFilter);
         if (PinnedOnly) source = source.Where(x => x.Pinned);
         var items = source.Select(x => new MemoryItemViewModel
@@ -110,6 +123,9 @@ public partial class MemoryViewModel : ObservableObject, IDisposable
             MetaText = $"{(x.Pinned ? "📌 " : "")}{(x.SupersededAt != null ? "nieaktualne · " : "")}{x.Category} · utworzone {x.Timestamp:dd.MM.yyyy HH:mm}{(x.UpdatedAt != null ? $" · zmienione {x.UpdatedAt:dd.MM.yyyy HH:mm}" : "")} · źródło: {x.Source}"
         }).ToArray();
         Items.Clear(); foreach (var item in items) Items.Add(item);
+        hasAnyNotes = allNotes.Count > 0;
+        OnPropertyChanged(nameof(HasAnyNotes));
+        OnPropertyChanged(nameof(HasNoResults));
         if (SelectedItem != null && items.All(x => x.Id != SelectedItem.Id)) SelectedItem = null;
     }
 
@@ -126,9 +142,9 @@ public partial class MemoryViewModel : ObservableObject, IDisposable
     private void AddNote()
     {
         string text = NewText.Trim();
-        if (text.Length == 0) { Status = "Wpisz treść wspomnienia przed zapisaniem."; return; }
+        if (text.Length == 0) { SetStatus("Wpisz treść wspomnienia przed zapisaniem."); return; }
         var similar = memory.FindSimilarNotes(text);
-        Status = memoryActions.AddNoteVerified(text, NewCategory, "panel pamięci");
+        SetStatus(memoryActions.AddNoteVerified(text, NewCategory, "panel pamięci"));
         NewText = "";
         Refresh();
         if (similar.Count > 0)
@@ -139,7 +155,7 @@ public partial class MemoryViewModel : ObservableObject, IDisposable
     private void SaveEdit()
     {
         if (SelectedItem == null) return;
-        Status = memoryActions.UpdateNoteVerified(SelectedItem.Id, EditorText.Trim());
+        SetStatus(memoryActions.UpdateNoteVerified(SelectedItem.Id, EditorText.Trim()));
         Refresh();
     }
 
@@ -151,7 +167,7 @@ public partial class MemoryViewModel : ObservableObject, IDisposable
     private void TogglePin(MemoryItemViewModel? item)
     {
         if (item == null) return;
-        Status = memoryActions.SetPinnedVerified(item.Id, !item.Pinned);
+        SetStatus(memoryActions.SetPinnedVerified(item.Id, !item.Pinned));
         Refresh();
     }
 
@@ -159,7 +175,7 @@ public partial class MemoryViewModel : ObservableObject, IDisposable
     private void ToggleStale(MemoryItemViewModel? item)
     {
         if (item == null) return;
-        Status = memoryActions.SetStaleVerified(item.Id, !item.Stale);
+        SetStatus(memoryActions.SetStaleVerified(item.Id, !item.Stale));
         Refresh();
     }
 
@@ -167,8 +183,8 @@ public partial class MemoryViewModel : ObservableObject, IDisposable
     private void RequestDelete(MemoryItemViewModel? item)
     {
         if (item == null) return;
-        Status = memoryActions.RequestDeleteNote(item.Id, item.Text)
-            + " Usuwanie wymaga zgody — zatwierdź ją klawiaturą w Centrum.";
+        SetStatus(memoryActions.RequestDeleteNote(item.Id, item.Text)
+            + " Usuwanie wymaga zgody — zatwierdź ją w Asystencie.");
         Refresh();
     }
 
@@ -176,7 +192,7 @@ public partial class MemoryViewModel : ObservableObject, IDisposable
     private void NewConversation()
     {
         memory.StartNewSession();
-        Status = "Rozpoczęto nową rozmowę. Wpisanie pierwszego polecenia nada jej tytuł.";
+        SetStatus("Rozpoczęto nową rozmowę. Wpisanie pierwszego polecenia nada jej tytuł.");
         Refresh();
     }
 
@@ -184,19 +200,19 @@ public partial class MemoryViewModel : ObservableObject, IDisposable
     private void ResumeConversation(ConversationListItem? item)
     {
         if (item == null) return;
-        Status = memory.ResumeSession(item.Id)
-            ? $"Wznowiono rozmowę „{item.Title}”. Centrum pokazuje jej treść."
-            : "Ta rozmowa jest już aktywna.";
+        SetStatus(memory.ResumeSession(item.Id)
+            ? $"Wznowiono rozmowę „{item.Title}”. Asystent pokazuje jej treść."
+            : "Ta rozmowa jest już aktywna.");
         Refresh();
     }
 
     [RelayCommand]
     private void RenameConversation()
     {
-        if (SelectedConversation == null || RenameTitle.Trim().Length == 0) { Status = "Wybierz rozmowę i wpisz nowy tytuł."; return; }
-        Status = memory.RenameConversation(SelectedConversation.Id, RenameTitle.Trim())
+        if (SelectedConversation == null || RenameTitle.Trim().Length == 0) { SetStatus("Wybierz rozmowę i wpisz nowy tytuł."); return; }
+        SetStatus(memory.RenameConversation(SelectedConversation.Id, RenameTitle.Trim())
             ? "Zmieniono tytuł rozmowy."
-            : "Nie zmieniono tytułu (1–120 znaków, rozmowa musi istnieć).";
+            : "Nie zmieniono tytułu (1–120 znaków, rozmowa musi istnieć).");
         Refresh();
     }
 
@@ -204,9 +220,9 @@ public partial class MemoryViewModel : ObservableObject, IDisposable
     private void TogglePrivateMode()
     {
         memory.SetPrivateMode(!memory.PrivateMode);
-        Status = memory.PrivateMode
+        SetStatus(memory.PrivateMode
             ? "Tryb prywatny WŁĄCZONY — treść rozmowy nie jest nigdzie zapisywana i nie wróci po restarcie."
-            : "Tryb prywatny WYŁĄCZONY — zapis zgodny z ustawieniami prywatności.";
+            : "Tryb prywatny WYŁĄCZONY — zapis zgodny z ustawieniami prywatności.");
         Refresh();
     }
 
@@ -227,8 +243,8 @@ public partial class MemoryViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private void ExportMemory()
     {
-        try { Status = "Eksport lokalny zapisany: " + memory.Export(); }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { Status = "Nie udało się wyeksportować pamięci: " + ex.Message; }
+        try { SetStatus("Eksport lokalny zapisany: " + memory.Export()); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { SetStatus("Nie udało się wyeksportować pamięci: " + ex.Message); }
     }
 
     public void Dispose() { memory.Changed -= Sync; memory.SessionChanged -= Sync; settings.Changed -= Sync; }

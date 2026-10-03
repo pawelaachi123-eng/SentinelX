@@ -1,8 +1,14 @@
-# Telefon: protokół, bezpieczeństwo i ograniczenia (0.94)
+# Telefon: protokół API v1, bezpieczeństwo i ograniczenia (fundament 1.0.0)
 
 Ten dokument jest kontraktem między trzema implementacjami: serwerem na komputerze (`Services/Link`), interfejsem webowym
 (`Phone/web`, serwowanym przez komputer i ładowanym w aplikacji na Androida) oraz atrapą do testów (`scripts/phone-mock`).
 Jeśli zmieniasz API, zmień wszystkie trzy (test `tests/LinkRegression.cs` i `scripts/phone-mock/ui-test.mjs` to sprawdzają).
+
+## Wersjonowanie i zgodność
+
+`api: 1` w `/api/hello` i odpowiedzi UDP jest wersją protokołu, nie wersją aplikacji. API v1 rozwijamy addytywnie: nowe pola odpowiedzi są opcjonalne dla klientów, a pola `capabilities` w prośbie o parowanie są opcjonalne dla serwera. Starszy klient bez tego pola nadal może się sparować. Łamiąca zmianę kształtu lub semantyki trzeba wprowadzić pod nowym numerem API, bez cichego reinterpretowania istniejących pól.
+
+`SENTINEL-X.csproj` jest źródłem wersji produktu; runtime Windows, fallback instalatora i Android `versionName` są sprawdzane skryptem `scripts/check-versions.py`. Android `versionCode` jest osobną liczbą instalacyjną, obecnie 100 po poprzednim 98; nie wolno jej obniżać.
 
 ## Jak to wygląda
 
@@ -30,7 +36,8 @@ innych niż prywatne (10/8, 172.16/12, 192.168/16, 169.254/16, 100.64/10 — ten
 | Parowanie | Telefon wysyła prośbę; na komputerze pojawia się okno z nazwą urządzenia i **6-cyfrowym kodem potwierdzenia**; dopiero kliknięcie **Zezwól** wydaje token. Przycisk jest nieaktywny przez ok. 2 s, prośba wygasa po 120 s, naraz czeka tylko jedna. |
 | Kod potwierdzenia (SAS) | `SHA256(odcisk certyfikatu ‖ nonce telefonu ‖ nonce komputera)`, pierwsze 4 bajty jako liczba big-endian, modulo 1 000 000. Telefon (aplikacja) liczy go z odcisku certyfikatu, **który faktycznie zobaczył**; komputer z własnego. Gdy ktoś podszywa się pod komputer, kody się różnią i telefon ostrzega. W przeglądarce kod pochodzi od serwera, więc tam chroni tylko zgoda na komputerze. Wektor testowy: odcisk `00..1f`, nonce `oKGio6SlpqeoqaqrrK2urw` i `sLGys7S1tre4ubq7vL2-vw` → `078914`. |
 | Token | 256 bitów losowych, pokazany telefonowi **jeden raz**. Komputer zapamiętuje tylko SHA-256 tokenu (`devices.json`), porównanie w stałym czasie. Do 10 telefonów; najdawniej używany jest zastępowany. |
-| Limity | 6 prób parowania/min na adres, 30 błędnych tokenów/min na adres, 32 równoczesne połączenia, nagłówki ≤ 16 KB, treść ≤ 64 KB, limity czasu. |
+| Token na telefonie | Natywny companion szyfruje token AES-GCM kluczem z Android Keystore; odczyt migruje wcześniejsze app-private SharedPreferences. Przy aktualizacji strona przenosi ewentualną starszą kopię z WebView `localStorage` do natywnego magazynu i usuwa plaintext. Przeglądarka bez mostu natywnego nadal używa origin-scoped `localStorage`. |
+| Limity | 6 prób parowania/min na adres, 30 błędnych tokenów/min na adres, 32 równoczesne połączenia, nagłówki ≤ 16 KB, treść ≤ 64 KB, limity czasu; mapy liczników są ograniczone do 1024 kluczy. Bufor SSE ma limit 128 fragmentów; odpowiedź końcowa zawiera całość. |
 | Polecenia z telefonu | Wykonuje je ten sam `ActionEngine` co z klawiatury, ale jako „głos” (`fromVoice: true`): silnik **odmawia potwierdzenia** ryzykownej akcji (zamknięcie programu, usuwanie). Telefon może ją zaproponować, **zatwierdza się ją tylko na komputerze**. |
 | Czego to nie chroni | Złośliwego programu już działającego na komputerze, ani osoby, która siedzi przy odblokowanym komputerze i sama kliknie **Zezwól**. Przy wycieku tokenu telefonu: Telefon → Odłącz wszystkie telefony. |
 
@@ -46,22 +53,26 @@ Bez uwierzytelnienia: statyczne pliki (`/`, `/app.js`, `/app.css`, `/manifest.we
 
 | Metoda i ścieżka | Ciało → odpowiedź |
 | --- | --- |
-| `GET /api/hello` | `{app, api:1, version, name, fingerprint}` |
-| `POST /api/pair/request` | `{device, nonce}` (nonce: 16 bajtów base64url) → `{id, nonce, expiresIn, sas}`; 429 gdy czeka inna prośba |
+| `GET /api/hello` | Typowany `LinkHelloResponse`: `{app, api:1, version, name, fingerprint, capabilities[]}` |
+| `POST /api/pair/request` | `{device, nonce, capabilities?[]}` (nonce: 16 bajtów base64url) → `{id, nonce, expiresIn, sas}`; 429 gdy czeka inna prośba. Brak `capabilities` jest zgodny wstecz. |
 | `GET /api/pair/status?id=` | `{state: pending\|approved\|denied\|expired, token?, deviceId?}`; `token` tylko raz |
 
 Z nagłówkiem `Authorization: Bearer <token>` (401 `{"error":"unauthorized"}` bez niego):
 
 | Metoda i ścieżka | Znaczenie |
 | --- | --- |
-| `GET /api/state` | `{pc:{name,version,uptime,time,mac[],addresses[]}, metrics:{cpu,ramUsed,ramTotal,gpu,game,network,disks[],processes[]}, engine:{state,message,progress,model,installed[]}, assistant:{busy,stopped,pending,pendingSummary}, care:{ok,text}, counts, alertsLast}` (brak odczytu = `null`) |
+| `GET /api/state` | Typowany `LinkStateResponse`: `{pc:{name,version,uptime,time,mac[],addresses[]}, metrics:{cpu,ramUsed,ramTotal,gpu,game,network,disks[],processes[]}, engine:{state,message,progress,model,installed[]}, assistant:{busy,stopped,pending,pendingSummary}, care:{ok,text}, counts, alertsLast, capabilities[]}` (brak odczytu = `null`) |
 | `POST /api/chat` `{text}` | strumień `text/event-stream`: `start`, `delta {text}`…, `done {text,status,evidence,elapsedMs}` albo `error {error}`. `status`: `verified`, `unverified`, `failed`, `cancelled`, `waitingpermission`… |
 | `POST /api/control` `{action: cancel\|stop\|resume}` | przerwanie polecenia, STOP awaryjny, wznowienie |
 | `GET /api/tasks` · `POST /api/tasks` `{title,priority,due}` · `POST /api/tasks/status` `{id,status}` · `POST /api/tasks/delete` `{id}` | zadania (priorytet: niski/normalny/wysoki; status: otwarte/w toku/zrobione) |
 | `POST /api/reminders` `{text,at}` · `POST /api/reminders/delete` `{id}` | przypomnienia (termin w przyszłości, z przesunięciem strefy) |
 | `GET /api/notes?q=` · `POST /api/notes` `{text}` | notatki z pamięci; odpowiedź `{result: Added\|Duplicate\|Limit\|Disabled\|Invalid\|StaleDuplicate}` |
 | `GET /api/alerts?after=<id>&wait=<0..25>` | alerty nowsze niż `after`; przy `wait>0` serwer czeka na kolejny (long-poll) |
-| `GET /api/devices` · `POST /api/unpair` | lista sparowanych telefonów · odłączenie tego telefonu |
+| `GET /api/devices` · `POST /api/unpair` | lista sparowanych telefonów (w tym `capabilities[]`) · odłączenie tego telefonu |
+
+Nazwy funkcji hosta w `capabilities[]`: `systemMetrics`, `processList`, `assistantChat`, `assistantControl`, `tasks`, `reminders`, `notes`, `alerts`, `deviceManagement`. Są wynikiem zarejestrowanych endpointów PC, nie deklaracją przyszłych funkcji. Companion może zgłosić `notifications`, `voiceInput`, `wakeOnLan`; wartości są walidowanymi, informacyjnymi wskazówkami z procesu parowania, nie uprawnieniami ani dowodem sprzętowym. Nieznane wartości są ignorowane, a brak pola oznacza pusty zestaw.
+
+Kontrakty C# znajdują się w `Services/Link/LinkContracts.cs`; `/api/hello`, `/api/state`, zadania/notatki/alerty, parowanie, sterowanie, urządzenia i zakończenie SSE korzystają z typowanych rekordów. Pola camelCase oraz istniejące statusy/ścieżki pozostają stabilne.
 
 Alerty pochodzą z: Watch (długie obciążenie CPU/RAM), przypomnień, silnika AI (gotowy / wymaga uwagi), dysku (mało miejsca) i opiekuna.
 
@@ -69,8 +80,9 @@ Alerty pochodzą z: Watch (długie obciążenie CPU/RAM), przypomnień, silnika 
 
 Cienka powłoka (Java, bez bibliotek zewnętrznych): ładuje stronę z komputera w WebView, **sama szuka komputera** (UDP), przypina certyfikat,
 co ok. 15 minut (minimum Androida) pyta o alerty i pokazuje je jako powiadomienia, rozpoznaje mowę po polsku (`RecognizerIntent`)
-i potrafi wybudzić komputer (Wake-on-LAN, adres MAC pobrany z `/api/state`). Most do strony: obiekt `SXNative`
-(`tlsFingerprint`, `deviceName`, `saveSession`, `saveMac`, `clearSession`, `hasVoice`, `startVoice`, `canWake`, `wakePc`, `rediscover`).
+i potrafi wybudzić komputer (Wake-on-LAN, adres MAC pobrany z `/api/state`). Weryfikuje `api:1` przed zapisaniem adresu. Most `SXNative`
+(`tlsFingerprint`, `deviceName`, `capabilitiesJson`, `savedToken`, `saveSession`, `saveMac`, `clearSession`, `hasVoice`, `startVoice`, `canWake`, `wakePc`, `rediscover`)
+raportuje tylko funkcje dostępne dla bieżącego telefonu; Android Keystore chroni token AES-GCM. Brak zgody lub wyłączone kanały powiadomień oznaczają brak `notifications` w deklaracji.
 
 ## Ograniczenia
 

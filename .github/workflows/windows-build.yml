@@ -1,8 +1,8 @@
 name: Windows build and WPF smoke
 
 # Sprawdza dokładnie to, co trafia do użytkownika: samodzielną paczkę (z wbudowanym .NET i silnikiem AI) oraz instalator.
-# Jest oszczędny: jeden przebieg na push (bez dublowania przez pull_request, bo gałęzie arena/** i tak budują się po pushu)
-# i bez dużych artefaktów (magazyn artefaktów w tym repozytorium bywa pełny; trwałą dystrybucją są pliki wydania).
+# Jeden przebieg na push (bez dublowania przez pull_request); gotowy instalator EXE jest też publikowany jako krótko żyjący artefakt CI.
+# APK buduje android-phone.yml niezależnie, dzięki czemu oba pliki są dostępne po zwykłym pushu bez tworzenia wydania.
 concurrency:
   group: windows-${{ github.ref }}
   cancel-in-progress: true
@@ -17,12 +17,14 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 35
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-dotnet@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 10.0.x
       - name: Portable architecture checks
         run: python scripts/check-architecture.py
+      - name: Release version consistency
+        run: python scripts/check-versions.py
       - name: Portable syntax sanity check (brackets, strings, duplicate types - not a compiler)
         run: python scripts/check-syntax-lite.py
       - name: Bundled AI engine (llama.cpp - pinned, SHA-256 verified, started with --version)
@@ -118,7 +120,16 @@ jobs:
             }
             throw "Installed application smoke failed: $($p.ExitCode)"
           }
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
+        if: success()
+        with:
+          name: sentinelx-windows-x64-installer-${{ github.sha }}
+          path: |
+            bin/installer/*.exe
+            bin/installer/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 7
+      - uses: actions/upload-artifact@v7
         continue-on-error: true  # limit magazynu artefaktów nie może zamieniać wyników testów na czerwone
         if: always()
         with:

@@ -1,10 +1,9 @@
 namespace SentinelX.Core;
 
-public enum SlashKind { Command, Tab, Page }
+public enum SlashKind { Command, Page }
 
-/// <summary>One entry of the „//” palette in the chat box. Entries either run a chat command,
-/// switch a Centrum tab, or open a top-level page. Nothing here executes on its own —
-/// the user still picks the entry explicitly (Tab + Enter or click).</summary>
+/// <summary>One entry of the „//” palette in the chat box. Entries either run a chat command or open a top-level page.
+/// Nothing here executes on its own — the user still picks the entry explicitly (Tab + Enter or click).</summary>
 public sealed record SlashEntry(string Trigger, string Label, string Hint, SlashKind Kind, string Target);
 
 public static class SlashCatalog
@@ -14,6 +13,7 @@ public static class SlashCatalog
         // system facts (read-only, with evidence)
         new("diag", "Diagnostyka komputera", "pełny raport tylko do odczytu", SlashKind.Command, "diagnostyka komputera"),
         new("diagnostyka", "Diagnostyka komputera", "alias: to samo co //diag", SlashKind.Command, "diagnostyka komputera"),
+        new("automatyzacje", "Automatyzacje", "otwiera przepływy, harmonogramy i historię", SlashKind.Page, "automation"),
         new("ram", "Ile mam RAM", "pomiar pamięci fizycznej", SlashKind.Command, "ile mam RAM"),
         new("cpu", "Użycie CPU", "odczyt obciążenia procesora", SlashKind.Command, "użycie CPU"),
         new("dysk", "Pokaz dyski", "pojemność i wolne miejsce", SlashKind.Command, "pokaz dyski"),
@@ -35,7 +35,7 @@ public static class SlashCatalog
         new("propozycje", "Propozycje", "co warto zrobić — decyzja należy do Ciebie", SlashKind.Command, "propozycje"),
         new("lekcje", "Lekcje", "czego nauczyłem się z Twoich poprawek", SlashKind.Command, "lekcje"),
         new("wersja", "Wersja", "wersja aplikacji i systemu", SlashKind.Command, "wersja"),
-        new("nowego", "Co nowego", "skrócona lista zmian 0.96", SlashKind.Command, "co nowego"),
+        new("nowego", "Co nowego", "skrócona lista zmian 1.0.0", SlashKind.Command, "co nowego"),
         // everyday helpers
         new("pomoc", "Pomoc", "pełna lista poleceń", SlashKind.Command, "pomoc"),
         new("skroty", "Skróty", "tabelka skrótów klawiszowych", SlashKind.Command, "skróty"),
@@ -52,7 +52,7 @@ public static class SlashCatalog
         new("sprzatanie", "Usuń duplikaty", "zostawia 1 plik w grupie, reszta do Kosza po zgodzie", SlashKind.Command, "usuń duplikaty: "),
         new("nazwy", "Zmień nazwy plików", "podgląd zmian, wykonanie dopiero po zgodzie", SlashKind.Command, "zmien nazwy: "),
         // 0.95 · WARSZTAT: narzędzia z nowej strony „Narzędzia”
-        new("narzedzia", "Narzędzia", "katalog narzędzi offline z polem na argument", SlashKind.Tab, "narzedzia"),
+        new("narzedzia", "Narzędzia", "katalog narzędzi offline z polem na argument", SlashKind.Page, "tools"),
         new("diff", "Porównaj teksty", "dwa teksty oddzielone |||", SlashKind.Command, "porownaj teksty: "),
         new("unikalne", "Tylko unikalne wiersze", "usuwa powtórzone wiersze tekstu (nie pliki); separator |", SlashKind.Command, "unikalne linie: "),
         new("regex", "Test wyrażenia regularnego", "wzorzec ||| tekst", SlashKind.Command, "regex: "),
@@ -66,15 +66,18 @@ public static class SlashCatalog
         new("rozumiem", "Jak to rozumiem", "podgląd decyzji: co bym zrobił, bez wykonywania", SlashKind.Command, "jak to rozumiem: "),
         new("szukajzadan", "Szukaj w zadaniach", "zadania (także zrobione) i przypomnienia, tylko odczyt", SlashKind.Command, "szukaj w zadaniach: "),
         new("zmienna", "Nazwy zmiennych", "camelCase, snake_case, kebab-case z jednego zdania", SlashKind.Command, "nazwa zmiennej: "),
-        // panels inside Centrum and pages
-        new("rozmowa", "Rozmowa", "wróć do czatu", SlashKind.Tab, "rozmowa"),
-        new("historia", "Historia", "zakładka Historii", SlashKind.Tab, "historia"),
-        new("glos", "Głos", "zakładka Głosu", SlashKind.Tab, "glos"),
-        new("system", "System", "zakładka Systemu", SlashKind.Tab, "system"),
-        new("gry", "Gaming", "zakładka Gier", SlashKind.Tab, "gry"),
-        new("ai", "AI", "zakładka AI", SlashKind.Tab, "ai"),
-        new("akcje", "Akcje", "zakładka Akcji", SlashKind.Tab, "akcje"),
-        new("ustawienia", "Ustawienia", "strona Ustawień", SlashKind.Page, "settings"),
+        // Direct navigation to the new shell destinations and existing pages.
+        new("start", "Pulpit", "zadania, metryki, aktywność i skróty", SlashKind.Page, "home"),
+        new("rozmowa", "Rozmowa", "wróć do asystenta", SlashKind.Page, "command"),
+        new("urzadzenia", "Urządzenia", "lokalne połączenie i sparowane telefony", SlashKind.Page, "devices"),
+        new("powiadomienia", "Powiadomienia", "alerty bieżącej sesji", SlashKind.Page, "notifications"),
+        new("historia", "Historia", "historia działań i rozmów", SlashKind.Page, "history"),
+        new("glos", "Głos", "mikrofon i ustawienia rozpoznawania", SlashKind.Page, "voice"),
+        new("system", "Komputer", "metryki i procesy", SlashKind.Page, "system"),
+        new("gry", "Wydajność", "profil gry i nakładka", SlashKind.Page, "gaming"),
+        new("ai", "AI lokalne", "silnik i modele", SlashKind.Page, "ai"),
+        new("akcje", "Akcje", "zgody i wykonanie", SlashKind.Page, "actions"),
+        new("ustawienia", "Ustawienia", "konfiguracja lokalna", SlashKind.Page, "settings"),
     ];
 
     /// <summary>Exact-match resolution for a typed „//trigger” (without the slashes).</summary>

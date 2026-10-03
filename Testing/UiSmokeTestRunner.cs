@@ -28,11 +28,14 @@ public static class UiSmokeTestRunner
         try
         {
             await Tests.BackendRegression.RunAsync(Path.Combine(output, "backend"));
+            await Tests.VoiceRegression.RunAsync(Path.Combine(output, "voice"));
+            await Tests.SystemMonitorRegression.RunAsync(Path.Combine(output, "system-monitor"));
             await Tests.ProductRegression.RunAsync(Path.Combine(output, "product"));
             await Tests.ReleaseRegression.RunAsync(Path.Combine(output, "release"));
             await Tests.MemoryRegression.RunAsync(Path.Combine(output, "memory"));
             await Tests.ProjectRegression.RunAsync(Path.Combine(output, "projects"));
             await Tests.TaskRegression.RunAsync(Path.Combine(output, "tasks"));
+            await Tests.AutomationRegression.RunAsync(Path.Combine(output, "automations"));
             await Tests.DiagnosticSnapshotRegression.RunAsync(Path.Combine(output, "snapshots"));
             await Tests.AiStreamRegression.RunAsync(Path.Combine(output, "ai-stream"));
             await Tests.UnderstandingRegression.RunAsync(Path.Combine(output, "understanding"));
@@ -156,7 +159,7 @@ public static class UiSmokeTestRunner
                 ("pierwiastek 144", "= 12"), ("silnia 10", "3628800"), ("nwd 12 8", "= 4"),
                 ("palindrom: kajak", "palindromem"), ("morse: sos", "... --- ..."),
                 ("pesel: 90010112349", "PESEL poprawny"), ("wielkanoc 2027", "28.03.2027"),
-                ("lotto", "Lotto (6 z 49)"), ("wersja", "0.96"), ("co nowego", "KUŹNIA"),
+                ("lotto", "Lotto (6 z 49)"), ("wersja", "1.0.0"), ("co nowego", "KUŹNIA"),
                 ("nazwa komputera", "Komputer:"), ("samokontrola", "SAMOKONTROLA"),
                 // 0.95 · WARSZTAT: the new tools through the real pipeline (the QR check stays in UtilityRegression, it writes a file)
                 ("porownaj teksty: ala ma kota ||| ala ma psa", "tylko w drugim"), ("regex: \\d+ ||| mam 12 kotów", "dopasowania: 1"),
@@ -291,20 +294,15 @@ public static class UiSmokeTestRunner
             if (toolsVm.Recent.Count == 0) throw new InvalidOperationException("A run tool must appear in the session history.");
             toolsVm.ClearQueryCommand.Execute(null);
             if (toolsVm.Results.Count < 40) throw new InvalidOperationException("Clearing the filters must restore the whole catalogue.");
-            // 0.91 · CENTRUM: every embedded tab inside Centrum must render without binding errors.
-            foreach (var tab in chat.Sections)
-            {
-                chat.SelectedTab = tab;
-                await shell.Dispatcher.InvokeAsync(shell.UpdateLayout, DispatcherPriority.ContextIdle);
-                await Task.Delay(150);
-                var tabImage = new RenderTargetBitmap((int)shell.ActualWidth, (int)shell.ActualHeight, 96, 96, PixelFormats.Pbgra32);
-                tabImage.Render(shell);
-                var tabPng = new PngBitmapEncoder(); tabPng.Frames.Add(BitmapFrame.Create(tabImage));
-                using var tabFile = File.Create(Path.Combine(output, "centrum-" + tab.Key + ".png")); tabPng.Save(tabFile);
-                visited.Add("centrum:" + tab.Key);
-            }
-            chat.SelectedTab = chat.Sections[0];
+            // The redesigned Centrum is a single conversation surface, not the former multi-tab workbench.
+            // Revisit its real shell route and render the chat, streaming controls and input together.
+            vm.SelectedItem = vm.NavItems.First(x => x.Key == "command");
             await shell.Dispatcher.InvokeAsync(shell.UpdateLayout, DispatcherPriority.ContextIdle);
+            await Task.Delay(150);
+            if (!ReferenceEquals(vm.CurrentPage, chat))
+                throw new InvalidOperationException("Centrum navigation did not select the single conversation page.");
+            Capture(shell, Path.Combine(output, "command-center.png"));
+            visited.Add("command-center:conversation");
             var historyVm = services.GetRequiredService<HistoryViewModel>();
             await historyVm.RefreshCommand.ExecuteAsync(null);
             historyVm.StatusFilter = "VERIFIED";
@@ -365,7 +363,7 @@ public static class UiSmokeTestRunner
             string errors = buffer.ToString();
             File.WriteAllText(Path.Combine(output, "bindings.log"), errors);
             if (errors.Length != 0) throw new InvalidOperationException("WPF binding errors: " + errors);
-            File.WriteAllText(Path.Combine(output, "ui-smoke.txt"), "PASS\nPages: " + string.Join(", ", visited) + "\nCentrum tabs, // palette and voice default verified\nDark/DeepDark/Light/System themes rendered\nSTOP/Resume/voice approval passed\nPalette, readiness, draft preservation and execution-scoped evidence passed\nTypo repair, grey-zone questions, lessons, self-check, offline tools, the 0.95 workshop catalogue, the 0.96 forge tools, decision preview and task search, archives, insights and unified search passed\n");
+            File.WriteAllText(Path.Combine(output, "ui-smoke.txt"), "PASS\nPages: " + string.Join(", ", visited) + "\nRedesigned single-conversation Centrum, // palette and voice default verified\nDark/DeepDark/Light/System themes rendered\nSTOP/Resume/voice approval passed\nPalette, readiness, draft preservation and execution-scoped evidence passed\nTypo repair, grey-zone questions, lessons, self-check, offline tools, the 0.95 workshop catalogue, the 0.96 forge tools, decision preview and task search, archives, insights and unified search passed\n");
         }
         finally { PresentationTraceSources.DataBindingSource.Listeners.Remove(listener); }
     }

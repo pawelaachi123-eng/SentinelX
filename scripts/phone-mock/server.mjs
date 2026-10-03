@@ -14,6 +14,7 @@ import { fileURLToPath } from 'node:url';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const WEB = path.resolve(here, '../../Phone/web');
+const API_VERSION = 1;
 const FP = (process.env.MOCK_FP || crypto.createHash('sha256').update('sentinelx-mock-cert').digest('hex')).toLowerCase();
 const APPROVE_MS = Number(process.env.MOCK_APPROVE_MS ?? 2500);
 const PORT = Number(process.argv[2] || process.env.PORT || 8088);
@@ -30,6 +31,12 @@ const iso = d => new Date(d).toISOString();
 const db = {
   tokens: new Map(), // token -> { id, name, addedAt, lastSeen }
   pairs: new Map(),
+  files: new Map(), uploads: new Map(), nextFileId: 1,
+  automations: {
+    actions: [{ id: 'open-url', name: 'Otwórz adres URL', category: 'system', description: 'Otwiera dozwoloną stronę w domyślnej przeglądarce.', requiredPermission: 'browser' }],
+    rules: [], history: [], nextId: 1
+  },
+  powerChallenges: new Map(), replays: new Map(),
   nextId: 1,
   tasks: [
     { id: 't1', title: 'Zrobić kopię zapasową zdjęć', priority: 'wysoki', status: 'otwarte', due: iso(Date.now() + 26 * 3600e3), project: '' },
@@ -104,14 +111,17 @@ async function chat(req, res, text) {
 
 async function api(req, res, url) {
   const p = url.pathname;
-  if (p === '/api/hello') return json(res, 200, { app: 'SentinelX', api: 1, version: '0.94', name: 'PAWEL-PC', fingerprint: FP });
+  if (p === '/api/hello') return json(res, 200, { app: 'SentinelX', api: API_VERSION, version: '0.94', name: 'PAWEL-PC', fingerprint: FP,
+    capabilities: ['systemMetrics', 'processList', 'assistantChat', 'assistantControl', 'tasks', 'reminders', 'notes', 'alerts', 'deviceManagement', 'fileTransfer', 'automations', 'powerControl'] });
   if (p === '/api/pair/request' && req.method === 'POST') {
     const b = await readBody(req); if (!b.nonce || !b.device) return json(res, 400, { error: 'Brak danych parowania.' });
     const id = 'p' + (++db.nextId); const nonce = b64u(crypto.randomBytes(16));
-    const pair = { id, device: String(b.device).slice(0, 32), nonce, state: 'pending', sas: sasFor(FP, b.nonce, nonce), at: Date.now() };
+    const allowedCapabilities = new Set(['notifications', 'voiceInput', 'wakeOnLan']);
+    const capabilities = Array.isArray(b.capabilities) ? [...new Set(b.capabilities.filter(x => typeof x === 'string' && allowedCapabilities.has(x)))].slice(0, 3) : [];
+    const pair = { id, device: String(b.device).slice(0, 32), capabilities, nonce, state: 'pending', sas: sasFor(FP, b.nonce, nonce), at: Date.now() };
     db.pairs.set(id, pair);
     console.log(`[pair] prośba od „${pair.device}” · kod ${pair.sas.slice(0, 3)} ${pair.sas.slice(3)}`);
-    if (APPROVE_MS >= 0 && APPROVE_MS !== 0) setTimeout(() => { pair.state = 'approved'; pair.token = b64u(crypto.randomBytes(32)); pair.deviceId = 'd' + (++db.nextId); db.tokens.set(pair.token, { id: pair.deviceId, name: pair.device, addedAt: Date.now(), lastSeen: Date.now() }); console.log('[pair] zatwierdzono'); }, APPROVE_MS);
+    if (APPROVE_MS >= 0 && APPROVE_MS !== 0) setTimeout(() => { pair.state = 'approved'; pair.token = b64u(crypto.randomBytes(32)); pair.deviceId = 'd' + (++db.nextId); db.tokens.set(pair.token, { id: pair.deviceId, name: pair.device, capabilities: pair.capabilities, addedAt: Date.now(), lastSeen: Date.now() }); console.log('[pair] zatwierdzono'); }, APPROVE_MS);
     else if (APPROVE_MS < 0) setTimeout(() => { pair.state = 'denied'; }, 1200);
     return json(res, 200, { id, nonce, expiresIn: 120, sas: pair.sas });
   }
@@ -123,6 +133,14 @@ async function api(req, res, url) {
 
   const dev = auth(req);
   if (!dev) return json(res, 401, { error: 'unauthorized' });
+  if (['POST', 'PUT', 'DELETE'].includes(req.method)) {
+    const requestId = req.headers['x-sentinel-request-id'];
+    if (typeof requestId !== 'string' || !/^[A-Za-z0-9_-]{20,64}$/.test(requestId)) return json(res, 400, { error: 'Brak prawidłowego request ID.' });
+    const replayKey = dev.id + ':' + requestId;
+    if (db.replays.has(replayKey)) return json(res, 409, { error: 'Powtórzone żądanie.' });
+    db.replays.set(replayKey, Date.now());
+    if (db.replays.size > 10000) for (const [key, at] of db.replays) if (Date.now() - at > 10 * 60e3) db.replays.delete(key);
+  }
 
   if (p === '/api/state') {
     return json(res, 200, {
@@ -130,7 +148,8 @@ async function api(req, res, url) {
       metrics: metrics(), engine: engine(),
       assistant: { busy: db.busy, stopped: db.stopped, pending: false, pendingSummary: '' },
       care: { ok: true, text: 'Wszystko działa samo · ostatnia kontrola ' + new Date().toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' }) },
-      counts: { tasks: db.tasks.length, reminders: db.reminders.length, notes: db.notes.length, alerts: db.alerts.length }, alertsLast: db.alertId
+      counts: { tasks: db.tasks.length, reminders: db.reminders.length, notes: db.notes.length, alerts: db.alerts.length }, alertsLast: db.alertId,
+      capabilities: ['systemMetrics', 'processList', 'assistantChat', 'assistantControl', 'tasks', 'reminders', 'notes', 'alerts', 'deviceManagement', 'fileTransfer', 'automations', 'powerControl']
     });
   }
   if (p === '/api/chat' && req.method === 'POST') { const b = await readBody(req); return chat(req, res, String(b.text || '')); }
@@ -150,7 +169,57 @@ async function api(req, res, url) {
     if (!list.length && wait > 0) { await new Promise(ok => { const t = setTimeout(() => { waiters.delete(f); ok(); }, wait * 1000); const f = () => { clearTimeout(t); waiters.delete(f); ok(); }; waiters.add(f); req.on('close', f); }); list = pick(); }
     return json(res, 200, { alerts: list, last: db.alertId });
   }
-  if (p === '/api/devices') return json(res, 200, { devices: [...db.tokens.values()].map(d => ({ id: d.id, name: d.name, addedAt: iso(d.addedAt), lastSeen: iso(d.lastSeen), current: d === dev })) });
+  if (p === '/api/files' && req.method === 'GET') {
+    const files = [...db.files.values()].map(({ data, ...file }) => file).sort((a, b) => b.uploadedAt.localeCompare(a.uploadedAt));
+    return json(res, 200, { files, maxFileBytes: 25 * 1024 * 1024, chunkBytes: 40 * 1024 });
+  }
+  if (p === '/api/files/upload/start' && req.method === 'POST') {
+    const b = await readBody(req), name = path.basename(String(b.name || '')).slice(0, 180), size = Number(b.size), sha256 = String(b.sha256 || '').toLowerCase();
+    if (!name || !Number.isInteger(size) || size < 1 || size > 25 * 1024 * 1024 || !/^[a-f0-9]{64}$/.test(sha256)) return json(res, 400, { error: 'Nieprawidłowy plik.' });
+    const id = 'u' + (db.nextFileId++); db.uploads.set(id, { owner: dev.id, name, size, sha256, chunks: [], next: 0 });
+    return json(res, 200, { ok: true, id, chunkBytes: 40 * 1024 });
+  }
+  if (p === '/api/files/upload/chunk' && req.method === 'POST') {
+    const b = await readBody(req), upload = db.uploads.get(String(b.id || ''));
+    if (!upload || upload.owner !== dev.id || Number(b.index) !== upload.next) return json(res, 409, { error: 'Nieprawidłowa kolejność porcji.' });
+    let chunk; try { chunk = Buffer.from(String(b.data || ''), 'base64'); } catch { return json(res, 400, { error: 'Nieprawidłowe dane.' }); }
+    if (!chunk.length || chunk.length > 40 * 1024 || upload.chunks.reduce((n, part) => n + part.length, 0) + chunk.length > upload.size) return json(res, 400, { error: 'Nieprawidłowy rozmiar porcji.' });
+    upload.chunks.push(chunk); upload.next++;
+    const received = upload.chunks.reduce((n, part) => n + part.length, 0);
+    if (received < upload.size) return json(res, 200, { ok: true, done: false, nextIndex: upload.next });
+    const data = Buffer.concat(upload.chunks);
+    if (data.length !== upload.size || crypto.createHash('sha256').update(data).digest('hex') !== upload.sha256) { db.uploads.delete(String(b.id)); return json(res, 409, { error: 'Weryfikacja SHA-256 nie powiodła się.' }); }
+    const file = { id: 'f' + (db.nextFileId++), name: upload.name, size: data.length, sha256: upload.sha256, uploadedAt: iso(Date.now()), data };
+    db.files.set(file.id, file); db.uploads.delete(String(b.id));
+    const { data: _data, ...summary } = file; return json(res, 200, { ok: true, done: true, nextIndex: upload.next, file: summary });
+  }
+  if (p === '/api/files/upload/cancel' && req.method === 'POST') { const b = await readBody(req), upload = db.uploads.get(String(b.id || '')); const ok = !!upload && upload.owner === dev.id; if (ok) db.uploads.delete(String(b.id)); return json(res, ok ? 200 : 404, { ok }); }
+  if (p === '/api/files/download' && req.method === 'GET') {
+    const file = db.files.get(url.searchParams.get('id') || '');
+    if (!file) return json(res, 404, { error: 'Nie znaleziono pliku.' });
+    res.writeHead(200, { 'content-type': 'application/octet-stream', 'content-length': file.data.length, 'cache-control': 'no-store' }); return res.end(file.data);
+  }
+  if (p === '/api/files/delete' && req.method === 'POST') { const b = await readBody(req), file = db.files.get(String(b.id || '')); if (!file) return json(res, 404, { error: 'Nie znaleziono pliku.' }); db.files.delete(String(b.id)); return json(res, 200, { ok: true }); }
+
+  if (p === '/api/automations' && req.method === 'GET') return json(res, 200, { available: true, status: 'Akcje ograniczone do katalogu testowego.', actions: db.automations.actions, rules: db.automations.rules.map(rule => ({ rule, running: false })), history: db.automations.history.slice(-50).reverse() });
+  if (p === '/api/automations/save' && req.method === 'POST') {
+    const b = await readBody(req), name = String(b.name || '').trim().slice(0, 80), actions = Array.isArray(b.actions) ? b.actions : [];
+    if (!name || !actions.length || actions.length > 5 || actions.some(x => x.actionId !== 'open-url' || !String(x.parameter || '').startsWith('https://'))) return json(res, 400, { error: 'Nieprawidłowa reguła testowa.' });
+    const id = b.id || 'a' + (db.automations.nextId++), rule = { id, name, trigger: b.trigger || 'manual', scheduleTime: b.scheduleTime || '', enabled: !!b.enabled, actions, lastRunStatus: 'bez wykonań' };
+    const index = db.automations.rules.findIndex(x => x.id === id); if (index >= 0) db.automations.rules[index] = rule; else db.automations.rules.push(rule);
+    return json(res, 200, { rule, running: false });
+  }
+  if (p === '/api/automations/enabled' && req.method === 'POST') { const b = await readBody(req), rule = db.automations.rules.find(x => x.id === b.id); if (!rule) return json(res, 404, { error: 'Nie znaleziono reguły.' }); rule.enabled = !!b.enabled; return json(res, 200, { ok: true }); }
+  if (p === '/api/automations/run' && req.method === 'POST') { const b = await readBody(req), rule = db.automations.rules.find(x => x.id === b.id); if (!rule) return json(res, 404, { error: 'Nie znaleziono reguły.' }); rule.lastRunStatus = 'SUCCESS'; db.automations.history.push({ id: 'run' + Date.now(), ruleName: rule.name, status: 'SUCCESS', result: 'Test: dozwolona akcja przyjęta.', startedAt: iso(Date.now()) }); return json(res, 200, { ok: true, status: 'SUCCESS', message: 'Testowa reguła zakończona.' }); }
+  if (p === '/api/automations/cancel' && req.method === 'POST') { await readBody(req); return json(res, 200, { ok: true }); }
+  if (p === '/api/automations/delete' && req.method === 'POST') { const b = await readBody(req), before = db.automations.rules.length; db.automations.rules = db.automations.rules.filter(x => x.id !== b.id); return json(res, before === db.automations.rules.length ? 404 : 200, { ok: true }); }
+
+  if (p === '/api/power/prepare' && req.method === 'POST') { const b = await readBody(req); if (!['lock', 'restart', 'shutdown'].includes(b.action)) return json(res, 400, { error: 'Nieobsługiwana operacja.' }); const challenge = b64u(crypto.randomBytes(24)); db.powerChallenges.set(challenge, { owner: dev.id, action: b.action }); return json(res, 200, { ok: true, action: b.action, challenge, expiresInSeconds: 60 }); }
+  if (p === '/api/power/execute' && req.method === 'POST') { const b = await readBody(req), challenge = db.powerChallenges.get(String(b.challenge || '')); if (!challenge || challenge.owner !== dev.id || challenge.action !== b.action) return json(res, 409, { error: 'Potwierdzenie wygasło.' }); db.powerChallenges.delete(String(b.challenge)); return json(res, 200, { ok: true, action: b.action, message: 'Atrapa przyjęła typowane polecenie; nie wykonano operacji na systemie.' }); }
+
+  if (p === '/api/devices') return json(res, 200, { devices: [...db.tokens.values()].map(d => ({ id: d.id, name: d.name, addedAt: iso(d.addedAt), lastSeen: iso(d.lastSeen), current: d === dev, capabilities: d.capabilities || [] })) });
+  if (p === '/api/devices/rotate' && req.method === 'POST') { const old = [...db.tokens].find(([, d]) => d === dev)?.[0]; if (!old) return json(res, 404, { error: 'Urządzenie nie znaleziono.' }); const token = b64u(crypto.randomBytes(32)); db.tokens.delete(old); db.tokens.set(token, dev); return json(res, 200, { ok: true, token, deviceId: dev.id }); }
+  if (p === '/api/devices/revoke' && req.method === 'POST') { const b = await readBody(req), target = [...db.tokens].find(([, d]) => d.id === b.id); if (!target || target[1] === dev) return json(res, 404, { error: 'Nie znaleziono innego telefonu.' }); db.tokens.delete(target[0]); return json(res, 200, { ok: true }); }
   if (p === '/api/unpair' && req.method === 'POST') { for (const [t, d] of db.tokens) if (d === dev) db.tokens.delete(t); return json(res, 200, { ok: true }); }
   if (p === '/api/mock/alert' && req.method === 'POST') { const b = await readBody(req); pushAlert(b.level || 'warn', b.title || 'Test', b.text || ''); return json(res, 200, { ok: true }); }
   return json(res, 404, { error: 'Nie znaleziono.' });

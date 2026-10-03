@@ -131,13 +131,18 @@ public sealed class CommandRouter
         if (text is "wersja" or "jaka wersja" or "wersja sentinel" or "wersja aplikacji")
             return "Sentinel X " + AppConstants.Version + " · " + systemInfo.GetWindowsVersion() + " · .NET " + Environment.Version;
         if (text is "co nowego" or "lista zmian" or "changelog" or "co sie zmienilo")
-            return "CO NOWEGO W 0.96 · KUŹNIA\n" +
+            return "CO NOWEGO W 1.0.0 · FUNDAMENT\n" +
+                "· Spójne wersjonowanie desktopu i APK; numer instalacyjny Androida pozostał monotoniczny.\n" +
+                "· Telefon korzysta z typowanych kontraktów API v1 i jawnej listy funkcji komputera; starsze klienty zachowują zgodność.\n" +
+                "· Android zgłasza tylko dostępne funkcje, a token sesji aplikacji jest szyfrowany kluczem Android Keystore.\n" +
+                "· Automatyzacje pozostają ograniczone do rozpoznanych aplikacji, walidowanych URL-i i powiadomień — bez powłoki.\n" +
+                "\nWCZEŚNIEJ · 0.96 KUŹNIA\n" +
                 "· Podgląd decyzji: „jak to rozumiem: <polecenie>” pokazuje, co Sentinel by zrobił (literówka, narzędzie, pytanie, model AI) — niczego przy tym nie wykonuje ani nie zapisuje.\n" +
                 "· „szukaj w zadaniach: fraza” przeszukuje zadania (także zrobione) i przypomnienia; wcześniej przesłaniała je wyszukiwarka internetowa, a przypomnień nie obejmowało.\n" +
                 "· 11 nowych narzędzi w kategorii „Kuźnia 0.96”: nazwy zmiennych, kodowanie URL, czas Unix, najczęstsze słowa, rata kredytu, porównanie wersji, numerowanie i odwracanie wierszy, poprawa odstępów.\n" +
                 "· Porządek w kodzie: Brain/ (rozumienie i pamięć), Brain/Router/, Tools/ (narzędzia), Testing/ (testy w aplikacji).\n" +
                 "\nCO NOWEGO W 0.95 · WARSZTAT\n" +
-                "· Nowa strona NARZĘDZIA (🧰 w pasku albo zakładka w Centrum): katalog ponad 60 narzędzi z wyszukiwaniem, przykładem, polem argumentu i wynikiem — wszystko liczy się lokalnie.\n" +
+                "· Nowa strona NARZĘDZIA (🧰 w nawigacji albo palecie poleceń): katalog ponad 60 narzędzi z wyszukiwaniem, przykładem, polem argumentu i wynikiem — wszystko liczy się lokalnie.\n" +
                 "· Nowe narzędzia: porównanie tekstów (diff), test wyrażeń regularnych, skrót SHA-256/MD5 pliku, wyciąganie e-maili i linków, sortowanie i usuwanie duplikatów wierszy, kwota słownie, sekundy↔czas, ocena mocy hasła, kody QR (także do sieci Wi-Fi).\n" +
                 "· Wygląd: metryki CPU/RAM/GPU na żywo w pasku bocznym, przełącznik motywu jednym kliknięciem (ciemny, głęboka czerń, jasny, jak Windows), pełna paleta jasna i głębokiej czerni.\n" +
                 "\nCO NOWEGO W 0.94 · AUTOPILOT\n" +
@@ -260,7 +265,7 @@ public sealed class CommandRouter
             return $"Rozumiem: przypomnienie „{reminderText}” na {description} (czas lokalny). Zapiszę to dopiero po Twojej zgodzie — odpowiedz „tak” albo „nie”.";
         }
         // „dodaj zadanie”, „zrob zadanie” and „nowe zadanie” are one explicit command — the task lands
-        // directly in the Tasks tab (Centrum → 📓), not just in the chat reply.
+        // directly in the Tasks page, not just in the chat reply.
         var addTask = Regex.Match(command, @"^(?:dodaj|zrob|nowe) zadanie[:\s]\s*(.+)$", RegexOptions.IgnoreCase);
         if (addTask.Success)
         {
@@ -270,7 +275,7 @@ public sealed class CommandRouter
             { title = cleanTitle; due = parsedDue; dueNote = $" z terminem {dueDescription} (czas lokalny)"; }
             string projectId = projects?.ActiveProjectId ?? "";
             return tasks.AddTask(title, TaskRecord.PriorityNormal, due, projectId) != null
-                ? StorageResult("Zadanie zapisane" + dueNote + ". Znajdziesz je w Centrum → zakładka 📓 Zadania.")
+                ? StorageResult("Zadanie zapisane" + dueNote + ". Znajdziesz je na stronie Zadania.")
                 : tasks.LastStorageError ?? "Nie zapisano zadania.";
         }
         // 0.96 · KUŹNIA: read-only search through tasks (also done ones) and reminders.
@@ -423,7 +428,7 @@ public sealed class CommandRouter
         }
         if (text is "status pamieci" or "ile pamietasz") return StorageResult($"Pamięć: {memory.Count} wpisów, w tym {memory.NoteCount} trwałych wspomnień.");
         if (Services.Memory.MemoryActionService.IsMutation(command) || text == "potwierdz usuniecie wspomnien")
-            return "Operacje usuwania pamięci wymagają zgody w centrum poleceń. Nie wykonano zmian.";
+            return "Operacje usuwania pamięci wymagają osobnej zgody w Asystencie. Nie wykonano zmian.";
         if (text is "eksportuj pamiec" or "eksportuj rozmowe")
         {
             try { return "Eksport lokalny zapisany: " + memory.Export(); }
@@ -602,7 +607,7 @@ public sealed class CommandRouter
     private const string Help = """
         SENTINEL X — CO UMIEM (wszystko działa lokalnie)
 
-        Interfejs: wpisz „//” w polu czatu — lista poleceń, Tab wybiera, Enter wykonuje. Strona 🧰 Narzędzia to katalog z wyszukiwaniem i polem argumentu. Centrum mieści zakładki: 📓 zadania, 🕘 historia, 🎤 głos, 🖥 system, 🎮 gry, ✨ AI, ⚡ akcje, 🩺 diagnostyka, 🧰 narzędzia.
+        Interfejs: wpisz „//” w polu rozmowy — Tab wybiera skrót, Enter uruchamia wybrane polecenie albo otwiera stronę. Ctrl+K otwiera paletę stron i poleceń; wybrane polecenie jest tam tylko przygotowane i wymaga sprawdzenia oraz wysłania.
         Pomiary i system: ile mam RAM · użycie CPU · użycie GPU · dyski · top procesy · czas pracy komputera · która godzina · dzisiejsza data · nazwa komputera · ile rdzeni · architektura · moje ip
         Aplikacje: włącz <nazwa> (cs2, discord, steam, chrome, brave, spotify, notatnik, kalkulator, VS Code, Firefox, VLC, OBS…) · otwórz pobrane / dokumenty / pulpit · skróty
         Diagnostyka: diagnostyka komputera (albo //diag) · eksportuj raport · status zabezpieczeń · zdarzenia windows · programy autostartu · lista usług

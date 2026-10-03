@@ -18,6 +18,12 @@ for path in files:
             local.add(key)
     keys |= local
 
+android_xml = [ROOT / "phone-android/app/src/main/AndroidManifest.xml"] + list((ROOT / "phone-android/app/src/main/res").rglob("*.xml"))
+for path in android_xml:
+    ET.parse(path)
+
+# Shell/window events and QR image projection are view-only; all business operations remain in view models/services.
+view_only_interactions = {ROOT / "Views/MainWindow.xaml.cs", ROOT / "Views/Pages/DevicesPage.xaml.cs"}
 for path in (ROOT / "Views").rglob("*.xaml"):
     document = ET.parse(path)
     for node in document.iter():
@@ -29,7 +35,8 @@ for path in (ROOT / "Views").rglob("*.xaml"):
     assert not re.search(r'="#[0-9a-fA-F]{6,8}"', source), f"Hard-coded view color: {path}"
     behind = Path(str(path) + ".cs")
     assert behind.exists(), f"Missing code-behind: {path}"
-    assert len(behind.read_text(encoding="utf-8").splitlines()) < 20, f"Non-trivial code-behind: {behind}"
+    if behind not in view_only_interactions:
+        assert len(behind.read_text(encoding="utf-8").splitlines()) < 20, f"Non-trivial code-behind: {behind}"
 
 for path in (ROOT / "ViewModels").glob("*.cs"):
     source = path.read_text(encoding="utf-8")
@@ -39,7 +46,44 @@ for path in (ROOT / "ViewModels").glob("*.cs"):
 project = ET.parse(ROOT / "SENTINEL-X.csproj")
 assert project.findtext(".//TargetFramework") == "net10.0-windows"
 assert project.findtext(".//UseWindowsForms") != "true"
-assert len(list((ROOT / "Views/Pages").glob("*Page.xaml"))) == 13
+page_files = list((ROOT / "Views/Pages").glob("*Page.xaml"))
+assert len(page_files) == 17
+main_window = ET.parse(ROOT / "Views/MainWindow.xaml")
+page_templates = {
+    child.tag.split("}")[-1]
+    for template in main_window.iter()
+    if template.tag.endswith("}DataTemplate")
+    and template.attrib.get("DataType", "").startswith("{x:Type vm:")
+    for child in list(template)
+    if child.tag.startswith("{clr-namespace:SentinelX.Views.Pages}")
+}
+expected_pages = {path.stem for path in page_files}
+assert page_templates == expected_pages, f"Page/DataTemplate mismatch: missing={sorted(expected_pages - page_templates)}, extra={sorted(page_templates - expected_pages)}"
+# Keep the API version synchronized across the C# server, Android discovery client, and browser mock.
+api_sources = {
+    "C# server": (ROOT / "Services/Link/LinkContracts.cs", r"CurrentVersion\s*=\s*(\d+)"),
+    "Android client": (ROOT / "phone-android/app/src/main/java/pl/sentinelx/phone/PcLocator.java", r"LINK_API_VERSION\s*=\s*(\d+)"),
+    "phone mock": (ROOT / "scripts/phone-mock/server.mjs", r"API_VERSION\s*=\s*(\d+)"),
+}
+api_versions = {}
+for name, (path, pattern) in api_sources.items():
+    match = re.search(pattern, path.read_text(encoding="utf-8"))
+    assert match, f"Missing Link API version in {path}"
+    api_versions[name] = int(match.group(1))
+assert len(set(api_versions.values())) == 1, f"Link API version mismatch: {api_versions}"
+
+# The dark phone/native shells share the desktop's semantic base palette; prevent silent color drift.
+palette_files = [
+    ROOT / "Themes/DarkTheme.xaml",
+    ROOT / "Phone/web/app.css",
+    ROOT / "phone-android/app/src/main/res/values/colors.xml",
+]
+canonical_palette = ("#0D0F14", "#141820", "#2A2F3C", "#E8ECF4", "#8B92A5", "#00D4FF", "#8B5CF6")
+for path in palette_files:
+    source = path.read_text(encoding="utf-8").upper()
+    for color in canonical_palette:
+        assert color in source, f"Semantic palette mismatch: {color} missing from {path}"
+
 # 0.96 · KUŹNIA: the logic is split by responsibility, and the "brain" and the tools never touch WPF.
 assert not (ROOT / "CommandRouter.cs").exists(), "CommandRouter.cs belongs in Brain/Router/"
 for required in ("Brain/Router/CommandRouter.cs", "Brain/Router/DecisionPreview.cs", "Tools/UtilityToolbox.cs", "Tools/ForgeTools.cs", "Testing/UiSmokeTestRunner.cs"):
@@ -47,4 +91,4 @@ for required in ("Brain/Router/CommandRouter.cs", "Brain/Router/DecisionPreview.
 for folder in ("Brain", "Tools"):
     for path in (ROOT / folder).rglob("*.cs"):
         assert "using System.Windows" not in path.read_text(encoding="utf-8-sig"), f"WPF in {folder}/: {path}"
-print("PASS: XML, resources, 13 views, thin code-behind, VM boundaries, target framework, no WinForms flag, Brain/Tools layout without WPF")
+print("PASS: XML, resources, Link API version parity, semantic palette parity, 17 views, thin code-behind, VM boundaries, target framework, no WinForms flag, Brain/Tools layout without WPF")

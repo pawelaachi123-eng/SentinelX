@@ -16,6 +16,13 @@ public partial class AiViewModel : ObservableObject, IDisposable
     [ObservableProperty] private string engineLabel = "Silnik AI startuje";
     [ObservableProperty] private string engineMessage = "";
     [ObservableProperty] private double engineProgressPercent;
+    [ObservableProperty] private bool isRefreshing;
+    [ObservableProperty] private bool isSelectingModel;
+    [ObservableProperty] private bool isRepairing;
+    public bool IsBusy => IsRefreshing || IsSelectingModel || IsRepairing;
+    partial void OnIsRefreshingChanged(bool value) => OnPropertyChanged(nameof(IsBusy));
+    partial void OnIsSelectingModelChanged(bool value) => OnPropertyChanged(nameof(IsBusy));
+    partial void OnIsRepairingChanged(bool value) => OnPropertyChanged(nameof(IsBusy));
     public AiViewModel(IAiService ai, IEngineService engine, IUiDispatcher dispatcher)
     {
         this.ai = ai; this.engine = engine; this.dispatcher = dispatcher;
@@ -39,6 +46,7 @@ public partial class AiViewModel : ObservableObject, IDisposable
     }
     [RelayCommand(IncludeCancelCommand = true)] private async Task RefreshAsync(CancellationToken token)
     {
+        IsRefreshing = true;
         Status = "Sprawdzam modele silnika AI…";
         try
         {
@@ -48,18 +56,24 @@ public partial class AiViewModel : ObservableObject, IDisposable
         }
         catch (OperationCanceledException) { Status = "Sprawdzanie przerwane lub przekroczono czas."; }
         catch (Exception ex) { Status = "Silnik AI jeszcze nie jest gotowy (naprawi się sam). " + ex.Message; }
+        finally { IsRefreshing = false; }
     }
     [RelayCommand(IncludeCancelCommand = true)] private async Task SelectModelAsync(CancellationToken token)
     {
         if (string.IsNullOrWhiteSpace(SelectedModel)) return;
+        IsSelectingModel = true;
         try { Status = await ai.SelectModelAsync(SelectedModel, token); }
-        catch (OperationCanceledException) { Status = "Przerwano."; }
+        catch (OperationCanceledException) { Status = "Przerwano wybór modelu."; }
         catch (Exception ex) { Status = ex.Message; }
+        finally { IsSelectingModel = false; }
     }
-    [RelayCommand] private async Task RepairAsync()
+    [RelayCommand(IncludeCancelCommand = true)] private async Task RepairAsync(CancellationToken token)
     {
-        try { Status = await engine.RepairAsync(CancellationToken.None); }
+        IsRepairing = true;
+        try { Status = await engine.RepairAsync(token); }
+        catch (OperationCanceledException) { Status = "Przerwano naprawę silnika AI."; }
         catch (Exception ex) { Status = "Nie udało się uruchomić naprawy: " + ex.Message; }
+        finally { IsRepairing = false; }
     }
     public void Dispose() => engine.Changed -= OnEngineChanged;
 }

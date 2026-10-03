@@ -55,19 +55,31 @@
                                     <Button Content="Edytuj" Command="{Binding DataContext.BeginEditCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" Style="{StaticResource SxGhostButton}" Margin="0,0,8,0"/>
                                     <Button Content="{Binding PinLabel}" Command="{Binding DataContext.TogglePinCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" Style="{StaticResource SxGhostButton}" Margin="0,0,8,0"/>
                                     <Button Content="{Binding StaleLabel}" Command="{Binding DataContext.ToggleStaleCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" Style="{StaticResource SxGhostButton}" Margin="0,0,8,0" ToolTip="Nieaktualne wspomnienie nie trafia do kontekstu AI, ale nie jest kasowane"/>
-                                    <Button Content="Usuń" Command="{Binding DataContext.RequestDeleteCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" Style="{StaticResource SxDangerButton}" Margin="0,0,8,0" ToolTip="Wymaga zgody HIGH w Centrum — usuwa wyłącznie ten wpis"/>
+                                    <Button Content="Usuń" Command="{Binding DataContext.RequestDeleteCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" Style="{StaticResource SxDangerButton}" Margin="0,0,8,0" ToolTip="Wymaga zgody HIGH w Asystencie — usuwa wyłącznie ten wpis"/>
                                 </WrapPanel>
                             </StackPanel>
                         </Border>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
-            <TextBlock Text="Brak wspomnień do pokazania. Dodaj własne powyżej albo napisz w rozmowie: zapamiętaj …" Margin="0,0,0,16">
+            <TextBlock Text="Brak wspomnień. Dodaj własne powyżej albo napisz w rozmowie: zapamiętaj …" Margin="0,0,0,16">
                 <TextBlock.Style>
                     <Style TargetType="TextBlock" BasedOn="{StaticResource SxCaption}">
                         <Setter Property="Visibility" Value="Collapsed"/>
                         <Style.Triggers>
-                            <DataTrigger Binding="{Binding Items.Count}" Value="0">
+                            <DataTrigger Binding="{Binding HasAnyNotes}" Value="False">
+                                <Setter Property="Visibility" Value="Visible"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
+            <TextBlock Text="Brak wyników. Zmień lub wyczyść wyszukiwanie, filtr kategorii albo wybór przypiętych." TextWrapping="Wrap" Margin="0,0,0,16">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock" BasedOn="{StaticResource SxCaption}">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding HasNoResults}" Value="True">
                                 <Setter Property="Visibility" Value="Visible"/>
                             </DataTrigger>
                         </Style.Triggers>
@@ -94,6 +106,7 @@
                             </DataTemplate>
                         </ListBox.ItemTemplate>
                     </ListBox>
+                    <TextBlock Text="Brak rozmów do wznowienia. Nowa rozmowa pojawi się po pierwszej wiadomości." TextWrapping="Wrap" Margin="0,8,0,0" Visibility="{Binding HasConversations, Converter={StaticResource InverseBooleanVisibility}}" Style="{StaticResource SxCaption}"/>
                 </StackPanel>
             </Border>
 
@@ -132,7 +145,7 @@
                         <Button Content="Przełącz tryb prywatny" Command="{Binding TogglePrivateModeCommand}" Style="{StaticResource SxDangerButton}" Margin="0,0,8,0" ToolTip="Rozmowa prywatna nie jest nigdzie zapisywana"/>
                         <TextBlock Text="{Binding IsPrivateMode, StringFormat=Tryb prywatny: {0}}" Foreground="{DynamicResource SxWarning}" VerticalAlignment="Center"/>
                     </WrapPanel>
-                    <TextBlock Text="Cztery przełączniki zapisu i podglądu kontekstu oraz retencję zmienisz w Settings → Pamięć. Usuwanie całej pamięci lub historia rozmowy odbywa się wyłącznie przez zgodę HIGH w Centrum." Style="{StaticResource SxCaption}" Margin="0,12,0,0"/>
+                    <TextBlock Text="Cztery przełączniki zapisu i podglądu kontekstu oraz retencję zmienisz w Ustawienia → Pamięć. Usuwanie całej pamięci lub historii rozmów wymaga osobnej zgody HIGH w Asystencie." Style="{StaticResource SxCaption}" Margin="0,12,0,0"/>
                 </StackPanel>
             </Border>
         </StackPanel>

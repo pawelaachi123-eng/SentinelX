@@ -99,6 +99,22 @@ internal static class EngineRegression
             try { await downloader.DownloadAsync("https://example.invalid/bad.bin", bad, payload.Length, new string('0', 64), null, default); }
             catch (InvalidDataException) { rejected = true; }
             Check(rejected && !File.Exists(bad) && !File.Exists(bad + ".part"), "a file with the wrong SHA-256 is deleted and never used");
+            bool insecureUrlRejected = false;
+            try { await downloader.DownloadAsync("http://example.invalid/model.bin", Path.Combine(directory, "dl", "insecure.bin"), payload.Length, hash, null, default); }
+            catch (ArgumentException) { insecureUrlRejected = true; }
+            Check(insecureUrlRejected, "engine downloads refuse cleartext HTTP URLs");
+        }
+        var oversizedHandler = new Handler((_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new ByteArrayContent(new byte[payload.Length + 1])
+        }));
+        using (var boundedDownloader = new EngineDownloader(oversizedHandler, 1, TimeSpan.Zero))
+        {
+            string oversized = Path.Combine(directory, "dl", "oversized.bin");
+            bool rejected = false;
+            try { await boundedDownloader.DownloadAsync("https://example.invalid/oversized.bin", oversized, payload.Length, hash, null, default); }
+            catch (InvalidDataException) { rejected = true; }
+            Check(rejected && !File.Exists(oversized + ".part"), "an oversized response is rejected before it can exhaust disk space");
         }
 
         // ---- the store recognises a complete model only by its exact size, and finds a bundled runtime

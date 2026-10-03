@@ -9,10 +9,12 @@ public partial class ReadinessViewModel(IReadinessService service) : ObservableO
     public ObservableCollection<ReadinessCheck> Checks { get; } = [];
     public event Action<string>? OpenSectionRequested;
     [ObservableProperty] private bool isOpen;
+    [ObservableProperty] private bool isBusy;
     [ObservableProperty] private string summary = "Sprawdź gotowość";
     [ObservableProperty] private string lastChecked = "Jeszcze nie sprawdzano";
     [RelayCommand(IncludeCancelCommand = true)] private async Task RefreshAsync(CancellationToken token)
     {
+        IsBusy = true;
         Summary = "Sprawdzanie lokalnej konfiguracji…";
         try
         {
@@ -25,6 +27,7 @@ public partial class ReadinessViewModel(IReadinessService service) : ObservableO
         }
         catch (OperationCanceledException) { Summary = "Przerwano sprawdzanie. Poprzednie wyniki mogą być nieaktualne."; }
         catch (Exception ex) { Summary = "Nie udało się sprawdzić konfiguracji: " + ex.Message; }
+        finally { IsBusy = false; }
     }
     [RelayCommand] private void OpenSection(string pageKey) { IsOpen = false; OpenSectionRequested?.Invoke(pageKey); }
     [RelayCommand] private void Close() => IsOpen = false;

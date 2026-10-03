@@ -89,6 +89,8 @@ namespace SentinelX
         private bool? lastEmergencyState;
         private bool? lastGamingState;
 
+        private bool? lastGamingDetectionAvailable;
+
 
         // =========================================================
         // EVENTS
@@ -313,7 +315,8 @@ namespace SentinelX
         public void UpdateState(
             bool voiceOn,
             bool emergencyStop,
-            bool gaming)
+            bool gaming,
+            bool gamingDetectionAvailable = true)
         {
             if (disposed)
                 return;
@@ -321,7 +324,8 @@ namespace SentinelX
 
             if (lastVoiceState == voiceOn &&
                 lastEmergencyState == emergencyStop &&
-                lastGamingState == gaming)
+                lastGamingState == gaming &&
+                lastGamingDetectionAvailable == gamingDetectionAvailable)
             {
                 return;
             }
@@ -337,6 +341,9 @@ namespace SentinelX
 
             lastGamingState =
                 gaming;
+
+            lastGamingDetectionAvailable =
+                gamingDetectionAvailable;
 
 
             voiceOnItem.IsEnabled =
@@ -359,6 +366,16 @@ namespace SentinelX
             {
                 tooltip =
                     "Sentinel X - EMERGENCY STOP";
+            }
+            else if (!gamingDetectionAvailable && voiceOn)
+            {
+                tooltip =
+                    "Sentinel X - Game status unavailable - Voice ON";
+            }
+            else if (!gamingDetectionAvailable)
+            {
+                tooltip =
+                    "Sentinel X - Game status unavailable";
             }
             else if (gaming &&
                      voiceOn)

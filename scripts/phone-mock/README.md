@@ -16,6 +16,7 @@ npm i --no-save puppeteer-core @sparticuz/chromium
 AWS_EXECUTION_ENV=AWS_Lambda_nodejs22.x node ui-test.mjs
 ```
 
-Sprawdza m.in.: zgodność SHA-256/kodu potwierdzenia (SAS) z implementacją referencyjną, parowanie, czat ze
-strumieniem SSE, zadania, notatki, alerty (long-poll), odłączenie oraz brak błędów w konsoli.
-Kontrakt API opisuje `docs/PHONE-LINK.md`; atrapa i serwer w C# muszą się z nim zgadzać.
+Sprawdza m.in.: zgodność SHA-256 (jednorazowo i przyrostowo)/kodu potwierdzenia (SAS), parowanie, dashboard, czat SSE,
+typowane zasilanie z podwójnym potwierdzeniem, upload/download plików z kontrolą integralności, automatyzacje z katalogu,
+zadania, notatki, alerty (long-poll), rotację tokenu, odłączenie, panel offline i brak błędów w konsoli.
+Atrapa wymaga unikalnego `X-Sentinel-Request-Id` dla każdej mutacji. Kontrakt API opisuje `docs/PHONE-LINK.md`; atrapa i serwer w C# muszą się z nim zgadzać.

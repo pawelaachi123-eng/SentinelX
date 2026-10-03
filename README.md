@@ -1,6 +1,6 @@
-# SENTINEL X 0.96 · KUŹNIA — Windows + telefon
+# SENTINEL X 1.0.0 — fundament Windows + telefon
 
-Lokalny asystent Windows 10/11 (C# 14, .NET 10, WPF) z aplikacją na telefon. **Nic nie trzeba pilnować:** instalujesz raz, a Sentinel sam startuje z Windows, sam pobiera i naprawia swój silnik AI, sam pilnuje komputera i daje znać na telefon. Poprzedni interfejs jest nadal dostępny przez `--legacy`.
+Lokalny asystent Windows 10/11 (C# 14, .NET 10, WPF) z companionem Android i web UI. **Stan tej gałęzi: prace przygotowawcze 1.0.0; wydanie 1.0.0 nie zostało jeszcze opublikowane.** Ostatnie publiczne wydanie to przedpremierowe 0.98.0. Sentinel sam startuje z Windows, pobiera i naprawia lokalny silnik AI, monitoruje komputer i wysyła alerty. Poprzedni interfejs jest nadal dostępny przez `--legacy`.
 
 ## Szybki start (trzy kroki)
 
@@ -18,7 +18,21 @@ Telefon pokazuje **to samo co komputer**: ten sam czat z Sentinelem (polecenia, 
 - **Opiekun** sprawdza co minutę, czy łącze z telefonem i silnik AI działają, i uruchamia je ponownie, gdy trzeba. Jedna linia statusu mówi „Wszystko działa samo” albo — uczciwie — co wymaga Twojej uwagi.
 - **Wake-on-LAN:** aplikacja na Androida może wybudzić komputer (o ile karta sieciowa i BIOS na to pozwalają).
 
-Szczegóły techniczne: [docs/PHONE-LINK.md](docs/PHONE-LINK.md) (protokół i bezpieczeństwo), [docs/ENGINE.md](docs/ENGINE.md) (silnik AI), [docs/TOOLS.md](docs/TOOLS.md) (katalog narzędzi), [docs/RELEASE-0.96.md](docs/RELEASE-0.96.md) (notatki wydania i ograniczenia).
+Szczegóły techniczne: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) (mapa systemu), [docs/PHONE-LINK.md](docs/PHONE-LINK.md) (protokół API v1 i bezpieczeństwo), [docs/VERSIONING.md](docs/VERSIONING.md) (polityka wersji), [docs/ENGINE.md](docs/ENGINE.md) (silnik AI), [docs/TOOLS.md](docs/TOOLS.md) (katalog narzędzi), [docs/RELEASE-0.98.md](docs/RELEASE-0.98.md) (ostatnie opublikowane przedpremierowe wydanie).
+
+## Fundacja 1.0.0 (prace w toku, bez publikacji paczek)
+
+- `SENTINEL-X.csproj` jest źródłem wersji wydania; wersja aplikacji, instalatora, APK i nazw artefaktów ma pozostać zgodna. Android `versionCode` jest osobny i rośnie monotonicznie.
+- Łącze telefon–PC zachowuje API v1. Kontrakty stanu, zadań, poleceń, parowania i urządzeń są typowane po stronie Windows; nowe pola są dodatkami, żeby starszy klient nadal mógł się sparować.
+- PC publikuje wyłącznie rzeczywiste możliwości endpointów, a companion zgłasza powiadomienia, mowę i Wake-on-LAN tylko wtedy, gdy są dostępne. Zgłoszone możliwości są informacyjne i nie nadają uprawnień.
+- Token w natywnej aplikacji Android jest szyfrowany AES-GCM kluczem Android Keystore; tokeny przeglądarkowe pozostają w lokalnym, origin-scoped `localStorage`.
+- Kolory semantyczne są współdzielone między zasobami WPF, CSS aplikacji telefonu i zasobami natywnej powłoki Androida.
+
+## Automatyzacje i artefakty CI
+
+Strona **Automatyzacje** w Centrum pozwala zapisać regułę ręczną, na start aplikacji albo raz dziennie o lokalnej godzinie. Katalog akcji jest ograniczony do uruchomienia rozpoznanej aplikacji, otwarcia zweryfikowanego adresu HTTP/HTTPS oraz powiadomienia. Nie ma akcji powłoki, PowerShella ani dowolnej ścieżki procesu. Historia wykonania jest lokalna i ograniczona do 500 rekordów. Automatyzacje działają tylko wtedy, gdy Sentinel jest uruchomiony; wyzwalacze oparte na procesach, urządzeniach i warunkach systemowych nie są jeszcze dostępne.
+
+Zwykły push na gałąź `arena/**` uruchamia walidację Windows oraz buduje i weryfikuje Android APK debug i release, bez tworzenia ani nadpisywania wydania GitHub. Po pomyślnym przebiegu pobierz z sekcji **Actions → Artifacts** `sentinelx-windows-x64-installer-<commit>` (instalator `.exe`), `sentinelx-phone-apk-<commit>` (release) oraz `sentinelx-phone-debug-apk-<commit>` (debug); artefakty są przechowywane 7 dni. Debug APK używa debugowego klucza Androida i nie aktualizuje instalacji release. Trwałe APK aktualizowane bez odinstalowania wymagają nowego klucza podpisu skonfigurowanego jako chronione sekrety `SENTINELX_ANDROID_KEYSTORE_BASE64`, `SENTINELX_ANDROID_STORE_PASSWORD`, `SENTINELX_ANDROID_KEY_ALIAS` i `SENTINELX_ANDROID_KEY_PASSWORD`. Zwykły artefakt release branch-CI bez nich jest podpisany jednorazowym kluczem i przed kolejną instalacją wymaga odinstalowania. Workflow oficjalnego wydania zatrzymuje się, jeśli trwały nowy klucz nie jest skonfigurowany — nie publikuje APK podpisanego kluczem ujawnionym w repozytorium. Stary klucz został usunięty z bieżącego drzewa, ale wcześniejsze commity i klony nie są przepisywane w ramach zwykłego wdrożenia.
 
 ### Plan B: zbuduj instalator u siebie (bez GitHub Actions)
 
@@ -29,6 +43,17 @@ powershell -ExecutionPolicy Bypass -File scripts\build-local.ps1 -Test
 
 Aplikację na Androida najłatwiej zbudować w wydaniu na GitHubie (workflow **Release**); lokalnie potrzebny jest Android Studio — zob. [phone-android/README.md](phone-android/README.md).
 
+## Nowe w 0.98 — automatyzacje i bezpieczniejszy łącznik z telefonem
+
+- **Automatyzacje z ograniczonym katalogiem akcji:** ręczny start, uruchomienie przy starcie Sentinela oraz harmonogram dzienny; akcje mogą uruchomić rozpoznaną aplikację, otworzyć zweryfikowany adres HTTP/HTTPS albo pokazać powiadomienie. Dowolne skrypty, polecenia powłoki i ścieżki wykonywalne nie są obsługiwane.
+- **Trwała historia automatyzacji** z limitem zapisanych wyników i stanami wykonania; interfejs pokazuje rzeczywiste wyniki, nie symulowane postępy.
+- **Bezpieczniejsze parowanie telefonu:** utrwalony rejestr urządzeń i możliwość odwołania sparowania; sekret urządzenia jest przechowywany jako hash, a dostęp może być ograniczany per urządzenie.
+- **Ulepszenia odporności aplikacji Windows:** walidacja lokalizacji danych, bezpieczniejsze operacje na plikach/pobieranych komponentach oraz lepsze logowanie awarii.
+- **Publikowanie przez CI:** wersja Windows jest kompilowana, testowana i instalowana w smoke teście; build Androida jest weryfikowany w CI. Zwykłe buildy gałęzi nie tworzą wydania GitHub.
+- **Podpis Androida:** z repozytorium usunięto klucz historyczny, który nie powinien być zaufany. Oficjalny APK jest publikowany wyłącznie po weryfikacji nowego, trwałego klucza z chronionych sekretów; buildy gałęzi bez niego są podpisane kluczem tymczasowym i wymagają odinstalowania przed następną instalacją.
+- **0.98.0 przedpremierowe:** APK jest podpisany jednorazowym kluczem CI. Przed instalacją trzeba odinstalować poprzednią aplikację; może to usunąć lokalne dane. Kolejne APK również wymaga odinstalowania, dopóki nie będzie trwałego klucza.
+
+Szczegóły, ograniczenia i sposób pobrania: [docs/RELEASE-0.98.md](docs/RELEASE-0.98.md).
 
 ## Nowe w 0.96 — KUŹNIA: podgląd decyzji, szukanie w zadaniach i 11 nowych narzędzi
 
@@ -210,17 +235,18 @@ Edycja, kopiowanie i zmiana nazwy dotyczą ostatniego pliku utworzonego przez as
 
 - `Core/ServiceLocator.cs`: walidowany kontener DI, wspólne instancje serwisów i zachowywane przy nawigacji ViewModele.
 - `ViewModels/`: `ObservableObject`, `[ObservableProperty]`, `[RelayCommand]`. Brak operacji plikowych, zapytań systemowych i `Process.Start` w ViewModelach.
-- `Views/`: osiem stron, shell i overlay. Code-behind ograniczony do inicjalizacji widoku i przeciągania okna.
+- `Views/MainWindow.xaml` to aktywny shell WPF (14 stron/kontrolek, overlay i nawigacja do buforowanych ViewModeli). Katalogowy `MainWindow.xaml` to zachowany interfejs zgodności uruchamiany przez `--legacy` lub część starych runnerów.
 - `Services/`: interfejsy oraz integracja z istniejącymi, sprawdzanymi regresyjnie serwisami. Routing najpierw wybiera deterministyczne narzędzia, potem istniejący adaptacyjny transport AI.
-- `Themes/`: zasoby kolorów, własne style kontrolek i Fluent .NET 9; Dark, Deep Dark i paleta systemowa. Animacje przejść są wyłączone podczas gry.
+- `Services/Link/LinkContracts.cs` definiuje typowane kontrakty i capabilities API v1; `Phone/web/` jest osadzany w aplikacji PC, a `phone-android/` to Java/WebView shell dla wykrywania, przypiętego TLS, powiadomień, mowy i Wake-on-LAN.
+- `Themes/`: semantyczne kolory, typografia i style WPF (Dark, Deep Dark, Light/System); odpowiadają im CSS tokens w `Phone/web/app.css` i zasoby kolorów natywnej powłoki Androida. Animacje przejść są wyłączone podczas gry.
 - `Models/Settings/`: istniejący format ustawień zachowany bez duplikowania schematu. Migracja starego JSON, walidacja, zapis przez plik tymczasowy i kopia zapasowa.
 - Starsze pliki w katalogu głównym są celowo zachowane: część to współdzielone serwisy, część to interfejs zgodności.
 
 Dane pozostają w `%LOCALAPPDATA%\SentinelX\`: `Settings`, `History`, `Memory`, `Logs`, `CreatedFiles` oraz katalogi modeli używane przez istniejący manager. Testy używają odizolowanego `SENTINEL_DATA_DIR`.
 
-### Świadome odstępstwa od master prompta
+### Zachowane decyzje architektoniczne i wersjonowanie
 
-- Nie obniżano projektu do 0.77 z prompta: migrację rozpoczęto na 0.83, a bieżąca iteracja ma numer **0.86**.
+- Źródłem wersji wydania jest `SENTINEL-X.csproj`; runtime ma kontrolowaną kopię w `Core/AppConstants.cs`, a Gradle pobiera ten sam `versionName`. Androidowy `versionCode` wynosi 100 (poprzednio 98) i musi rosnąć.
 - **Bez OllamaSharp i bez Ollamy (0.94)**: `LocalAiService` nadal mówi dialektem HTTP Ollamy, ale obsługuje go w procesie `EngineOllamaFacade` (bez portu sieciowego), który tłumaczy wywołania na wbudowany `llama-server`. Dzięki temu przetestowane routowanie modeli, strumieniowanie i fallbacki zostały bez zmian.
 - **NAudio 2.2.1** z `WaveInEvent` (bez okna callback WinForms) i `WasapiLoopbackCapture`, CommunityToolkit.Mvvm **8.4.2**, DI **9.0.0**; istniejące biblioteki Whisper/Sherpa pozostają.
 - Zasobnik korzysta z istniejącego **natywnego Shell_NotifyIcon**, bez `UseWindowsForms`, WPF-UI i H.NotifyIcon. Rozwiązuje to sprzeczność „bez WinForms” vs „NotifyIcon WinForms” w prompcie.
@@ -230,7 +256,7 @@ Dane pozostają w `%LOCALAPPDATA%\SentinelX\`: `Settings`, `History`, `Memory`, 
 
 | Obszar | Implementacja / ograniczenie |
 |---|---|
-| MVVM shell | 8 rzeczywistych stron, stan zachowany przy nawigacji, DI, obsługa błędów i pustych danych |
+| MVVM shell | 14 stron/kontrolek, stan zachowany przy nawigacji, DI, obsługa błędów i pustych danych |
 | System | CPU/RAM z WinAPI, GPU z liczników Windows, dyski, sieć, top procesów; niedostępny pomiar jest jawny |
 | VRAM | **Niedostępne** — nie podajemy fikcyjnego zera ani wartości z demonstracji |
 | AI | Wbudowany silnik (llama.cpp), lista modeli, wybór, istniejący adaptacyjny czat; **brak autonomicznego wykonywania dowolnych narzędzi przez LLM** |

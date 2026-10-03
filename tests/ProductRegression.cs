@@ -1,3 +1,4 @@
+using SentinelX;
 using SentinelX.Core;
 using SentinelX.Models;
 using SentinelX.Services.Actions;
@@ -173,6 +174,7 @@ internal static class ProductRegression
     {
         public int StartCalls, SpeakCalls;
         public VoiceState State => VoiceState.Off;
+        public VoiceStateInfo Lifecycle => new(VoiceStateKind.OFF, "Mikrofon wyłączony", "test", false, false);
         public string Status => "test";
         public bool HasLocalModels => false;
         public event Action? Changed { add { } remove { } }

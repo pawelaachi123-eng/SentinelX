@@ -2,6 +2,7 @@ using System.Windows.Threading;
 using Microsoft.Extensions.DependencyInjection;
 using SentinelX.Services.Actions;
 using SentinelX.Services.AI;
+using SentinelX.Services.Automation;
 using SentinelX.Services.Desktop;
 using SentinelX.Services.History;
 using SentinelX.Services.Intent;
@@ -54,8 +55,12 @@ public static class ServiceLocator
         services.AddSingleton<HistoryExportService>();
         services.AddSingleton<Services.Memory.IConversationMemory>(sp => sp.GetRequiredService<ConversationMemoryService>());
         // 0.94: the AI runs on a built-in engine (llama.cpp), set up and kept alive automatically — no Ollama.
-        services.AddSingleton<Services.Engine.EngineService>(sp => new(isGaming: () => !string.IsNullOrEmpty(sp.GetRequiredService<GamingModeService>().GetRunningGame()),
-            totalRamGb: () => { double total = sp.GetRequiredService<SystemMonitor>().GetTotalRamGB(); return double.IsFinite(total) && total > 0 ? total : 8; },
+        services.AddSingleton<Services.Engine.EngineService>(sp => new(isGaming: () =>
+        {
+            var gaming = sp.GetRequiredService<GamingModeService>();
+            string game = gaming.GetRunningGame();
+            return !gaming.DetectionAvailable || !string.IsNullOrEmpty(game);
+        }, totalRamGb: () => { double total = sp.GetRequiredService<SystemMonitor>().GetTotalRamGB(); return double.IsFinite(total) && total > 0 ? total : 8; },
             autoInstall: () => sp.GetRequiredService<ISettingsService>().Current.Ai.AutoInstallEngine));
         services.AddSingleton<Services.Engine.IEngineService>(sp => sp.GetRequiredService<Services.Engine.EngineService>());
         services.AddSingleton<LocalAiService>(sp =>
@@ -80,15 +85,27 @@ public static class ServiceLocator
         services.AddSingleton<IIntentRouter, IntentRouter>();
         services.AddSingleton<IActionEngine, ActionEngine>();
         services.AddSingleton<VoiceRecognitionService>(sp => new(() => sp.GetRequiredService<ISettingsService>().Current.Voice));
+        services.AddSingleton<IVoiceCapture>(sp => sp.GetRequiredService<VoiceRecognitionService>());
         services.AddSingleton<SpeechOutputService>();
+        services.AddSingleton<ISpeechOutput>(sp => sp.GetRequiredService<SpeechOutputService>());
         services.AddSingleton<IVoiceService, VoiceService>();
         // 0.94: phone link (HTTPS on the home network, approval on the PC), alerts for the phone, and the caretaker that keeps it all running.
         services.AddSingleton<Services.Link.AlertFeed>();
+        services.AddSingleton<Services.Notifications.INotificationService, Services.Notifications.AppNotificationService>();
+        services.AddSingleton<IAutomationActionHandler, LaunchApplicationAutomationAction>();
+        services.AddSingleton<IAutomationActionHandler, OpenUrlAutomationAction>();
+        services.AddSingleton<IAutomationActionHandler, ShowNotificationAutomationAction>();
+        services.AddSingleton<AutomationActionRegistry>();
+        services.AddSingleton<AutomationService>();
+        services.AddSingleton<Services.Link.PhoneFileTransferService>();
+        services.AddSingleton<Services.Link.IPcSystemActions, Services.Link.PcSystemActions>();
         services.AddSingleton<Views.Link.LinkUi>(sp => new(sp.GetRequiredService<IUiDispatcher>(), () => sp.GetRequiredService<Services.Link.LinkService>()));
         services.AddSingleton<Services.Link.ILinkApprovalUi>(sp => sp.GetRequiredService<Views.Link.LinkUi>());
         services.AddSingleton<Services.Link.LinkService>(sp => new(new Services.Link.LinkApi(sp.GetRequiredService<IActionEngine>(), sp.GetRequiredService<ISystemMonitorService>(),
             sp.GetRequiredService<TaskService>(), sp.GetRequiredService<ConversationMemoryService>(), sp.GetRequiredService<Services.Link.AlertFeed>(),
-            () => sp.GetRequiredService<Services.Care.CareService>().BuildLinkInfo(), () => sp.GetRequiredService<Services.Link.LinkService>().Urls),
+            () => sp.GetRequiredService<Services.Care.CareService>().BuildLinkInfo(), () => sp.GetRequiredService<Services.Link.LinkService>().Urls,
+            sp.GetRequiredService<AutomationService>(), sp.GetRequiredService<Services.Link.PhoneFileTransferService>(),
+            sp.GetRequiredService<Services.Link.IPcSystemActions>()),
             sp.GetRequiredService<Services.Link.ILinkApprovalUi>(), () => sp.GetRequiredService<ISettingsService>().Current.Link));
         services.AddSingleton<Services.Care.CareService>();
         services.AddSingleton<IDesktopService, DesktopService>();
@@ -108,8 +125,12 @@ public static class ServiceLocator
         services.AddSingleton<ProjectViewModel>();
         services.AddSingleton<TaskViewModel>();
         services.AddSingleton<DiagnosticViewModel>();
-        // 0.95 · WARSZTAT: the Tools catalogue page (sidebar + Centrum tab).
+        // 0.95 · WARSZTAT: the Tools catalogue page in the top-level sidebar and command palette.
         services.AddSingleton<ToolsViewModel>();
+        services.AddSingleton<AutomationViewModel>();
+        services.AddSingleton<DevicesViewModel>();
+        services.AddSingleton<NotificationsViewModel>();
+        services.AddSingleton<HomeViewModel>();
         services.AddSingleton<OverlayViewModel>();
         services.AddSingleton<MainViewModel>();
         services.AddSingleton<Views.MainWindow>();

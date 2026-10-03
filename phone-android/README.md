@@ -1,31 +1,33 @@
 # Sentinel X Telefon (Android)
 
-Cienka aplikacja Android (Java, **bez bibliotek zewnętrznych**, minSdk 24, targetSdk 35). Cały interfejs to strona, którą serwuje
-komputer (`Phone/web`); aplikacja dokłada to, czego przeglądarka nie potrafi: sama znajduje komputer w sieci, przypina jego certyfikat,
-pokazuje alerty jako powiadomienia, rozpoznaje mowę po polsku i może wybudzić komputer. Protokół: [../docs/PHONE-LINK.md](../docs/PHONE-LINK.md).
+Cienka aplikacja Android (Java, **bez bibliotek zewnętrznych**, minSdk 24, targetSdk 35). Współdzielony interfejs `Phone/web` jest serwowany przez PC, a jego kopia trafia do APK jako lokalny panel na czas braku sieci. Aplikacja sama wykrywa PC, przypina certyfikat, raportuje ograniczony status sieci telefonu (bez SSID/MAC), pokazuje alerty, rozpoznaje mowę po polsku, obsługuje selektor plików i może wybudzić PC. Pobierane pliki zapisuje przez Storage Access Framework po kontroli SHA‑256; strumień HTTPS używa zapamiętanego odcisku certyfikatu. Protokół: [../docs/PHONE-LINK.md](../docs/PHONE-LINK.md).
 
 ## Jak dostać APK
 
 - **Z wydania na GitHubie:** plik `SentinelX-Phone-<wersja>.apk` (budowany przez workflow *Release*, job `android`). Zainstaluj, zezwalając na instalację z nieznanego źródła.
-- **Z Android Studio:** *Open* → folder `phone-android` → *Build → Build APK*. Gradle pobierze wtyczkę Androida (AGP 8.7.3) z Google Maven.
-- **Z wiersza poleceń** (JDK 17, Android SDK, Gradle 8.9): `cd phone-android && gradle assembleRelease` → `app/build/outputs/apk/release/app-release.apk`.
+- **Z Android Studio:** *Open* → folder `phone-android` → *Build → Build APK* (wariant debug). Gradle pobierze wtyczkę Androida (AGP 8.7.3) z Google Maven.
+- **Z wiersza poleceń** (JDK 17, Android SDK, Gradle 9.8.0): `cd phone-android && gradle assembleDebug` → `app/build/outputs/apk/debug/app-debug.apk`; `gradle assembleRelease` → `app/build/outputs/apk/release/app-release.apk`.
+- **Z CI:** zwykły push buduje, weryfikuje podpis i publikuje oba warianty jako osobne artefakty na 7 dni.
 
 ## Podpis
 
-`app/sentinelx-phone.p12` (hasło `sentinelx`) to stały klucz, dzięki któremu kolejne wersje instalują się na poprzednie bez odinstalowywania.
-To nie jest klucz do sklepu Play; repozytorium jest prywatne. Workflow sprawdza klucz `keytool`-em i tylko gdy nie da się go odczytać, tworzy nowy (wtedy raz trzeba odinstalować starą aplikację).
+Klucza podpisu ani hasła nie przechowujemy w repozytorium. CI używa chronionych sekretów `SENTINELX_ANDROID_KEYSTORE_BASE64`, `SENTINELX_ANDROID_STORE_PASSWORD`, `SENTINELX_ANDROID_KEY_ALIAS` i `SENTINELX_ANDROID_KEY_PASSWORD`, jeśli są skonfigurowane. W przeciwnym razie workflow tworzy jednorazowy klucz wyłącznie na czas zadania, podpisuje nim APK i zgłasza ostrzeżenie; taki APK można zainstalować, ale aktualizacja wymaga odinstalowania poprzedniej wersji.
+
+Poprzedni klucz był przechowywany w kodzie z hasłem zapisanym w pliku Gradle, więc został usunięty z bieżącego drzewa i nie jest już używany. Traktuj go jako ujawniony: usunięcie pliku nie usuwa go z wcześniejszych commitów ani kopii klonów. Android nie ma mechanizmu unieważniania starego certyfikatu podpisu; starsze instalacje wymagają jednorazowego odinstalowania przed instalacją APK z nowym kluczem. Lokalne `assembleRelease` bez zmiennych podpisu produkuje APK niepodpisany; do lokalnego testu użyj wariantu debug, a gotowy podpisany APK pobierz z artefaktów workflow CI.
 
 ## Pliki
 
 | Plik | Rola |
 | --- | --- |
-| `MainActivity` | WebView z przypiętym certyfikatem, ekran statusu (szukanie, brak komputera, adres ręczny, wybudzanie), most `SXNative`, krawędzie ekranu i klawiatura |
+| `MainActivity` | WebView z przypiętym certyfikatem, wyszukiwanie i offline fallback, most `SXNative`, selektor uploadu i strumieniowy, weryfikowany zapis downloadu przez SAF, obserwacja sieci, krawędzie ekranu i klawiatura |
 | `PcLocator` | wykrywanie komputera: broadcast UDP `SXLINK1?` na porcie 43181 i sprawdzenie `/api/hello` |
 | `PinnedTls` | HTTPS bez urzędu certyfikacji: ufa wyłącznie certyfikatowi o zapamiętanym odcisku SHA-256 |
-| `Session` | co aplikacja pamięta: komputer, odcisk, token, MAC, ostatni alert |
+| `PhoneNetworkStatus` | typ aktywnego łącza, status Internetu i prywatne/link-local adresy; bez skanowania, SSID i MAC |
+| `Session` | komputer, odcisk, token, MAC, ostatni alert; token AES-GCM w Android Keystore z migracją wcześniejszej preferencji |
+| `syncPhoneWebAssets` (Gradle) | kopiuje współdzielony `Phone/web` do assets offline APK przed `preBuild` |
 | `AlertJobService`, `Notifier` | co ~15 min pyta o alerty i pokazuje powiadomienia (`JobScheduler`, bez usługi na pierwszym planie) |
 | `WakeOnLan` | pakiet „magic packet” (UDP 9) na adresy rozgłoszeniowe sieci |
 
 ## Sprawdzone i niesprawdzone
 
-Kod nie był kompilowany w środowisku, w którym powstał (brak Android SDK); składnię sprawdzono parserem Javy. Pierwszy build wykona CI. Na prawdziwym telefonie trzeba jeszcze sprawdzić: wykrywanie, parowanie, powiadomienia (Android 13+ pyta o zgodę), Wake-on-LAN.
+Kod Androida nie jest kompilowany lokalnie w tym środowisku (brak Android SDK/JDK). Workflow CI uruchamia Gradle dla wariantów debug i release, weryfikuje podpis obu APK (`apksigner`) i zachowuje osobne artefakty przez 7 dni. Na prawdziwym telefonie trzeba jeszcze sprawdzić: wykrywanie, parowanie, powiadomienia (Android 13+ pyta o zgodę), Wake-on-LAN.

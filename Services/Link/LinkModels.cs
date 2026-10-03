@@ -4,10 +4,17 @@ namespace SentinelX.Services.Link;
 public sealed record LinkAlert(long Id, DateTimeOffset At, string Level, string Title, string Text);
 
 /// <summary>A paired phone as shown in the UI. The token itself is never stored, only its SHA-256.</summary>
-public sealed record LinkDeviceInfo(string Id, string Name, DateTimeOffset AddedAt, DateTimeOffset LastSeen);
+public sealed record LinkDeviceInfo(string Id, string Name, DateTimeOffset AddedAt, DateTimeOffset LastSeen)
+{
+    public LinkPhoneCapabilities Capabilities { get; init; } = LinkPhoneCapabilities.None;
+    public string CapabilitiesText => Capabilities.Describe();
+}
 
 /// <summary>What the user sees on the PC when a phone asks to connect.</summary>
-public sealed record PairingRequestInfo(string Id, string DeviceName, string RemoteAddress, string Sas, DateTimeOffset ExpiresAt);
+public sealed record PairingRequestInfo(string Id, string DeviceName, string RemoteAddress, string Sas, DateTimeOffset ExpiresAt)
+{
+    public LinkPhoneCapabilities Capabilities { get; init; } = LinkPhoneCapabilities.None;
+}
 
 public enum PairingState { Pending, Approved, Denied, Expired }
 

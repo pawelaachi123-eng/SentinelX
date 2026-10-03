@@ -6,10 +6,11 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
+using SentinelX.Services.Voice;
 
 namespace SentinelX;
 
-public sealed class VoiceRecognitionService : IDisposable
+public sealed class VoiceRecognitionService : IVoiceCapture, IDisposable
 {
     private readonly VoiceModelManager modelManager = new();
     private readonly AudioEnhancementService audioEnhancer = new();
@@ -46,7 +47,13 @@ public sealed class VoiceRecognitionService : IDisposable
         }
         public void AddReference() => Interlocked.Increment(ref references);
         public void Release() { if (Interlocked.Decrement(ref references) == 0) source.Dispose(); }
-        public void Retire() { source.Cancel(); Release(); }
+        public void Retire()
+        {
+            try { source.Cancel(); }
+            catch (ObjectDisposedException) { }
+            catch (AggregateException ex) { AppLog.Write("Voice", "Warning", "An ASR cancellation callback failed.", ex); }
+            finally { Release(); }
+        }
     }
     private record PendingSegment(float[] Samples, int Generation, CaptureSession Session,
         bool WakeOnly, VoiceRuntimeOptions Options, VoiceUtteranceRecord Record, long EnqueuedAt)
@@ -82,6 +89,7 @@ public sealed class VoiceRecognitionService : IDisposable
     public int QueueDepth => queue.Reader.CanCount ? queue.Reader.Count : 0;
     public int DroppedSegments => Volatile.Read(ref droppedSegments);
     public long LastRecognitionMilliseconds => Interlocked.Read(ref lastRecognitionMilliseconds);
+    internal int CaptureGeneration => Volatile.Read(ref generation);
     public string LastTranscript { get; private set; } = "";
     public string LastDecision { get; private set; } = "Brak wypowiedzi";
     public string? LastRecognitionError { get; private set; }
@@ -91,6 +99,7 @@ public sealed class VoiceRecognitionService : IDisposable
     public string CurrentAsrEngine => qwenService?.IsReady == true ? "Qwen3-ASR 0.6B INT8" : whisperService?.IsReady == true ? "Whisper Small PL" : "Brak gotowego modelu ASR";
     public event Action<float>? AudioLevelChanged;
     public event Action<string>? SpeechRecognized;
+    public event Action<bool>? RecognitionProcessingChanged;
     public event Action<string>? StatusChanged;
     public event Action<string>? ErrorOccurred;
 
@@ -230,8 +239,12 @@ public sealed class VoiceRecognitionService : IDisposable
     {
         lock (audioLock)
         {
+            if (wakeOnlyMode == enabled) return;
             wakeOnlyMode = enabled;
             vadService?.SetWakeOnlyMode(enabled);
+            // Drop queued segments captured under the previous command policy while preserving
+            // an in-progress VAD sentence in the audio pipeline for the newly selected mode.
+            RotateSessionLocked();
         }
         if (IsListening) RestoreStatus();
     }
@@ -319,7 +332,7 @@ public sealed class VoiceRecognitionService : IDisposable
             old.Dispose();
         }
         StopPlaybackMonitor();
-        AudioLevelChanged?.Invoke(0);
+        Publish(AudioLevelChanged, 0f);
         EmitStatus("Mikrofon wyłączony");
     }
 
@@ -383,14 +396,14 @@ public sealed class VoiceRecognitionService : IDisposable
                     }
                 }
             }
-            AudioLevelChanged?.Invoke(level);
+            Publish(AudioLevelChanged, level);
             if (status != null) EmitStatus(status);
         }
         catch (Exception ex)
         {
             AppLog.Write(ex);
             LastRecognitionError = ex.Message;
-            ErrorOccurred?.Invoke("Błąd wejścia audio: " + ex.Message);
+            Publish(ErrorOccurred, "Błąd wejścia audio: " + ex.Message);
         }
     }
 
@@ -402,7 +415,7 @@ public sealed class VoiceRecognitionService : IDisposable
             {
                 if (item.Token.IsCancellationRequested || item.Generation != Volatile.Read(ref generation))
                 { WriteLog(item.Options, item.Record with { Decision = "cancelled_before_asr" }); item.Session.Release(); continue; }
-                isProcessing = true;
+                SetProcessing(true);
                 var timer = Stopwatch.StartNew();
                 string text = "", engine = CurrentAsrEngine, decision = "cancelled";
                 string? recognitionError = null;
@@ -439,16 +452,16 @@ public sealed class VoiceRecognitionService : IDisposable
                     {
                         decision = "accepted";
                         LastDecision = "Rozpoznano i wysłano: " + text;
-                        SpeechRecognized?.Invoke(text);
+                        Publish(SpeechRecognized, text);
                     }
                     EmitStatus(LastDecision);
                 }
                 catch (OperationCanceledException) { }
-                catch (Exception ex) { decision = "asr_error"; recognitionError = LastRecognitionError = ex.Message; AppLog.Write(ex); if (!disposed) ErrorOccurred?.Invoke("Błąd rozpoznawania: " + ex.Message); }
+                catch (Exception ex) { decision = "asr_error"; recognitionError = LastRecognitionError = ex.Message; AppLog.Write(ex); if (!disposed) Publish(ErrorOccurred, "Błąd rozpoznawania: " + ex.Message); }
                 finally
                 {
                     Interlocked.Exchange(ref lastRecognitionMilliseconds, timer.ElapsedMilliseconds);
-                    isProcessing = false;
+                    SetProcessing(false);
                     WriteLog(item.Options, item.Record with { Engine = engine, Transcript = text, Decision = decision, Error = recognitionError, QueueLatencyMilliseconds = queued, AsrLatencyMilliseconds = timer.ElapsedMilliseconds });
                     item.Session.Release();
                 }
@@ -472,7 +485,7 @@ public sealed class VoiceRecognitionService : IDisposable
         {
             lock (audioLock) { if (!ReferenceEquals(sender, microphone)) return; }
             StopListeningCore(sender);
-            if (e.Exception != null) ErrorOccurred?.Invoke("Mikrofon odłączony lub zatrzymany: " + e.Exception.Message);
+            if (e.Exception != null) Publish(ErrorOccurred, "Mikrofon odłączony lub zatrzymany: " + e.Exception.Message);
         });
     }
 
@@ -506,14 +519,29 @@ public sealed class VoiceRecognitionService : IDisposable
     private void PlaybackStopped(object? sender, StoppedEventArgs e)
     { if (ReferenceEquals(sender, playbackMonitor)) systemAudioLevel = 0; }
     private void RestoreStatus() => EmitStatus(!IsListening ? "Mikrofon wyłączony" : IsCalibrating ? "Kalibracja • 2 sekundy ciszy" : wakeOnlyMode ? "STANDBY • powiedz Sentinel" : "ACTIVE • słucham");
-    private void EmitStatus(string text) { if (!disposed) StatusChanged?.Invoke(text); }
+    private void SetProcessing(bool value)
+    {
+        if (isProcessing == value) return;
+        isProcessing = value;
+        if (!disposed) Publish(RecognitionProcessingChanged, value);
+    }
+    private void EmitStatus(string text) { if (!disposed) Publish(StatusChanged, text); }
+    private static void Publish<T>(Action<T>? observers, T value)
+    {
+        foreach (Action<T> observer in observers?.GetInvocationList() ?? [])
+        {
+            try { observer(value); }
+            catch (Exception ex) { AppLog.Write("Voice", "Warning", "A voice observer failed.", ex); }
+        }
+    }
     private void ThrowIfDisposed() => ObjectDisposedException.ThrowIf(disposed, this);
 
     public void Dispose()
     {
         if (disposed) return;
         disposed = true;
-        lifetime.Cancel();
+        try { lifetime.Cancel(); }
+        catch (AggregateException ex) { AppLog.Write("Voice", "Warning", "Voice shutdown cancellation callbacks failed.", ex); }
         StopListening();
         queue.Writer.TryComplete();
         // A native decoder may still be in flight. Release its resources only after it exits.

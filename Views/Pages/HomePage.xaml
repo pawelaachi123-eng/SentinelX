@@ -1,0 +1,162 @@
+<UserControl xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:u="clr-namespace:SentinelX.Utilities" x:Class="SentinelX.Views.Pages.HomePage" u:PageTransitions.Enabled="True" u:UiInteraction.LoadedCommand="{Binding RefreshCommand}" AutomationProperties.Name="Strona główna Sentinel X">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="28">
+            <DockPanel Margin="0,0,0,6">
+                <Button Content="↻  Odśwież" Command="{Binding RefreshCommand}" IsEnabled="{Binding IsRefreshing, Converter={StaticResource InverseBoolean}}" DockPanel.Dock="Right" AutomationProperties.Name="Odśwież pulpit"/>
+                <TextBlock Text="Twój pulpit" Style="{StaticResource SxHeading}"/>
+            </DockPanel>
+            <TextBlock Text="{Binding DateLabel}" Style="{StaticResource SxCaption}" Margin="0,0,0,18"/>
+
+            <Border Style="{StaticResource SxCardElevated}" BorderBrush="{DynamicResource SxAccentCyan}" Margin="0,0,0,18">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel>
+                        <TextBlock Text="SENTINEL X  ·  LOKALNY ASYSTENT" Foreground="{DynamicResource SxAccentCyan}" FontSize="11" FontWeight="SemiBold"/>
+                        <TextBlock Text="{Binding Readiness.Summary}" FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,8,0,4"/>
+                        <TextBlock Text="{Binding Status}" Style="{StaticResource SxCaption}" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <Button Grid.Column="1" Content="Gotowość  →" Command="{Binding DataContext.OpenReadinessCommand, RelativeSource={RelativeSource AncestorType=Window}}" VerticalAlignment="Center" Margin="18,0,0,0" AutomationProperties.Name="Otwórz sprawdzenie gotowości"/>
+                </Grid>
+            </Border>
+
+            <TextBlock Text="Wydajność komputera" Style="{StaticResource SxSectionTitle}" Margin="0,0,0,8"/>
+            <UniformGrid Columns="4" Margin="-4,0,-4,18">
+                <Border Style="{StaticResource SxMetricCard}" Margin="4" Padding="16">
+                    <StackPanel>
+                        <TextBlock Text="CPU" Style="{StaticResource SxCaption}"/>
+                        <TextBlock Text="{Binding System.Snapshot.CpuText}" FontSize="24" FontWeight="SemiBold" Margin="0,8,0,4" TextTrimming="CharacterEllipsis" ToolTip="{Binding System.Snapshot.CpuText}"/>
+                        <TextBlock Text="Procesor" Style="{StaticResource SxCaption}"/>
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource SxMetricCard}" Margin="4" Padding="16">
+                    <StackPanel>
+                        <TextBlock Text="RAM" Style="{StaticResource SxCaption}"/>
+                        <TextBlock Text="{Binding System.Snapshot.RamText}" FontSize="19" FontWeight="SemiBold" Margin="0,8,0,4" TextTrimming="CharacterEllipsis" ToolTip="{Binding System.Snapshot.RamText}"/>
+                        <TextBlock Text="Pamięć fizyczna" Style="{StaticResource SxCaption}"/>
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource SxMetricCard}" Margin="4" Padding="16">
+                    <StackPanel>
+                        <TextBlock Text="GPU" Style="{StaticResource SxCaption}"/>
+                        <TextBlock Text="{Binding System.Snapshot.GpuText}" FontSize="24" FontWeight="SemiBold" Margin="0,8,0,4" TextTrimming="CharacterEllipsis" ToolTip="{Binding System.Snapshot.GpuText}"/>
+                        <TextBlock Text="Grafika" Style="{StaticResource SxCaption}"/>
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource SxMetricCard}" Margin="4" Padding="16">
+                    <StackPanel>
+                        <TextBlock Text="DYSK" Style="{StaticResource SxCaption}"/>
+                        <TextBlock Text="{Binding System.Snapshot.DiskSummaryText}" FontSize="16" FontWeight="SemiBold" Margin="0,8,0,4" TextTrimming="CharacterEllipsis" ToolTip="{Binding System.Snapshot.DiskSummaryText}"/>
+                        <TextBlock Text="Stan woluminów" Style="{StaticResource SxCaption}"/>
+                    </StackPanel>
+                </Border>
+            </UniformGrid>
+
+            <Grid Margin="0,0,0,18">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="16"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Border Style="{StaticResource SxCard}" Grid.Column="0">
+                    <StackPanel>
+                        <DockPanel Margin="0,0,0,12">
+                            <Button Content="Wszystkie  →" Command="{Binding OpenTasksCommand}" Style="{StaticResource SxGhostButton}" DockPanel.Dock="Right"/>
+                            <TextBlock Text="Do zrobienia" Style="{StaticResource SxSectionTitle}" Margin="0"/>
+                        </DockPanel>
+                        <ItemsControl ItemsSource="{Binding TodayTasks}" AutomationProperties.Name="Zadania do wykonania">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border BorderBrush="{DynamicResource SxBorderSubtle}" BorderThickness="0,1,0,0" Padding="0,10">
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                            <TextBlock Text="{Binding MetaText}" Style="{StaticResource SxCaption}" Margin="0,4,0,0"/>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <Border Background="{DynamicResource SxSurfaceActive}" CornerRadius="10" Padding="12" Visibility="{Binding HasTodayTasks, Converter={StaticResource InverseBooleanVisibility}}">
+                            <TextBlock Text="Brak otwartych zadań. Dodaj zadanie w sekcji Zadania." Style="{StaticResource SxCaption}"/>
+                        </Border>
+                        <TextBlock Text="Przypomnienia" FontWeight="SemiBold" Margin="0,14,0,6"/>
+                        <ItemsControl ItemsSource="{Binding UpcomingReminders}" AutomationProperties.Name="Nadchodzące przypomnienia">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Text}" TextWrapping="Wrap" Margin="0,4"/>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBlock Text="Brak nadchodzących przypomnień." Style="{StaticResource SxCaption}" Visibility="{Binding HasUpcomingReminders, Converter={StaticResource InverseBooleanVisibility}}"/>
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource SxCard}" Grid.Column="2">
+                    <StackPanel>
+                        <DockPanel Margin="0,0,0,12">
+                            <Button Content="Pełna aktywność  →" Command="{Binding OpenActivityCommand}" Style="{StaticResource SxGhostButton}" DockPanel.Dock="Right"/>
+                            <TextBlock Text="Ostatnia aktywność" Style="{StaticResource SxSectionTitle}" Margin="0"/>
+                        </DockPanel>
+                        <ItemsControl ItemsSource="{Binding RecentActivity}" AutomationProperties.Name="Ostatnia aktywność">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border BorderBrush="{DynamicResource SxBorderSubtle}" BorderThickness="0,1,0,0" Padding="0,10">
+                                        <StackPanel>
+                                            <DockPanel>
+                                                <TextBlock Text="{Binding Status}" Foreground="{Binding Status, Converter={StaticResource StatusBrush}}" FontSize="11" FontWeight="SemiBold" DockPanel.Dock="Right" Margin="12,0,0,0"/>
+                                                <TextBlock Text="{Binding Command}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                            </DockPanel>
+                                            <TextBlock Text="{Binding Timestamp, StringFormat={}{0:dd.MM HH:mm}}" Style="{StaticResource SxCaption}" Margin="0,3,0,0"/>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <Border Background="{DynamicResource SxSurfaceActive}" CornerRadius="10" Padding="12" Visibility="{Binding HasRecentActivity, Converter={StaticResource InverseBooleanVisibility}}">
+                            <TextBlock Text="Nie ma jeszcze zapisanej aktywności. Wysłane polecenia pojawią się tutaj." Style="{StaticResource SxCaption}"/>
+                        </Border>
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <TextBlock Text="Szybki dostęp" Style="{StaticResource SxSectionTitle}" Margin="0,0,0,8"/>
+            <WrapPanel Margin="0,0,0,18">
+                <Button Content="✦  Asystent" Command="{Binding OpenAssistantCommand}" Style="{StaticResource SxPrimaryButton}" Margin="0,0,8,8"/>
+                <Button Content="▦  Komputer" Command="{Binding OpenComputerCommand}" Margin="0,0,8,8"/>
+                <Button Content="ϟ  Wydajność" Command="{Binding OpenPerformanceCommand}" Margin="0,0,8,8"/>
+                <Button Content="⏱  Automatyzacje" Command="{Binding OpenAutomationCommand}" Margin="0,0,8,8"/>
+                <Button Content="⌁  Głos" Command="{Binding ToggleVoiceCommand}" Margin="0,0,8,8" ToolTip="Włącza albo wyłącza nasłuch"/>
+            </WrapPanel>
+
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="16"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Border Style="{StaticResource SxCard}" Grid.Column="0">
+                    <StackPanel>
+                        <DockPanel>
+                            <Button Content="Otwórz  →" Command="{Binding OpenDevicesCommand}" Style="{StaticResource SxGhostButton}" DockPanel.Dock="Right"/>
+                            <TextBlock Text="Telefon" Style="{StaticResource SxSectionTitle}" Margin="0"/>
+                        </DockPanel>
+                        <TextBlock Text="{Binding Devices.Status}" TextWrapping="Wrap" Margin="0,10,0,6"/>
+                        <TextBlock Text="{Binding Devices.DeviceCountLabel}" Style="{StaticResource SxCaption}"/>
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource SxCard}" Grid.Column="2">
+                    <StackPanel>
+                        <DockPanel>
+                            <Button Content="Otwórz  →" Command="{Binding OpenNotificationsCommand}" Style="{StaticResource SxGhostButton}" DockPanel.Dock="Right"/>
+                            <TextBlock Text="Powiadomienia" Style="{StaticResource SxSectionTitle}" Margin="0"/>
+                        </DockPanel>
+                        <TextBlock Text="{Binding Notifications.Status}" TextWrapping="Wrap" Margin="0,10,0,6"/>
+                        <TextBlock Text="{Binding Notifications.UnreadCount, StringFormat={}{0} nieprzeczytanych}" Style="{StaticResource SxCaption}"/>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

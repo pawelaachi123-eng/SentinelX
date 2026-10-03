@@ -8,9 +8,10 @@
                 <StackPanel>
                     <TextBlock Text="Nowy odczyt" Style="{StaticResource SxSectionTitle}"/>
                     <TextBox Text="{Binding Label, UpdateSourceTrigger=PropertyChanged}" u:InputHint.Text="Opis opcjonalny — np. przed aktualizacją sterownika" Margin="0,12,0,8" AutomationProperties.Name="Opis nowego odczytu"/>
+                    <ProgressBar IsIndeterminate="True" Height="4" Margin="0,0,0,10" Visibility="{Binding IsCapturing, Converter={StaticResource BoolToVisibility}}" AutomationProperties.Name="Zbieranie odczytu diagnostycznego"/>
                     <DockPanel>
-                        <Button Content="Zapisz odczyt" Command="{Binding CaptureCommand}" Style="{StaticResource SxPrimaryButton}" DockPanel.Dock="Right"/>
-                        <Button Content="Przerwij" Command="{Binding CaptureCancelCommand}" Style="{StaticResource SxGhostButton}" DockPanel.Dock="Right" Margin="0,0,8,0"/>
+                        <Button Content="Zapisz odczyt" Command="{Binding CaptureCommand}" Style="{StaticResource SxPrimaryButton}" DockPanel.Dock="Right" IsEnabled="{Binding IsCapturing, Converter={StaticResource InverseBoolean}}"/>
+                        <Button Content="Przerwij" Command="{Binding CaptureCancelCommand}" Style="{StaticResource SxGhostButton}" DockPanel.Dock="Right" Margin="0,0,8,0" Visibility="{Binding IsCapturing, Converter={StaticResource BoolToVisibility}}"/>
                         <TextBlock/>
                     </DockPanel>
                 </StackPanel>
@@ -26,8 +27,20 @@
                     <WrapPanel>
                         <Button Content="Porównaj" Command="{Binding CompareCommand}" IsEnabled="{Binding CanCompare}" Style="{StaticResource SxPrimaryButton}" Margin="0,0,8,4"/>
                         <Button Content="Eksportuj porównanie" Command="{Binding ExportCommand}" IsEnabled="{Binding HasComparison}" Margin="0,0,8,4" ToolTip="Zapis lokalny Markdown + JSON z odczytem zwrotnym i SHA-256"/>
-                        <Button Content="Usuń odczyt B" Command="{Binding DeleteCommand}" CommandParameter="{Binding SecondSnapshot}" Style="{StaticResource SxDangerButton}" Margin="0,0,8,4" ToolTip="Nieodwracalnie usuwa wyłącznie wybrany odczyt"/>
+                        <Button Content="Usuń odczyt B" Command="{Binding DeleteCommand}" CommandParameter="{Binding SecondSnapshot}" Style="{StaticResource SxDangerButton}" Margin="0,0,8,4" ToolTip="Wymaga osobnego potwierdzenia; usuwa wyłącznie wybrany odczyt"/>
                     </WrapPanel>
+                    <Border Style="{StaticResource SxCardElevated}" BorderBrush="{DynamicResource SxWarning}" Margin="0,8,0,0" Visibility="{Binding IsDeleteConfirmationOpen, Converter={StaticResource BoolToVisibility}}" AutomationProperties.LiveSetting="Polite">
+                        <Border.InputBindings><KeyBinding Key="Escape" Command="{Binding CancelDeleteCommand}"/></Border.InputBindings>
+                        <StackPanel>
+                            <TextBlock Text="Potwierdź usunięcie odczytu" Style="{StaticResource SxSectionTitle}"/>
+                            <TextBlock Text="{Binding DeleteConfirmationText}" TextWrapping="Wrap" Margin="0,4,0,12"/>
+                            <WrapPanel>
+                                <Button Content="Anuluj" Command="{Binding CancelDeleteCommand}" Style="{StaticResource SxGhostButton}" Margin="0,0,8,0" u:UiInteraction.FocusOnVisible="True"/>
+                                <Button Content="Usuń trwale" Command="{Binding ConfirmDeleteCommand}" Style="{StaticResource SxDangerButton}"/>
+                            </WrapPanel>
+                        </StackPanel>
+                    </Border>
+                    <ProgressBar IsIndeterminate="True" Height="4" Margin="0,8,0,0" Visibility="{Binding IsExporting, Converter={StaticResource BoolToVisibility}}" AutomationProperties.Name="Zapisywanie porównania"/>
                     <ScrollViewer MaxHeight="320" VerticalScrollBarVisibility="Auto" Margin="0,12,0,0" Visibility="{Binding HasComparison, Converter={StaticResource BoolToVisibility}}">
                         <TextBlock Text="{Binding Comparison}" TextWrapping="Wrap" FontSize="12"/>
                     </ScrollViewer>
@@ -36,6 +49,9 @@
 
             <TextBlock Text="Zapisane odczyty" Style="{StaticResource SxSectionTitle}" Margin="0,0,0,8"/>
             <TextBlock Text="Limit 20 odczytów — najstarsze są usuwane automatycznie. Eksport zapisuje pliki tylko na tym komputerze." Style="{StaticResource SxCaption}" Margin="0,0,0,12"/>
+            <Border Background="{DynamicResource SxSurfaceActive}" CornerRadius="10" Padding="14" Margin="0,0,0,10" Visibility="{Binding HasItems, Converter={StaticResource InverseBooleanVisibility}}">
+                <TextBlock Text="Nie ma jeszcze zapisanych odczytów. Zbierz nowy odczyt, aby utworzyć punkt odniesienia." Style="{StaticResource SxCaption}" TextWrapping="Wrap"/>
+            </Border>
             <ItemsControl ItemsSource="{Binding Items}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
@@ -45,7 +61,7 @@
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
-            <TextBlock Text="{Binding Status}" Foreground="{DynamicResource SxAccentCyan}" TextWrapping="Wrap" FontSize="12" Margin="0,8,0,0"/>
+            <TextBlock Text="{Binding Status}" Foreground="{DynamicResource SxAccentCyan}" TextWrapping="Wrap" FontSize="12" Margin="0,8,0,0" AutomationProperties.LiveSetting="Polite"/>
         </StackPanel>
     </ScrollViewer>
 </UserControl>

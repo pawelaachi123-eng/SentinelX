@@ -1,0 +1,152 @@
+<UserControl xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:u="clr-namespace:SentinelX.Utilities" x:Class="SentinelX.Views.Pages.DevicesPage" u:PageTransitions.Enabled="True" AutomationProperties.Name="Urządzenia i połączenie z telefonem">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="28">
+            <DockPanel Margin="0,0,0,6">
+                <Button Content="Odśwież" Command="{Binding RefreshCommand}" DockPanel.Dock="Right" AutomationProperties.Name="Odśwież urządzenia"/>
+                <TextBlock Text="Urządzenia" Style="{StaticResource SxHeading}"/>
+            </DockPanel>
+            <TextBlock Text="Połączenie lokalne · każde nowe urządzenie wymaga Twojej zgody na tym komputerze" Style="{StaticResource SxCaption}" Margin="0,0,0,20"/>
+
+            <Border Style="{StaticResource SxCardElevated}" Margin="0,0,0,16">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Border Width="42" Height="42" CornerRadius="21" Background="{DynamicResource SxSurfaceActive}" VerticalAlignment="Top" Margin="0,0,14,0">
+                        <TextBlock Text="⌁" FontSize="22" Foreground="{DynamicResource SxAccentCyan}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <StackPanel Grid.Column="1">
+                        <DockPanel>
+                            <Border Style="{StaticResource SxBadge}" DockPanel.Dock="Right" Margin="10,0,0,0">
+                                <TextBlock Text="{Binding ConnectionLabel}" Foreground="{DynamicResource SxTextSecondary}"/>
+                            </Border>
+                            <TextBlock Text="{Binding Status}" TextWrapping="Wrap" FontWeight="SemiBold" AutomationProperties.LiveSetting="Polite"/>
+                        </DockPanel>
+                        <TextBlock Text="Android może znaleźć komputer automatycznie. iPhone i inne urządzenia mogą otworzyć lokalny adres w przeglądarce. Ruch pozostaje w sieci prywatnej." Style="{StaticResource SxCaption}" Margin="0,8,0,0"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <Border Style="{StaticResource SxCard}" Margin="0,0,0,16">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel>
+                        <TextBlock Text="Połącz telefon lub przeglądarkę" Style="{StaticResource SxSectionTitle}"/>
+                        <TextBlock Text="Zeskanuj kod QR albo wpisz jeden z adresów w przeglądarce telefonu. Przy pierwszym połączeniu porównaj kod potwierdzenia na obu urządzeniach i dopiero wtedy zezwól." Style="{StaticResource SxCaption}" Margin="0,0,0,12"/>
+                        <ItemsControl ItemsSource="{Binding Addresses}" AutomationProperties.Name="Adresy lokalnego połączenia">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBox Text="{Binding}" IsReadOnly="True" TextWrapping="Wrap" Margin="0,0,0,8" AutomationProperties.Name="Adres lokalnego połączenia"/>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBlock Text="Brak adresu sieciowego. Połącz komputer z Wi‑Fi lub Ethernetem, a następnie odśwież." TextWrapping="Wrap" Margin="0,2,0,10">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock" BasedOn="{StaticResource SxCaption}">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding HasAddress}" Value="False">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                        <WrapPanel>
+                            <Button Content="Kopiuj adres" Command="{Binding CopyAddressCommand}" Style="{StaticResource SxPrimaryButton}" Margin="0,0,8,6" IsEnabled="{Binding HasAddress}"/>
+                            <Button Content="Odśwież połączenie" Command="{Binding RefreshCommand}" Style="{StaticResource SxGhostButton}" Margin="0,0,8,6"/>
+                        </WrapPanel>
+                    </StackPanel>
+                    <Border Grid.Column="1" Background="{DynamicResource SxWhite}" CornerRadius="12" Padding="8" Margin="18,0,0,0" VerticalAlignment="Top" Visibility="{Binding HasAddress, Converter={StaticResource BoolToVisibility}}">
+                        <Image x:Name="PairingQr" Width="176" Height="176" Stretch="Uniform" AutomationProperties.Name="Kod QR lokalnego adresu połączenia"/>
+                    </Border>
+                </Grid>
+            </Border>
+
+            <Border Style="{StaticResource SxCard}" Margin="0,0,0,16">
+                <StackPanel>
+                    <DockPanel Margin="0,0,0,10">
+                        <Button Content="Odłącz wszystkie" Command="{Binding RequestDisconnectAllCommand}" Style="{StaticResource SxDangerButton}" DockPanel.Dock="Right" IsEnabled="{Binding HasDevices}" AutomationProperties.Name="Odłącz wszystkie sparowane telefony"/>
+                        <TextBlock Text="Sparowane urządzenia" Style="{StaticResource SxSectionTitle}" Margin="0,0,12,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="{Binding DeviceCountLabel}" Style="{StaticResource SxCaption}" VerticalAlignment="Center"/>
+                    </DockPanel>
+                    <ItemsControl ItemsSource="{Binding Devices}" AutomationProperties.Name="Lista sparowanych urządzeń">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border BorderBrush="{DynamicResource SxBorderSubtle}" BorderThickness="0,1,0,0" Padding="0,12">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
+                                            <TextBlock Text="{Binding AddedAt.LocalDateTime, StringFormat=Sparowano: {0:dd.MM.yyyy HH:mm}}" Style="{StaticResource SxCaption}" Margin="0,4,0,0"/>
+                                            <TextBlock Text="{Binding LastSeen.LocalDateTime, StringFormat=Ostatnio widziano: {0:dd.MM.yyyy HH:mm}}" Style="{StaticResource SxCaption}" Margin="0,2,0,0"/>
+                                            <TextBlock Text="{Binding CapabilitiesText, StringFormat=Funkcje: {0}}" Style="{StaticResource SxCaption}" Margin="0,4,0,0"/>
+                                        </StackPanel>
+                                        <Button Grid.Column="1" Content="Odłącz" Command="{Binding DataContext.RequestDisconnectCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" Style="{StaticResource SxGhostButton}" Foreground="{DynamicResource SxError}" VerticalAlignment="Center" Margin="12,0,0,0" AutomationProperties.Name="Odłącz to urządzenie"/>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <Border Background="{DynamicResource SxSurfaceActive}" CornerRadius="12" Padding="16">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasDevices}" Value="False">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <StackPanel>
+                            <TextBlock Text="Brak sparowanych telefonów" FontWeight="SemiBold"/>
+                            <TextBlock Text="Połącz urządzenie przez adres powyżej. Żadne nowe urządzenie nie uzyska dostępu bez osobnej zgody." Style="{StaticResource SxCaption}" Margin="0,6,0,0"/>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource SxCardElevated}" BorderBrush="{DynamicResource SxWarning}" Margin="0,12,0,0" Visibility="{Binding IsConfirmationOpen, Converter={StaticResource BoolToVisibility}}" AutomationProperties.LiveSetting="Polite">
+                        <Border.InputBindings><KeyBinding Key="Escape" Command="{Binding CancelDisconnectCommand}"/></Border.InputBindings>
+                        <StackPanel>
+                            <TextBlock Text="Potwierdź odłączenie" Style="{StaticResource SxSectionTitle}"/>
+                            <TextBlock Text="{Binding ConfirmationText}" TextWrapping="Wrap" Margin="0,0,0,12"/>
+                            <WrapPanel>
+                                <Button Content="Anuluj" Command="{Binding CancelDisconnectCommand}" Margin="0,0,8,0" u:UiInteraction.FocusOnVisible="True"/>
+                                <Button Content="Odłącz urządzenie" Command="{Binding ConfirmDisconnectCommand}" Style="{StaticResource SxDangerButton}" AutomationProperties.Name="Potwierdź odłączenie urządzenia"/>
+                            </WrapPanel>
+                        </StackPanel>
+                    </Border>
+                    <TextBlock Text="{Binding DeviceStoreWarning}" Foreground="{DynamicResource SxWarning}" TextWrapping="Wrap" Margin="0,12,0,0">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource SxCaption}">
+                                <Setter Property="Foreground" Value="{DynamicResource SxWarning}"/>
+                                <Setter Property="Visibility" Value="Visible"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding DeviceStoreWarning}" Value="">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding DeviceStoreWarning}" Value="{x:Null}">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource SxCard}" Margin="0,0,0,16">
+                <StackPanel>
+                    <TextBlock Text="Bezpieczeństwo połączenia" Style="{StaticResource SxSectionTitle}"/>
+                    <TextBlock Text="Telefon działa wyłącznie w sieci prywatnej. Zaufanie jest nadawane po ręcznej zgodzie, a komputer przechowuje skrót tokenu — nie sam token. Rozłączenie unieważnia zapisane zaufanie." Style="{StaticResource SxCaption}" TextWrapping="Wrap"/>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

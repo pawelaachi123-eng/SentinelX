@@ -24,21 +24,26 @@ public partial class SettingViewModel : ObservableObject
     partial void OnNumericValueChanged(double value) => Value = value.ToString("0.###", CultureInfo.InvariantCulture);
     partial void OnValueChanged(string value)
     {
+        IsSaved = false;
+        Error = "";
         if (double.TryParse(value.Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture, out var number) && double.IsFinite(number)) NumericValue = number;
     }
+    partial void OnEnabledChanged(bool value) { IsSaved = false; Error = ""; }
     [ObservableProperty] private string value;
     [ObservableProperty] private bool enabled;
     [ObservableProperty] private string error = "";
+    [ObservableProperty] private bool isSaved;
     public SettingViewModel(SettingField field, AppSettingsService store)
     { this.field = field; this.store = store; value = field.Read(); if (double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var number)) numericValue = number; enabled = bool.TryParse(value, out var b) && b; }
     [RelayCommand] private void Save()
     {
+        IsSaved = false;
         string before = field.Read();
         Error = field.Write(IsToggle ? Enabled.ToString() : Value) ?? "";
         if (Error.Length != 0) return;
         store.Save();
         if (store.LastError is { } failure) { field.Write(before); Error = failure; }
-        else { Value = field.Read(); Error = "Zapisano"; }
+        else { Value = field.Read(); IsSaved = true; }
     }
 }
 public partial class SettingsViewModel : ObservableObject
@@ -46,20 +51,64 @@ public partial class SettingsViewModel : ObservableObject
     private readonly AppSettingsService store;
     public ObservableCollection<SettingViewModel> Fields { get; } = [];
     public ICollectionView FilteredFields { get; }
-    public string[] Sections { get; } = ["Wygląd", "Głos", "AI", "Telefon", "Pamięć", "Watch", "Zasoby", "Ogólne", "Developer"];
-    [ObservableProperty] private string selectedSection = "Wygląd";
+    public string[] Sections { get; } = ["Wszystkie", "Wygląd", "Głos", "AI", "Telefon", "Pamięć", "Watch", "Zasoby", "Ogólne", "Developer"];
+    [ObservableProperty] private string selectedSection = "Wszystkie";
     [ObservableProperty] private string search = "";
     [ObservableProperty] private string status = "Zapisz wybrane ustawienie przyciskiem obok pola. Zmiana działa od razu.";
+    [ObservableProperty] private bool isResetConfirmationOpen;
+    [ObservableProperty] private string resetConfirmationText = "";
     public SettingsViewModel(AppSettingsService store)
     {
         this.store = store;
         FilteredFields = CollectionViewSource.GetDefaultView(Fields);
         FilteredFields.GroupDescriptions.Add(new PropertyGroupDescription(nameof(SettingViewModel.Section)));
-        FilteredFields.Filter = item => item is SettingViewModel field && $"{field.Section} {field.Label} {field.Description}".Contains(Search, StringComparison.OrdinalIgnoreCase);
+        FilteredFields.Filter = item => item is SettingViewModel field
+            && (SelectedSection == "Wszystkie" || field.Section == SelectedSection)
+            && Matches(field);
         Rebuild(); if (store.LastError != null) Status = store.LastError;
     }
+    private bool Matches(SettingViewModel field)
+    {
+        string query = ConversationMemoryService.Normalize(Search.Trim());
+        if (query.Length == 0) return true;
+        string searchable = ConversationMemoryService.Normalize($"{field.Section} {field.Label} {field.Description}");
+        return searchable.Contains(query, StringComparison.Ordinal);
+    }
     partial void OnSearchChanged(string value) => FilteredFields.Refresh();
+    partial void OnSelectedSectionChanged(string value)
+    {
+        FilteredFields.Refresh();
+        IsResetConfirmationOpen = false;
+    }
+    [RelayCommand] private void ClearSearch() => Search = "";
     [RelayCommand] private void ResetSection()
-    { store.ResetSection(SelectedSection); Status = store.LastError ?? $"Przywrócono sekcję {SelectedSection}."; Rebuild(); }
-    private void Rebuild() { Fields.Clear(); foreach (var field in SettingsCatalog.Create(store)) Fields.Add(new(field, store)); }
+    {
+        if (SelectedSection == "Wszystkie")
+        {
+            Status = "Wybierz kategorię przed jej przywróceniem.";
+            return;
+        }
+        ResetConfirmationText = $"Przywrócić wartości domyślne kategorii „{SelectedSection}”? Niestandardowe ustawienia tej kategorii zostaną zastąpione.";
+        IsResetConfirmationOpen = true;
+    }
+    [RelayCommand] private void CancelReset()
+    {
+        IsResetConfirmationOpen = false;
+        ResetConfirmationText = "";
+    }
+    [RelayCommand] private void ConfirmResetSection()
+    {
+        if (SelectedSection == "Wszystkie")
+        {
+            Status = "Wybierz jedną kategorię przed przywróceniem wartości domyślnych.";
+            CancelReset();
+            return;
+        }
+        string section = SelectedSection;
+        store.ResetSection(section);
+        Rebuild();
+        Status = store.LastError ?? $"Przywrócono domyślne wartości kategorii {section}.";
+        CancelReset();
+    }
+    private void Rebuild() { Fields.Clear(); foreach (var field in SettingsCatalog.Create(store)) Fields.Add(new(field, store)); FilteredFields.Refresh(); }
 }
