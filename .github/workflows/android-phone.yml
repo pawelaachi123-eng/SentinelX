@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   apk:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
       SENTINELX_ANDROID_KEYSTORE_BASE64: ${{ secrets.SENTINELX_ANDROID_KEYSTORE_BASE64 }}

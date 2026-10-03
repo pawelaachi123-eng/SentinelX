@@ -6,7 +6,7 @@ Cienka aplikacja Android (Java, **bez bibliotek zewnętrznych**, minSdk 24, targ
 
 - **Z wydania na GitHubie:** plik `SentinelX-Phone-<wersja>.apk` (budowany przez workflow *Release*, job `android`). Zainstaluj, zezwalając na instalację z nieznanego źródła.
 - **Z Android Studio:** *Open* → folder `phone-android` → *Build → Build APK* (wariant debug). Gradle pobierze wtyczkę Androida (AGP 8.7.3) z Google Maven.
-- **Z wiersza poleceń** (JDK 17, Android SDK, Gradle 8.9): `cd phone-android && gradle assembleDebug` → `app/build/outputs/apk/debug/app-debug.apk`; `gradle assembleRelease` → `app/build/outputs/apk/release/app-release.apk`.
+- **Z wiersza poleceń** (JDK 17, Android SDK, Gradle 8.14.5): `cd phone-android && gradle assembleDebug` → `app/build/outputs/apk/debug/app-debug.apk`; `gradle assembleRelease` → `app/build/outputs/apk/release/app-release.apk`.
 - **Z CI:** zwykły push buduje, weryfikuje podpis i publikuje oba warianty jako osobne artefakty na 7 dni.
 
 ## Podpis
