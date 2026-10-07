@@ -15,7 +15,7 @@ public final class BaseActivity extends Activity {
  private volatile BaseClient client;
  private BaseSession session;
  private volatile boolean active,blocked;
- private volatile int generation;private int retries,connectingEpoch=-1;
+ private final ConnectionLifecycle lifecycle=new ConnectionLifecycle();private int connectingEpoch=-1;
  private TextView status,result;
  private EditText host,port,pin,secret,device,base,target,appId,seconds;
  private Spinner mode,operation;
@@ -81,49 +81,49 @@ public final class BaseActivity extends Activity {
  private void pair(){
   Map<String,Object> c=StrictJson.map("host",host.getText().toString().trim(),"port",Integer.parseInt(port.getText().toString()),"fingerprint",pin.getText().toString().trim(),
    "deviceId",Integer.parseInt(device.getText().toString()),"baseId",Integer.parseInt(base.getText().toString()),"secret",secret.getText().toString().trim(),"mode",mode.getSelectedItem().toString());
-  disconnect();int epoch=generation;status.setText("Sprawdzam podpis i challenge…");
+  disconnect();int epoch=lifecycle.epoch();status.setText("Sprawdzam podpis i challenge…");
   worker.execute(()->{
    try(BaseClient verify=BaseSession.create(c)){
     client=verify;verify.connect();
-    if(!active||epoch!=generation)return;
-    session.save(c);ui.post(()->{if(active&&epoch==generation){secret.setText("");blocked=false;retries=0;disconnect();connect();AlertJobService.schedule(this);}});
-   }catch(Exception e){ui.post(()->{if(active&&epoch==generation)showError(e);});}
-   finally{if(epoch==generation)client=null;}
+    if(!active||epoch!=lifecycle.epoch())return;
+    session.save(c);ui.post(()->{if(active&&epoch==lifecycle.epoch()){secret.setText("");blocked=false;lifecycle.paired();lifecycle.connected();disconnect();connect();AlertJobService.schedule(this);}});
+   }catch(Exception e){ui.post(()->{if(active&&epoch==lifecycle.epoch())showError(e);});}
+   finally{if(epoch==lifecycle.epoch())client=null;}
   });
  }
  private void discover(){
-  status.setText("Szukam w LAN…");int epoch=generation;
+  status.setText("Szukam w LAN…");int epoch=lifecycle.epoch();
   worker.execute(()->{
    try{List<Map<String,Object>> found=BaseDiscovery.discover();ui.post(()->{
-    if(!active||epoch!=generation)return;if(found.isEmpty()){result.setText("Brak zgodnych odpowiedzi. Możesz wpisać adres ręcznie.");return;}
+    if(!active||epoch!=lifecycle.epoch())return;if(found.isEmpty()){result.setText("Brak zgodnych odpowiedzi. Możesz wpisać adres ręcznie.");return;}
     String[] names=new String[found.size()];for(int i=0;i<names.length;i++)names[i]=String.valueOf(found.get(i).get("host"));
     new AlertDialog.Builder(this).setTitle("Wybierz Base").setItems(names,(d,w)->{
      Map<String,Object> c=found.get(w);host.setText(String.valueOf(c.get("host")));port.setText(String.valueOf(c.get("port")));base.setText(String.valueOf(c.get("baseId")));
      result.setText("Kandydat fingerprint: "+c.get("fingerprint")+"\nPorównaj go z fizyczną Base i wpisz powyżej.");mode.setSelection(0);
     }).show();
-   });}catch(Exception e){ui.post(()->{if(active&&epoch==generation)showError(e);});}
+   });}catch(Exception e){ui.post(()->{if(active&&epoch==lifecycle.epoch())showError(e);});}
   });
  }
  private void connect(){
-  if(!active||blocked||session.configuration()==null||connectingEpoch==generation)return;int epoch=generation;connectingEpoch=epoch;status.setText("Łączenie · "+session.configuration().get("mode"));
+  if(!active||blocked||session.configuration()==null||connectingEpoch==lifecycle.epoch())return;int epoch=lifecycle.epoch();connectingEpoch=epoch;status.setText("Łączenie · "+session.configuration().get("mode"));
   worker.execute(()->{
    try{
-    BaseClient next=session.open();if(!active||epoch!=generation){next.close();return;}client=next;next.connect();
-    ui.post(()->{if(active&&epoch==generation){connectingEpoch=-1;retries=0;status.setText("Base połączona · SX4 · "+networkLabel());submitQuery("status");}});
-   }catch(Exception e){ui.post(()->{if(active&&epoch==generation){connectingEpoch=-1;showError(e);scheduleReconnect();}});}
+    BaseClient next=session.open();if(!active||epoch!=lifecycle.epoch()){next.close();return;}client=next;next.connect();
+    ui.post(()->{if(active&&epoch==lifecycle.epoch()){connectingEpoch=-1;lifecycle.connected();status.setText("Base połączona · SX4 · "+networkLabel());submitQuery("status");}});
+   }catch(Exception e){ui.post(()->{if(active&&epoch==lifecycle.epoch()){connectingEpoch=-1;showError(e);scheduleReconnect();}});}
   });
  }
  private String networkLabel(){Network n=connectivity.getActiveNetwork();NetworkCapabilities c=connectivity.getNetworkCapabilities(n);return c!=null&&c.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)?"Wi-Fi · "+mode.getSelectedItem():"remote · "+mode.getSelectedItem();}
- private void scheduleReconnect(){if(!active||blocked)return;ui.removeCallbacks(poll);int epoch=generation;long delay=Math.min(60000,1000L<<Math.min(++retries,6))+ThreadLocalRandom.current().nextInt(1000);ui.postDelayed(()->{if(active&&epoch==generation){disconnect();connect();}},delay);}
+ private void scheduleReconnect(){if(!active||blocked)return;ui.removeCallbacks(poll);int epoch=lifecycle.epoch();long delay=lifecycle.retryDelay(ThreadLocalRandom.current().nextInt(1000));ui.postDelayed(()->{if(active&&epoch==lifecycle.epoch()){disconnect();connect();}},delay);}
  private void submitQuery(String type){request(type,StrictJson.map(),true);}
  private void request(String type,Map<String,Object> data,boolean read){
-  BaseClient connection=client;int epoch=generation;if(!active||connection==null||blocked){result.setText("Base offline. Sparuj urządzenie lub poczekaj na połączenie.");return;}
+  BaseClient connection=client;int epoch=lifecycle.epoch();if(!active||connection==null||blocked){result.setText("Base offline. Sparuj urządzenie lub poczekaj na połączenie.");return;}
   if(!read)result.setText("Wysyłam jednorazowo…");
   worker.execute(()->{
    try{Map<String,Object> reply=connection.request(type,data);ui.post(()->{
-    if(!active||epoch!=generation)return;result.setText(StrictJson.encode(redact(reply.get("data"))));status.setText("Base połączona · "+networkLabel());
+    if(!active||epoch!=lifecycle.epoch())return;result.setText(StrictJson.encode(redact(reply.get("data"))));status.setText("Base połączona · "+networkLabel());
     if(type.equals("status")){ui.removeCallbacks(poll);ui.postDelayed(poll,15000);}
-   });}catch(Exception e){ui.post(()->{if(active&&epoch==generation){showError(e);if(!(e instanceof Sx4.Error)){disconnect();scheduleReconnect();}}});}
+   });}catch(Exception e){ui.post(()->{if(active&&epoch==lifecycle.epoch()){showError(e);if(!(e instanceof Sx4.Error)){disconnect();scheduleReconnect();}}});}
   });
  }
  private static Object redact(Object value){
@@ -131,11 +131,11 @@ public final class BaseActivity extends Activity {
   if(value instanceof List){List<Object> safe=new ArrayList<>();for(Object x:(List<?>)value)safe.add(redact(x));return safe;}return value;
  }
  private void showError(Exception e){
-  if(e instanceof Sx4.Error){String code=((Sx4.Error)e).code;if(!code.equals("unsupported")&&!code.equals("not_paired")){blocked=true;session.setBlocked(true);disconnect();}result.setText("SX4: "+code+(blocked?" · sprawdź tożsamość i sparuj ponownie":""));}
+  if(e instanceof Sx4.Error){String code=((Sx4.Error)e).code;if(!code.equals("unsupported")&&!code.equals("not_paired")){blocked=true;lifecycle.revoke();session.setBlocked(true);disconnect();}result.setText("SX4: "+code+(blocked?" · sprawdź tożsamość i sparuj ponownie":""));}
   else result.setText("Połączenie przerwane. Komendy nie są automatycznie powtarzane.");
  }
- private void disconnect(){generation++;connectingEpoch=-1;ui.removeCallbacks(poll);BaseClient c=client;client=null;if(c!=null)c.close();}
- @Override protected void onResume(){super.onResume();active=true;connectivity.registerDefaultNetworkCallback(network);connect();}
- @Override protected void onStop(){active=false;disconnect();ui.removeCallbacksAndMessages(null);try{connectivity.unregisterNetworkCallback(network);}catch(IllegalArgumentException ignored){}super.onStop();}
+ private void disconnect(){lifecycle.networkChanged();connectingEpoch=-1;ui.removeCallbacks(poll);BaseClient c=client;client=null;if(c!=null)c.close();}
+ @Override protected void onResume(){super.onResume();active=true;blocked=session.blocked();lifecycle.resume(blocked);connectivity.registerDefaultNetworkCallback(network);connect();}
+ @Override protected void onStop(){active=false;lifecycle.stop();disconnect();ui.removeCallbacksAndMessages(null);try{connectivity.unregisterNetworkCallback(network);}catch(IllegalArgumentException ignored){}super.onStop();}
  @Override protected void onDestroy(){disconnect();worker.shutdownNow();super.onDestroy();}
 }

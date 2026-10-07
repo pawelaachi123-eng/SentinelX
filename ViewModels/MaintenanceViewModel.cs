@@ -7,6 +7,7 @@ public partial class MaintenanceViewModel(MaintenanceService service):Observable
 {
  [ObservableProperty]private string result="";
  [ObservableProperty]private bool busy;
+ [ObservableProperty]private string internetProbeUrl="";
  [ObservableProperty]private string publisherPublicKey="";
  [ObservableProperty]private bool requireSignature=true;
  [ObservableProperty]private string steamQuery="";
@@ -14,7 +15,7 @@ public partial class MaintenanceViewModel(MaintenanceService service):Observable
  public ObservableCollection<DiagnosticCheck> Checks{get;}=[];
  public ObservableCollection<SteamGame> Games{get;}=[];
  private async Task Run(Func<Task<string>> action){if(Busy)return;Busy=true;Result="Pracuję…";try{Result=await action();}catch(Exception e){Result=e is UpdateFailure x?"Aktualizacja odrzucona: "+x.Code:"Operacja nie powiodła się. Sprawdź lokalną konfigurację.";}finally{Busy=false;}}
- [RelayCommand]private Task DiagnoseAsync(CancellationToken cancel)=>Run(async()=>{var items=await service.DiagnoseAsync(cancel);Checks.Clear();foreach(var item in items)Checks.Add(item);return "Diagnostyka zakończona. BLOCKED wskazuje brak konfiguracji lub zewnętrznego komponentu.";});
+ [RelayCommand]private Task DiagnoseAsync(CancellationToken cancel)=>Run(async()=>{var items=await service.DiagnoseAsync(InternetProbeUrl,cancel);Checks.Clear();foreach(var item in items)Checks.Add(item);return "Diagnostyka zakończona. BLOCKED wskazuje brak konfiguracji lub zewnętrznego komponentu.";});
  [RelayCommand]private Task RepairDirectoriesAsync()=>Run(service.RepairDirectoriesAsync);
  [RelayCommand]private Task RepairAutostartAsync()=>Run(()=>Task.FromResult(service.RepairAutostart()));
  [RelayCommand]private Task StageUpdateAsync(CancellationToken cancel)=>Run(()=>service.StageUpdateAsync(PublisherPublicKey,RequireSignature,cancel));

@@ -26,6 +26,15 @@ public final class KernelContract {
   check(StrictJson.object(StrictJson.parse("{\"version\":4}")).get("version") instanceof Long,"version is integral Long");
   check(StrictJson.parse(StrictJson.encode(StrictJson.map("test","Zażółć 🛰","array",Arrays.asList(1,2)))) instanceof Map,"JSON roundtrip");
   reject(()->new BaseClient("localhost",443,new String(new char[64]).replace('\0','0'),3,3,new String(new char[64]).replace('\0','0')),"configuration");
+  javax.crypto.KeyGenerator generator=javax.crypto.KeyGenerator.getInstance("AES");generator.init(256);javax.crypto.SecretKey aes=generator.generateKey();
+  byte[] one=SecretCipher.encrypt("base.identity","sensitive 🛰",aes),two=SecretCipher.encrypt("base.identity","sensitive 🛰",aes);
+  check(!Arrays.equals(one,two),"Keystore cipher random IV");check(SecretCipher.decrypt("base.identity",one,aes).equals("sensitive 🛰"),"Keystore cipher roundtrip");
+  one[one.length-1]^=1;try{SecretCipher.decrypt("base.identity",one,aes);throw new AssertionError("tamper");}catch(javax.crypto.AEADBadTagException e){check(true,"Keystore tamper rejected");}
+  try{SecretCipher.decrypt("pc.token",two,aes);throw new AssertionError("AAD");}catch(javax.crypto.AEADBadTagException e){check(true,"Keystore name binding");}
+  ConnectionLifecycle life=new ConnectionLifecycle();int epoch=life.resume(false);check(life.current(epoch),"lifecycle resume");
+  life.networkChanged();check(!life.current(epoch),"Wi-Fi/LTE cancels old epoch");epoch=life.epoch();life.stop();check(!life.current(epoch),"stop blocks stale callbacks");
+  epoch=life.resume(true);check(!life.current(epoch),"revocation survives resume");life.paired();epoch=life.epoch();check(life.current(epoch),"repair pairing restores connection");
+  long delay=0;for(int i=0;i<10;i++){long next=life.retryDelay(0);check(next>=delay&&next<=60000,"bounded exponential reconnect");delay=next;}
   System.out.println("PASS "+checks+" Java checks");
  }
  public static void main(String[] args)throws Exception {
@@ -36,7 +45,7 @@ public final class KernelContract {
     check(client.supports("status"),"capability");Map<String,Object> reply=client.request("status",StrictJson.map());check(Boolean.TRUE.equals(StrictJson.object(reply.get("data")).get("online")),"TLS Base status");
     reject(()->client.request("shell",StrictJson.map()),"unsupported");
    }else{client.request("status",StrictJson.map());throw new AssertionError("bad server accepted");}}
-   catch(Exception e){if(mode.equals("ok"))throw e;if(e instanceof Sx4.Error)check(((Sx4.Error)e).code.equals(mode),"TLS reject "+mode);else if(mode.equals("pin"))check(true,"TLS pin rejected");else throw e;}
+   catch(Exception e){if(mode.equals("ok"))throw e;if(e instanceof Sx4.Error)check(((Sx4.Error)e).code.equals(mode)||(mode.equals("pin")&&((Sx4.Error)e).code.equals("auth")),"TLS reject "+mode);else if(mode.equals("pin"))check(true,"TLS pin rejected");else throw e;}
   }
  }
 }

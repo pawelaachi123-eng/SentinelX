@@ -100,8 +100,8 @@ public sealed class WindowsBaseService : IDisposable
                         }
                     }
                     if(connection.Supports("tasks.status")){
-                        var statuses=(await queue.SnapshotAsync()).OrderByDescending(x=>x.State is "accepted" or "running").Take(32);
-                        await RequestAsync("tasks.status",new{tasks=statuses.Select(x=>new{id=x.Id,state=x.State,code=x.Code})},cancel);
+                        var statuses=await queue.SnapshotAsync();
+                        foreach(var batch in statuses.Chunk(32))await RequestAsync("tasks.status",new{tasks=batch.Select(x=>new{id=x.Id,state=x.State,code=x.Code})},cancel);
                     }
                     await Task.Delay(TimeSpan.FromSeconds(15),cancel);
                 }

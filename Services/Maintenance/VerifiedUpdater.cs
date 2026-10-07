@@ -39,7 +39,7 @@ public sealed class VerifiedUpdater
   }
  }
  public static string CanonicalChild(string root,string relative){
-  if(string.IsNullOrWhiteSpace(relative)||relative.Contains('\\')||relative.Contains(':')||relative.Split('/').Any(x=>x is ".." or "."||x.EndsWith(' ')||x.EndsWith('.')))throw new UpdateFailure("path");
+  if(string.IsNullOrWhiteSpace(relative)||relative.Contains('\\')||relative.Any(c=>c is ':' or '*' or '?' or '<' or '>' or '|'||char.IsControl(c))||relative.Split('/').Any(x=>x is ".." or "."||x.EndsWith(' ')||x.EndsWith('.')||Regex.IsMatch(x.Split('.')[0],"^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$",RegexOptions.IgnoreCase)))throw new UpdateFailure("path");
   string full=Path.GetFullPath(Path.Combine(root,relative)),prefix=Path.GetFullPath(root).TrimEnd(Path.DirectorySeparatorChar)+Path.DirectorySeparatorChar;
   if(!full.StartsWith(prefix,StringComparison.OrdinalIgnoreCase))throw new UpdateFailure("path");return full;
  }

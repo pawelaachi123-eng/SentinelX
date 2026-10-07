@@ -48,7 +48,7 @@ def main():
   subprocess.run(['openssl','req','-x509','-newkey','rsa:2048','-nodes','-days','1','-subj','/CN=localhost','-keyout',str(keyfile),'-out',str(cert)],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
   der=ssl.PEM_cert_to_DER_cert(cert.read_text());pin=hashlib.sha256(der).hexdigest();context=ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER);context.minimum_version=ssl.TLSVersion.TLSv1_2;context.load_cert_chain(cert,keyfile)
   java=ROOT/'phone-android/app/src/main/java/pl/sentinelx/phone'
-  subprocess.run([args.javac,'-d',str(tmp/'classes'),*[str(java/n) for n in ['Sx4.java','StrictJson.java','BaseClient.java']],str(ROOT/'verification/java/pl/sentinelx/phone/KernelContract.java')],check=True)
+  subprocess.run([args.javac,'-d',str(tmp/'classes'),*[str(java/n) for n in ['Sx4.java','StrictJson.java','BaseClient.java','SecretCipher.java','ConnectionLifecycle.java']],str(ROOT/'verification/java/pl/sentinelx/phone/KernelContract.java')],check=True)
   subprocess.run([args.dotnet,'build',str(ROOT/'verification/Build1/Build1.csproj'),'-c','Release','--nologo'],check=True)
   for language in ['Java','C#']:
    for mode in ['ok','pin','correlation','replay','timestamp','revoked']:

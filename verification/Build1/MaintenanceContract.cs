@@ -16,7 +16,7 @@ static class MaintenanceContract
    Reject(()=>VerifiedUpdater.VerifyDescriptor(meta with{Architecture="win-arm64"},"1.0.0",null,false),"architecture");
    Reject(()=>VerifiedUpdater.VerifyDescriptor(meta,"1.0.0",null,true),"signature_required");
    Reject(()=>UpdateDescriptor.Parse("{\"Version\":\"2.0.0\",\"version\":\"3.0.0\"}"),"metadata_duplicate");
-   foreach(string path in new[]{"../escape","/outside","a\\b","a/../outside","C:/outside","a./bad"})Reject(()=>VerifiedUpdater.CanonicalChild(root,path),"path");
+   foreach(string path in new[]{"../escape","/outside","a\\b","a/../outside","C:/outside","a./bad","CON.txt","a/<bad>"})Reject(()=>VerifiedUpdater.CanonicalChild(root,path),"path");
    using var rsa=RSA.Create(2048);string publicKey=rsa.ExportSubjectPublicKeyInfoPem();
    string signature=Convert.ToBase64String(rsa.SignData(Encoding.UTF8.GetBytes(meta.SignedText),HashAlgorithmName.SHA256,RSASignaturePadding.Pss));
    VerifiedUpdater.VerifyDescriptor(meta with{Signature=signature},"1.0.0",publicKey,true);check(true,"updater publisher RSA-PSS signature");
@@ -41,6 +41,13 @@ static class MaintenanceContract
    string traversal=Path.Combine(root,"traversal.zip");using(var archive=ZipFile.Open(traversal,ZipArchiveMode.Create)){using var output=archive.CreateEntry("../escape").Open();output.Write(RandomNumberGenerator.GetBytes(8192));}
    var dangerous=meta with{Sha256=Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(traversal))),Size=new FileInfo(traversal).Length};
    await RejectAsync(()=>manager.StageAsync(traversal,dangerous,"1.0.0",null,false,long.MaxValue/2,CancellationToken.None),"path");
+   string first=Path.Combine(root,"repair-one"),second=Path.Combine(root,"repair-two");
+   try{DirectoryRepair.Run([first,second],Path.Combine(root,"backups"),p=>{if(p==second)throw new IOException("injected");Directory.CreateDirectory(p);});throw new Exception("repair fault accepted");}catch(IOException){}
+   check(!Directory.Exists(first)&&!Directory.Exists(second),"directory repair rolls back only newly created empty folders");
+   check(Directory.EnumerateFiles(Path.Combine(root,"backups"),"repair.jsonl",SearchOption.AllDirectories).Select(File.ReadAllText).Any(x=>x.Contains("rollback")&&x.Contains("succeeded")),"repair phases persisted");
+   string original=Path.Combine(root,"original-data");Directory.CreateDirectory(original);File.WriteAllText(Path.Combine(original,"user"),"keep");
+   DirectoryRepair.Run([original,first],Path.Combine(root,"backups"));
+   check(File.ReadAllText(Path.Combine(original,"user"))=="keep"&&Directory.Exists(first),"repair preserves existing user data and verifies directories");
    string apps=Path.Combine(root,"Steam","steamapps");Directory.CreateDirectory(apps);
    File.WriteAllText(Path.Combine(apps,"appmanifest_10.acf"),"\"appid\" \"10\"\n\"name\" \"Same game Deluxe\"");
    File.WriteAllText(Path.Combine(apps,"appmanifest_11.acf"),"\"appid\" \"11\"\n\"name\" \"Same game Standard\"");

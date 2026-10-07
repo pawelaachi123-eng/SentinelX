@@ -4,6 +4,7 @@
  <ProgressBar IsIndeterminate="{Binding Busy}" Height="4" Margin="0,12"/>
  <Border Style="{StaticResource SxCard}" Margin="0,8"><StackPanel>
   <TextBlock Text="Sprawdź i napraw lokalnie" FontSize="18"/>
+  <TextBlock Text="Opcjonalny adres HTTPS do sprawdzenia Internetu"/><TextBox Text="{Binding InternetProbeUrl}" AutomationProperties.Name="Adres testu Internetu"/>
   <WrapPanel Margin="0,8"><Button Content="Diagnostyka" Command="{Binding DiagnoseCommand}" Margin="4"/><Button Content="Odtwórz katalogi z kopią" Command="{Binding RepairDirectoriesCommand}" Margin="4"/><Button Content="Włącz i zweryfikuj autostart" Command="{Binding RepairAutostartCommand}" Margin="4"/></WrapPanel>
   <ItemsControl ItemsSource="{Binding Checks}"><ItemsControl.ItemTemplate><DataTemplate><StackPanel Margin="0,6"><TextBlock Text="{Binding Name}" FontWeight="Bold"/><TextBlock Text="{Binding State}"/><TextBlock Text="{Binding Detail}" TextWrapping="Wrap"/></StackPanel></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
  </StackPanel></Border>

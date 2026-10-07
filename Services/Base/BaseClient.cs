@@ -59,7 +59,7 @@ public sealed class BaseClient : IAsyncDisposable
             if(frame.OpCode!=ExtensionOpCode)throw new Sx4Exception("opcode");
             var response=Sx4Wire.Parse(frame.Payload);
             if(response.CorrelationId!=message.RequestId)throw new Sx4Exception("correlation");
-            if(response.Type=="error"){string code=response.Data.GetProperty("code").GetString()??"remote_error";throw new Sx4Exception(code);}
+            if(response.Type=="error"){string code=response.Data.GetProperty("code").GetString()??"remote_error";throw new Sx4Exception(System.Text.RegularExpressions.Regex.IsMatch(code,"^[a-z_]{1,64}$")?code:"remote_error");}
             if(response.Type!=expected)throw new Sx4Exception("response_type");
             return response;
         }

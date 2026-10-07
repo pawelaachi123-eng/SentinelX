@@ -27,17 +27,15 @@ final class SecretStore {
  }
  synchronized void put(String name,String value){
   try{
-   Cipher cipher=Cipher.getInstance("AES/GCM/NoPadding");cipher.init(Cipher.ENCRYPT_MODE,key());cipher.updateAAD(name.getBytes(StandardCharsets.UTF_8));
-   byte[] encrypted=cipher.doFinal(value.getBytes(StandardCharsets.UTF_8));String packed=Base64.encodeToString(cipher.getIV(),Base64.NO_WRAP)+":"+Base64.encodeToString(encrypted,Base64.NO_WRAP);
+   String packed=Base64.encodeToString(SecretCipher.encrypt(name,value,key()),Base64.NO_WRAP);
    if(!preferences.edit().putString(name,packed).commit())throw new IllegalStateException("secret_write");
   }catch(Exception e){throw new IllegalStateException("secret_store",e);}
  }
  synchronized String get(String name){
   String packed=preferences.getString(name,"");if(packed.isEmpty())return "";
   try{
-   String[] parts=packed.split(":",-1);if(parts.length!=2||packed.length()>16384)throw new IllegalStateException("secret_format");
-   Cipher cipher=Cipher.getInstance("AES/GCM/NoPadding");cipher.init(Cipher.DECRYPT_MODE,key(),new GCMParameterSpec(128,Base64.decode(parts[0],Base64.NO_WRAP)));
-   cipher.updateAAD(name.getBytes(StandardCharsets.UTF_8));return new String(cipher.doFinal(Base64.decode(parts[1],Base64.NO_WRAP)),StandardCharsets.UTF_8);
+   if(packed.length()>65536)throw new IllegalStateException("secret_format");
+   return SecretCipher.decrypt(name,Base64.decode(packed,Base64.NO_WRAP),key());
   }catch(Exception e){preferences.edit().remove(name).commit();return "";}
  }
  synchronized void remove(String name){if(!preferences.edit().remove(name).commit())throw new IllegalStateException("secret_write");}

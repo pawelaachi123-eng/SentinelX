@@ -39,7 +39,7 @@ public final class BaseClient implements AutoCloseable {
    Map<String,Object> caps=StrictJson.object(exchange("capabilities",StrictJson.map(),"capabilities.result").get("data"));
    Object values=caps.get("types");if(!(values instanceof List)||((List<?>)values).size()>32)throw new Sx4.Error("capabilities");
    for(Object c:(List<?>)values)if(!(c instanceof String)||!((String)c).matches("[A-Za-z0-9._]{1,64}")||!capabilities.add((String)c))throw new Sx4.Error("capabilities");
-  }catch(Exception e){close();throw e;}
+  }catch(Exception e){close();if(e instanceof javax.net.ssl.SSLHandshakeException)throw new Sx4.Error("auth");throw e;}
  }
  public synchronized Map<String,Object> request(String type,Map<String,Object> data) throws Exception {
   if(!supports(type))throw new Sx4.Error("unsupported");return exchange(type,data,type+".result");

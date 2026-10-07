@@ -11,7 +11,7 @@ public sealed record DiagnosticCheck(string Name,string State,string Detail);
 public sealed class MaintenanceService(WindowsBaseService agent,OllamaSupervisor ollama)
 {
  public VerifiedUpdater Updater{get;}=new(Path.Combine(AppPaths.Root,"Updates"),ValidPackage,folder=>FileVersionInfo.GetVersionInfo(Path.Combine(folder,"SentinelX.exe")).ProductVersion);
- public async Task<IReadOnlyList<DiagnosticCheck>> DiagnoseAsync(CancellationToken cancel){
+ public async Task<IReadOnlyList<DiagnosticCheck>> DiagnoseAsync(string internetProbe,CancellationToken cancel){
   var checks=new List<DiagnosticCheck>();
   void Check(string name,bool ok,string detail)=>checks.Add(new(name,ok?"PASS":"BLOCKED",detail));
   await Task.Run(()=>{
@@ -28,25 +28,31 @@ public sealed class MaintenanceService(WindowsBaseService agent,OllamaSupervisor
    Check("Steam",File.Exists(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),"Steam","steam.exe")),"Lokalna instalacja");
    Check("Logi",Directory.Exists(AppPaths.LogsDirectory),"Lokalne logi; dziennik Base ma limit 8 MiB");
    var state=Updater.ReadJournal();Check("Crash-loop",state.LaunchFailures<3,"Licznik: "+state.LaunchFailures);
-   Check("Internet",false,"Sprawdź żądaniem do własnego relayu; diagnostyka offline nie wysyła danych na zewnętrzny serwer");
+
    Check("Android",false,"Stan telefonu jest dostępny przez devices/status Base");
   },cancel);
+  if(string.IsNullOrWhiteSpace(internetProbe))checks.Add(new("Internet","SKIPPED","Podaj opcjonalny HTTPS endpoint, aby sprawdzić połączenie"));
+  else {
+   if(!Uri.TryCreate(internetProbe,UriKind.Absolute,out var address)||address.Scheme!="https"||!string.IsNullOrEmpty(address.UserInfo))throw new ArgumentException("probe_url");
+   try{using var http=new System.Net.Http.HttpClient(new System.Net.Http.HttpClientHandler{AllowAutoRedirect=false}){Timeout=TimeSpan.FromSeconds(3)};
+    using var request=new System.Net.Http.HttpRequestMessage(System.Net.Http.HttpMethod.Head,address);using var response=await http.SendAsync(request,System.Net.Http.HttpCompletionOption.ResponseHeadersRead,cancel);
+    Check("Internet",response.IsSuccessStatusCode,"Wskazany HTTPS endpoint odpowiedział: "+(int)response.StatusCode);
+   }catch(System.Net.Http.HttpRequestException){Check("Internet",false,"Wskazany endpoint niedostępny");}catch(TaskCanceledException)when(!cancel.IsCancellationRequested){Check("Internet",false,"Timeout 3 s");}
+  }
   Check("Ollama",await ollama.StatusAsync(cancel),"Tylko loopback /api/tags; bez ładowania modelu");
   return checks;
  }
- public async Task<string> RepairDirectoriesAsync(){
-  return await Task.Run(()=>{
-   string backup=Path.Combine(AppPaths.BackupsDirectory,"repair-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(backup);
-   string log=Path.Combine(backup,"repair.jsonl");
-   void Record(string phase,string state)=>File.AppendAllText(log,JsonSerializer.Serialize(new{time=DateTimeOffset.UtcNow,phase,state})+"\n");
-   string[] folders=[AppPaths.SettingsDirectory,AppPaths.LogsDirectory,AppPaths.HistoryDirectory,AppPaths.MemoryDirectory,AppPaths.CacheDirectory];
-   Record("detect","started");File.WriteAllText(Path.Combine(backup,"directories.json"),JsonSerializer.Serialize(folders.Select(p=>new{path=Path.GetFileName(p),exists=Directory.Exists(p)})));Record("backup","succeeded");
-   try{foreach(string folder in folders)Directory.CreateDirectory(folder);Record("repair","succeeded");
-    if(folders.Any(p=>!Directory.Exists(p)))throw new IOException("verify");Record("verify","succeeded");Record("result","succeeded");return "Sprawdzono katalogi. Kopia i dziennik: "+backup;
-   }catch{Record("rollback","no_user_data_changed");Record("result","failed");throw;}
-  });
+ public async Task<string> RepairDirectoriesAsync()=>await Task.Run(()=>"Sprawdzono katalogi. Kopia i dziennik: "+DirectoryRepair.Run([AppPaths.SettingsDirectory,AppPaths.LogsDirectory,AppPaths.HistoryDirectory,AppPaths.MemoryDirectory,AppPaths.CacheDirectory],AppPaths.BackupsDirectory));
+ public string RepairAutostart(){
+  string backup=Path.Combine(AppPaths.BackupsDirectory,"startup-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(backup);string log=Path.Combine(backup,"repair.jsonl");
+  void Record(string phase,string result)=>File.AppendAllText(log,JsonSerializer.Serialize(new{time=DateTimeOffset.UtcNow,phase,result})+"\n");
+  const string path=@"Software\Microsoft\Windows\CurrentVersion\Run";
+  using var key=Registry.CurrentUser.CreateSubKey(path,true);if(key==null)throw new IOException("registry");object? previous=key.GetValue("Sentinel X");
+  Record("detect","started");File.WriteAllText(Path.Combine(backup,"previous.json"),JsonSerializer.Serialize(previous));Record("backup","succeeded");
+  if(new StartupService("Sentinel X").Enable()){Record("repair","succeeded");Record("verify","succeeded");Record("result","succeeded");return "Autostart zapisany i zweryfikowany";}
+  if(previous==null)key.DeleteValue("Sentinel X",false);else key.SetValue("Sentinel X",previous,RegistryValueKind.String);
+  Record("rollback",Equals(key.GetValue("Sentinel X"),previous)?"succeeded":"failed");Record("result","failed");return "Autostart nie został potwierdzony; przywrócono poprzedni wpis";
  }
- public string RepairAutostart()=>new StartupService("Sentinel X").Enable()?"Autostart zapisany i zweryfikowany":"Nie udało się potwierdzić autostartu";
  public IReadOnlyList<SteamGame> ResolveSteam(string query)=>SteamResolver.Find(query,Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),"Steam"));
  public static bool ValidPackage(string folder){
   try{
