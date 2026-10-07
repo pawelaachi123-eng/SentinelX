@@ -1,0 +1,31 @@
+name: Apply Build 1.0 checkpoint
+on:
+  push:
+    branches: [arena/build-1.0-resume]
+    paths: [build1.patch, .github/workflows/apply-build1.yml]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  apply:
+    if: github.ref == 'refs/heads/arena/build-1.0-resume'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: arena/build-1.0-resume
+      - name: Verify and apply reviewed checkpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "24ea1ad7703d6fa68d1967921695c10c9b7fedd1e6e1e6d57815481b89e3dfd9  build1.patch" | sha256sum -c -
+          git apply --check build1.patch
+          git apply build1.patch
+          git rm phone-android/app/sentinelx-phone.p12
+          git rm build1.patch
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Apply SX4, agent and Base dashboards for Build 1.0"
+          git push origin HEAD:arena/build-1.0-resume
