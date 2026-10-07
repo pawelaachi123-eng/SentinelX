@@ -1,0 +1,2986 @@
+diff --git a/.gitignore b/.gitignore
+index deb9b27..669e354 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -437,3 +437,13 @@ test-results/
+ 
+ # Bundled AI engine binaries are fetched by CI / scripts/fetch-llama.ps1, never committed
+ Engine/llama/
++
++# Device and release private keys stay outside source control
++*.p12
++*.pfx
++*.keystore
++*.jks
++**/.gradle/
++**/build/
++phone-android/local.properties
++*.log
+diff --git a/App.xaml.cs b/App.xaml.cs
+index 92cc7c0..bdec42e 100644
+--- a/App.xaml.cs
++++ b/App.xaml.cs
+@@ -51,7 +51,7 @@ public partial class App : Application
+             // The caretaker starts the phone link and the AI engine and keeps them running (it does nothing in the UI smoke test).
+             if (!uiTest)
+             {
+-                try { provider.GetRequiredService<CareService>().Start(); }
++                try { provider.GetRequiredService<CareService>().Start(); provider.GetRequiredService<Services.Base.WindowsBaseService>().Start(); }
+                 catch (Exception careError) { AppLog.Write(careError); }
+             }
+             if (uiTest)
+diff --git a/Core/AppConstants.cs b/Core/AppConstants.cs
+index 7ee3c81..b6464cc 100644
+--- a/Core/AppConstants.cs
++++ b/Core/AppConstants.cs
+@@ -1,8 +1,7 @@
+ namespace SentinelX.Core;
+-
+ public static class AppConstants
+ {
+     public const string Name = "SENTINEL X";
+-    // Do not downgrade existing installations to the prompt's older 0.77 release.
+-    public const string Version = "0.96 · KUŹNIA";
++    public const string SemanticVersion = "1.0.0";
++    public const string Version = SemanticVersion;
+ }
+diff --git a/Core/PasswordBinding.cs b/Core/PasswordBinding.cs
+new file mode 100644
+index 0000000..b8d2417
+--- /dev/null
++++ b/Core/PasswordBinding.cs
+@@ -0,0 +1,17 @@
++using System.Windows;
++using System.Windows.Controls;
++namespace SentinelX.Core;
++public static class PasswordBinding
++{
++    public static readonly DependencyProperty ValueProperty=DependencyProperty.RegisterAttached("Value",typeof(string),typeof(PasswordBinding),new FrameworkPropertyMetadata("",FrameworkPropertyMetadataOptions.BindsTwoWayByDefault,Changed));
++    public static string GetValue(DependencyObject d)=>(string)d.GetValue(ValueProperty);
++    public static void SetValue(DependencyObject d,string value)=>d.SetValue(ValueProperty,value);
++    private static void Changed(DependencyObject d,DependencyPropertyChangedEventArgs e)
++    {
++        if(d is not PasswordBox box)return;
++        box.PasswordChanged-=PasswordChanged;
++        if(box.Password!=(string)e.NewValue)box.Password=(string)e.NewValue;
++        box.PasswordChanged+=PasswordChanged;
++    }
++    private static void PasswordChanged(object sender,RoutedEventArgs e)=>SetValue((PasswordBox)sender,((PasswordBox)sender).Password);
++}
+diff --git a/Core/ServiceLocator.cs b/Core/ServiceLocator.cs
+index b6de4d2..07277ba 100644
+--- a/Core/ServiceLocator.cs
++++ b/Core/ServiceLocator.cs
+@@ -90,6 +90,9 @@ public static class ServiceLocator
+             sp.GetRequiredService<TaskService>(), sp.GetRequiredService<ConversationMemoryService>(), sp.GetRequiredService<Services.Link.AlertFeed>(),
+             () => sp.GetRequiredService<Services.Care.CareService>().BuildLinkInfo(), () => sp.GetRequiredService<Services.Link.LinkService>().Urls),
+             sp.GetRequiredService<Services.Link.ILinkApprovalUi>(), () => sp.GetRequiredService<ISettingsService>().Current.Link));
++        services.AddSingleton<Services.Base.OllamaSupervisor>();
++        services.AddSingleton<Services.Base.WindowsBaseService>();
++        services.AddSingleton<BaseViewModel>();
+         services.AddSingleton<Services.Care.CareService>();
+         services.AddSingleton<IDesktopService, DesktopService>();
+         services.AddSingleton<Services.Readiness.IReadinessService, Services.Readiness.ReadinessService>();
+diff --git a/Models/Settings/AiSettings.cs b/Models/Settings/AiSettings.cs
+index d5f9437..fb40d42 100644
+--- a/Models/Settings/AiSettings.cs
++++ b/Models/Settings/AiSettings.cs
+@@ -10,6 +10,8 @@ public sealed class AiSettings
+     /// <summary>ON by default (0.94): the built-in engine downloads its runtime and models by itself. Turn it off on a metered connection;
+     /// „Sprawdź i napraw” / „napraw AI” still fetches what is missing once, on request.</summary>
+     public bool AutoInstallEngine { get; set; } = true;
++    public bool EnsureOllamaServer { get; set; } = true;
++    public bool AutoLoadModel { get; set; } = false;
+     public double Temperature { get; set; } = 0.22;
+     public int MaxContextTokens { get; set; } = 4096;
+     public int MaxResponseTokens { get; set; } = 700;
+diff --git a/Phone/web/app.js b/Phone/web/app.js
+index d9957e2..0a30590 100644
+--- a/Phone/web/app.js
++++ b/Phone/web/app.js
+@@ -51,9 +51,9 @@ function ask(message, okText = 'Tak') {
+   });
+ }
+ const store = {
+-  get(k, d = '') { try { const v = localStorage.getItem('sx.' + k); return v == null ? d : v; } catch { return d; } },
+-  set(k, v) { try { localStorage.setItem('sx.' + k, String(v)); } catch { /* prywatny tryb */ } },
+-  del(k) { try { localStorage.removeItem('sx.' + k); } catch { /* ignoruj */ } }
++  get(k, d = '') { if(k === 'token' && window.SXNative) return String(window.SXNative.savedToken() || d); try { const v = localStorage.getItem('sx.' + k); return v == null ? d : v; } catch { return d; } },
++  set(k, v) { if(k === 'token' && window.SXNative) { localStorage.removeItem('sx.token'); return; } try { localStorage.setItem('sx.' + k, String(v)); } catch { /* prywatny tryb */ } },
++  del(k) { if(k === 'token' && window.SXNative) window.SXNative.clearSession(); try { localStorage.removeItem('sx.' + k); } catch { /* ignoruj */ } }
+ };
+ const nf = (v, d = 0) => Number.isFinite(v) ? v.toLocaleString('pl-PL', { maximumFractionDigits: d, minimumFractionDigits: 0 }) : '–';
+ const pad2 = n => String(n).padStart(2, '0');
+diff --git a/SENTINEL-X.csproj b/SENTINEL-X.csproj
+index 63560f8..9e81ecc 100644
+--- a/SENTINEL-X.csproj
++++ b/SENTINEL-X.csproj
+@@ -20,7 +20,7 @@
+ 
+     <PlatformTarget>x64</PlatformTarget>
+     <Prefer32Bit>false</Prefer32Bit>
+-    <Version>0.96.0</Version>
++    <Version>1.0.0</Version>
+     <Description>Lokalny asystent i diagnostyka Windows</Description>
+   </PropertyGroup>
+ 
+@@ -34,7 +34,6 @@
+     <PackageReference Include="org.k2fsa.sherpa.onnx" Version="1.13.5" />
+     <PackageReference Include="SharpCompress" Version="0.50.4" />
+     <PackageReference Include="QRCoder" Version="1.6.0" />
+-    <PackageReference Include="System.Diagnostics.PerformanceCounter" Version="9.0.0" />
+   </ItemGroup>
+ 
+   <ItemGroup>
+@@ -51,4 +50,5 @@
+     <Content Include="Engine/llama/**/*" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+   </ItemGroup>
+ 
++  <ItemGroup><Compile Remove="verification/**/*.cs" /></ItemGroup>
+ </Project>
+diff --git a/Services/Base/AgentQueue.cs b/Services/Base/AgentQueue.cs
+new file mode 100644
+index 0000000..4ee666f
+--- /dev/null
++++ b/Services/Base/AgentQueue.cs
+@@ -0,0 +1,104 @@
++using System.IO;
++using System.Text.Json;
++namespace SentinelX.Services.Base;
++public sealed record AgentTask(string Id,ushort DeviceId,string Operation,string Target,long ExpiresAt,string State="accepted",string Code="");
++public sealed class AgentQueue
++{
++    public static readonly HashSet<string> Operations=new(StringComparer.Ordinal){"lock","sleep","restart","shutdown","steam.run","steam.install","ollama.ensure","sentinel.show","notification"};
++    public static bool NeedsConsent(string op)=>op is "sleep" or "restart" or "shutdown" or "steam.install";
++    private readonly string path;private readonly Func<byte[],byte[]> protect,unprotect;private readonly SemaphoreSlim gate=new(1);
++    public event Action<AgentTask>? StateChanged;
++    private List<AgentTask> items=[];public string? StorageError{get;private set;}
++    public AgentQueue(string path,Func<byte[],byte[]> protect,Func<byte[],byte[]> unprotect)
++    {
++        this.path=path;this.protect=protect;this.unprotect=unprotect;
++        try
++        {
++            if(File.Exists(path)){if(new FileInfo(path).Length is <32 or >2*1024*1024)throw new IOException("size");items=JsonSerializer.Deserialize<List<AgentTask>>(unprotect(File.ReadAllBytes(path)))??[];
++                if(items.Count>256||items.Select(x=>x.Id).Distinct().Count()!=items.Count)throw new IOException("queue");
++                foreach(var i in items)Validate(i);
++                items=items.Select(x=>x.State=="running"?x with{State="failed",Code="interrupted"}:x).ToList();Save();}
++        }
++        catch(Exception e)when(e is IOException or System.Security.Cryptography.CryptographicException or JsonException or Sx4Exception){StorageError="queue_corrupt";items=[];}
++    }
++    public static void Validate(AgentTask task)
++    {
++        if(task is null||task.Target is null||task.Operation is null||!Guid.TryParseExact(task.Id,"D",out _)||task.DeviceId==0||!Operations.Contains(task.Operation)||
++           task.State is not("accepted" or "running" or "succeeded" or "failed" or "expired" or "cancelled"))throw new Sx4Exception("task");
++        if(task.Operation.StartsWith("steam.",StringComparison.Ordinal))
++        {if(!uint.TryParse(task.Target,out uint id)||id==0||id.ToString()!=task.Target)throw new Sx4Exception("steam_appid");}
++        else if(task.Operation=="notification"){if(task.Target.Length>240||task.Target.Any(c=>char.IsControl(c)&&c!='\n'))throw new Sx4Exception("target");}
++        else if(task.Target.Length!=0)throw new Sx4Exception("target");
++    }
++    public async Task<IReadOnlyList<AgentTask>> SnapshotAsync(){await gate.WaitAsync();try{return items.ToArray();}finally{gate.Release();}}
++    public async Task<AgentTask> AddAsync(AgentTask task,IReadOnlySet<string> grants)
++    {
++        Validate(task);long now=DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
++        if(task.ExpiresAt<=now||task.ExpiresAt>now+300000||task.State!="accepted")throw new Sx4Exception("expiry");
++        if(!grants.Contains(task.Operation))throw new Sx4Exception("permission");
++        await gate.WaitAsync();try
++        {
++            if(StorageError!=null)throw new Sx4Exception(StorageError);
++            var duplicate=items.FirstOrDefault(x=>x.Id==task.Id);
++            if(duplicate!=null){if(duplicate.DeviceId!=task.DeviceId||duplicate.Operation!=task.Operation||duplicate.Target!=task.Target)throw new Sx4Exception("request_collision");return duplicate;}
++            if(items.Count>=256){var oldest=items.FindIndex(x=>x.State!="accepted"&&x.State!="running");if(oldest<0)throw new Sx4Exception("queue_full");items.RemoveAt(oldest);}
++            items.Add(task);try{Save();}catch{items.Remove(task);StorageError="queue_write";throw;}
++            return task;
++        }finally{gate.Release();}
++    }
++    private readonly SemaphoreSlim workerGate=new(1);
++    public async Task DrainAsync(Func<bool> session,Func<AgentTask,CancellationToken,Task<bool>> consent,Func<AgentTask,CancellationToken,Task> execute,IReadOnlySet<string> grants,CancellationToken cancel)
++    {
++        await workerGate.WaitAsync(cancel);
++        try{
++            foreach(var task in await SnapshotAsync())
++            {
++                if(task.State!="accepted")continue;
++                if(StorageError!=null)throw new Sx4Exception(StorageError);
++                if(task.ExpiresAt<=DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()){await TransitionAsync(task,"expired","");continue;}
++                if(!grants.Contains(task.Operation)){await TransitionAsync(task,"cancelled","permission_revoked");continue;}
++                if(!session())continue;
++                using var expires=CancellationTokenSource.CreateLinkedTokenSource(cancel);
++                expires.CancelAfter(TimeSpan.FromMilliseconds(Math.Max(1,task.ExpiresAt-DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())));
++                try{
++                    if(NeedsConsent(task.Operation)&&!await consent(task,expires.Token)){await TransitionAsync(task,"cancelled","consent");continue;}
++                    expires.Token.ThrowIfCancellationRequested();
++                    if(!session())continue;
++                    await TransitionAsync(task,"running","");
++                    try{await execute(task,expires.Token);await TransitionAsync(task,"succeeded",task.Operation.StartsWith("steam.",StringComparison.Ordinal)?"steam_interaction_required":"");}
++                    catch(OperationCanceledException){await TransitionAsync(task,"expired","");}
++                    catch(Exception){await TransitionAsync(task,"failed","execution");}
++                }catch(OperationCanceledException){await TransitionAsync(task,cancel.IsCancellationRequested?"cancelled":"expired","");}
++            }
++        }finally{workerGate.Release();}
++    }
++    private async Task TransitionAsync(AgentTask task,string state,string code)
++    {
++        await gate.WaitAsync();try{
++            int index=items.FindIndex(x=>x.Id==task.Id);
++            if(index<0)throw new Sx4Exception("queue_changed");
++            items[index]=task with{State=state,Code=code};try{Save();}catch{StorageError="queue_write";throw;}
++        }finally{gate.Release();}
++        StateChanged?.Invoke(task with{State=state,Code=code});
++    }
++    public async Task CancelAllAsync(string reason)
++    {
++        await workerGate.WaitAsync();try{foreach(var task in await SnapshotAsync())if(task.State is "accepted" or "running")await TransitionAsync(task,"cancelled",reason);}
++        finally{workerGate.Release();}
++    }
++    public async Task<string> RepairAsync()
++    {
++        await gate.WaitAsync();try{
++            if(StorageError==null)throw new Sx4Exception("repair_not_needed");
++            string backup=path+"."+Guid.NewGuid().ToString("N")+".bak";if(File.Exists(path))File.Copy(path,backup,false);
++            items=[];Save();StorageError=null;return backup;
++        }finally{gate.Release();}
++    }
++    private void Save()
++    {
++        Directory.CreateDirectory(Path.GetDirectoryName(path)!);byte[] plain=JsonSerializer.SerializeToUtf8Bytes(items);byte[] encrypted=protect(plain);
++        string tmp=path+".tmp";try{using(var f=new FileStream(tmp,FileMode.Create,FileAccess.Write,FileShare.None)){f.Write(encrypted);f.Flush(true);}
++            if(!unprotect(File.ReadAllBytes(tmp)).AsSpan().SequenceEqual(plain))throw new IOException("verify");File.Move(tmp,path,true);}
++        finally{if(File.Exists(tmp))File.Delete(tmp);}
++    }
++}
+diff --git a/Services/Base/BaseClient.cs b/Services/Base/BaseClient.cs
+new file mode 100644
+index 0000000..64e2862
+--- /dev/null
++++ b/Services/Base/BaseClient.cs
+@@ -0,0 +1,80 @@
++using System.IO;
++using System.Net.Sockets;
++using System.Net.Security;
++using System.Security.Authentication;
++using System.Security.Cryptography;
++using System.Text.Json;
++namespace SentinelX.Services.Base;
++public sealed record BaseIdentity(string Host,int Port,string Fingerprint,ushort DeviceId,ushort BaseId,string SecretHex,string Mode="lan",string[]? Grants=null)
++{
++    public void Validate()
++    {
++        if(string.IsNullOrWhiteSpace(Host)||Host.Length>253||Host.Any(c=>char.IsWhiteSpace(c)||c is '/' or '\\')||Port is <1 or >65535||
++           Fingerprint.Length!=64||SecretHex.Length!=64||!Fingerprint.All(Uri.IsHexDigit)||!SecretHex.All(Uri.IsHexDigit)||
++           DeviceId==0||BaseId==0||DeviceId==BaseId||Mode is not("lan" or "vpn" or "relay"))throw new Sx4Exception("configuration");
++        if((Grants??[]).Length>32)throw new Sx4Exception("grants");
++    }
++}
++public sealed class BaseClient : IAsyncDisposable
++{
++    public const byte ExtensionOpCode=201;
++    private readonly BaseIdentity identity;private readonly byte[] secret; private readonly Sx4Authority authority;
++    private readonly SemaphoreSlim requestGate=new(1);private readonly CancellationTokenSource stop=new();
++    private TcpClient? tcp;private SslStream? stream;private uint nonce;private bool disposed;
++    public HashSet<string> Capabilities{get;}=new(StringComparer.Ordinal);
++    public BaseClient(BaseIdentity identity)
++    {identity.Validate();this.identity=identity;secret=Convert.FromHexString(identity.SecretHex);authority=new(identity.BaseId,secret);nonce=BitConverter.ToUInt32(RandomNumberGenerator.GetBytes(4));}
++    public bool Supports(string type)=>Capabilities.Contains(type);
++    public async Task ConnectAsync(CancellationToken cancel)
++    {
++        using var deadline=CancellationTokenSource.CreateLinkedTokenSource(cancel,stop.Token);deadline.CancelAfter(TimeSpan.FromSeconds(10));
++        if(disposed)throw new ObjectDisposedException(nameof(BaseClient));
++        tcp=new TcpClient(); await tcp.ConnectAsync(identity.Host,identity.Port,deadline.Token);
++        stream=new SslStream(tcp.GetStream(),false,(_,cert,_,_)=>cert!=null&&
++            DateTime.UtcNow>=cert.GetEffectiveDateStringAsUtc() && DateTime.UtcNow<=cert.GetExpirationDateStringAsUtc() &&
++            CryptographicOperations.FixedTimeEquals(SHA256.HashData(cert.GetRawCertData()),Convert.FromHexString(identity.Fingerprint)));
++        await stream.AuthenticateAsClientAsync(new SslClientAuthenticationOptions{TargetHost=identity.Host,EnabledSslProtocols=SslProtocols.Tls12|SslProtocols.Tls13},deadline.Token);
++        string challenge=Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
++        var proof=await ExchangeAsync("session.prove",new{challenge,role="agent",deviceId=identity.DeviceId},"session.proved",cancel);
++        if(!proof.Data.TryGetProperty("challenge",out var echo)||echo.GetString()!=challenge)throw new Sx4Exception("challenge");
++        var capabilities=await ExchangeAsync("capabilities",new{},"capabilities.result",cancel);
++        var caps=capabilities.Data.GetProperty("types");
++        if(caps.ValueKind!=JsonValueKind.Array||caps.GetArrayLength()>32)throw new Sx4Exception("capabilities");
++        foreach(var c in caps.EnumerateArray())
++        { string type=c.GetString()??"";if(type.Length is <1 or >64||!Capabilities.Add(type))throw new Sx4Exception("capabilities"); }
++    }
++    public Task<BaseMessage> RequestAsync(string type,object data,CancellationToken cancel)
++    {if(!Supports(type))throw new Sx4Exception("unsupported");return ExchangeAsync(type,data,type+".result",cancel);}
++    private async Task<BaseMessage> ExchangeAsync(string type,object data,string expected,CancellationToken cancel)
++    {
++        using var deadline=CancellationTokenSource.CreateLinkedTokenSource(cancel,stop.Token);deadline.CancelAfter(TimeSpan.FromSeconds(20));
++        await requestGate.WaitAsync(deadline.Token);
++        try
++        {
++            if(disposed||stream==null)throw new Sx4Exception("offline");
++            var message=new BaseMessage{Type=type,Data=JsonSerializer.SerializeToElement(data)};
++            byte[] raw=Sx4Wire.Encode(new(identity.DeviceId,ExtensionOpCode,unchecked(++nonce),(ulong)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),Sx4Wire.Payload(message)),secret);
++            await stream.WriteAsync(raw,deadline.Token);await stream.FlushAsync(deadline.Token);
++            var frame=authority.Verify(await Sx4Wire.ReadAsync(stream,deadline.Token));
++            if(frame.OpCode!=ExtensionOpCode)throw new Sx4Exception("opcode");
++            var response=Sx4Wire.Parse(frame.Payload);
++            if(response.CorrelationId!=message.RequestId)throw new Sx4Exception("correlation");
++            if(response.Type=="error"){string code=response.Data.GetProperty("code").GetString()??"remote_error";throw new Sx4Exception(code);}
++            if(response.Type!=expected)throw new Sx4Exception("response_type");
++            return response;
++        }
++        catch {stream?.Dispose();tcp?.Dispose();throw;}
++        finally{requestGate.Release();}
++    }
++    public async ValueTask DisposeAsync()
++    {
++        if(disposed)return;disposed=true;await stop.CancelAsync();tcp?.Dispose();stream?.Dispose();
++        await requestGate.WaitAsync();try{authority.Dispose();CryptographicOperations.ZeroMemory(secret);}finally{requestGate.Release();}
++    }
++}
++
++internal static class CertificateDates
++{
++ public static DateTime GetEffectiveDateStringAsUtc(this System.Security.Cryptography.X509Certificates.X509Certificate cert)=>new System.Security.Cryptography.X509Certificates.X509Certificate2(cert).NotBefore.ToUniversalTime();
++ public static DateTime GetExpirationDateStringAsUtc(this System.Security.Cryptography.X509Certificates.X509Certificate cert)=>new System.Security.Cryptography.X509Certificates.X509Certificate2(cert).NotAfter.ToUniversalTime();
++}
+diff --git a/Services/Base/BaseDiscovery.cs b/Services/Base/BaseDiscovery.cs
+new file mode 100644
+index 0000000..e7c6b3a
+--- /dev/null
++++ b/Services/Base/BaseDiscovery.cs
+@@ -0,0 +1,36 @@
++using System.IO;
++using System.Net;
++using System.Net.Sockets;
++using System.Text;
++using System.Text.Json;
++namespace SentinelX.Services.Base;
++public sealed record DiscoveredBase(string Host,int Port,ushort BaseId,string Fingerprint,string Name);
++public static class BaseDiscovery
++{
++    public static async Task<IReadOnlyList<DiscoveredBase>> DiscoverAsync(CancellationToken cancel)
++    {
++        using var timeout=CancellationTokenSource.CreateLinkedTokenSource(cancel);timeout.CancelAfter(TimeSpan.FromSeconds(3));
++        using var udp=new UdpClient(AddressFamily.InterNetwork){EnableBroadcast=true};
++        string nonce=Guid.NewGuid().ToString("D");
++        await udp.SendAsync(Encoding.UTF8.GetBytes("SX4_DISCOVER_V421:"+nonce),new IPEndPoint(IPAddress.Broadcast,42421),timeout.Token);
++        var found=new List<DiscoveredBase>();
++        try{for(int received=0;received<128&&found.Count<32;received++)
++        {
++            var reply=await udp.ReceiveAsync(timeout.Token);
++            if(reply.Buffer.Length>2048||!Private(reply.RemoteEndPoint.Address))continue;
++            try{using var doc=JsonDocument.Parse(reply.Buffer,new(){MaxDepth=8});var e=doc.RootElement;
++            if(e.GetProperty("protocol").GetString()!="SX4"||e.GetProperty("nonce").GetString()!=nonce)continue;
++            ushort id=e.GetProperty("baseId").GetUInt16();int port=e.GetProperty("port").GetInt32();string fp=e.GetProperty("fingerprint").GetString()??"";
++            if(id==0||port is <1 or >65535||fp.Length!=64||!fp.All(Uri.IsHexDigit))continue;
++            var item=new DiscoveredBase(reply.RemoteEndPoint.Address.ToString(),port,id,fp.ToLowerInvariant(),SafeName(e.GetProperty("name").GetString()));
++            if(!found.Any(x=>x.Host==item.Host&&x.Port==item.Port))found.Add(item);
++            }catch(Exception e)when(e is JsonException or KeyNotFoundException or InvalidOperationException or FormatException){}
++        }}
++        catch(OperationCanceledException)when(!cancel.IsCancellationRequested){}
++        catch(JsonException){}
++        catch(KeyNotFoundException){}
++        return found;
++    }
++    private static string SafeName(string? name)=>new((name??"Base").Where(c=>!char.IsControl(c)).Take(80).ToArray());
++    private static bool Private(IPAddress address){byte[] a=address.GetAddressBytes();return a.Length==4&&(a[0]==10||a[0]==192&&a[1]==168||a[0]==172&&a[1]>=16&&a[1]<=31);}
++}
+diff --git a/Services/Base/OllamaSupervisor.cs b/Services/Base/OllamaSupervisor.cs
+new file mode 100644
+index 0000000..867291e
+--- /dev/null
++++ b/Services/Base/OllamaSupervisor.cs
+@@ -0,0 +1,43 @@
++using System.IO;
++using System.Diagnostics;
++using System.Net.Http;
++using System.Text.Json;
++namespace SentinelX.Services.Base;
++public sealed class OllamaSupervisor : IDisposable
++{
++    private readonly SemaphoreSlim gate=new(1);
++    private readonly Func<CancellationToken,Task<bool>> probe;private readonly Func<bool> launch;
++    private long lastLaunch=long.MinValue;
++    public bool AutoLoadModel=>false;
++    public OllamaSupervisor(Func<CancellationToken,Task<bool>>? probe=null,Func<bool>? launch=null)
++    {this.probe=probe??ProbeAsync;this.launch=launch??Launch;}
++    public async Task<bool> EnsureAsync(CancellationToken cancel)
++    {
++        await gate.WaitAsync(cancel);try{
++            if(await probe(cancel))return true;
++            long now=Environment.TickCount64;if(lastLaunch!=long.MinValue&&now-lastLaunch<30000)return false;
++            lastLaunch=now;if(!launch())return false;
++            for(int i=0;i<10;i++){await Task.Delay(300,cancel);if(await probe(cancel))return true;}return false;
++        }finally{gate.Release();}
++    }
++    public Task<bool> StatusAsync(CancellationToken cancel)=>probe(cancel);
++    private static async Task<bool> ProbeAsync(CancellationToken cancel)
++    {
++        try{
++            using var client=new HttpClient(new HttpClientHandler{UseProxy=false}){Timeout=TimeSpan.FromSeconds(2)};
++            using var response=await client.GetAsync("http://127.0.0.1:11434/api/tags",HttpCompletionOption.ResponseHeadersRead,cancel);
++            response.EnsureSuccessStatusCode();if(response.Content.Headers.ContentLength>524288)return false;
++            using var input=await response.Content.ReadAsStreamAsync(cancel);using var output=new MemoryStream();byte[] b=new byte[8192];
++            int n;while((n=await input.ReadAsync(b,cancel))>0){if(output.Length+n>524288)return false;output.Write(b,0,n);}
++            using var json=JsonDocument.Parse(output.ToArray());return json.RootElement.GetProperty("models").ValueKind==JsonValueKind.Array;
++        }catch(Exception e)when(e is HttpRequestException or TaskCanceledException or JsonException or KeyNotFoundException){return false;}
++    }
++    private static bool Launch()
++    {
++        string exe=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"Programs","Ollama","ollama.exe");
++        if(!File.Exists(exe))return false;
++        if(Process.GetProcessesByName("ollama").Any())return false;
++        Process.Start(new ProcessStartInfo(exe,"serve"){UseShellExecute=false,CreateNoWindow=true});return true;
++    }
++    public void Dispose()=>gate.Dispose();
++}
+diff --git a/Services/Base/ShutdownPrivilege.cs b/Services/Base/ShutdownPrivilege.cs
+new file mode 100644
+index 0000000..8e677f4
+--- /dev/null
++++ b/Services/Base/ShutdownPrivilege.cs
+@@ -0,0 +1,23 @@
++using System.Diagnostics;
++using System.Runtime.InteropServices;
++namespace SentinelX.Services.Base;
++internal static class ShutdownPrivilege
++{
++    [StructLayout(LayoutKind.Sequential)]private struct Luid{public uint Low;public int High;}
++    [StructLayout(LayoutKind.Sequential)]private struct Privilege{public uint Count;public Luid Id;public uint Attributes;}
++    public static bool Sleep()
++    {
++        if(!OpenProcessToken(Process.GetCurrentProcess().Handle,0x20|0x8,out var token))return false;
++        try{
++            if(!LookupPrivilegeValue(null,"SeShutdownPrivilege",out var id))return false;
++            Privilege requested=new(){Count=1,Id=id,Attributes=2};
++            if(!AdjustTokenPrivileges(token,false,ref requested,(uint)Marshal.SizeOf<Privilege>(),out var old,out _)||Marshal.GetLastWin32Error()!=0)return false;
++            try{return SetSuspendState(false,false,false);}finally{AdjustTokenPrivileges(token,false,ref old,0,out _,out _);}
++        }finally{CloseHandle(token);}
++    }
++    [DllImport("advapi32.dll",SetLastError=true)]private static extern bool OpenProcessToken(IntPtr process,uint access,out IntPtr token);
++    [DllImport("advapi32.dll",CharSet=CharSet.Unicode,SetLastError=true)]private static extern bool LookupPrivilegeValue(string? system,string name,out Luid id);
++    [DllImport("advapi32.dll",SetLastError=true)]private static extern bool AdjustTokenPrivileges(IntPtr token,bool disable,ref Privilege desired,uint length,out Privilege previous,out uint needed);
++    [DllImport("kernel32.dll")]private static extern bool CloseHandle(IntPtr token);
++    [DllImport("powrprof.dll",SetLastError=true)][return:MarshalAs(UnmanagedType.U1)]private static extern bool SetSuspendState([MarshalAs(UnmanagedType.U1)]bool hibernate,[MarshalAs(UnmanagedType.U1)]bool force,[MarshalAs(UnmanagedType.U1)]bool disableWake);
++}
+diff --git a/Services/Base/Sx4Wire.cs b/Services/Base/Sx4Wire.cs
+new file mode 100644
+index 0000000..f69704a
+--- /dev/null
++++ b/Services/Base/Sx4Wire.cs
+@@ -0,0 +1,116 @@
++using System.IO;
++using System.Buffers.Binary;
++using System.Security.Cryptography;
++using System.Text;
++using System.Text.Json;
++using System.Text.Json.Serialization;
++namespace SentinelX.Services.Base;
++
++// The binary header is the 4.2.1 contract: !HBIQH, 32-byte MAC, then raw payload.
++public sealed record Sx4Frame(ushort DeviceId, byte OpCode, uint Nonce, ulong TimestampMs, byte[] Payload);
++public sealed class Sx4Exception(string code) : IOException(code) { public string Code { get; } = code; }
++public sealed record BaseMessage
++{
++    public int Version { get; init; } = 4;
++    public string Type { get; init; } = "";
++    public string RequestId { get; init; } = Guid.NewGuid().ToString("D");
++    public string CorrelationId { get; init; } = "";
++    public long ExpiresAt { get; init; } = DateTimeOffset.UtcNow.AddSeconds(30).ToUnixTimeMilliseconds();
++    public JsonElement Data { get; init; } = JsonSerializer.SerializeToElement(new {});
++}
++public static class Sx4Wire
++{
++    public const int HeaderSize = 49, MaxPayload = 16384;
++    public static readonly JsonSerializerOptions Json = new()
++    { PropertyNamingPolicy = JsonNamingPolicy.CamelCase, UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow, MaxDepth = 16 };
++    public static byte[] Encode(Sx4Frame frame, ReadOnlySpan<byte> key)
++    {
++        if (key.Length != 32 || frame.DeviceId == 0 || frame.Payload.Length > MaxPayload) throw new Sx4Exception("format");
++        byte[] raw = new byte[HeaderSize + frame.Payload.Length];
++        BinaryPrimitives.WriteUInt16BigEndian(raw, frame.DeviceId); raw[2] = frame.OpCode;
++        BinaryPrimitives.WriteUInt32BigEndian(raw.AsSpan(3), frame.Nonce);
++        BinaryPrimitives.WriteUInt64BigEndian(raw.AsSpan(7), frame.TimestampMs);
++        BinaryPrimitives.WriteUInt16BigEndian(raw.AsSpan(15), (ushort)frame.Payload.Length);
++        frame.Payload.CopyTo(raw.AsSpan(HeaderSize));
++        byte[] input = new byte[17 + frame.Payload.Length];
++        raw.AsSpan(0,17).CopyTo(input); frame.Payload.CopyTo(input.AsSpan(17));
++        HMACSHA256.HashData(key, input).CopyTo(raw.AsSpan(17)); return raw;
++    }
++    public static Sx4Frame Decode(byte[] raw, ReadOnlySpan<byte> key)
++    {
++        if (key.Length != 32 || raw.Length < HeaderSize) throw new Sx4Exception("format");
++        int length = BinaryPrimitives.ReadUInt16BigEndian(raw.AsSpan(15));
++        if (length > MaxPayload || raw.Length != HeaderSize + length) throw new Sx4Exception("size");
++        byte[] input = new byte[17 + length]; raw.AsSpan(0,17).CopyTo(input); raw.AsSpan(HeaderSize).CopyTo(input.AsSpan(17));
++        if (!CryptographicOperations.FixedTimeEquals(HMACSHA256.HashData(key,input),raw.AsSpan(17,32))) throw new Sx4Exception("auth");
++        ushort id = BinaryPrimitives.ReadUInt16BigEndian(raw);
++        if (id == 0) throw new Sx4Exception("device");
++        return new(id,raw[2],BinaryPrimitives.ReadUInt32BigEndian(raw.AsSpan(3)),BinaryPrimitives.ReadUInt64BigEndian(raw.AsSpan(7)),raw[HeaderSize..]);
++    }
++    public static byte[] Payload(BaseMessage message)
++    { Validate(message); return JsonSerializer.SerializeToUtf8Bytes(message, Json); }
++    public static BaseMessage Parse(byte[] payload)
++    {
++        if (payload.Length > MaxPayload) throw new Sx4Exception("size");
++        try
++        {
++            _ = new UTF8Encoding(false,true).GetString(payload);
++            using var document = JsonDocument.Parse(payload,new(){ MaxDepth=16 });
++            CheckDuplicateKeys(document.RootElement);
++            var result = JsonSerializer.Deserialize<BaseMessage>(payload,Json) ?? throw new Sx4Exception("json");
++            foreach(string required in new[]{"version","type","requestId","correlationId","expiresAt","data"})
++                if (!document.RootElement.TryGetProperty(required,out _)) throw new Sx4Exception("missing_field");
++            Validate(result); return result;
++        }
++        catch (JsonException) { throw new Sx4Exception("json"); }
++        catch (DecoderFallbackException) { throw new Sx4Exception("utf8"); }
++    }
++    public static void Validate(BaseMessage m)
++    {
++        if (m.Version != 4) throw new Sx4Exception("version");
++        if (!Guid.TryParseExact(m.RequestId,"D",out _) ||
++            (m.CorrelationId.Length > 0 && !Guid.TryParseExact(m.CorrelationId,"D",out _))) throw new Sx4Exception("request_id");
++        if (m.Type.Length is < 1 or > 64 || m.Type.Any(c=> !(char.IsAsciiLetterOrDigit(c)||c is '.' or '_'))) throw new Sx4Exception("type");
++        if (m.Data.ValueKind != JsonValueKind.Object) throw new Sx4Exception("payload");
++        long now=DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
++        if (m.ExpiresAt <= now || m.ExpiresAt > now+300000) throw new Sx4Exception("expiry");
++    }
++    private static void CheckDuplicateKeys(JsonElement e)
++    {
++        if (e.ValueKind == JsonValueKind.Object)
++        { HashSet<string> keys=new(StringComparer.OrdinalIgnoreCase); foreach(var p in e.EnumerateObject()){ if(!keys.Add(p.Name))throw new Sx4Exception("duplicate_key");CheckDuplicateKeys(p.Value); } }
++        else if(e.ValueKind==JsonValueKind.Array)foreach(var v in e.EnumerateArray())CheckDuplicateKeys(v);
++    }
++    public static async Task<byte[]> ReadAsync(Stream stream,CancellationToken cancel)
++    {
++        using var deadline=CancellationTokenSource.CreateLinkedTokenSource(cancel);deadline.CancelAfter(TimeSpan.FromSeconds(20));
++        byte[] header=new byte[HeaderSize];await stream.ReadExactlyAsync(header,deadline.Token);
++        int length=BinaryPrimitives.ReadUInt16BigEndian(header.AsSpan(15));
++        if(length>MaxPayload)throw new Sx4Exception("size");
++        byte[] raw=new byte[HeaderSize+length];header.CopyTo(raw,0);
++        await stream.ReadExactlyAsync(raw.AsMemory(HeaderSize,length),deadline.Token);return raw;
++    }
++}
++public sealed class Sx4Authority : IDisposable
++{
++    private readonly object gate=new(); private readonly ushort id; private byte[] key;
++    private readonly Dictionary<uint,long> nonces=[]; private readonly Queue<long> requests=[];
++    private bool revoked;
++    public Sx4Authority(ushort id,byte[] key){if(id==0||key.Length!=32)throw new Sx4Exception("device");this.id=id;this.key=key.ToArray();}
++    public Sx4Frame Verify(byte[] raw,long? time=null)
++    {
++        lock(gate)
++        {
++            if(revoked)throw new Sx4Exception("revoked");
++            var f=Sx4Wire.Decode(raw,key);long now=time??DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
++            if(f.DeviceId!=id)throw new Sx4Exception("device");
++            if(f.TimestampMs>long.MaxValue||Math.Abs(now-(long)f.TimestampMs)>5000)throw new Sx4Exception("timestamp");
++            foreach(var n in nonces.Where(n=>n.Value<now-10000).Select(n=>n.Key).ToArray())nonces.Remove(n);
++            if(nonces.ContainsKey(f.Nonce))throw new Sx4Exception("replay");
++            while(requests.Count>0&&requests.Peek()<now-60000)requests.Dequeue();
++            if(requests.Count>=120||nonces.Count>=2048)throw new Sx4Exception("rate_limit");
++            nonces.Add(f.Nonce,now);requests.Enqueue(now);return f;
++        }
++    }
++    public void Dispose(){lock(gate){revoked=true;CryptographicOperations.ZeroMemory(key);nonces.Clear();requests.Clear();}}
++}
+diff --git a/Services/Base/WindowsBaseService.cs b/Services/Base/WindowsBaseService.cs
+new file mode 100644
+index 0000000..a80b1e9
+--- /dev/null
++++ b/Services/Base/WindowsBaseService.cs
+@@ -0,0 +1,210 @@
++using System.IO;
++using System.Diagnostics;
++using System.Net.NetworkInformation;
++using System.Runtime.InteropServices;
++using System.Security.Cryptography;
++using System.Text.Json;
++using System.Windows;
++using System.Windows.Controls;
++using SentinelX.Core;
++using SentinelX.Services.Desktop;
++using SentinelX.Services.Link;
++namespace SentinelX.Services.Base;
++public sealed class WindowsBaseService : IDisposable
++{
++    private readonly IDesktopService desktop;private readonly SystemMonitor monitor;private readonly OllamaSupervisor ollama;private readonly AlertFeed alerts;
++    private readonly string folder=Path.Combine(AppPaths.Root,"Base");private readonly SemaphoreSlim connectGate=new(1);private readonly object stateGate=new();
++    private BaseIdentity? identity;private BaseClient? client;private CancellationTokenSource? stop;private Task? loop,worker;
++    private readonly AgentQueue queue;private string status="Base nie jest sparowana";private bool authBlocked,disposed;
++    public event Action? Changed;
++    public string Status{get{lock(stateGate)return status;}}
++    public BaseIdentity? PublicConfiguration=>identity is{} i?i with{SecretHex=""}:null;
++    public IReadOnlyList<string> Capabilities=>client?.Capabilities.ToArray()??[];
++    private static byte[] Protect(byte[] value)=>ProtectedData.Protect(value,null,DataProtectionScope.CurrentUser);
++    private static byte[] Unprotect(byte[] value)=>ProtectedData.Unprotect(value,null,DataProtectionScope.CurrentUser);
++    public WindowsBaseService(IDesktopService desktop,SystemMonitor monitor,OllamaSupervisor ollama,AlertFeed alerts)
++    {
++        this.desktop=desktop;this.monitor=monitor;this.ollama=ollama;this.alerts=alerts;
++        queue=new(Path.Combine(folder,"queue.bin"),Protect,Unprotect);
++        queue.StateChanged+=task=>Audit(task.Id,task.DeviceId,task.Operation,AuditTarget(task),task.State,task.Code);
++        try{string p=Path.Combine(folder,"identity.bin");if(File.Exists(p)){
++            if(new FileInfo(p).Length>65536)throw new IOException("size");
++            identity=JsonSerializer.Deserialize<BaseIdentity>(Unprotect(File.ReadAllBytes(p)));identity?.Validate();}}
++        catch(Exception e)when(e is IOException or CryptographicException or JsonException or Sx4Exception){authBlocked=true;SetStatus("Uszkodzona konfiguracja Base — sparuj ponownie");}
++    }
++    public void Start()
++    {
++        if(identity==null||authBlocked||disposed||loop is{IsCompleted:false}||Environment.GetEnvironmentVariable("SENTINEL_UI_SMOKE")=="1")return;
++        stop=new();loop=Task.Run(()=>RunAsync(stop.Token));worker=Task.Run(()=>WorkerAsync(stop.Token));
++    }
++    public async Task PairAsync(BaseIdentity next,CancellationToken cancel)
++    {
++        next.Validate();
++        if((next.Grants??[]).Any(x=>!AgentQueue.Operations.Contains(x)))throw new Sx4Exception("grants");
++        await using(var verify=new BaseClient(next)){await verify.ConnectAsync(cancel);}
++        await StopAsync();await queue.CancelAllAsync("pairing_changed");Directory.CreateDirectory(folder);string p=Path.Combine(folder,"identity.bin");
++        AtomicSecret(p,JsonSerializer.SerializeToUtf8Bytes(next));identity=next;authBlocked=false;
++        Audit("pair",next.BaseId,"pair","", "succeeded","");Start();
++    }
++    public async Task UnpairAsync()
++    {
++        await StopAsync();await queue.CancelAllAsync("permission_revoked");if(identity!=null)Audit("unpair",identity.BaseId,"revoke","","succeeded","");
++        string p=Path.Combine(folder,"identity.bin");if(File.Exists(p))File.Delete(p);
++        identity=null;authBlocked=true;SetStatus("Urządzenie odłączone. Zmień lub unieważnij jego sekret również w Base.");
++    }
++    public async Task StopAsync()
++    {
++        stop?.Cancel();var c=client;if(c!=null)await c.DisposeAsync();
++        if(loop!=null)try{await loop;}catch(OperationCanceledException){}
++        if(worker!=null)try{await worker;}catch(OperationCanceledException){}
++        client=null;stop?.Dispose();stop=null;
++    }
++    public Task<IReadOnlyList<AgentTask>> TasksAsync()=>queue.SnapshotAsync();
++    public async Task<BaseMessage> RequestAsync(string type,object data,CancellationToken cancel)
++    {
++        await connectGate.WaitAsync(cancel);try{if(client==null||authBlocked)throw new Sx4Exception("offline");return await client.RequestAsync(type,data,cancel);}
++        finally{connectGate.Release();}
++    }
++    public async Task<string> RepairQueueAsync()
++    {
++        await StopAsync();Audit("repair",identity?.BaseId??0,"queue","queue","detect","");
++        try{
++            string backup=await queue.RepairAsync();Audit("repair",identity?.BaseId??0,"queue","queue","backup","");
++            Audit("repair",identity?.BaseId??0,"queue","queue","repair","");Audit("repair",identity?.BaseId??0,"queue","queue","verify","succeeded");
++            Start();return backup;
++        }catch{Audit("repair",identity?.BaseId??0,"queue","queue","result","failed");Start();throw;}
++    }
++    private async Task RunAsync(CancellationToken cancel)
++    {
++        int retries=0;
++        while(!cancel.IsCancellationRequested&&identity!=null&&!authBlocked)
++        {
++            var configured=identity;BaseClient? connection=null;
++            try
++            {
++                SetStatus("Łączenie z Base · "+configured.Mode.ToUpperInvariant());
++                connection=new(configured);await connection.ConnectAsync(cancel);client=connection;retries=0;
++                if(!connection.Supports("pc.heartbeat"))throw new Sx4Exception("unsupported");
++                SetStatus("Base połączona · SX4 · "+configured.Mode.ToUpperInvariant());
++                while(!cancel.IsCancellationRequested)
++                {
++                    await RequestAsync("pc.heartbeat",Telemetry(),cancel);
++                    if(connection.Supports("tasks.poll")){
++                        var result=await RequestAsync("tasks.poll",new{},cancel);
++                        if(result.Data.TryGetProperty("tasks",out var tasks)){
++                            if(tasks.ValueKind!=JsonValueKind.Array||tasks.GetArrayLength()>32)throw new Sx4Exception("size");
++                            foreach(var data in tasks.EnumerateArray()){
++                                var task=data.Deserialize<AgentTask>(new JsonSerializerOptions{PropertyNameCaseInsensitive=false,PropertyNamingPolicy=JsonNamingPolicy.CamelCase,UnmappedMemberHandling=System.Text.Json.Serialization.JsonUnmappedMemberHandling.Disallow})??throw new Sx4Exception("task");
++                                await queue.AddAsync(task,new HashSet<string>(configured.Grants??[]));Audit(task.Id,task.DeviceId,task.Operation,AuditTarget(task),"accepted","");
++                            }
++                        }
++                    }
++                    if(connection.Supports("tasks.status")){
++                        var statuses=(await queue.SnapshotAsync()).OrderByDescending(x=>x.State is "accepted" or "running").Take(32);
++                        await RequestAsync("tasks.status",new{tasks=statuses.Select(x=>new{id=x.Id,state=x.State,code=x.Code})},cancel);
++                    }
++                    await Task.Delay(TimeSpan.FromSeconds(15),cancel);
++                }
++            }
++            catch(OperationCanceledException)when(cancel.IsCancellationRequested){break;}
++            catch(Exception e)when(e is Sx4Exception or System.Security.Authentication.AuthenticationException or CryptographicException or JsonException or InvalidOperationException or KeyNotFoundException){
++                authBlocked=true;stop?.Cancel();await queue.CancelAllAsync("authorization_blocked");SetStatus("Base: przerwano bezpiecznie ("+(e is Sx4Exception x?x.Code:"auth_or_protocol")+"). Sprawdź konfigurację i sparuj ponownie.");break;
++            }
++            catch(Exception e)when(e is IOException or System.Net.Sockets.SocketException or OperationCanceledException){SetStatus("Base offline — ponawiam połączenie");}
++            finally{client=null;if(connection!=null)await connection.DisposeAsync();}
++            if(configured.Mode=="lan")
++            {
++                var found=await BaseDiscovery.DiscoverAsync(cancel);
++                var moved=found.FirstOrDefault(x=>x.BaseId==configured.BaseId&&x.Fingerprint.Equals(configured.Fingerprint,StringComparison.OrdinalIgnoreCase));
++                if(moved!=null)identity=configured with{Host=moved.Host,Port=moved.Port};
++            }
++            await Task.Delay(TimeSpan.FromSeconds(Math.Min(60,Math.Pow(2,Math.Min(++retries,6)))+Random.Shared.NextDouble()),cancel);
++        }
++    }
++    private async Task WorkerAsync(CancellationToken cancel)
++    {
++        while(!cancel.IsCancellationRequested)
++        {
++            var grants=new HashSet<string>(authBlocked?[]:identity?.Grants??[]);
++            try{await queue.DrainAsync(IsUnlocked,ConfirmAsync,ExecuteAsync,grants,cancel);}
++            catch(OperationCanceledException)when(cancel.IsCancellationRequested){break;}
++            catch(Exception){SetStatus("Kolejka Agenta wymaga sprawdzenia");}
++            await Task.Delay(1000,cancel);
++        }
++    }
++    private object Telemetry()
++    {
++        static double? Available(double x)=>double.IsFinite(x)?x:null;
++        var disks=DriveInfo.GetDrives().Where(x=>x.IsReady&&x.DriveType==DriveType.Fixed).Take(16).Select(x=>new{drive=x.Name,total=x.TotalSize,free=x.AvailableFreeSpace}).ToArray();
++        var network=NetworkInterface.GetAllNetworkInterfaces().Where(x=>x.OperationalStatus==OperationalStatus.Up&&x.NetworkInterfaceType!=NetworkInterfaceType.Loopback).Take(16).Select(x=>{
++            var stats=x.GetIPStatistics();return new{mac=x.GetPhysicalAddress().ToString(),received=stats.BytesReceived,sent=stats.BytesSent};}).ToArray();
++        return new{version=AppConstants.SemanticVersion,cpu=Available(monitor.GetCpuUsage()),ramUsedGb=Available(monitor.GetUsedRamGB()),ramTotalGb=Available(monitor.GetTotalRamGB()),gpu=Available(monitor.GetGpuUsagePercent()),disks,network,uptimeMs=Environment.TickCount64,sessionUnlocked=IsUnlocked(),autoLoadModel=false};
++    }
++    private async Task ExecuteAsync(AgentTask task,CancellationToken cancel)
++    {
++        if(!IsUnlocked())throw new Sx4Exception("session_locked");
++        switch(task.Operation){
++            case "lock":if(!LockWorkStation())throw new Sx4Exception("lock_failed");break;
++            case "sentinel.show":Application.Current.Dispatcher.Invoke(desktop.ShowWindow);break;
++            case "notification":alerts.Add("info","Sentinel Base",task.Target);break;
++            case "ollama.ensure":if(!await ollama.EnsureAsync(cancel))throw new Sx4Exception("ollama_unavailable");break;
++            case "steam.run":case "steam.install":
++                string steam=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),"Steam","steam.exe");
++                if(!File.Exists(steam))throw new Sx4Exception("steam_not_installed");
++                Process.Start(new ProcessStartInfo(steam,(task.Operation=="steam.run"?"steam://rungameid/":"steam://install/")+task.Target){UseShellExecute=false});break;
++            case "restart":case "shutdown":
++                using(var p=Process.Start(new ProcessStartInfo(Path.Combine(Environment.SystemDirectory,"shutdown.exe"),task.Operation=="restart"?"/r /t 30":"/s /t 30"){UseShellExecute=false,CreateNoWindow=true})??throw new IOException("launch")){
++                    await p.WaitForExitAsync(cancel);if(p.ExitCode!=0)throw new Sx4Exception("shutdown_failed");}break;
++            case "sleep":if(!ShutdownPrivilege.Sleep())throw new Sx4Exception("sleep_failed");break;
++            default:throw new Sx4Exception("permission");
++        }
++        Audit(task.Id,task.DeviceId,task.Operation,AuditTarget(task),"submitted",task.Operation.StartsWith("steam.",StringComparison.Ordinal)?"steam_interaction_required":"");
++    }
++    public static Task<bool> ConfirmAsync(AgentTask task,CancellationToken cancel)
++    {
++        var completion=new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
++        Application.Current.Dispatcher.BeginInvoke(()=>{
++            if(cancel.IsCancellationRequested){completion.TrySetResult(false);return;}
++            var yes=new Button{Content="Zatwierdź lokalnie",Margin=new Thickness(8)};
++            var no=new Button{Content="Anuluj",Margin=new Thickness(8)};
++            var stack=new StackPanel{Margin=new Thickness(20)};
++            stack.Children.Add(new TextBlock{Text="Urządzenie "+task.DeviceId+" prosi o: "+task.Operation+" "+task.Target+"\nŻądanie: "+task.Id+"\nZgoda wygaśnie automatycznie.",TextWrapping=TextWrapping.Wrap});
++            stack.Children.Add(yes);stack.Children.Add(no);
++            var window=new Window{Title="Sentinel X — potwierdzenie",Width=460,Height=260,Content=stack,WindowStartupLocation=WindowStartupLocation.CenterScreen};
++            yes.Click+=(_,_)=>{completion.TrySetResult(!cancel.IsCancellationRequested&&IsUnlocked());window.Close();};
++            no.Click+=(_,_)=>{completion.TrySetResult(false);window.Close();};
++            window.Closed+=(_,_)=>completion.TrySetResult(false);
++            var registration=cancel.Register(()=>Application.Current.Dispatcher.BeginInvoke(()=>{completion.TrySetResult(false);window.Close();}));
++            window.Closed+=(_,_)=>registration.Dispose();window.Show();
++        });
++        return completion.Task;
++    }
++    private static bool IsUnlocked()
++    {
++        if(!Environment.UserInteractive)return false;
++        IntPtr handle=OpenInputDesktop(0,false,1);if(handle==IntPtr.Zero)return false;
++        try{var name=new System.Text.StringBuilder(256);return GetUserObjectInformation(handle,2,name,512,out _)&&name.ToString()=="Default";}
++        finally{CloseDesktop(handle);}
++    }
++    private static void AtomicSecret(string path,byte[] data)
++    {
++        byte[] encrypted=Protect(data);string tmp=path+".tmp";
++        try{using(var f=new FileStream(tmp,FileMode.Create,FileAccess.Write,FileShare.None)){f.Write(encrypted);f.Flush(true);}
++            if(!Unprotect(File.ReadAllBytes(tmp)).AsSpan().SequenceEqual(data))throw new IOException("verify");File.Move(tmp,path,true);}
++        finally{CryptographicOperations.ZeroMemory(data);if(File.Exists(tmp))File.Delete(tmp);}
++    }
++    private static string AuditTarget(AgentTask task)=>task.Operation=="notification"?"local_notification":task.Target;
++    private void Audit(string id,ushort device,string action,string target,string state,string code)
++    {
++        Directory.CreateDirectory(folder);string p=Path.Combine(folder,"audit.jsonl");
++        lock(stateGate){
++            if(File.Exists(p)&&new FileInfo(p).Length>8*1024*1024)File.Move(p,p+".previous",true);
++            File.AppendAllText(p,JsonSerializer.Serialize(new{time=DateTimeOffset.UtcNow,id,device,action,target,state,code})+"\n");}
++    }
++    private void SetStatus(string value){lock(stateGate)status=value;Changed?.Invoke();}
++    public void Dispose(){if(disposed)return;disposed=true;stop?.Cancel();client?.DisposeAsync().AsTask().GetAwaiter().GetResult();}
++    [DllImport("user32.dll",SetLastError=true)]private static extern bool LockWorkStation();
++    [DllImport("user32.dll",SetLastError=true)]private static extern IntPtr OpenInputDesktop(uint flags,bool inherit,uint access);
++    [DllImport("user32.dll",SetLastError=true)]private static extern bool CloseDesktop(IntPtr desktop);
++    [DllImport("user32.dll",EntryPoint="GetUserObjectInformationW",CharSet=CharSet.Unicode,SetLastError=true)]private static extern bool GetUserObjectInformation(IntPtr handle,int index,System.Text.StringBuilder data,uint length,out uint needed);
++}
+diff --git a/Services/Care/CareService.cs b/Services/Care/CareService.cs
+index c827890..31c408c 100644
+--- a/Services/Care/CareService.cs
++++ b/Services/Care/CareService.cs
+@@ -17,6 +17,7 @@ public sealed class CareService : IDisposable
+     private readonly IEngineService engine;
+     private readonly AlertFeed alerts;
+     private readonly TaskService tasks;
++    private readonly Services.Base.OllamaSupervisor? ollama;
+     private readonly object gate = new();
+     private readonly SemaphoreSlim tick = new(1, 1);
+     private Timer? timer;
+@@ -31,13 +32,13 @@ public sealed class CareService : IDisposable
+     private DateTime lastEngineAlert = DateTime.MinValue;
+     private DateTime lastDiskAlert = DateTime.MinValue;
+ 
+-    public CareService(ISettingsService settings, LinkService link, IEngineService engine, AlertFeed alerts, TaskService tasks)
++    public CareService(ISettingsService settings, LinkService link, IEngineService engine, AlertFeed alerts, TaskService tasks, Services.Base.OllamaSupervisor? ollama = null)
+     {
+         this.settings = settings;
+         this.link = link;
+         this.engine = engine;
+         this.alerts = alerts;
+-        this.tasks = tasks;
++        this.tasks = tasks; this.ollama = ollama;
+     }
+ 
+     public event Action? Changed;
+@@ -104,6 +105,7 @@ public sealed class CareService : IDisposable
+         try
+         {
+             await EnsureLinkAsync().ConfigureAwait(false);
++            if (settings.Current.Ai.EnsureOllamaServer && ollama != null) await ollama.EnsureAsync(CancellationToken.None).ConfigureAwait(false);
+             engine.Start();
+             CheckEngine();
+             CheckDisk();
+diff --git a/Testing/UiSmokeTestRunner.cs b/Testing/UiSmokeTestRunner.cs
+index 250a22b..0ef07b0 100644
+--- a/Testing/UiSmokeTestRunner.cs
++++ b/Testing/UiSmokeTestRunner.cs
+@@ -156,7 +156,7 @@ public static class UiSmokeTestRunner
+                 ("pierwiastek 144", "= 12"), ("silnia 10", "3628800"), ("nwd 12 8", "= 4"),
+                 ("palindrom: kajak", "palindromem"), ("morse: sos", "... --- ..."),
+                 ("pesel: 90010112349", "PESEL poprawny"), ("wielkanoc 2027", "28.03.2027"),
+-                ("lotto", "Lotto (6 z 49)"), ("wersja", "0.96"), ("co nowego", "KUŹNIA"),
++                ("lotto", "Lotto (6 z 49)"), ("wersja", "1.0.0"), ("co nowego", "KUŹNIA"),
+                 ("nazwa komputera", "Komputer:"), ("samokontrola", "SAMOKONTROLA"),
+                 // 0.95 · WARSZTAT: the new tools through the real pipeline (the QR check stays in UtilityRegression, it writes a file)
+                 ("porownaj teksty: ala ma kota ||| ala ma psa", "tylko w drugim"), ("regex: \\d+ ||| mam 12 kotów", "dopasowania: 1"),
+diff --git a/VERSION b/VERSION
+new file mode 100644
+index 0000000..3eefcb9
+--- /dev/null
++++ b/VERSION
+@@ -0,0 +1 @@
++1.0.0
+diff --git a/ViewModels/BaseViewModel.cs b/ViewModels/BaseViewModel.cs
+new file mode 100644
+index 0000000..f3aed3d
+--- /dev/null
++++ b/ViewModels/BaseViewModel.cs
+@@ -0,0 +1,59 @@
++using System.Collections.ObjectModel;
++using CommunityToolkit.Mvvm.ComponentModel;
++using CommunityToolkit.Mvvm.Input;
++using SentinelX.Core;
++using SentinelX.Services.Base;
++namespace SentinelX.ViewModels;
++public partial class BaseViewModel : ObservableObject,IDisposable
++{
++    private readonly WindowsBaseService service;private readonly IUiDispatcher ui;
++    [ObservableProperty]private string host="";
++    [ObservableProperty]private int port=443;
++    [ObservableProperty]private string fingerprint="";
++    [ObservableProperty]private string secret="";
++    [ObservableProperty]private int deviceId=2;
++    [ObservableProperty]private int baseId=1;
++    [ObservableProperty]private string mode="lan";
++    [ObservableProperty]private string status="";
++    [ObservableProperty]private string result="";
++    [ObservableProperty]private bool allowPowerActions;
++    [ObservableProperty]private string targetId="";
++    [ObservableProperty]private string timerOperation="lock";
++    [ObservableProperty]private int timerSeconds=30;
++    [ObservableProperty]private string steamAppId="730";
++    [ObservableProperty]private DiscoveredBase? selectedBase;
++    public string[] Modes{get;}=["lan","vpn","relay"];
++    public string[] TimerOperations{get;}=["lock","sentinel.show","ollama.ensure"];
++    public ObservableCollection<DiscoveredBase> Bases{get;}=[];
++    public ObservableCollection<AgentTask> Tasks{get;}=[];
++    public BaseViewModel(WindowsBaseService service,IUiDispatcher ui)
++    {
++        this.service=service;this.ui=ui;service.Changed+=Sync;Status=service.Status;
++        if(service.PublicConfiguration is{} c){Host=c.Host;Port=c.Port;Fingerprint=c.Fingerprint;DeviceId=c.DeviceId;BaseId=c.BaseId;Mode=c.Mode;}
++    }
++    private void Sync()=>ui.Post(()=>Status=service.Status);
++    partial void OnSelectedBaseChanged(DiscoveredBase? value){if(value==null)return;Host=value.Host;Port=value.Port;BaseId=value.BaseId;Result="Odkrycie nie potwierdza tożsamości. Porównaj fingerprint z Base przed parowaniem."; }
++    private async Task Run(Func<Task> action){try{Status="Pracuję…";await action();}catch(Exception e){Result=e is Sx4Exception x?"Błąd Base: "+x.Code:"Operacja nie powiodła się. Sprawdź konfigurację lub diagnostykę.";}finally{Status=service.Status;}}
++    [RelayCommand]private Task DiscoverAsync(CancellationToken cancel)=>Run(async()=>{var found=await BaseDiscovery.DiscoverAsync(cancel);Bases.Clear();foreach(var item in found)Bases.Add(item);Result="Odkryto: "+found.Count+". Porównaj fingerprint z fizyczną Base.";});
++    [RelayCommand]private Task PairAsync(CancellationToken cancel)=>Run(async()=>{
++        var grants=new List<string>{"lock","steam.run","ollama.ensure","sentinel.show","notification"};
++        if(AllowPowerActions)grants.AddRange(["sleep","restart","shutdown","steam.install"]);
++        await service.PairAsync(new(Host.Trim(),Port,Fingerprint.Trim(),checked((ushort)DeviceId),checked((ushort)BaseId),Secret.Trim(),Mode,grants.ToArray()),cancel);
++        Secret="";Result="Parowanie potwierdzone. Sekret zapisano w magazynie Windows.";});
++    [RelayCommand]private Task UnpairAsync()=>Run(async()=>{await service.UnpairAsync();Secret="";Result="Parowanie usunięte z PC. Unieważnij ten sekret także w Base.";});
++    [RelayCommand]private Task RefreshTasksAsync()=>Run(async()=>{var tasks=await service.TasksAsync();Tasks.Clear();foreach(var task in tasks)Tasks.Add(task);Result="Zadania Agenta: "+tasks.Count;});
++    [RelayCommand]private Task QueryAsync(string type,CancellationToken cancel)=>Run(async()=>{var response=await service.RequestAsync(type,new{},cancel);Result=response.Data.ToString();});
++    [RelayCommand]private Task RunSceneAsync(CancellationToken cancel)=>Run(async()=>{ValidateTarget(TargetId);using var expiry=CancellationTokenSource.CreateLinkedTokenSource(cancel);expiry.CancelAfter(TimeSpan.FromSeconds(30));
++        if(!await WindowsBaseService.ConfirmAsync(new(Guid.NewGuid().ToString("D"),checked((ushort)DeviceId),"scene",TargetId,DateTimeOffset.UtcNow.AddSeconds(30).ToUnixTimeMilliseconds()),expiry.Token)){Result="Anulowano scenę";return;}
++        Result=(await service.RequestAsync("scenes.run",new{id=TargetId,expiresSeconds=30},expiry.Token)).Data.ToString();});
++    [RelayCommand]private Task WakeAsync(CancellationToken cancel)=>Run(async()=>{ValidateTarget(TargetId);Result=(await service.RequestAsync("wol",new{pcId=TargetId},cancel)).Data.ToString();});
++    [RelayCommand]private Task SetTimerAsync(CancellationToken cancel)=>Run(async()=>{
++        if(TimerSeconds is <1 or >300||!TimerOperations.Contains(TimerOperation))throw new Sx4Exception("timer");
++        ValidateTarget(TargetId);Result=(await service.RequestAsync("timers.create",new{pcId=TargetId,operation=TimerOperation,seconds=TimerSeconds},cancel)).Data.ToString();});
++    [RelayCommand]private Task LaunchSteamAsync(CancellationToken cancel)=>Run(async()=>{
++        if(!uint.TryParse(SteamAppId,out var id)||id==0||id.ToString()!=SteamAppId)throw new Sx4Exception("steam_appid");
++        ValidateTarget(TargetId);Result=(await service.RequestAsync("tasks.create",new{pcId=TargetId,operation="steam.run",target=SteamAppId,expiresSeconds=60},cancel)).Data.ToString();});
++    [RelayCommand]private Task RepairQueueAsync()=>Run(async()=>{Result="Naprawiono kolejkę. Kopia: "+await service.RepairQueueAsync();});
++    private static void ValidateTarget(string value){if(value.Length is <1 or >64||value.Any(c=>!char.IsAsciiLetterOrDigit(c)&&c is not('_' or '-')))throw new Sx4Exception("target");}
++    public void Dispose()=>service.Changed-=Sync;
++}
+diff --git a/ViewModels/MainViewModel.cs b/ViewModels/MainViewModel.cs
+index b763596..4292da2 100644
+--- a/ViewModels/MainViewModel.cs
++++ b/ViewModels/MainViewModel.cs
+@@ -50,7 +50,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
+         CommandCenterViewModel command, SystemViewModel system, GamingViewModel gaming,
+         VoiceViewModel voice, AiViewModel ai, ActionsViewModel actions, HistoryViewModel history, SettingsViewModel settings,
+         CommandPaletteViewModel palette, ReadinessViewModel readiness, MemoryViewModel memory, ProjectViewModel projects, TaskViewModel tasks,
+-        DiagnosticViewModel diagnostics, ToolsViewModel tools, ISettingsService settingsService)
++        DiagnosticViewModel diagnostics, ToolsViewModel tools, ISettingsService settingsService, BaseViewModel? basePanel = null)
+     {
+         this.engine = engine; this.desktop = desktop; this.dispatcher = dispatcher; this.settings = settingsService;
+         Voice = voice; Palette = palette; Readiness = readiness; commandCenter = command; System = system; Tools = tools;
+@@ -58,6 +58,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
+         NavItems =
+         [
+             new NavItem("command", "⌘", "Centrum", command),
++            new NavItem("base", "⌁", "Base i Agent", (object?)basePanel ?? tools),
+             new NavItem("tools", "🧰", "Narzędzia", tools),
+             new NavItem("memory", "▤", "Pamięć", memory),
+             new NavItem("projects", "▣", "Projekty", projects),
+diff --git a/ViewModels/TaskViewModel.cs b/ViewModels/TaskViewModel.cs
+index 723090a..4e68471 100644
+--- a/ViewModels/TaskViewModel.cs
++++ b/ViewModels/TaskViewModel.cs
+@@ -104,7 +104,7 @@ public partial class TaskViewModel : ObservableObject, IDisposable
+ 
+     private void RebuildProjects()
+     {
+-        string previous = newProjectIndex >= 0 && newProjectIndex < projectIds.Count ? projectIds[newProjectIndex] : "";
++        string previous = NewProjectIndex >= 0 && NewProjectIndex < projectIds.Count ? projectIds[NewProjectIndex] : "";
+         projectIds.Clear(); projectIds.Add("");
+         ProjectOptions.Clear(); ProjectOptions.Add("(bez projektu)");
+         foreach (var project in projects.GetProjects()) { projectIds.Add(project.Id); ProjectOptions.Add(project.Name); }
+@@ -168,7 +168,7 @@ public partial class TaskViewModel : ObservableObject, IDisposable
+     {
+         string title = NewTitle;
+         string dueText = NewDueText;
+-        var projectId = newProjectIndex > 0 && newProjectIndex < projectIds.Count ? projectIds[newProjectIndex] : "";
++        var projectId = NewProjectIndex > 0 && NewProjectIndex < projectIds.Count ? projectIds[NewProjectIndex] : "";
+         DateTime? due = null;
+         if (dueText.Trim().Length > 0)
+         {
+diff --git a/Views/MainWindow.xaml b/Views/MainWindow.xaml
+index 4aaf896..52e542c 100644
+--- a/Views/MainWindow.xaml
++++ b/Views/MainWindow.xaml
+@@ -1,6 +1,7 @@
+ <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:u="clr-namespace:SentinelX.Utilities" xmlns:controls="clr-namespace:SentinelX.Views.Controls" xmlns:vm="clr-namespace:SentinelX.ViewModels" xmlns:pages="clr-namespace:SentinelX.Views.Pages" x:Class="SentinelX.Views.MainWindow" Title="Sentinel X" Width="1400" Height="900" MinWidth="1100" MinHeight="700" WindowStartupLocation="CenterScreen" Background="{DynamicResource SxBackground}" FontFamily="{StaticResource SxFontFamily}" ThemeMode="Dark" Icon="/Assets/sentinel.ico" u:UiInteraction.LoadedCommand="{Binding InitializeCommand}">
+     <Window.InputBindings><KeyBinding Key="K" Modifiers="Control" Command="{Binding OpenPaletteCommand}"/></Window.InputBindings>
+     <Window.Resources>
++        <DataTemplate DataType="{x:Type vm:BaseViewModel}"><pages:BasePage/></DataTemplate>
+         <DataTemplate DataType="{x:Type vm:CommandCenterViewModel}">
+             <pages:CommandCenterPage/>
+         </DataTemplate>
+@@ -74,7 +75,6 @@
+                 <StackPanel DockPanel.Dock="Top" Margin="20,26,18,18">
+                     <!-- 0.95: marka z gradientem akcentu zamiast jednolitego koloru -->
+                     <TextBlock Text="◈  SENTINEL X" FontSize="19" FontWeight="Bold" Foreground="{StaticResource SxAccentGradient}"/>
+-                    <TextBlock Text="{Binding Version}" Style="{StaticResource SxCaption}" Margin="26,4,0,18"/>
+                     <Button Content="⌕  Szukaj · Ctrl+K" Command="{Binding OpenPaletteCommand}" FontSize="12" Margin="0,0,0,10" AutomationProperties.Name="Otwórz paletę poleceń"/>
+                     <Button Content="🧰  Narzędzia" Command="{Binding OpenToolsCommand}" Style="{StaticResource SxGhostButton}" FontSize="12" Margin="0,0,0,16" AutomationProperties.Name="Otwórz katalog narzędzi"/>
+                     <!-- 0.95: żywe metryki zamiast pustego miejsca — ten sam odczyt co zakładka System -->
+@@ -130,6 +130,7 @@
+                     <Button Content="ϟ  EMERGENCY STOP" Command="{Binding EmergencyStopCommand}" Style="{StaticResource SxDangerButton}" FontSize="12" ToolTip="Ctrl+Shift+X · blokuje nowe akcje i wyłącza głos"/>
+                     <Button Content="Wznów Sentinel" Command="{Binding ResumeCommand}" Visibility="{Binding IsStopped, Converter={StaticResource BoolToVisibility}}" Margin="0,8,0,0"/>
+                     <Button Content="Wyjdź z aplikacji" Command="{Binding ExitCommand}" Style="{StaticResource SxGhostButton}" FontSize="11" Margin="0,8,0,0"/>
++                    <TextBlock Text="{Binding Version}" Opacity="0.8" Style="{StaticResource SxCaption}" Margin="4,0,0,8" AutomationProperties.Name="Wersja Sentinel X"/>
+                 </StackPanel>
+                 <ListBox ItemsSource="{Binding NavItems}" SelectedItem="{Binding SelectedItem}" ItemContainerStyle="{StaticResource SxSidebarItem}" Margin="8,0" VerticalAlignment="Top">
+                     <ListBox.ItemTemplate>
+diff --git a/Views/Pages/BasePage.xaml b/Views/Pages/BasePage.xaml
+new file mode 100644
+index 0000000..f5911c2
+--- /dev/null
++++ b/Views/Pages/BasePage.xaml
+@@ -0,0 +1,42 @@
++<UserControl x:Class="SentinelX.Views.Pages.BasePage" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:core="clr-namespace:SentinelX.Core">
++ <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="28">
++  <TextBlock Text="Base i Agent" FontSize="28" FontWeight="Bold"/>
++  <TextBlock Text="{Binding Status}" Margin="0,10" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"/>
++  <Border Style="{StaticResource SxCard}" Margin="0,8"><StackPanel>
++   <TextBlock Text="Połączenie SX4" FontSize="18" FontWeight="SemiBold"/>
++   <TextBlock Text="Porównaj fingerprint i wpisz osobny sekret tego urządzenia z Base." TextWrapping="Wrap" Margin="0,8"/>
++   <Button Content="Znajdź Base w LAN" Command="{Binding DiscoverCommand}" HorizontalAlignment="Left"/>
++   <ComboBox ItemsSource="{Binding Bases}" SelectedItem="{Binding SelectedBase}" DisplayMemberPath="Name" Margin="0,8" AutomationProperties.Name="Odkryte Base"/>
++   <TextBlock Text="Adres Base / VPN / relay"/><TextBox Text="{Binding Host,UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Adres Base"/>
++   <TextBlock Text="Port"/><TextBox Text="{Binding Port}" AutomationProperties.Name="Port Base"/>
++   <TextBlock Text="Fingerprint SHA-256 (64 znaki)"/><TextBox Text="{Binding Fingerprint,UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Fingerprint Base"/>
++   <TextBlock Text="Sekret tego urządzenia (64 znaki hex)"/><PasswordBox core:PasswordBinding.Value="{Binding Secret,Mode=TwoWay}" AutomationProperties.Name="Sekret parowania"/>
++   <UniformGrid Columns="2"><StackPanel><TextBlock Text="Device ID PC"/><TextBox Text="{Binding DeviceId}" AutomationProperties.Name="Device ID"/></StackPanel><StackPanel><TextBlock Text="Base ID"/><TextBox Text="{Binding BaseId}" AutomationProperties.Name="Base ID"/></StackPanel></UniformGrid>
++   <ComboBox ItemsSource="{Binding Modes}" SelectedItem="{Binding Mode}" Margin="0,8" AutomationProperties.Name="Tryb połączenia"/>
++   <CheckBox Content="Zezwól na akcje zasilania i instalację Steam — każda wymaga lokalnej zgody" IsChecked="{Binding AllowPowerActions}" Margin="0,8"/>
++   <WrapPanel><Button Content="Sprawdź i sparuj" Command="{Binding PairCommand}" Margin="0,0,8,0"/><Button Content="Usuń parowanie z PC" Command="{Binding UnpairCommand}"/></WrapPanel>
++  </StackPanel></Border>
++  <Border Style="{StaticResource SxCard}" Margin="0,8"><StackPanel>
++   <TextBlock Text="Dom, komputer i zadania" FontSize="18" FontWeight="SemiBold"/>
++   <WrapPanel Margin="0,8">
++    <Button Content="Status" Command="{Binding QueryCommand}" CommandParameter="status" Margin="4"/>
++    <Button Content="Urządzenia" Command="{Binding QueryCommand}" CommandParameter="devices" Margin="4"/>
++    <Button Content="Sceny" Command="{Binding QueryCommand}" CommandParameter="scenes" Margin="4"/>
++    <Button Content="Powiadomienia" Command="{Binding QueryCommand}" CommandParameter="notifications" Margin="4"/>
++    <Button Content="Diagnostyka Base" Command="{Binding QueryCommand}" CommandParameter="diagnostics" Margin="4"/>
++    <Button Content="Logi Base" Command="{Binding QueryCommand}" CommandParameter="logs" Margin="4"/>
++   </WrapPanel>
++   <TextBlock Text="Identyfikator sceny / PC (z listy Base)"/><TextBox Text="{Binding TargetId,UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Cel operacji"/>
++   <WrapPanel Margin="0,8"><Button Content="Uruchom scenę" Command="{Binding RunSceneCommand}" Margin="4"/><Button Content="Wake-on-LAN" Command="{Binding WakeCommand}" Margin="4"/></WrapPanel>
++   <TextBlock Text="Timer: akcja, sekundy (1–300)"/><ComboBox ItemsSource="{Binding TimerOperations}" SelectedItem="{Binding TimerOperation}" AutomationProperties.Name="Operacja timera"/><TextBox Text="{Binding TimerSeconds}" AutomationProperties.Name="Sekundy timera"/>
++   <Button Content="Ustaw timer w Base" Command="{Binding SetTimerCommand}" HorizontalAlignment="Left" Margin="0,8"/>
++   <TextBlock Text="Steam: numeryczny AppID"/><TextBox Text="{Binding SteamAppId}" AutomationProperties.Name="Steam AppID"/><Button Content="Poproś PC o uruchomienie gry" Command="{Binding LaunchSteamCommand}" HorizontalAlignment="Left" Margin="0,8"/>
++  </StackPanel></Border>
++  <Border Style="{StaticResource SxCard}" Margin="0,8"><StackPanel>
++   <TextBlock Text="Kolejka Agenta" FontSize="18" FontWeight="SemiBold"/>
++   <WrapPanel Margin="0,8"><Button Content="Odśwież zadania" Command="{Binding RefreshTasksCommand}" Margin="4"/><Button Content="Napraw uszkodzoną kolejkę z kopią" Command="{Binding RepairQueueCommand}" Margin="4"/></WrapPanel>
++   <ItemsControl ItemsSource="{Binding Tasks}"><ItemsControl.ItemTemplate><DataTemplate><StackPanel Margin="0,4"><TextBlock Text="{Binding Operation}" FontWeight="SemiBold"/><TextBlock Text="{Binding State}"/><TextBlock Text="{Binding Code}" TextWrapping="Wrap"/></StackPanel></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
++  </StackPanel></Border>
++  <TextBox Text="{Binding Result,Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" MinHeight="100" MaxHeight="420" VerticalScrollBarVisibility="Auto" AutomationProperties.Name="Wynik Base"/>
++ </StackPanel></ScrollViewer>
++</UserControl>
+\ No newline at end of file
+diff --git a/Views/Pages/BasePage.xaml.cs b/Views/Pages/BasePage.xaml.cs
+new file mode 100644
+index 0000000..245eedb
+--- /dev/null
++++ b/Views/Pages/BasePage.xaml.cs
+@@ -0,0 +1,3 @@
++using System.Windows.Controls;
++namespace SentinelX.Views.Pages;
++public partial class BasePage : UserControl { public BasePage()=>InitializeComponent(); }
+diff --git a/WorkspaceInsightsService.cs b/WorkspaceInsightsService.cs
+index 7606bdb..f1cfbfe 100644
+--- a/WorkspaceInsightsService.cs
++++ b/WorkspaceInsightsService.cs
+@@ -224,7 +224,7 @@ public sealed class WorkspaceInsightsService
+             builder.AppendLine("Wspomnienia (" + notes.Length + "):");
+             foreach (var note in notes) builder.AppendLine("· " + Truncate(note.Text, 140) + (note.Category.Length > 0 ? "  [" + note.Category + "]" : ""));
+         }
+-        var turns = memory.SearchConversation(query, 5);
++        var turns = memory.SearchConversation(query ?? "", 5);
+         if (turns.Count > 0)
+         {
+             total += turns.Count;
+diff --git a/installer/SentinelX.iss b/installer/SentinelX.iss
+index 17faad5..b0cca86 100644
+--- a/installer/SentinelX.iss
++++ b/installer/SentinelX.iss
+@@ -1,6 +1,6 @@
+ ; Per-user installer. User data lives outside {app}; never delete it on uninstall.
+ #ifndef AppVersion
+-  #define AppVersion "0.94.0"
++  #define AppVersion "1.0.0"
+ #endif
+ [Setup]
+ AppId={{8A74FE2D-DA3A-48B5-9A88-20C17E983E53}
+diff --git a/phone-android/app/build.gradle b/phone-android/app/build.gradle
+index 951e202..107ebd6 100644
+--- a/phone-android/app/build.gradle
++++ b/phone-android/app/build.gradle
+@@ -1,45 +1,36 @@
+-plugins {
+-    id 'com.android.application'
+-}
+-
++plugins { id 'com.android.application' }
+ android {
+     namespace 'pl.sentinelx.phone'
+     compileSdk 35
+-
++    buildToolsVersion '35.0.0'
+     defaultConfig {
+         applicationId 'pl.sentinelx.phone'
+         minSdk 24
+         targetSdk 35
+-        versionCode 96
+-        versionName '0.96.0'
++        versionCode 100
++        versionName '1.0.0'
+     }
+-
+-    // Stały klucz podpisu (repozytorium prywatne): kolejne wersje instalują się na poprzednie bez odinstalowywania.
+-    // To nie jest klucz do sklepu Play — aplikacja jest instalowana ręcznie z wydania na GitHubie.
+     signingConfigs {
+         release {
+-            storeFile file('sentinelx-phone.p12')
+-            storeType 'pkcs12'
+-            storePassword 'sentinelx'
+-            keyAlias 'sentinelx'
+-            keyPassword 'sentinelx'
++            def path = System.getenv('SX_ANDROID_KEYSTORE')
++            if (path) {
++                storeFile file(path)
++                storePassword System.getenv('SX_ANDROID_STORE_PASSWORD')
++                keyAlias System.getenv('SX_ANDROID_KEY_ALIAS')
++                keyPassword System.getenv('SX_ANDROID_KEY_PASSWORD')
++            }
+         }
+     }
+-
+     buildTypes {
+         release {
+-            signingConfig signingConfigs.release
++            if (System.getenv('SX_ANDROID_KEYSTORE')) signingConfig signingConfigs.release
+             minifyEnabled false
+         }
+     }
+-
+     compileOptions {
+         sourceCompatibility JavaVersion.VERSION_17
+         targetCompatibility JavaVersion.VERSION_17
+     }
+-
+-    lint {
+-        abortOnError false
+-        checkReleaseBuilds false
+-    }
++    lint { abortOnError true; checkReleaseBuilds true }
+ }
++dependencies { testImplementation 'junit:junit:4.13.2' }
+diff --git a/phone-android/app/src/main/AndroidManifest.xml b/phone-android/app/src/main/AndroidManifest.xml
+index 826e2d3..fd6f08f 100644
+--- a/phone-android/app/src/main/AndroidManifest.xml
++++ b/phone-android/app/src/main/AndroidManifest.xml
+@@ -33,6 +33,8 @@
+             </intent-filter>
+         </activity>
+ 
++        <activity android:name=".BaseActivity" android:exported="false" />
++
+         <service
+             android:name=".AlertJobService"
+             android:exported="false"
+diff --git a/phone-android/app/src/main/java/pl/sentinelx/phone/BaseActivity.java b/phone-android/app/src/main/java/pl/sentinelx/phone/BaseActivity.java
+new file mode 100644
+index 0000000..61f0008
+--- /dev/null
++++ b/phone-android/app/src/main/java/pl/sentinelx/phone/BaseActivity.java
+@@ -0,0 +1,141 @@
++package pl.sentinelx.phone;
++import android.app.*;
++import android.os.*;
++import android.net.*;
++import android.content.Context;
++import android.text.InputType;
++import android.view.*;
++import android.widget.*;
++import java.util.*;
++import java.util.concurrent.*;
++/** Native Base dashboard: never depends on the PC web server. */
++public final class BaseActivity extends Activity {
++ private final Handler ui=new Handler(Looper.getMainLooper());
++ private ExecutorService worker;
++ private volatile BaseClient client;
++ private BaseSession session;
++ private volatile boolean active,blocked;
++ private volatile int generation;private int retries,connectingEpoch=-1;
++ private TextView status,result;
++ private EditText host,port,pin,secret,device,base,target,appId,seconds;
++ private Spinner mode,operation;
++ private ConnectivityManager connectivity;
++ private ConnectivityManager.NetworkCallback network;
++ private final Runnable poll=()->submitQuery("status");
++ @Override public void onCreate(Bundle state){
++  super.onCreate(state);session=new BaseSession(this);worker=Executors.newSingleThreadExecutor();
++  ScrollView scroll=new ScrollView(this);LinearLayout box=new LinearLayout(this);box.setOrientation(1);box.setPadding(22,24,22,24);box.setBackgroundColor(0xff0d0f14);scroll.addView(box);setContentView(scroll);
++  label(box,"Sentinel Base · SX4 · 1.0.0",23);status=label(box,"Nie sparowano",16);result=label(box,"Porównaj fingerprint z Base. Sekret jest osobny dla telefonu.",14);result.setTextIsSelectable(true);
++  host=field(box,"Adres Base / VPN / relay",InputType.TYPE_CLASS_TEXT);
++  port=field(box,"Port TLS",InputType.TYPE_CLASS_NUMBER);port.setText("443");
++  pin=field(box,"Fingerprint SHA-256 z fizycznej Base",InputType.TYPE_CLASS_TEXT);
++  secret=field(box,"Sekret urządzenia (64 hex)",InputType.TYPE_CLASS_TEXT|InputType.TYPE_TEXT_VARIATION_PASSWORD);
++  device=field(box,"ID telefonu",InputType.TYPE_CLASS_NUMBER);device.setText("3");
++  base=field(box,"ID Base",InputType.TYPE_CLASS_NUMBER);base.setText("1");
++  mode=spinner(box,new String[]{"lan","vpn","relay"});
++  button(box,"Szukaj w LAN",()->discover());
++  button(box,"Sparuj i sprawdź tożsamość",()->pair());
++  button(box,"Odłącz urządzenie",()->confirm("Usunąć parowanie telefonu?",()->{blocked=true;disconnect();session.forget();status.setText("Odłączono. Unieważnij sekret także w Base.");}));
++  Map<String,Object> saved=session.configuration();if(saved!=null){
++   host.setText(String.valueOf(saved.get("host")));port.setText(String.valueOf(saved.get("port")));pin.setText(String.valueOf(saved.get("fingerprint")));
++   device.setText(String.valueOf(saved.get("deviceId")));base.setText(String.valueOf(saved.get("baseId")));
++   String m=String.valueOf(saved.get("mode"));mode.setSelection(m.equals("relay")?2:m.equals("vpn")?1:0);
++  }
++  for(String type:new String[]{"status","pc.state","devices","scenes","notifications","diagnostics","logs","tasks"})button(box,type,()->submitQuery(type));
++  target=field(box,"ID docelowego PC lub sceny",InputType.TYPE_CLASS_TEXT);
++  button(box,"Wake-on-LAN przez Base",()->action("wol",StrictJson.map("pcId",target()),false));
++  button(box,"Uruchom scenę",()->action("scenes.run",StrictJson.map("id",target(),"expiresSeconds",30),true));
++  operation=spinner(box,new String[]{"lock","sentinel.show","ollama.ensure","sleep","restart","shutdown","steam.run","steam.install"});
++  appId=field(box,"Numeryczny Steam AppID",InputType.TYPE_CLASS_NUMBER);
++  button(box,"Wyślij zadanie",()->task());
++  seconds=field(box,"Timer: 1–300 sekund",InputType.TYPE_CLASS_NUMBER);seconds.setText("30");
++  button(box,"Timer blokady PC",()->{
++   int delay=Integer.parseInt(seconds.getText().toString());if(delay<1||delay>300)throw new IllegalArgumentException();
++   action("timers.create",StrictJson.map("pcId",target(),"operation","lock","seconds",delay),false);
++  });
++  connectivity=(ConnectivityManager)getSystemService(Context.CONNECTIVITY_SERVICE);
++  network=new ConnectivityManager.NetworkCallback(){
++   @Override public void onAvailable(Network n){ui.post(()->{if(active&&!blocked){disconnect();connect();}});}
++   @Override public void onLost(Network n){ui.post(()->{if(active){disconnect();status.setText("Sieć zmieniona · ponawiam uwierzytelnienie");scheduleReconnect();}});}
++  };
++ }
++ private TextView label(LinearLayout box,String text,int size){TextView v=new TextView(this);v.setText(text);v.setTextSize(size);v.setTextColor(0xffe8ecf4);v.setPadding(0,10,0,10);box.addView(v);return v;}
++ private EditText field(LinearLayout box,String hint,int input){EditText v=new EditText(this);v.setHint(hint);v.setContentDescription(hint);v.setInputType(input);v.setSingleLine(true);v.setTextColor(0xffe8ecf4);v.setHintTextColor(0xffaab4cc);box.addView(v);return v;}
++ private Spinner spinner(LinearLayout box,String[] values){Spinner v=new Spinner(this);v.setAdapter(new ArrayAdapter<>(this,android.R.layout.simple_spinner_dropdown_item,values));box.addView(v);return v;}
++ private void button(LinearLayout box,String title,Runnable action){Button b=new Button(this);b.setText(title);b.setAllCaps(false);b.setOnClickListener(v->{try{action.run();}catch(Exception e){result.setText("Niepoprawne dane. Sprawdź ID, AppID i zakres timera.");}});box.addView(b);}
++ private String target(){String id=target.getText().toString().trim();if(!id.matches("[A-Za-z0-9_-]{1,64}"))throw new IllegalArgumentException();return id;}
++ private void confirm(String message,Runnable action){
++  long end=SystemClock.elapsedRealtime()+30000;
++  AlertDialog dialog=new AlertDialog.Builder(this).setTitle("Potwierdzenie").setMessage(message+"\nZgoda wygasa za 30 sekund.").setNegativeButton("Anuluj",null)
++   .setPositiveButton("Zatwierdź",(d,w)->{if(active&&SystemClock.elapsedRealtime()<end)action.run();}).create();
++  dialog.show();ui.postDelayed(dialog::dismiss,30000);
++ }
++ private void task(){
++  String op=operation.getSelectedItem().toString();String value=op.startsWith("steam.")?appId.getText().toString():"";
++  if(op.startsWith("steam.")&&(!value.matches("[1-9][0-9]{0,9}")||Long.parseLong(value)>4294967295L))throw new IllegalArgumentException();
++  action("tasks.create",StrictJson.map("pcId",target(),"operation",op,"target",value,"expiresSeconds",60),Arrays.asList("sleep","restart","shutdown","steam.install").contains(op));
++ }
++ private void action(String type,Map<String,Object> data,boolean risk){
++  Runnable send=()->request(type,data,false);if(risk)confirm("Wykonać "+type+" dla "+data.getOrDefault("pcId",data.get("id"))+"?",send);else send.run();
++ }
++ private void pair(){
++  Map<String,Object> c=StrictJson.map("host",host.getText().toString().trim(),"port",Integer.parseInt(port.getText().toString()),"fingerprint",pin.getText().toString().trim(),
++   "deviceId",Integer.parseInt(device.getText().toString()),"baseId",Integer.parseInt(base.getText().toString()),"secret",secret.getText().toString().trim(),"mode",mode.getSelectedItem().toString());
++  disconnect();int epoch=generation;status.setText("Sprawdzam podpis i challenge…");
++  worker.execute(()->{
++   try(BaseClient verify=BaseSession.create(c)){
++    client=verify;verify.connect();
++    if(!active||epoch!=generation)return;
++    session.save(c);ui.post(()->{if(active&&epoch==generation){secret.setText("");blocked=false;retries=0;disconnect();connect();AlertJobService.schedule(this);}});
++   }catch(Exception e){ui.post(()->{if(active&&epoch==generation)showError(e);});}
++   finally{if(epoch==generation)client=null;}
++  });
++ }
++ private void discover(){
++  status.setText("Szukam w LAN…");int epoch=generation;
++  worker.execute(()->{
++   try{List<Map<String,Object>> found=BaseDiscovery.discover();ui.post(()->{
++    if(!active||epoch!=generation)return;if(found.isEmpty()){result.setText("Brak zgodnych odpowiedzi. Możesz wpisać adres ręcznie.");return;}
++    String[] names=new String[found.size()];for(int i=0;i<names.length;i++)names[i]=String.valueOf(found.get(i).get("host"));
++    new AlertDialog.Builder(this).setTitle("Wybierz Base").setItems(names,(d,w)->{
++     Map<String,Object> c=found.get(w);host.setText(String.valueOf(c.get("host")));port.setText(String.valueOf(c.get("port")));base.setText(String.valueOf(c.get("baseId")));
++     result.setText("Kandydat fingerprint: "+c.get("fingerprint")+"\nPorównaj go z fizyczną Base i wpisz powyżej.");mode.setSelection(0);
++    }).show();
++   });}catch(Exception e){ui.post(()->{if(active&&epoch==generation)showError(e);});}
++  });
++ }
++ private void connect(){
++  if(!active||blocked||session.configuration()==null||connectingEpoch==generation)return;int epoch=generation;connectingEpoch=epoch;status.setText("Łączenie · "+session.configuration().get("mode"));
++  worker.execute(()->{
++   try{
++    BaseClient next=session.open();if(!active||epoch!=generation){next.close();return;}client=next;next.connect();
++    ui.post(()->{if(active&&epoch==generation){connectingEpoch=-1;retries=0;status.setText("Base połączona · SX4 · "+networkLabel());submitQuery("status");}});
++   }catch(Exception e){ui.post(()->{if(active&&epoch==generation){connectingEpoch=-1;showError(e);scheduleReconnect();}});}
++  });
++ }
++ private String networkLabel(){Network n=connectivity.getActiveNetwork();NetworkCapabilities c=connectivity.getNetworkCapabilities(n);return c!=null&&c.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)?"Wi-Fi · "+mode.getSelectedItem():"remote · "+mode.getSelectedItem();}
++ private void scheduleReconnect(){if(!active||blocked)return;ui.removeCallbacks(poll);int epoch=generation;long delay=Math.min(60000,1000L<<Math.min(++retries,6))+ThreadLocalRandom.current().nextInt(1000);ui.postDelayed(()->{if(active&&epoch==generation){disconnect();connect();}},delay);}
++ private void submitQuery(String type){request(type,StrictJson.map(),true);}
++ private void request(String type,Map<String,Object> data,boolean read){
++  BaseClient connection=client;int epoch=generation;if(!active||connection==null||blocked){result.setText("Base offline. Sparuj urządzenie lub poczekaj na połączenie.");return;}
++  if(!read)result.setText("Wysyłam jednorazowo…");
++  worker.execute(()->{
++   try{Map<String,Object> reply=connection.request(type,data);ui.post(()->{
++    if(!active||epoch!=generation)return;result.setText(StrictJson.encode(redact(reply.get("data"))));status.setText("Base połączona · "+networkLabel());
++    if(type.equals("status")){ui.removeCallbacks(poll);ui.postDelayed(poll,15000);}
++   });}catch(Exception e){ui.post(()->{if(active&&epoch==generation){showError(e);if(!(e instanceof Sx4.Error)){disconnect();scheduleReconnect();}}});}
++  });
++ }
++ private static Object redact(Object value){
++  if(value instanceof Map){Map<String,Object> safe=new LinkedHashMap<>();for(Map.Entry<?,?> e:((Map<?,?>)value).entrySet()){String k=String.valueOf(e.getKey());safe.put(k,k.toLowerCase(Locale.ROOT).matches(".*(secret|token|password|key).*")?"[redacted]":redact(e.getValue()));}return safe;}
++  if(value instanceof List){List<Object> safe=new ArrayList<>();for(Object x:(List<?>)value)safe.add(redact(x));return safe;}return value;
++ }
++ private void showError(Exception e){
++  if(e instanceof Sx4.Error){String code=((Sx4.Error)e).code;if(!code.equals("unsupported")&&!code.equals("not_paired")){blocked=true;disconnect();}result.setText("SX4: "+code+(blocked?" · sprawdź tożsamość i sparuj ponownie":""));}
++  else result.setText("Połączenie przerwane. Komendy nie są automatycznie powtarzane.");
++ }
++ private void disconnect(){generation++;connectingEpoch=-1;ui.removeCallbacks(poll);BaseClient c=client;client=null;if(c!=null)c.close();}
++ @Override protected void onResume(){super.onResume();active=true;connectivity.registerDefaultNetworkCallback(network);connect();}
++ @Override protected void onStop(){active=false;disconnect();ui.removeCallbacksAndMessages(null);try{connectivity.unregisterNetworkCallback(network);}catch(IllegalArgumentException ignored){}super.onStop();}
++ @Override protected void onDestroy(){disconnect();worker.shutdownNow();super.onDestroy();}
++}
+diff --git a/phone-android/app/src/main/java/pl/sentinelx/phone/BaseClient.java b/phone-android/app/src/main/java/pl/sentinelx/phone/BaseClient.java
+new file mode 100644
+index 0000000..65eba01
+--- /dev/null
++++ b/phone-android/app/src/main/java/pl/sentinelx/phone/BaseClient.java
+@@ -0,0 +1,81 @@
++package pl.sentinelx.phone;
++import java.io.*;
++import java.net.*;
++import java.nio.charset.StandardCharsets;
++import java.security.*;
++import java.security.cert.X509Certificate;
++import java.util.*;
++import javax.net.ssl.*;
++
++public final class BaseClient implements AutoCloseable {
++ private final String host,fingerprint;private final int port,deviceId;private final byte[] key;private final Sx4.Authority authority;
++ private final Object socketGate=new Object();private volatile SSLSocket socket;private volatile boolean closed;private int nonce;
++ private final Set<String> capabilities=new HashSet<>();
++ public BaseClient(String host,int port,String fingerprint,int deviceId,int baseId,String secret) throws Sx4.Error {
++  if(host.isEmpty()||host.length()>253||host.matches(".*[\\s/\\\\].*")||port<1||port>65535||!fingerprint.matches("[0-9a-fA-F]{64}")||!secret.matches("[0-9a-fA-F]{64}")||
++     deviceId<1||deviceId>65535||baseId<1||baseId>65535||deviceId==baseId)throw new Sx4.Error("configuration");
++  this.host=host;this.port=port;this.fingerprint=fingerprint;this.deviceId=deviceId;key=Sx4.unhex(secret);authority=new Sx4.Authority(baseId,key);nonce=new SecureRandom().nextInt();
++ }
++ public synchronized boolean supports(String type){return capabilities.contains(type);}
++ public synchronized void connect() throws Exception {
++  if(closed)throw new Sx4.Error("closed");
++  TrustManager[] trust={new X509TrustManager(){
++   @Override public X509Certificate[] getAcceptedIssuers(){return new X509Certificate[0];}
++   @Override public void checkClientTrusted(X509Certificate[] chain,String auth) throws java.security.cert.CertificateException{throw new java.security.cert.CertificateException("client");}
++   @Override public void checkServerTrusted(X509Certificate[] chain,String auth) throws java.security.cert.CertificateException{
++    try{if(chain.length==0||!MessageDigest.isEqual(MessageDigest.getInstance("SHA-256").digest(chain[0].getEncoded()),Sx4.unhex(fingerprint)))throw new java.security.cert.CertificateException("pin");chain[0].checkValidity();}
++    catch(GeneralSecurityException|Sx4.Error e){throw new java.security.cert.CertificateException("pin");}
++   }
++  }};
++  SSLContext context=SSLContext.getInstance("TLS");context.init(null,trust,new SecureRandom());
++  SSLSocket next=(SSLSocket)context.getSocketFactory().createSocket();
++  synchronized(socketGate){if(closed){next.close();throw new Sx4.Error("closed");}socket=next;}
++  try{
++   List<String> protocols=new ArrayList<>();for(String p:next.getSupportedProtocols())if(p.equals("TLSv1.2")||p.equals("TLSv1.3"))protocols.add(p);
++   next.setEnabledProtocols(protocols.toArray(new String[0]));next.connect(new InetSocketAddress(host,port),10000);next.setSoTimeout(10000);next.startHandshake();
++   String challenge=UUID.randomUUID().toString()+UUID.randomUUID();
++   Map<String,Object> proof=exchange("session.prove",StrictJson.map("challenge",challenge,"role","controller","deviceId",deviceId),"session.proved");
++   if(!challenge.equals(StrictJson.object(proof.get("data")).get("challenge")))throw new Sx4.Error("challenge");
++   Map<String,Object> caps=StrictJson.object(exchange("capabilities",StrictJson.map(),"capabilities.result").get("data"));
++   Object values=caps.get("types");if(!(values instanceof List)||((List<?>)values).size()>32)throw new Sx4.Error("capabilities");
++   for(Object c:(List<?>)values)if(!(c instanceof String)||!((String)c).matches("[A-Za-z0-9._]{1,64}")||!capabilities.add((String)c))throw new Sx4.Error("capabilities");
++  }catch(Exception e){close();throw e;}
++ }
++ public synchronized Map<String,Object> request(String type,Map<String,Object> data) throws Exception {
++  if(!supports(type))throw new Sx4.Error("unsupported");return exchange(type,data,type+".result");
++ }
++ private Map<String,Object> exchange(String type,Map<String,Object> data,String expected) throws Exception {
++  if(closed||socket==null)throw new Sx4.Error("offline");
++  String id=UUID.randomUUID().toString();long now=System.currentTimeMillis();
++  byte[] payload=StrictJson.encode(StrictJson.map("version",4,"type",type,"requestId",id,"correlationId","","expiresAt",now+30000,"data",data)).getBytes(StandardCharsets.UTF_8);
++  try{
++   socket.getOutputStream().write(Sx4.encode(new Sx4.Frame(deviceId,Sx4.EXTENSION,++nonce,now,payload),key));socket.getOutputStream().flush();
++   long end=System.nanoTime()+20000000000L;byte[] header=read(49,end);int n=((header[15]&255)<<8)|(header[16]&255);
++   if(n>Sx4.MAX_PAYLOAD)throw new Sx4.Error("size");byte[] raw=Arrays.copyOf(header,49+n);System.arraycopy(read(n,end),0,raw,49,n);
++   Sx4.Frame frame=authority.verify(raw,System.currentTimeMillis());if(frame.opcode!=Sx4.EXTENSION)throw new Sx4.Error("opcode");
++   Map<String,Object> response=StrictJson.object(StrictJson.parse(Sx4.utf8(frame.payload)));
++   Set<String> fields=new HashSet<>(Arrays.asList("version","type","requestId","correlationId","expiresAt","data"));
++   if(!response.keySet().equals(fields)||!Long.valueOf(4).equals(response.get("version")))throw new Sx4.Error("version");
++   if(!(response.get("requestId") instanceof String)||!((String)response.get("requestId")).matches("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")||!id.equals(response.get("correlationId")))throw new Sx4.Error("correlation");
++   Object expires=response.get("expiresAt");long time=System.currentTimeMillis();
++   if(!(expires instanceof Long)||((Long)expires)<=time||((Long)expires)>time+300000)throw new Sx4.Error("expiry");
++   if("error".equals(response.get("type"))){Object code=StrictJson.object(response.get("data")).get("code");throw new Sx4.Error(code instanceof String&&((String)code).matches("[a-z_]{1,64}")?(String)code:"remote_error");}
++   if(!expected.equals(response.get("type")))throw new Sx4.Error("response_type");
++   StrictJson.object(response.get("data"));return response;
++  }catch(Exception e){close();throw e;}
++ }
++ private byte[] read(int length,long end) throws IOException {
++  byte[] bytes=new byte[length];int offset=0;
++  while(offset<length){
++   long left=(end-System.nanoTime())/1000000;if(left<=0)throw new SocketTimeoutException("frame_timeout");
++   SSLSocket current=socket;if(closed||current==null)throw new Sx4.Error("closed");
++   current.setSoTimeout((int)Math.min(20000,Math.max(1,left)));int count=current.getInputStream().read(bytes,offset,length-offset);
++   if(count<0)throw new EOFException("partial_frame");offset+=count;
++  }
++  return bytes;
++ }
++ @Override public void close(){
++  synchronized(socketGate){if(closed)return;closed=true;SSLSocket s=socket;if(s!=null)try{s.close();}catch(IOException ignored){}}
++  authority.close();Arrays.fill(key,(byte)0);
++ }
++}
+diff --git a/phone-android/app/src/main/java/pl/sentinelx/phone/BaseDiscovery.java b/phone-android/app/src/main/java/pl/sentinelx/phone/BaseDiscovery.java
+new file mode 100644
+index 0000000..6aa670d
+--- /dev/null
++++ b/phone-android/app/src/main/java/pl/sentinelx/phone/BaseDiscovery.java
+@@ -0,0 +1,26 @@
++package pl.sentinelx.phone;
++import java.net.*;
++import java.nio.charset.StandardCharsets;
++import java.util.*;
++final class BaseDiscovery {
++ static List<Map<String,Object>> discover() throws Exception {
++  String nonce=UUID.randomUUID().toString();List<Map<String,Object>> found=new ArrayList<>();long end=System.nanoTime()+3000000000L;
++  try(DatagramSocket socket=new DatagramSocket()){
++   socket.setBroadcast(true);byte[] query=("SX4_DISCOVER_V421:"+nonce).getBytes(StandardCharsets.UTF_8);
++   socket.send(new DatagramPacket(query,query.length,InetAddress.getByName("255.255.255.255"),42421));
++   for(int count=0;count<128&&found.size()<32;count++){
++    long left=(end-System.nanoTime())/1000000;if(left<=0)break;socket.setSoTimeout((int)Math.max(1,left));
++    byte[] bytes=new byte[2049];DatagramPacket packet=new DatagramPacket(bytes,bytes.length);
++    try{socket.receive(packet);}catch(SocketTimeoutException e){break;}
++    byte[] ip=packet.getAddress().getAddress();if(ip.length!=4||!((ip[0]&255)==10||((ip[0]&255)==192&&(ip[1]&255)==168)||((ip[0]&255)==172&&(ip[1]&255)>=16&&(ip[1]&255)<=31))||packet.getLength()>2048)continue;
++    try{
++     Map<String,Object> data=StrictJson.object(StrictJson.parse(Sx4.utf8(Arrays.copyOf(bytes,packet.getLength()))));
++     if(!"SX4".equals(data.get("protocol"))||!nonce.equals(data.get("nonce"))||!(data.get("fingerprint") instanceof String)||!((String)data.get("fingerprint")).matches("[0-9a-fA-F]{64}"))continue;
++     int port=((Number)data.get("port")).intValue(),id=((Number)data.get("baseId")).intValue();if(port<1||port>65535||id<1||id>65535)continue;
++     data.put("host",packet.getAddress().getHostAddress());found.add(data);
++    }catch(Exception ignored){/* one malformed packet cannot end discovery */}
++   }
++  }
++  return found;
++ }
++}
+diff --git a/phone-android/app/src/main/java/pl/sentinelx/phone/BaseSession.java b/phone-android/app/src/main/java/pl/sentinelx/phone/BaseSession.java
+new file mode 100644
+index 0000000..7f79d32
+--- /dev/null
++++ b/phone-android/app/src/main/java/pl/sentinelx/phone/BaseSession.java
+@@ -0,0 +1,15 @@
++package pl.sentinelx.phone;
++import android.content.Context;
++import java.util.Map;
++final class BaseSession {
++ private final SecretStore store;
++ BaseSession(Context context){store=new SecretStore(context);}
++ Map<String,Object> configuration(){try{String saved=store.get("base.identity");return saved.isEmpty()?null:StrictJson.object(StrictJson.parse(saved));}catch(Exception e){return null;}}
++ BaseClient open() throws Exception {Map<String,Object> c=configuration();if(c==null)throw new Sx4.Error("not_paired");return create(c);}
++ static BaseClient create(Map<String,Object> c) throws Exception {
++  Object mode=c.get("mode");if(!("lan".equals(mode)||"vpn".equals(mode)||"relay".equals(mode)))throw new Sx4.Error("mode");
++  return new BaseClient((String)c.get("host"),((Number)c.get("port")).intValue(),(String)c.get("fingerprint"),((Number)c.get("deviceId")).intValue(),((Number)c.get("baseId")).intValue(),(String)c.get("secret"));
++ }
++ void save(Map<String,Object> c){store.put("base.identity",StrictJson.encode(c));}
++ void forget(){store.remove("base.identity");}
++}
+diff --git a/phone-android/app/src/main/java/pl/sentinelx/phone/MainActivity.java b/phone-android/app/src/main/java/pl/sentinelx/phone/MainActivity.java
+index 5dce916..81a8134 100644
+--- a/phone-android/app/src/main/java/pl/sentinelx/phone/MainActivity.java
++++ b/phone-android/app/src/main/java/pl/sentinelx/phone/MainActivity.java
+@@ -79,6 +79,8 @@ public class MainActivity extends Activity {
+         root.addView(web, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+         overlay = buildOverlay();
+         root.addView(overlay, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
++        Button baseShortcut=button("Base SX4",false,v->startActivity(new Intent(this,BaseActivity.class)));
++        FrameLayout.LayoutParams shortcut=new FrameLayout.LayoutParams(dp(112),dp(44),Gravity.TOP|Gravity.END);root.addView(baseShortcut,shortcut);
+         setContentView(root);
+         applyInsets();
+         askForNotifications();
+@@ -146,6 +148,8 @@ public class MainActivity extends Activity {
+         box.addView(overlayTitle, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+         box.addView(overlayText, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+         box.addView(spinner, new LinearLayout.LayoutParams(dp(40), dp(40)));
++        Button baseButton=button("Sentinel Base · działa także bez PC",true,v->startActivity(new Intent(this,BaseActivity.class)));
++        box.addView(baseButton,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,dp(54)));
+         for (Button b : new Button[] { retryButton, wakeButton, addressButton, resetButton }) {
+             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(50));
+             params.topMargin = dp(10);
+@@ -208,7 +212,7 @@ public class MainActivity extends Activity {
+             public void onReceivedSslError(WebView view, SslErrorHandler handler, SslError error) {
+                 String expected = session.fingerprint();
+                 String actual = fingerprintOf(error.getCertificate());
+-                if (!expected.isEmpty() && expected.equalsIgnoreCase(actual)) {
++                if (!expected.isEmpty() && expected.equalsIgnoreCase(actual) && error.getPrimaryError()!=SslError.SSL_EXPIRED && error.getPrimaryError()!=SslError.SSL_NOTYETVALID && isPcOrigin(error.getUrl())) {
+                     handler.proceed(); // exactly the certificate pinned during pairing
+                 } else {
+                     handler.cancel();
+@@ -226,16 +230,18 @@ public class MainActivity extends Activity {
+             @Override
+             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+                 Uri uri = request.getUrl();
+-                return uri.getHost() == null || !uri.getHost().equals(session.host()); // never leave the PC's own page
++                return !isPcOrigin(uri.toString()); // never leave the PC's own page
+             }
+ 
+             @Override
+             public void onPageFinished(WebView view, String url) {
+-                if (url != null && url.startsWith("https://")) hideStatus();
++                if (isPcOrigin(url)) hideStatus();
+             }
+         });
+     }
+ 
++    private boolean isPcOrigin(String url) { if(url==null)return false; Uri u=Uri.parse(url);return "https".equals(u.getScheme())&&session.host().equals(u.getHost())&&(u.getPort()==session.port()||u.getPort()==-1&&session.port()==443); }
++
+     private static String fingerprintOf(SslCertificate certificate) {
+         try {
+             Bundle state = SslCertificate.saveState(certificate);
+diff --git a/phone-android/app/src/main/java/pl/sentinelx/phone/PinnedTls.java b/phone-android/app/src/main/java/pl/sentinelx/phone/PinnedTls.java
+index ea8d42e..23626d6 100644
+--- a/phone-android/app/src/main/java/pl/sentinelx/phone/PinnedTls.java
++++ b/phone-android/app/src/main/java/pl/sentinelx/phone/PinnedTls.java
+@@ -54,6 +54,7 @@ final class PinnedTls {
+             if (chain == null || chain.length == 0) throw new CertificateException("empty certificate chain");
+             try {
+                 seen = sha256Hex(chain[0].getEncoded());
++                if(!expected.isEmpty())chain[0].checkValidity();
+             } catch (Exception e) {
+                 throw new CertificateException(e);
+             }
+diff --git a/phone-android/app/src/main/java/pl/sentinelx/phone/SecretStore.java b/phone-android/app/src/main/java/pl/sentinelx/phone/SecretStore.java
+new file mode 100644
+index 0000000..7ec400b
+--- /dev/null
++++ b/phone-android/app/src/main/java/pl/sentinelx/phone/SecretStore.java
+@@ -0,0 +1,44 @@
++package pl.sentinelx.phone;
++import android.content.Context;
++import android.content.SharedPreferences;
++import android.security.keystore.KeyGenParameterSpec;
++import android.security.keystore.KeyProperties;
++import android.util.Base64;
++import java.nio.charset.StandardCharsets;
++import java.security.KeyStore;
++import javax.crypto.Cipher;
++import javax.crypto.KeyGenerator;
++import javax.crypto.SecretKey;
++import javax.crypto.spec.GCMParameterSpec;
++
++final class SecretStore {
++ private final SharedPreferences preferences;
++ private static final String ALIAS="sentinelx.device.secrets.v1";
++ SecretStore(Context context){preferences=context.getApplicationContext().getSharedPreferences("sentinelx.secrets",Context.MODE_PRIVATE);}
++ private SecretKey key() throws Exception {
++  KeyStore store=KeyStore.getInstance("AndroidKeyStore");store.load(null);
++  if(!store.containsAlias(ALIAS)){
++   KeyGenerator generator=KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES,"AndroidKeyStore");
++   generator.init(new KeyGenParameterSpec.Builder(ALIAS,KeyProperties.PURPOSE_ENCRYPT|KeyProperties.PURPOSE_DECRYPT)
++    .setKeySize(256).setBlockModes(KeyProperties.BLOCK_MODE_GCM).setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE).setRandomizedEncryptionRequired(true).build());
++   generator.generateKey();
++  }
++  return (SecretKey)store.getKey(ALIAS,null);
++ }
++ synchronized void put(String name,String value){
++  try{
++   Cipher cipher=Cipher.getInstance("AES/GCM/NoPadding");cipher.init(Cipher.ENCRYPT_MODE,key());cipher.updateAAD(name.getBytes(StandardCharsets.UTF_8));
++   byte[] encrypted=cipher.doFinal(value.getBytes(StandardCharsets.UTF_8));String packed=Base64.encodeToString(cipher.getIV(),Base64.NO_WRAP)+":"+Base64.encodeToString(encrypted,Base64.NO_WRAP);
++   if(!preferences.edit().putString(name,packed).commit())throw new IllegalStateException("secret_write");
++  }catch(Exception e){throw new IllegalStateException("secret_store",e);}
++ }
++ synchronized String get(String name){
++  String packed=preferences.getString(name,"");if(packed.isEmpty())return "";
++  try{
++   String[] parts=packed.split(":",-1);if(parts.length!=2||packed.length()>16384)throw new IllegalStateException("secret_format");
++   Cipher cipher=Cipher.getInstance("AES/GCM/NoPadding");cipher.init(Cipher.DECRYPT_MODE,key(),new GCMParameterSpec(128,Base64.decode(parts[0],Base64.NO_WRAP)));
++   cipher.updateAAD(name.getBytes(StandardCharsets.UTF_8));return new String(cipher.doFinal(Base64.decode(parts[1],Base64.NO_WRAP)),StandardCharsets.UTF_8);
++  }catch(Exception e){preferences.edit().remove(name).commit();return "";}
++ }
++ synchronized void remove(String name){if(!preferences.edit().remove(name).commit())throw new IllegalStateException("secret_write");}
++}
+diff --git a/phone-android/app/src/main/java/pl/sentinelx/phone/Session.java b/phone-android/app/src/main/java/pl/sentinelx/phone/Session.java
+index 1a912cb..35b78ce 100644
+--- a/phone-android/app/src/main/java/pl/sentinelx/phone/Session.java
++++ b/phone-android/app/src/main/java/pl/sentinelx/phone/Session.java
+@@ -8,16 +8,20 @@ import java.util.Locale;
+ /** Everything the app remembers: which PC, the fingerprint of its certificate (pinned) and this phone's token. */
+ final class Session {
+     private final SharedPreferences prefs;
++    private final SecretStore secrets;
+ 
+     Session(Context context) {
+         prefs = context.getApplicationContext().getSharedPreferences("sentinelx", Context.MODE_PRIVATE);
++        secrets = new SecretStore(context);
++        String legacy=prefs.getString("token","");
++        if(!legacy.isEmpty()){secrets.put("pc.token",legacy);if(!prefs.edit().remove("token").commit())throw new IllegalStateException("token_migration");}
+     }
+ 
+     String host() { return prefs.getString("host", ""); }
+     int port() { return prefs.getInt("port", 43180); }
+     String fingerprint() { return prefs.getString("fp", ""); }
+     String pcName() { return prefs.getString("pcName", ""); }
+-    String token() { return prefs.getString("token", ""); }
++    String token() { return secrets.get("pc.token"); }
+     String mac() { return prefs.getString("mac", ""); }
+     long lastAlert() { return prefs.getLong("lastAlert", 0L); }
+     boolean notificationsAsked() { return prefs.getBoolean("notificationsAsked", false); }
+@@ -33,12 +37,13 @@ final class Session {
+         SharedPreferences.Editor editor = prefs.edit()
+                 .putString("host", host).putInt("port", port).putString("fp", newFp);
+         if (name != null && !name.isEmpty()) editor.putString("pcName", name);
+-        if (!samePc) editor.remove("token").remove("lastAlert").remove("mac");
++        if (!samePc) { secrets.remove("pc.token"); editor.remove("token").remove("lastAlert").remove("mac"); }
+         editor.apply();
+     }
+ 
+     void saveToken(String token, String pcName) {
+-        SharedPreferences.Editor editor = prefs.edit().putString("token", token).putLong("lastAlert", 0L);
++        secrets.put("pc.token",token);
++        SharedPreferences.Editor editor = prefs.edit().putLong("lastAlert", 0L);
+         if (pcName != null && !pcName.isEmpty()) editor.putString("pcName", pcName);
+         editor.apply();
+     }
+@@ -46,9 +51,10 @@ final class Session {
+     void saveMac(String mac) { prefs.edit().putString("mac", mac == null ? "" : mac).apply(); }
+     void setLastAlert(long id) { prefs.edit().putLong("lastAlert", id).apply(); }
+     void setNotificationsAsked() { prefs.edit().putBoolean("notificationsAsked", true).apply(); }
+-    void clearToken() { prefs.edit().remove("token").remove("lastAlert").apply(); }
++    void clearToken() { secrets.remove("pc.token"); prefs.edit().remove("token").remove("lastAlert").apply(); }
+ 
+     void forgetPc() {
++        secrets.remove("pc.token");
+         prefs.edit().remove("host").remove("port").remove("fp").remove("pcName").remove("token").remove("mac").remove("lastAlert").apply();
+     }
+ }
+diff --git a/phone-android/app/src/main/java/pl/sentinelx/phone/StrictJson.java b/phone-android/app/src/main/java/pl/sentinelx/phone/StrictJson.java
+new file mode 100644
+index 0000000..41da841
+--- /dev/null
++++ b/phone-android/app/src/main/java/pl/sentinelx/phone/StrictJson.java
+@@ -0,0 +1,63 @@
++package pl.sentinelx.phone;
++import java.util.*;
++import java.math.BigDecimal;
++
++public final class StrictJson {
++ private final String text;private int pos;
++ private StrictJson(String text){this.text=text;}
++ public static Object parse(String text) throws Sx4.Error {
++  if(text.length()>16384)throw new Sx4.Error("size");StrictJson p=new StrictJson(text);
++  Object value=p.value(0);p.white();if(p.pos!=text.length())throw new Sx4.Error("json");return value;
++ }
++ @SuppressWarnings("unchecked") public static Map<String,Object> object(Object value) throws Sx4.Error {
++  if(!(value instanceof Map))throw new Sx4.Error("json");return (Map<String,Object>)value;
++ }
++ private void white(){while(pos<text.length()&&" \n\r\t".indexOf(text.charAt(pos))>=0)pos++;}
++ private Object value(int depth) throws Sx4.Error {
++  if(depth>16)throw new Sx4.Error("depth");white();if(pos>=text.length())throw new Sx4.Error("json");
++  char c=text.charAt(pos);
++  if(c=='{'){pos++;Map<String,Object> map=new LinkedHashMap<>();Set<String> keys=new HashSet<>();white();if(take('}'))return map;
++   do{white();String key=string();if(!keys.add(key.toLowerCase(Locale.ROOT)))throw new Sx4.Error("duplicate_key");
++    white();need(':');map.put(key,value(depth+1));white();if(take('}'))return map;need(',');}while(true);
++  }
++  if(c=='['){pos++;List<Object> list=new ArrayList<>();white();if(take(']'))return list;
++   do{list.add(value(depth+1));white();if(take(']'))return list;need(',');}while(true);
++  }
++  if(c=='"')return string();
++  for(String literal:new String[]{"true","false","null"})if(text.startsWith(literal,pos)){pos+=literal.length();return literal.equals("null")?null:Boolean.valueOf(literal);}
++  int start=pos;take('-');if(!take('0')){if(pos>=text.length()||text.charAt(pos)<'1'||text.charAt(pos)>'9')throw new Sx4.Error("json");digits();}
++  if(take('.')){int before=pos;digits();if(before==pos)throw new Sx4.Error("json");}
++  if(take('e')||take('E')){if(!take('+'))take('-');int before=pos;digits();if(before==pos)throw new Sx4.Error("json");}
++  String number=text.substring(start,pos);try{return number.indexOf('.')<0&&number.indexOf('e')<0&&number.indexOf('E')<0?Long.valueOf(number):new BigDecimal(number);}
++  catch(NumberFormatException e){throw new Sx4.Error("number");}
++ }
++ private void digits(){while(pos<text.length()&&text.charAt(pos)>='0'&&text.charAt(pos)<='9')pos++;}
++ private boolean take(char c){if(pos<text.length()&&text.charAt(pos)==c){pos++;return true;}return false;}
++ private void need(char c) throws Sx4.Error {if(!take(c))throw new Sx4.Error("json");}
++ private String string() throws Sx4.Error {
++  need('"');StringBuilder out=new StringBuilder();
++  while(pos<text.length()){
++   char c=text.charAt(pos++);if(c=='"')return out.toString();if(c<32)throw new Sx4.Error("json");
++   if(c=='\\'){
++    if(pos==text.length())throw new Sx4.Error("json");char e=text.charAt(pos++);
++    switch(e){
++     case '"':case '\\':case '/':out.append(e);break;
++     case 'b':out.append('\b');break;case 'f':out.append('\f');break;case 'n':out.append('\n');break;case 'r':out.append('\r');break;case 't':out.append('\t');break;
++     case 'u':if(pos+4>text.length())throw new Sx4.Error("json");int v=0;for(int i=0;i<4;i++){int x=Character.digit(text.charAt(pos++),16);if(x<0)throw new Sx4.Error("json");v=(v<<4)|x;}out.append((char)v);break;
++     default:throw new Sx4.Error("json");
++    }
++   }else out.append(c);
++  }
++  throw new Sx4.Error("json");
++ }
++ public static String encode(Object value) throws Sx4.Error {
++  if(value==null)return "null";if(value instanceof Boolean)return value.toString();
++  if(value instanceof Number){String s=value.toString();if(s.equals("NaN")||s.contains("Infinity"))throw new Sx4.Error("number");return s;}
++  if(value instanceof String){StringBuilder b=new StringBuilder("\"");for(char c:((String)value).toCharArray()){if(c=='"'||c=='\\')b.append('\\').append(c);else if(c<32)b.append(String.format(Locale.ROOT,"\\u%04x",(int)c));else b.append(c);}return b.append('"').toString();}
++  if(value instanceof Map){StringBuilder b=new StringBuilder("{");for(Map.Entry<?,?> e:((Map<?,?>)value).entrySet()){if(b.length()>1)b.append(',');if(!(e.getKey() instanceof String))throw new Sx4.Error("json");b.append(encode(e.getKey())).append(':').append(encode(e.getValue()));}return b.append('}').toString();}
++  if(value instanceof Iterable){StringBuilder b=new StringBuilder("[");for(Object x:(Iterable<?>)value){if(b.length()>1)b.append(',');b.append(encode(x));}return b.append(']').toString();}
++  throw new Sx4.Error("json");
++ }
++ public static Map<String,Object> map(Object... pairs){Map<String,Object> m=new LinkedHashMap<>();for(int i=0;i<pairs.length;i+=2)m.put((String)pairs[i],pairs[i+1]);return m;}
++ private StrictJson(){text="";}
++}
+diff --git a/phone-android/app/src/main/java/pl/sentinelx/phone/Sx4.java b/phone-android/app/src/main/java/pl/sentinelx/phone/Sx4.java
+new file mode 100644
+index 0000000..31d5a53
+--- /dev/null
++++ b/phone-android/app/src/main/java/pl/sentinelx/phone/Sx4.java
+@@ -0,0 +1,67 @@
++package pl.sentinelx.phone;
++import java.io.*;
++import java.nio.*;
++import java.nio.charset.*;
++import java.security.*;
++import java.util.*;
++import javax.crypto.Mac;
++import javax.crypto.spec.SecretKeySpec;
++
++public final class Sx4 {
++ public static final int HEADER=49,MAX_PAYLOAD=16384,EXTENSION=201;
++ public static final class Error extends IOException {
++  public final String code;public Error(String code){super(code);this.code=code;}
++ }
++ public static final class Frame {
++  public final int device,opcode,nonce;public final long timestamp;public final byte[] payload;
++  public Frame(int device,int opcode,int nonce,long timestamp,byte[] payload){this.device=device;this.opcode=opcode;this.nonce=nonce;this.timestamp=timestamp;this.payload=payload;}
++ }
++ private static byte[] mac(byte[] key,byte[] input) throws Error {
++  try{Mac m=Mac.getInstance("HmacSHA256");m.init(new SecretKeySpec(key,"HmacSHA256"));return m.doFinal(input);}
++  catch(GeneralSecurityException e){throw new Error("crypto");}
++ }
++ public static byte[] encode(Frame f,byte[] key) throws Error {
++  if(key.length!=32||f.device<1||f.device>65535||f.opcode<0||f.opcode>255||f.timestamp<0||f.payload.length>MAX_PAYLOAD)throw new Error("format");
++  ByteBuffer b=ByteBuffer.allocate(HEADER+f.payload.length).order(ByteOrder.BIG_ENDIAN);
++  b.putShort((short)f.device).put((byte)f.opcode).putInt(f.nonce).putLong(f.timestamp).putShort((short)f.payload.length);
++  byte[] input=new byte[17+f.payload.length];System.arraycopy(b.array(),0,input,0,17);System.arraycopy(f.payload,0,input,17,f.payload.length);
++  b.put(mac(key,input)).put(f.payload);return b.array();
++ }
++ public static Frame decode(byte[] raw,byte[] key) throws Error {
++  if(key.length!=32||raw.length<HEADER)throw new Error("format");
++  ByteBuffer b=ByteBuffer.wrap(raw).order(ByteOrder.BIG_ENDIAN);
++  int id=b.getShort()&65535,op=b.get()&255,nonce=b.getInt();long ts=b.getLong();int n=b.getShort()&65535;
++  if(n>MAX_PAYLOAD||raw.length!=HEADER+n)throw new Error("size");
++  byte[] input=new byte[17+n];System.arraycopy(raw,0,input,0,17);System.arraycopy(raw,HEADER,input,17,n);
++  if(!MessageDigest.isEqual(mac(key,input),Arrays.copyOfRange(raw,17,49)))throw new Error("auth");
++  if(id==0||ts<0)throw new Error("device");
++  return new Frame(id,op,nonce,ts,Arrays.copyOfRange(raw,HEADER,raw.length));
++ }
++ public static final class Authority implements AutoCloseable {
++  private final int device;private final byte[] key;private boolean revoked;
++  private final Map<Integer,Long> nonces=new HashMap<>();private final ArrayDeque<Long> rate=new ArrayDeque<>();
++  public Authority(int device,byte[] key){if(device<1||device>65535||key.length!=32)throw new IllegalArgumentException("device");this.device=device;this.key=key.clone();}
++  public synchronized Frame verify(byte[] raw,long now) throws Error {
++   if(revoked)throw new Error("revoked");Frame f=decode(raw,key);
++   if(f.device!=device)throw new Error("device");
++   if(Math.abs(now-f.timestamp)>5000)throw new Error("timestamp");
++   nonces.entrySet().removeIf(x->x.getValue()<now-10000);
++   if(nonces.containsKey(f.nonce))throw new Error("replay");
++   while(!rate.isEmpty()&&rate.peekFirst()<now-60000)rate.removeFirst();
++   if(rate.size()>=120||nonces.size()>=2048)throw new Error("rate_limit");
++   nonces.put(f.nonce,now);rate.addLast(now);return f;
++  }
++  @Override public synchronized void close(){revoked=true;Arrays.fill(key,(byte)0);nonces.clear();rate.clear();}
++ }
++ public static String utf8(byte[] bytes) throws Error {
++  try{return StandardCharsets.UTF_8.newDecoder().onMalformedInput(CodingErrorAction.REPORT).onUnmappableCharacter(CodingErrorAction.REPORT).decode(ByteBuffer.wrap(bytes)).toString();}
++  catch(CharacterCodingException e){throw new Error("utf8");}
++ }
++ public static String hex(byte[] bytes){StringBuilder b=new StringBuilder();for(byte v:bytes)b.append(String.format(Locale.ROOT,"%02x",v&255));return b.toString();}
++ public static byte[] unhex(String value) throws Error {
++  if(value.length()%2!=0)throw new Error("hex");byte[] bytes=new byte[value.length()/2];
++  for(int i=0;i<bytes.length;i++){int a=Character.digit(value.charAt(2*i),16),b=Character.digit(value.charAt(2*i+1),16);if(a<0||b<0)throw new Error("hex");bytes[i]=(byte)((a<<4)|b);}
++  return bytes;
++ }
++ private Sx4(){}
++}
+diff --git a/phone-android/gradle/wrapper/gradle-wrapper.jar b/phone-android/gradle/wrapper/gradle-wrapper.jar
+new file mode 100644
+index 0000000000000000000000000000000000000000..2c3521197d7c4586c843d1d3e9090525f1898cde
+GIT binary patch
+literal 43504
+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
+TZiJi*F`$tkW<p)b$p8Kiq>Ln)
+
+literal 0
+HcmV?d00001
+
+diff --git a/phone-android/gradle/wrapper/gradle-wrapper.properties b/phone-android/gradle/wrapper/gradle-wrapper.properties
+new file mode 100644
+index 0000000..40d412a
+--- /dev/null
++++ b/phone-android/gradle/wrapper/gradle-wrapper.properties
+@@ -0,0 +1,9 @@
++distributionBase=GRADLE_USER_HOME
++distributionPath=wrapper/dists
++distributionUrl=https\://services.gradle.org/distributions/gradle-8.9-bin.zip
++networkTimeout=10000
++validateDistributionUrl=false
++zipStoreBase=GRADLE_USER_HOME
++zipStorePath=wrapper/dists
++
++distributionSha256Sum=d725d707bfabd4dfdc958c624003b3c80accc03f7037b5122c4b1d0ef15cecab
+diff --git a/phone-android/gradlew b/phone-android/gradlew
+new file mode 100755
+index 0000000..f5feea6
+--- /dev/null
++++ b/phone-android/gradlew
+@@ -0,0 +1,252 @@
++#!/bin/sh
++
++#
++# Copyright © 2015-2021 the original authors.
++#
++# Licensed under the Apache License, Version 2.0 (the "License");
++# you may not use this file except in compliance with the License.
++# You may obtain a copy of the License at
++#
++#      https://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS,
++# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++# See the License for the specific language governing permissions and
++# limitations under the License.
++#
++# SPDX-License-Identifier: Apache-2.0
++#
++
++##############################################################################
++#
++#   Gradle start up script for POSIX generated by Gradle.
++#
++#   Important for running:
++#
++#   (1) You need a POSIX-compliant shell to run this script. If your /bin/sh is
++#       noncompliant, but you have some other compliant shell such as ksh or
++#       bash, then to run this script, type that shell name before the whole
++#       command line, like:
++#
++#           ksh Gradle
++#
++#       Busybox and similar reduced shells will NOT work, because this script
++#       requires all of these POSIX shell features:
++#         * functions;
++#         * expansions «$var», «${var}», «${var:-default}», «${var+SET}»,
++#           «${var#prefix}», «${var%suffix}», and «$( cmd )»;
++#         * compound commands having a testable exit status, especially «case»;
++#         * various built-in commands including «command», «set», and «ulimit».
++#
++#   Important for patching:
++#
++#   (2) This script targets any POSIX shell, so it avoids extensions provided
++#       by Bash, Ksh, etc; in particular arrays are avoided.
++#
++#       The "traditional" practice of packing multiple parameters into a
++#       space-separated string is a well documented source of bugs and security
++#       problems, so this is (mostly) avoided, by progressively accumulating
++#       options in "$@", and eventually passing that to Java.
++#
++#       Where the inherited environment variables (DEFAULT_JVM_OPTS, JAVA_OPTS,
++#       and GRADLE_OPTS) rely on word-splitting, this is performed explicitly;
++#       see the in-line comments for details.
++#
++#       There are tweaks for specific operating systems such as AIX, CygWin,
++#       Darwin, MinGW, and NonStop.
++#
++#   (3) This script is generated from the Groovy template
++#       https://github.com/gradle/gradle/blob/HEAD/platforms/jvm/plugins-application/src/main/resources/org/gradle/api/internal/plugins/unixStartScript.txt
++#       within the Gradle project.
++#
++#       You can find Gradle at https://github.com/gradle/gradle/.
++#
++##############################################################################
++
++# Attempt to set APP_HOME
++
++# Resolve links: $0 may be a link
++app_path=$0
++
++# Need this for daisy-chained symlinks.
++while
++    APP_HOME=${app_path%"${app_path##*/}"}  # leaves a trailing /; empty if no leading path
++    [ -h "$app_path" ]
++do
++    ls=$( ls -ld "$app_path" )
++    link=${ls#*' -> '}
++    case $link in             #(
++      /*)   app_path=$link ;; #(
++      *)    app_path=$APP_HOME$link ;;
++    esac
++done
++
++# This is normally unused
++# shellcheck disable=SC2034
++APP_BASE_NAME=${0##*/}
++# Discard cd standard output in case $CDPATH is set (https://github.com/gradle/gradle/issues/25036)
++APP_HOME=$( cd -P "${APP_HOME:-./}" > /dev/null && printf '%s
++' "$PWD" ) || exit
++
++# Use the maximum available, or set MAX_FD != -1 to use that value.
++MAX_FD=maximum
++
++warn () {
++    echo "$*"
++} >&2
++
++die () {
++    echo
++    echo "$*"
++    echo
++    exit 1
++} >&2
++
++# OS specific support (must be 'true' or 'false').
++cygwin=false
++msys=false
++darwin=false
++nonstop=false
++case "$( uname )" in                #(
++  CYGWIN* )         cygwin=true  ;; #(
++  Darwin* )         darwin=true  ;; #(
++  MSYS* | MINGW* )  msys=true    ;; #(
++  NONSTOP* )        nonstop=true ;;
++esac
++
++CLASSPATH=$APP_HOME/gradle/wrapper/gradle-wrapper.jar
++
++
++# Determine the Java command to use to start the JVM.
++if [ -n "$JAVA_HOME" ] ; then
++    if [ -x "$JAVA_HOME/jre/sh/java" ] ; then
++        # IBM's JDK on AIX uses strange locations for the executables
++        JAVACMD=$JAVA_HOME/jre/sh/java
++    else
++        JAVACMD=$JAVA_HOME/bin/java
++    fi
++    if [ ! -x "$JAVACMD" ] ; then
++        die "ERROR: JAVA_HOME is set to an invalid directory: $JAVA_HOME
++
++Please set the JAVA_HOME variable in your environment to match the
++location of your Java installation."
++    fi
++else
++    JAVACMD=java
++    if ! command -v java >/dev/null 2>&1
++    then
++        die "ERROR: JAVA_HOME is not set and no 'java' command could be found in your PATH.
++
++Please set the JAVA_HOME variable in your environment to match the
++location of your Java installation."
++    fi
++fi
++
++# Increase the maximum file descriptors if we can.
++if ! "$cygwin" && ! "$darwin" && ! "$nonstop" ; then
++    case $MAX_FD in #(
++      max*)
++        # In POSIX sh, ulimit -H is undefined. That's why the result is checked to see if it worked.
++        # shellcheck disable=SC2039,SC3045
++        MAX_FD=$( ulimit -H -n ) ||
++            warn "Could not query maximum file descriptor limit"
++    esac
++    case $MAX_FD in  #(
++      '' | soft) :;; #(
++      *)
++        # In POSIX sh, ulimit -n is undefined. That's why the result is checked to see if it worked.
++        # shellcheck disable=SC2039,SC3045
++        ulimit -n "$MAX_FD" ||
++            warn "Could not set maximum file descriptor limit to $MAX_FD"
++    esac
++fi
++
++# Collect all arguments for the java command, stacking in reverse order:
++#   * args from the command line
++#   * the main class name
++#   * -classpath
++#   * -D...appname settings
++#   * --module-path (only if needed)
++#   * DEFAULT_JVM_OPTS, JAVA_OPTS, and GRADLE_OPTS environment variables.
++
++# For Cygwin or MSYS, switch paths to Windows format before running java
++if "$cygwin" || "$msys" ; then
++    APP_HOME=$( cygpath --path --mixed "$APP_HOME" )
++    CLASSPATH=$( cygpath --path --mixed "$CLASSPATH" )
++
++    JAVACMD=$( cygpath --unix "$JAVACMD" )
++
++    # Now convert the arguments - kludge to limit ourselves to /bin/sh
++    for arg do
++        if
++            case $arg in                                #(
++              -*)   false ;;                            # don't mess with options #(
++              /?*)  t=${arg#/} t=/${t%%/*}              # looks like a POSIX filepath
++                    [ -e "$t" ] ;;                      #(
++              *)    false ;;
++            esac
++        then
++            arg=$( cygpath --path --ignore --mixed "$arg" )
++        fi
++        # Roll the args list around exactly as many times as the number of
++        # args, so each arg winds up back in the position where it started, but
++        # possibly modified.
++        #
++        # NB: a `for` loop captures its iteration list before it begins, so
++        # changing the positional parameters here affects neither the number of
++        # iterations, nor the values presented in `arg`.
++        shift                   # remove old arg
++        set -- "$@" "$arg"      # push replacement arg
++    done
++fi
++
++
++# Add default JVM options here. You can also use JAVA_OPTS and GRADLE_OPTS to pass JVM options to this script.
++DEFAULT_JVM_OPTS='"-Xmx64m" "-Xms64m"'
++
++# Collect all arguments for the java command:
++#   * DEFAULT_JVM_OPTS, JAVA_OPTS, JAVA_OPTS, and optsEnvironmentVar are not allowed to contain shell fragments,
++#     and any embedded shellness will be escaped.
++#   * For example: A user cannot expect ${Hostname} to be expanded, as it is an environment variable and will be
++#     treated as '${Hostname}' itself on the command line.
++
++set -- \
++        "-Dorg.gradle.appname=$APP_BASE_NAME" \
++        -classpath "$CLASSPATH" \
++        org.gradle.wrapper.GradleWrapperMain \
++        "$@"
++
++# Stop when "xargs" is not available.
++if ! command -v xargs >/dev/null 2>&1
++then
++    die "xargs is not available"
++fi
++
++# Use "xargs" to parse quoted args.
++#
++# With -n1 it outputs one arg per line, with the quotes and backslashes removed.
++#
++# In Bash we could simply go:
++#
++#   readarray ARGS < <( xargs -n1 <<<"$var" ) &&
++#   set -- "${ARGS[@]}" "$@"
++#
++# but POSIX shell has neither arrays nor command substitution, so instead we
++# post-process each arg (as a line of input to sed) to backslash-escape any
++# character that might be a shell metacharacter, then use eval to reverse
++# that process (while maintaining the separation between arguments), and wrap
++# the whole thing up as a single "set" statement.
++#
++# This will of course break if any of these variables contains a newline or
++# an unmatched quote.
++#
++
++eval "set -- $(
++        printf '%s\n' "$DEFAULT_JVM_OPTS $JAVA_OPTS $GRADLE_OPTS" |
++        xargs -n1 |
++        sed ' s~[^-[:alnum:]+,./:=@_]~\\&~g; ' |
++        tr '\n' ' '
++    )" '"$@"'
++
++exec "$JAVACMD" "$@"
+diff --git a/phone-android/gradlew.bat b/phone-android/gradlew.bat
+new file mode 100644
+index 0000000..9b42019
+--- /dev/null
++++ b/phone-android/gradlew.bat
+@@ -0,0 +1,94 @@
++@rem
++@rem Copyright 2015 the original author or authors.
++@rem
++@rem Licensed under the Apache License, Version 2.0 (the "License");
++@rem you may not use this file except in compliance with the License.
++@rem You may obtain a copy of the License at
++@rem
++@rem      https://www.apache.org/licenses/LICENSE-2.0
++@rem
++@rem Unless required by applicable law or agreed to in writing, software
++@rem distributed under the License is distributed on an "AS IS" BASIS,
++@rem WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++@rem See the License for the specific language governing permissions and
++@rem limitations under the License.
++@rem
++@rem SPDX-License-Identifier: Apache-2.0
++@rem
++
++@if "%DEBUG%"=="" @echo off
++@rem ##########################################################################
++@rem
++@rem  Gradle startup script for Windows
++@rem
++@rem ##########################################################################
++
++@rem Set local scope for the variables with windows NT shell
++if "%OS%"=="Windows_NT" setlocal
++
++set DIRNAME=%~dp0
++if "%DIRNAME%"=="" set DIRNAME=.
++@rem This is normally unused
++set APP_BASE_NAME=%~n0
++set APP_HOME=%DIRNAME%
++
++@rem Resolve any "." and ".." in APP_HOME to make it shorter.
++for %%i in ("%APP_HOME%") do set APP_HOME=%%~fi
++
++@rem Add default JVM options here. You can also use JAVA_OPTS and GRADLE_OPTS to pass JVM options to this script.
++set DEFAULT_JVM_OPTS="-Xmx64m" "-Xms64m"
++
++@rem Find java.exe
++if defined JAVA_HOME goto findJavaFromJavaHome
++
++set JAVA_EXE=java.exe
++%JAVA_EXE% -version >NUL 2>&1
++if %ERRORLEVEL% equ 0 goto execute
++
++echo. 1>&2
++echo ERROR: JAVA_HOME is not set and no 'java' command could be found in your PATH. 1>&2
++echo. 1>&2
++echo Please set the JAVA_HOME variable in your environment to match the 1>&2
++echo location of your Java installation. 1>&2
++
++goto fail
++
++:findJavaFromJavaHome
++set JAVA_HOME=%JAVA_HOME:"=%
++set JAVA_EXE=%JAVA_HOME%/bin/java.exe
++
++if exist "%JAVA_EXE%" goto execute
++
++echo. 1>&2
++echo ERROR: JAVA_HOME is set to an invalid directory: %JAVA_HOME% 1>&2
++echo. 1>&2
++echo Please set the JAVA_HOME variable in your environment to match the 1>&2
++echo location of your Java installation. 1>&2
++
++goto fail
++
++:execute
++@rem Setup the command line
++
++set CLASSPATH=%APP_HOME%\gradle\wrapper\gradle-wrapper.jar
++
++
++@rem Execute Gradle
++"%JAVA_EXE%" %DEFAULT_JVM_OPTS% %JAVA_OPTS% %GRADLE_OPTS% "-Dorg.gradle.appname=%APP_BASE_NAME%" -classpath "%CLASSPATH%" org.gradle.wrapper.GradleWrapperMain %*
++
++:end
++@rem End local scope for the variables with windows NT shell
++if %ERRORLEVEL% equ 0 goto mainEnd
++
++:fail
++rem Set variable GRADLE_EXIT_CONSOLE if you need the _script_ return code instead of
++rem the _cmd.exe /c_ return code!
++set EXIT_CODE=%ERRORLEVEL%
++if %EXIT_CODE% equ 0 set EXIT_CODE=1
++if not ""=="%GRADLE_EXIT_CONSOLE%" exit %EXIT_CODE%
++exit /b %EXIT_CODE%
++
++:mainEnd
++if "%OS%"=="Windows_NT" endlocal
++
++:omega
+diff --git a/scripts/check-architecture.py b/scripts/check-architecture.py
+index cdfaf7f..bcb0c6d 100644
+--- a/scripts/check-architecture.py
++++ b/scripts/check-architecture.py
+@@ -39,7 +39,8 @@ for path in (ROOT / "ViewModels").glob("*.cs"):
+ project = ET.parse(ROOT / "SENTINEL-X.csproj")
+ assert project.findtext(".//TargetFramework") == "net10.0-windows"
+ assert project.findtext(".//UseWindowsForms") != "true"
+-assert len(list((ROOT / "Views/Pages").glob("*Page.xaml"))) == 13
++assert len(list((ROOT / "Views/Pages").glob("*Page.xaml"))) == 14
++assert (ROOT / "Views/Pages/BasePage.xaml").exists(), "Missing Base UI"
+ # 0.96 · KUŹNIA: the logic is split by responsibility, and the "brain" and the tools never touch WPF.
+ assert not (ROOT / "CommandRouter.cs").exists(), "CommandRouter.cs belongs in Brain/Router/"
+ for required in ("Brain/Router/CommandRouter.cs", "Brain/Router/DecisionPreview.cs", "Tools/UtilityToolbox.cs", "Tools/ForgeTools.cs", "Testing/UiSmokeTestRunner.cs"):
+@@ -47,4 +48,4 @@ for required in ("Brain/Router/CommandRouter.cs", "Brain/Router/DecisionPreview.
+ for folder in ("Brain", "Tools"):
+     for path in (ROOT / folder).rglob("*.cs"):
+         assert "using System.Windows" not in path.read_text(encoding="utf-8-sig"), f"WPF in {folder}/: {path}"
+-print("PASS: XML, resources, 13 views, thin code-behind, VM boundaries, target framework, no WinForms flag, Brain/Tools layout without WPF")
++print("PASS: XML, resources, 14 views, thin code-behind, VM boundaries, target framework, no WinForms flag, Brain/Tools layout without WPF")
+diff --git a/verification/Build1/Build1.csproj b/verification/Build1/Build1.csproj
+new file mode 100644
+index 0000000..c179f12
+--- /dev/null
++++ b/verification/Build1/Build1.csproj
+@@ -0,0 +1,4 @@
++<Project Sdk="Microsoft.NET.Sdk">
++<PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable></PropertyGroup>
++<ItemGroup><Compile Include="../../Services/Base/Sx4Wire.cs" Link="Sx4Wire.cs"/><Compile Include="../../Services/Base/BaseClient.cs" Link="BaseClient.cs"/><Compile Include="../../Services/Base/AgentQueue.cs" Link="AgentQueue.cs"/><Compile Include="../../Services/Base/OllamaSupervisor.cs" Link="OllamaSupervisor.cs"/></ItemGroup>
++</Project>
+\ No newline at end of file
+diff --git a/verification/Build1/ContractRunner.cs b/verification/Build1/ContractRunner.cs
+new file mode 100644
+index 0000000..0b3c34a
+--- /dev/null
++++ b/verification/Build1/ContractRunner.cs
+@@ -0,0 +1,74 @@
++using System.Security.Cryptography;
++using System.Text;
++using System.Text.Json;
++using SentinelX.Services.Base;
++int checks=0;
++void Check(bool value,string name){if(!value)throw new Exception(name);checks++;Console.WriteLine("PASS "+name);}
++void Reject(Action action,string code){try{action();throw new Exception("not rejected "+code);}catch(Sx4Exception e){Check(e.Code==code,"reject "+code);}}
++byte[] key=RandomNumberGenerator.GetBytes(32);
++var message=new BaseMessage{Type="status",Data=JsonSerializer.SerializeToElement(new{polish="Zażółć 🛰"})};
++byte[] payload=Sx4Wire.Payload(message);long now=DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
++var frame=new Sx4Frame(7,201,9,(ulong)now,payload);
++var raw=Sx4Wire.Encode(frame,key);
++Check(Sx4Wire.Parse(Sx4Wire.Decode(raw,key).Payload).Data.GetProperty("polish").GetString()=="Zażółć 🛰","SX4 unicode binary roundtrip");
++using(var authority=new Sx4Authority(7,key)){authority.Verify(raw,now);Reject(()=>authority.Verify(raw,now),"replay");}
++byte[] changed=raw.ToArray();changed[^1]^=1;Reject(()=>Sx4Wire.Decode(changed,key),"auth");
++Reject(()=>Sx4Wire.Decode(raw,new byte[32]),"auth");
++Reject(()=>Sx4Wire.Decode(raw[..^1],key),"size");
++Reject(()=>Sx4Wire.Decode(new byte[5],key),"format");
++Reject(()=>Sx4Wire.Encode(frame with{Payload=new byte[16385]},key),"format");
++using(var authority=new Sx4Authority(8,key))Reject(()=>authority.Verify(raw,now),"device");
++using(var authority=new Sx4Authority(7,key))Reject(()=>authority.Verify(raw,now+5001),"timestamp");
++using(var authority=new Sx4Authority(7,key)){authority.Dispose();Reject(()=>authority.Verify(raw,now),"revoked");}
++Reject(()=>Sx4Wire.Payload(message with{Version=3}),"version");
++Reject(()=>Sx4Wire.Payload(message with{RequestId="bad"}),"request_id");
++Reject(()=>Sx4Wire.Payload(message with{CorrelationId="bad"}),"request_id");
++Reject(()=>Sx4Wire.Payload(message with{Type="../shell"}),"type");
++Reject(()=>Sx4Wire.Payload(message with{ExpiresAt=0}),"expiry");
++Reject(()=>Sx4Wire.Payload(message with{ExpiresAt=now+400000}),"expiry");
++Reject(()=>Sx4Wire.Payload(message with{Data=JsonSerializer.SerializeToElement("bad")}),"payload");
++Reject(()=>Sx4Wire.Parse(Encoding.UTF8.GetBytes(Encoding.UTF8.GetString(payload).Replace("\"version\":4","\"version\":4,\"Version\":4"))),"duplicate_key");
++Reject(()=>Sx4Wire.Parse(Encoding.UTF8.GetBytes("{}")),"missing_field");
++Reject(()=>Sx4Wire.Parse(new byte[]{0xff}),"utf8");
++using(var partial=new PartialStream(raw)){Check((await Sx4Wire.ReadAsync(partial,CancellationToken.None)).SequenceEqual(raw),"partial frame");}
++using(var authority=new Sx4Authority(7,key)){for(uint i=0;i<120;i++)authority.Verify(Sx4Wire.Encode(frame with{Nonce=i},key),now);Reject(()=>authority.Verify(Sx4Wire.Encode(frame with{Nonce=121},key),now),"rate_limit");}
++string root=Path.Combine(Path.GetTempPath(),"sentinel-check-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(root);
++byte[] secret=RandomNumberGenerator.GetBytes(32);
++byte[] Protect(byte[] plain){byte[] iv=RandomNumberGenerator.GetBytes(12),tag=new byte[16],encrypted=new byte[plain.Length];using var aes=new AesGcm(secret,16);aes.Encrypt(iv,plain,encrypted,tag);return iv.Concat(tag).Concat(encrypted).ToArray();}
++byte[] Unprotect(byte[] encrypted){byte[] plain=new byte[encrypted.Length-28];using var aes=new AesGcm(secret,16);aes.Decrypt(encrypted.AsSpan(0,12),encrypted.AsSpan(28),encrypted.AsSpan(12,16),plain);return plain;}
++try{
++ string path=Path.Combine(root,"queue");var grants=new HashSet<string>{"lock","restart","steam.run","steam.install","ollama.ensure"};
++ var queue=new AgentQueue(path,Protect,Unprotect);
++ AgentTask task=new(Guid.NewGuid().ToString("D"),7,"lock","",DateTimeOffset.UtcNow.AddMinutes(1).ToUnixTimeMilliseconds());
++ await queue.AddAsync(task,grants);await queue.AddAsync(task,grants);
++ Check((await queue.SnapshotAsync()).Count==1,"task request dedupe");
++ Check(!Encoding.UTF8.GetString(File.ReadAllBytes(path)).Contains("lock"),"encrypted queue");
++ int executions=0;
++ await queue.DrainAsync(()=>false,(_,_)=>Task.FromResult(true),(_,_)=>{executions++;return Task.CompletedTask;},grants,CancellationToken.None);
++ Check(executions==0,"wait for unlocked session");
++ await queue.DrainAsync(()=>true,(_,_)=>Task.FromResult(true),(_,_)=>{executions++;return Task.CompletedTask;},grants,CancellationToken.None);
++ Check(executions==1&&(await queue.SnapshotAsync())[0].State=="succeeded","execute once");
++ queue=new AgentQueue(path,Protect,Unprotect);await queue.DrainAsync(()=>true,(_,_)=>Task.FromResult(true),(_,_)=>{executions++;return Task.CompletedTask;},grants,CancellationToken.None);
++ Check(executions==1,"no replay across restart");
++ Reject(()=>AgentQueue.Validate(task with{Operation="shell"}),"task");
++ Reject(()=>AgentQueue.Validate(task with{Target="cmd.exe"}),"target");
++ Reject(()=>AgentQueue.Validate(task with{Operation="steam.run",Target="42;calc"}),"steam_appid");
++ Reject(()=>AgentQueue.Validate(task with{Operation="steam.run",Target="00042"}),"steam_appid");
++ Check((await queue.AddAsync(task with{Id=Guid.NewGuid().ToString("D"),Operation="steam.run",Target="730"},grants)).State=="accepted","numeric Steam AppID");
++ var destructive=task with{Id=Guid.NewGuid().ToString("D"),Operation="restart"};
++ await queue.AddAsync(destructive,grants);await queue.DrainAsync(()=>true,(_,_)=>Task.FromResult(false),(_,_)=>Task.CompletedTask,grants,CancellationToken.None);
++ Check((await queue.SnapshotAsync()).Single(x=>x.Id==destructive.Id).State=="cancelled","required consent");
++ var corrupt=Path.Combine(root,"corrupt");File.WriteAllText(corrupt,"original");
++ var failed=new AgentQueue(corrupt,Protect,Unprotect);Check(failed.StorageError=="queue_corrupt","corrupt queue blocks");
++ string backup=await failed.RepairAsync();Check(File.ReadAllText(backup)=="original"&&failed.StorageError==null,"repair exact backup and verified queue");
++ var running=task with{Id=Guid.NewGuid().ToString("D"),State="running"};File.WriteAllBytes(path,Protect(JsonSerializer.SerializeToUtf8Bytes(new[]{running})));
++ queue=new AgentQueue(path,Protect,Unprotect);Check((await queue.SnapshotAsync())[0].State=="failed","interrupted task never repeated");
++ bool active=false;int launches=0;using var ollama=new OllamaSupervisor(_=>Task.FromResult(active),()=>{launches++;active=true;return true;});
++ await Task.WhenAll(Enumerable.Range(0,8).Select(_=>ollama.EnsureAsync(CancellationToken.None)));
++ Check(launches==1,"Ollama concurrent single server");
++ Check(!ollama.AutoLoadModel,"Ollama no model preload");
++}
++finally{Directory.Delete(root,true);CryptographicOperations.ZeroMemory(secret);}
++Console.WriteLine("PASS "+checks+" contract checks");
++sealed class PartialStream(byte[] bytes):MemoryStream(bytes)
++{public override ValueTask<int> ReadAsync(Memory<byte> buffer,CancellationToken cancellationToken=default)=>base.ReadAsync(buffer[..Math.Min(buffer.Length,3)],cancellationToken);}
