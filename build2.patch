@@ -1,0 +1,1395 @@
+diff --git a/App.xaml.cs b/App.xaml.cs
+index bdec42e..5d17f71 100644
+--- a/App.xaml.cs
++++ b/App.xaml.cs
+@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
+ using SentinelX.Core;
+ using SentinelX.Services.Care;
+ using SentinelX.Services.Desktop;
++using SentinelX.Services.Maintenance;
+ namespace SentinelX;
+ public partial class App : Application
+ {
+@@ -25,6 +26,21 @@ public partial class App : Application
+         {
+             instance = new SingleInstanceService(AppPaths.Root);
+             if (!instance.IsPrimary) { instance.ActivateExisting(); Shutdown(); return; }
++            try{
++                var updater=new VerifiedUpdater(Path.Combine(AppPaths.Root,"Updates"),MaintenanceService.ValidPackage);
++                var journal=updater.ReadJournal();
++                if(journal.Active!=null){
++                    string current=Path.GetFullPath(AppContext.BaseDirectory).TrimEnd(Path.DirectorySeparatorChar);
++                    var active=current.Equals(journal.Active.Directory.TrimEnd(Path.DirectorySeparatorChar),StringComparison.OrdinalIgnoreCase)?updater.BeginLaunch():journal.Active;
++                    if(active!=null&&VerifiedUpdater.VerifyVersion(active)&&!current.Equals(active.Directory.TrimEnd(Path.DirectorySeparatorChar),StringComparison.OrdinalIgnoreCase)){
++                        instance.Dispose();instance=null;
++                        var launch=new System.Diagnostics.ProcessStartInfo(Path.Combine(active.Directory,"SentinelX.exe")){UseShellExecute=false,WorkingDirectory=active.Directory};
++                        if(AutostartLaunch)launch.ArgumentList.Add("--autostart");
++                        System.Diagnostics.Process.Start(launch);Shutdown();return;
++                    }
++                }
++            }catch(Exception updateError){AppLog.Write(updateError);}
++
+         }
+         try
+         {
+@@ -54,6 +70,7 @@ public partial class App : Application
+                 try { provider.GetRequiredService<CareService>().Start(); provider.GetRequiredService<Services.Base.WindowsBaseService>().Start(); }
+                 catch (Exception careError) { AppLog.Write(careError); }
+             }
++            if(!uiTest){_ = Task.Run(async()=>{await Task.Delay(20000);try{provider.GetRequiredService<MaintenanceService>().Updater.MarkHealthy(AppContext.BaseDirectory);}catch(Exception error){AppLog.Write(error);}});}
+             if (uiTest)
+             {
+                 await UiSmokeTestRunner.RunAsync(provider, shell, Path.GetFullPath(e.Args[1]));
+diff --git a/BLOCKERS.md b/BLOCKERS.md
+new file mode 100644
+index 0000000..dd597da
+--- /dev/null
++++ b/BLOCKERS.md
+@@ -0,0 +1,8 @@
++# Zewnętrzne blokery stabilnego wydania
++
++1. Brak fizycznego ESP32/Base z wdrożonym transportem TLS i OpCode 201. Dostarczony master 4.2.1 zostawia transport jako TODO; binary compatibility i fixture nie dowodzą działania sprzętu.
++2. Brak wdrożonego relayu/VPN endpointu i próby Wi-Fi → LTE. Nie ma domyślnego publicznego relayu.
++3. Brak zewnętrznego produkcyjnego klucza Androida. Stary P12/hasła były w repo i nie są używane do nowych produkcyjnych buildów. Debug APK jest instalowalnym buildem weryfikacyjnym.
++4. Prawdziwy mikrofon PL, tray/logowanie/autostart, WoL i Android hardware muszą zostać sprawdzone na sprzęcie właściciela. Windows CI smoke nie jest tym samym testem.
++
++Nie generujemy update manifestu — to świadome ograniczenie zakresu użytkownika, nie błąd buildu.
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+new file mode 100644
+index 0000000..6a8cd8f
+--- /dev/null
++++ b/CHANGELOG.md
+@@ -0,0 +1,4 @@
++# 1.0.0 — Build 1.0
++
++SX4 binary/TLS, encrypted PC task queue, Base dashboards, Keystore token migration, Ollama supervisor, Steam resolver, diagnostics/repair and verified updater/rollback. Aggregate EXE/APK/security gates. No generated update manifest.
++
+diff --git a/Core/ServiceLocator.cs b/Core/ServiceLocator.cs
+index 07277ba..2699927 100644
+--- a/Core/ServiceLocator.cs
++++ b/Core/ServiceLocator.cs
+@@ -93,6 +93,8 @@ public static class ServiceLocator
+         services.AddSingleton<Services.Base.OllamaSupervisor>();
+         services.AddSingleton<Services.Base.WindowsBaseService>();
+         services.AddSingleton<BaseViewModel>();
++        services.AddSingleton<Services.Maintenance.MaintenanceService>();
++        services.AddSingleton<MaintenanceViewModel>();
+         services.AddSingleton<Services.Care.CareService>();
+         services.AddSingleton<IDesktopService, DesktopService>();
+         services.AddSingleton<Services.Readiness.IReadinessService, Services.Readiness.ReadinessService>();
+diff --git a/Services/Maintenance/MaintenanceService.cs b/Services/Maintenance/MaintenanceService.cs
+new file mode 100644
+index 0000000..ec9c251
+--- /dev/null
++++ b/Services/Maintenance/MaintenanceService.cs
+@@ -0,0 +1,81 @@
++using System.IO;
++using System.Diagnostics;
++using System.Net.NetworkInformation;
++using System.Text.Json;
++using System.Windows;
++using Microsoft.Win32;
++using SentinelX.Core;
++using SentinelX.Services.Base;
++namespace SentinelX.Services.Maintenance;
++public sealed record DiagnosticCheck(string Name,string State,string Detail);
++public sealed class MaintenanceService(WindowsBaseService agent,OllamaSupervisor ollama)
++{
++ public VerifiedUpdater Updater{get;}=new(Path.Combine(AppPaths.Root,"Updates"),ValidPackage,folder=>FileVersionInfo.GetVersionInfo(Path.Combine(folder,"SentinelX.exe")).ProductVersion);
++ public async Task<IReadOnlyList<DiagnosticCheck>> DiagnoseAsync(CancellationToken cancel){
++  var checks=new List<DiagnosticCheck>();
++  void Check(string name,bool ok,string detail)=>checks.Add(new(name,ok?"PASS":"BLOCKED",detail));
++  await Task.Run(()=>{
++   Check("Autostart",new StartupService("Sentinel X").IsEnabled(),"Rejestr użytkownika; bez stałego administratora");
++   Check("Sieć",NetworkInterface.GetIsNetworkAvailable(),"Interfejs sieci");
++   var adapters=NetworkInterface.GetAllNetworkInterfaces().Where(x=>x.OperationalStatus==OperationalStatus.Up).ToArray();
++   Check("Gateway",adapters.Any(x=>x.GetIPProperties().GatewayAddresses.Count>0),"Gateway skonfigurowany");
++   Check("DNS",adapters.Any(x=>x.GetIPProperties().DnsAddresses.Count>0),"DNS skonfigurowany; brak wysyłania rozmów");
++   Check("Dysk",new DriveInfo(Path.GetPathRoot(AppPaths.Root)!).AvailableFreeSpace>536870912,"Wymagane co najmniej 512 MiB wolnego");
++   Check("Konfiguracja",Directory.Exists(AppPaths.SettingsDirectory),"Katalog ustawień");
++   Check("Base/auth/SX4",agent.Capabilities.Count>0,agent.Status);
++   Check("DPAPI",agent.PublicConfiguration!=null,"Sekret nie jest odczytywany do raportu");
++   Check("Relay/VPN",agent.PublicConfiguration?.Mode is "vpn" or "relay","Wymaga własnego skonfigurowanego endpointu");
++   Check("Steam",File.Exists(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),"Steam","steam.exe")),"Lokalna instalacja");
++   Check("Logi",Directory.Exists(AppPaths.LogsDirectory),"Lokalne logi; dziennik Base ma limit 8 MiB");
++   var state=Updater.ReadJournal();Check("Crash-loop",state.LaunchFailures<3,"Licznik: "+state.LaunchFailures);
++   Check("Internet",false,"Sprawdź żądaniem do własnego relayu; diagnostyka offline nie wysyła danych na zewnętrzny serwer");
++   Check("Android",false,"Stan telefonu jest dostępny przez devices/status Base");
++  },cancel);
++  Check("Ollama",await ollama.StatusAsync(cancel),"Tylko loopback /api/tags; bez ładowania modelu");
++  return checks;
++ }
++ public async Task<string> RepairDirectoriesAsync(){
++  return await Task.Run(()=>{
++   string backup=Path.Combine(AppPaths.BackupsDirectory,"repair-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(backup);
++   string log=Path.Combine(backup,"repair.jsonl");
++   void Record(string phase,string state)=>File.AppendAllText(log,JsonSerializer.Serialize(new{time=DateTimeOffset.UtcNow,phase,state})+"\n");
++   string[] folders=[AppPaths.SettingsDirectory,AppPaths.LogsDirectory,AppPaths.HistoryDirectory,AppPaths.MemoryDirectory,AppPaths.CacheDirectory];
++   Record("detect","started");File.WriteAllText(Path.Combine(backup,"directories.json"),JsonSerializer.Serialize(folders.Select(p=>new{path=Path.GetFileName(p),exists=Directory.Exists(p)})));Record("backup","succeeded");
++   try{foreach(string folder in folders)Directory.CreateDirectory(folder);Record("repair","succeeded");
++    if(folders.Any(p=>!Directory.Exists(p)))throw new IOException("verify");Record("verify","succeeded");Record("result","succeeded");return "Sprawdzono katalogi. Kopia i dziennik: "+backup;
++   }catch{Record("rollback","no_user_data_changed");Record("result","failed");throw;}
++  });
++ }
++ public string RepairAutostart()=>new StartupService("Sentinel X").Enable()?"Autostart zapisany i zweryfikowany":"Nie udało się potwierdzić autostartu";
++ public IReadOnlyList<SteamGame> ResolveSteam(string query)=>SteamResolver.Find(query,Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),"Steam"));
++ public static bool ValidPackage(string folder){
++  try{
++   string exe=Path.Combine(folder,"SentinelX.exe");using var file=File.OpenRead(exe);using var reader=new BinaryReader(file);
++   if(reader.ReadUInt16()!=0x5a4d)return false;file.Position=0x3c;int offset=reader.ReadInt32();if(offset<64||offset>file.Length-6)return false;file.Position=offset;
++   if(reader.ReadUInt32()!=0x4550||reader.ReadUInt16()!=0x8664||!File.Exists(Path.Combine(folder,"coreclr.dll")))return false;
++   return true;
++  }catch(Exception e)when(e is IOException or UnauthorizedAccessException){return false;}
++ }
++ public static async Task<bool> SmokeAsync(string folder,CancellationToken cancel){
++  string results=Path.Combine(AppPaths.CacheDirectory,"update-health-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(results);
++  using var p=Process.Start(new ProcessStartInfo(Path.Combine(folder,"SentinelX.exe")){ArgumentList={"--ui-smoke",results},UseShellExecute=false,WorkingDirectory=folder});
++  if(p==null)return false;
++  try{await p.WaitForExitAsync(cancel);return p.ExitCode==0&&File.Exists(Path.Combine(results,"ui-smoke.txt"));}
++  catch(OperationCanceledException){if(!p.HasExited)p.Kill(true);return false;}
++ }
++ public async Task<string> StageUpdateAsync(string publicPem,bool requireSignature,CancellationToken cancel){
++  var zip=new OpenFileDialog{Filter="Portable package|*.zip",CheckFileExists=true};if(zip.ShowDialog()!=true)return "Anulowano";
++  var metadata=new OpenFileDialog{Filter="Opis aktualizacji|*.json",CheckFileExists=true};if(metadata.ShowDialog()!=true)return "Anulowano";
++  string package=zip.FileName,description=metadata.FileName;
++  return await Task.Run(async()=>{
++   if(new FileInfo(description).Length>16384)throw new UpdateFailure("metadata_size");
++   var descriptor=UpdateDescriptor.Parse(await File.ReadAllTextAsync(description,cancel));
++   long free=new DriveInfo(Path.GetPathRoot(AppPaths.Root)!).AvailableFreeSpace;
++   var staged=await Updater.StageAsync(package,descriptor,AppConstants.SemanticVersion,publicPem,requireSignature,free,cancel);
++   string shipped=AppContext.BaseDirectory;
++   var current=new UpdateVersion(AppConstants.SemanticVersion,shipped,VerifiedUpdater.Inventory(shipped));
++   await Updater.ActivateAsync(staged,current,SmokeAsync,cancel);
++   return "Zweryfikowano pakiet i smoke test. Aktualizacja uruchomi się przy kolejnym starcie Sentinel.";
++  },cancel);
++ }
++}
+diff --git a/Services/Maintenance/SteamResolver.cs b/Services/Maintenance/SteamResolver.cs
+new file mode 100644
+index 0000000..debf2db
+--- /dev/null
++++ b/Services/Maintenance/SteamResolver.cs
+@@ -0,0 +1,28 @@
++using System.IO;
++using System.Text.RegularExpressions;
++namespace SentinelX.Services.Maintenance;
++public sealed record SteamGame(string Name,string AppId);
++public static class SteamResolver
++{
++ public static IReadOnlyList<SteamGame> Find(string query,string steamRoot){
++  if(query.Length is <1 or >100)return [];
++  var roots=new HashSet<string>(StringComparer.OrdinalIgnoreCase){Path.GetFullPath(steamRoot)};
++  string libraries=Path.Combine(steamRoot,"steamapps","libraryfolders.vdf");
++  if(File.Exists(libraries)&&new FileInfo(libraries).Length<1048576){
++   foreach(Match m in Regex.Matches(File.ReadAllText(libraries),@"""path""\s+""([^""]+)""")){
++    string value=m.Groups[1].Value.Replace(@"\\",@"\");
++    if(Path.IsPathFullyQualified(value))roots.Add(Path.GetFullPath(value));
++   }
++  }
++  var games=new List<SteamGame>();
++  foreach(var root in roots.Take(16)){
++   string apps=Path.Combine(root,"steamapps");if(!Directory.Exists(apps))continue;
++   foreach(string path in Directory.EnumerateFiles(apps,"appmanifest_*.acf").Take(2048)){
++    if(new FileInfo(path).Length>1048576)continue;string text=File.ReadAllText(path);
++    string id=Regex.Match(text,@"""appid""\s+""([0-9]+)""").Groups[1].Value;
++    string name=Regex.Match(text,@"""name""\s+""([^""]{1,200})""").Groups[1].Value;
++    if(uint.TryParse(id,out uint app)&&app>0&&app.ToString()==id&&name.Contains(query,StringComparison.OrdinalIgnoreCase))games.Add(new(name,id));
++   }
++  }return games.DistinctBy(x=>x.AppId).OrderBy(x=>x.Name).Take(50).ToArray();
++ }
++}
+diff --git a/Services/Maintenance/VerifiedUpdater.cs b/Services/Maintenance/VerifiedUpdater.cs
+new file mode 100644
+index 0000000..0b724ee
+--- /dev/null
++++ b/Services/Maintenance/VerifiedUpdater.cs
+@@ -0,0 +1,124 @@
++using System.IO;
++using System.IO.Compression;
++using System.Security.Cryptography;
++using System.Text.Json;
++using System.Text.RegularExpressions;
++namespace SentinelX.Services.Maintenance;
++public sealed class UpdateFailure(string code):Exception(code){public string Code{get;}=code;}
++public sealed record UpdateDescriptor(string Version,string Architecture,string Sha256,long Size,string? Signature=null)
++{
++ public static UpdateDescriptor Parse(string json){
++  if(json.Length>16384)throw new UpdateFailure("metadata_size");
++  using var doc=JsonDocument.Parse(json,new(){MaxDepth=4});var names=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
++  foreach(var p in doc.RootElement.EnumerateObject())if(!names.Add(p.Name))throw new UpdateFailure("metadata_duplicate");
++  return JsonSerializer.Deserialize<UpdateDescriptor>(json,new JsonSerializerOptions{UnmappedMemberHandling=System.Text.Json.Serialization.JsonUnmappedMemberHandling.Disallow})??throw new UpdateFailure("metadata");
++ }
++ public string SignedText=>$"SXUP1\n{Version}\n{Architecture}\n{Sha256.ToLowerInvariant()}\n{Size}\n";
++}
++public sealed record UpdateVersion(string Version,string Directory,Dictionary<string,string> Hashes);
++public sealed record UpdateJournal(UpdateVersion? Active=null,UpdateVersion? LastGood=null,int LaunchFailures=0,long LastLaunch=0);
++/// Stages complete portable packages. The descriptor is consumed; this service never generates an update manifest.
++public sealed class VerifiedUpdater
++{
++ private readonly string root;private readonly Func<string,bool> validatePackage;private readonly Func<string,string?>? packageVersion;private readonly SemaphoreSlim gate=new(1);
++ public VerifiedUpdater(string root,Func<string,bool> validatePackage,Func<string,string?>? packageVersion=null){this.root=Path.GetFullPath(root);this.validatePackage=validatePackage;this.packageVersion=packageVersion;}
++ public static Version Semver(string value){
++  var match=Regex.Match(value??"",@"^([0-9]+)\.([0-9]+)\.([0-9]+)(?:\+[0-9A-Za-z.-]+)?$");
++  if(!match.Success||Enumerable.Range(1,3).Any(i=>match.Groups[i].Value.Length>1&&match.Groups[i].Value[0]=='0'))throw new UpdateFailure("semver");
++  try{return new(int.Parse(match.Groups[1].Value),int.Parse(match.Groups[2].Value),int.Parse(match.Groups[3].Value));}catch(FormatException){throw new UpdateFailure("semver");}catch(OverflowException){throw new UpdateFailure("semver");}
++ }
++ public static void VerifyDescriptor(UpdateDescriptor descriptor,string current,string? publicPem,bool requireSignature){
++  if(Semver(descriptor.Version)<=Semver(current))throw new UpdateFailure("downgrade");
++  if(descriptor.Architecture!="win-x64")throw new UpdateFailure("architecture");
++  if(descriptor.Size is <1024 or >536870912||!Regex.IsMatch(descriptor.Sha256??"","^[0-9a-fA-F]{64}$"))throw new UpdateFailure("metadata");
++  if(requireSignature){
++   if(string.IsNullOrWhiteSpace(publicPem)||string.IsNullOrWhiteSpace(descriptor.Signature))throw new UpdateFailure("signature_required");
++   try{using var rsa=RSA.Create();rsa.ImportFromPem(publicPem);
++    if(rsa.KeySize<2048||!rsa.VerifyData(System.Text.Encoding.UTF8.GetBytes(descriptor.SignedText),Convert.FromBase64String(descriptor.Signature),HashAlgorithmName.SHA256,RSASignaturePadding.Pss))throw new UpdateFailure("signature");
++   }catch(Exception e)when(e is CryptographicException or FormatException or ArgumentException){throw new UpdateFailure("signature");}
++  }
++ }
++ public static string CanonicalChild(string root,string relative){
++  if(string.IsNullOrWhiteSpace(relative)||relative.Contains('\\')||relative.Contains(':')||relative.Split('/').Any(x=>x is ".." or "."||x.EndsWith(' ')||x.EndsWith('.')))throw new UpdateFailure("path");
++  string full=Path.GetFullPath(Path.Combine(root,relative)),prefix=Path.GetFullPath(root).TrimEnd(Path.DirectorySeparatorChar)+Path.DirectorySeparatorChar;
++  if(!full.StartsWith(prefix,StringComparison.OrdinalIgnoreCase))throw new UpdateFailure("path");return full;
++ }
++ public async Task<UpdateVersion> StageAsync(string zip,UpdateDescriptor descriptor,string current,string? publicPem,bool requireSignature,long freeBytes,CancellationToken cancel){
++  VerifyDescriptor(descriptor,current,publicPem,requireSignature);
++  if(freeBytes<descriptor.Size*4+134217728)throw new UpdateFailure("disk_space");
++  if(new FileInfo(zip).Length!=descriptor.Size)throw new UpdateFailure("size");
++  await using(var stream=File.OpenRead(zip)){string hash=Convert.ToHexString(await SHA256.HashDataAsync(stream,cancel));if(!hash.Equals(descriptor.Sha256,StringComparison.OrdinalIgnoreCase))throw new UpdateFailure("hash");}
++  await gate.WaitAsync(cancel);string stage=Path.Combine(root,"staging-"+Guid.NewGuid().ToString("N"));
++  try{
++   Directory.CreateDirectory(stage);using var archive=ZipFile.OpenRead(zip);
++   if(archive.Entries.Count is <1 or >2048)throw new UpdateFailure("entries");
++   long expanded=0;var paths=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
++   foreach(var entry in archive.Entries){
++    cancel.ThrowIfCancellationRequested();string path=CanonicalChild(stage,entry.FullName.TrimEnd('/'));
++    if(!paths.Add(path)||((entry.ExternalAttributes>>16)&0xF000)==0xA000)throw new UpdateFailure("path");
++    expanded=checked(expanded+entry.Length);if(expanded>2147483648||expanded>freeBytes-67108864)throw new UpdateFailure("expanded_size");
++    if(entry.FullName.EndsWith('/')){Directory.CreateDirectory(path);continue;}
++    Directory.CreateDirectory(Path.GetDirectoryName(path)!);
++    await using var input=entry.Open();await using var output=new FileStream(path,FileMode.CreateNew,FileAccess.Write,FileShare.None,65536,true);
++    await input.CopyToAsync(output,cancel);await output.FlushAsync(cancel);
++   }
++   if(!validatePackage(stage))throw new UpdateFailure("package");
++   if(packageVersion!=null&&Semver(packageVersion(stage)??"")!=Semver(descriptor.Version))throw new UpdateFailure("package_version");
++   var version=new UpdateVersion(descriptor.Version,stage,Inventory(stage));
++   string final=Path.Combine(root,"versions",descriptor.Version.Split('+')[0]+"-"+descriptor.Sha256[..16].ToLowerInvariant());
++   Directory.CreateDirectory(Path.GetDirectoryName(final)!);if(Directory.Exists(final))throw new UpdateFailure("already_staged");Directory.Move(stage,final);
++   return version with{Directory=final};
++  }finally{if(Directory.Exists(stage))Directory.Delete(stage,true);gate.Release();}
++ }
++ public static Dictionary<string,string> Inventory(string folder){
++  var hashes=new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase);
++  foreach(var path in Directory.EnumerateFiles(folder,"*",SearchOption.AllDirectories)){
++   if((File.GetAttributes(path)&FileAttributes.ReparsePoint)!=0)throw new UpdateFailure("path");
++   using var input=File.OpenRead(path);hashes.Add(Path.GetRelativePath(folder,path).Replace('\\','/'),Convert.ToHexString(SHA256.HashData(input)));
++  }return hashes;
++ }
++ public static bool VerifyVersion(UpdateVersion version){
++  try{
++   if(!Directory.Exists(version.Directory)||version.Hashes.Count==0)return false;
++   if(Directory.EnumerateFiles(version.Directory,"*",SearchOption.AllDirectories).Count()!=version.Hashes.Count)return false;
++   foreach(var entry in version.Hashes){using var input=File.OpenRead(CanonicalChild(version.Directory,entry.Key));if(Convert.ToHexString(SHA256.HashData(input))!=entry.Value)return false;}return true;
++  }catch(Exception e)when(e is IOException or UnauthorizedAccessException or UpdateFailure){return false;}
++ }
++ public UpdateJournal ReadJournal(){
++  string path=Path.Combine(root,"state.json");if(!File.Exists(path))return new();
++  if(new FileInfo(path).Length>2097152)throw new UpdateFailure("state");
++  return JsonSerializer.Deserialize<UpdateJournal>(File.ReadAllText(path))??throw new UpdateFailure("state");
++ }
++ private void Save(UpdateJournal state){
++  Directory.CreateDirectory(root);string path=Path.Combine(root,"state.json"),temp=path+".tmp";
++  using(var file=new FileStream(temp,FileMode.Create,FileAccess.Write,FileShare.None)){JsonSerializer.Serialize(file,state);file.Flush(true);}
++  if(JsonSerializer.Deserialize<UpdateJournal>(File.ReadAllText(temp))==null)throw new UpdateFailure("state_verify");File.Move(temp,path,true);
++ }
++ public async Task ActivateAsync(UpdateVersion candidate,UpdateVersion current,Func<string,CancellationToken,Task<bool>> health,CancellationToken cancel){
++  await gate.WaitAsync(cancel);
++  try{
++   if(!VerifyVersion(candidate)||!VerifyVersion(current))throw new UpdateFailure("inventory");
++   using var deadline=CancellationTokenSource.CreateLinkedTokenSource(cancel);deadline.CancelAfter(TimeSpan.FromMinutes(4));
++   bool good;try{good=await health(candidate.Directory,deadline.Token);}catch(OperationCanceledException){good=false;}
++   if(!good||!VerifyVersion(candidate))throw new UpdateFailure("health");
++   Save(new(candidate,current));
++  }finally{gate.Release();}
++ }
++ public UpdateVersion? BeginLaunch(){
++  var state=ReadJournal();if(state.Active==null)return null;
++  long now=DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();int failures=now-state.LastLaunch<=300000?state.LaunchFailures+1:1;
++  if(!VerifyVersion(state.Active)||failures>=3){
++   if(state.LastGood==null||!VerifyVersion(state.LastGood))throw new UpdateFailure("rollback_unavailable");
++   Save(new(state.LastGood,null));return state.LastGood;
++  }
++  Save(state with{LaunchFailures=failures,LastLaunch=now});return state.Active;
++ }
++ public void MarkHealthy(string directory){
++  var state=ReadJournal();if(state.Active!=null&&Path.GetFullPath(directory).TrimEnd(Path.DirectorySeparatorChar).Equals(state.Active.Directory.TrimEnd(Path.DirectorySeparatorChar),StringComparison.OrdinalIgnoreCase)&&VerifyVersion(state.Active))
++   Save(state with{LaunchFailures=0,LastLaunch=0});
++ }
++ public UpdateVersion Rollback(){
++  var state=ReadJournal();if(state.LastGood==null||!VerifyVersion(state.LastGood))throw new UpdateFailure("rollback_unavailable");
++  Save(new(state.LastGood,null));return state.LastGood;
++ }
++}
+diff --git a/ViewModels/MainViewModel.cs b/ViewModels/MainViewModel.cs
+index 4292da2..a39d49a 100644
+--- a/ViewModels/MainViewModel.cs
++++ b/ViewModels/MainViewModel.cs
+@@ -50,7 +50,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
+         CommandCenterViewModel command, SystemViewModel system, GamingViewModel gaming,
+         VoiceViewModel voice, AiViewModel ai, ActionsViewModel actions, HistoryViewModel history, SettingsViewModel settings,
+         CommandPaletteViewModel palette, ReadinessViewModel readiness, MemoryViewModel memory, ProjectViewModel projects, TaskViewModel tasks,
+-        DiagnosticViewModel diagnostics, ToolsViewModel tools, ISettingsService settingsService, BaseViewModel? basePanel = null)
++        DiagnosticViewModel diagnostics, ToolsViewModel tools, ISettingsService settingsService, BaseViewModel? basePanel = null, MaintenanceViewModel? maintenance = null)
+     {
+         this.engine = engine; this.desktop = desktop; this.dispatcher = dispatcher; this.settings = settingsService;
+         Voice = voice; Palette = palette; Readiness = readiness; commandCenter = command; System = system; Tools = tools;
+@@ -59,6 +59,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
+         [
+             new NavItem("command", "⌘", "Centrum", command),
+             new NavItem("base", "⌁", "Base i Agent", (object?)basePanel ?? tools),
++            new NavItem("maintenance", "◇", "Diagnostyka / aktualizacje", (object?)maintenance ?? tools),
+             new NavItem("tools", "🧰", "Narzędzia", tools),
+             new NavItem("memory", "▤", "Pamięć", memory),
+             new NavItem("projects", "▣", "Projekty", projects),
+diff --git a/ViewModels/MaintenanceViewModel.cs b/ViewModels/MaintenanceViewModel.cs
+new file mode 100644
+index 0000000..e93cf1c
+--- /dev/null
++++ b/ViewModels/MaintenanceViewModel.cs
+@@ -0,0 +1,25 @@
++using System.Collections.ObjectModel;
++using CommunityToolkit.Mvvm.ComponentModel;
++using CommunityToolkit.Mvvm.Input;
++using SentinelX.Services.Maintenance;
++namespace SentinelX.ViewModels;
++public partial class MaintenanceViewModel(MaintenanceService service):ObservableObject
++{
++ [ObservableProperty]private string result="";
++ [ObservableProperty]private bool busy;
++ [ObservableProperty]private string publisherPublicKey="";
++ [ObservableProperty]private bool requireSignature=true;
++ [ObservableProperty]private string steamQuery="";
++ [ObservableProperty]private SteamGame? selectedGame;
++ public ObservableCollection<DiagnosticCheck> Checks{get;}=[];
++ public ObservableCollection<SteamGame> Games{get;}=[];
++ private async Task Run(Func<Task<string>> action){if(Busy)return;Busy=true;Result="Pracuję…";try{Result=await action();}catch(Exception e){Result=e is UpdateFailure x?"Aktualizacja odrzucona: "+x.Code:"Operacja nie powiodła się. Sprawdź lokalną konfigurację.";}finally{Busy=false;}}
++ [RelayCommand]private Task DiagnoseAsync(CancellationToken cancel)=>Run(async()=>{var items=await service.DiagnoseAsync(cancel);Checks.Clear();foreach(var item in items)Checks.Add(item);return "Diagnostyka zakończona. BLOCKED wskazuje brak konfiguracji lub zewnętrznego komponentu.";});
++ [RelayCommand]private Task RepairDirectoriesAsync()=>Run(service.RepairDirectoriesAsync);
++ [RelayCommand]private Task RepairAutostartAsync()=>Run(()=>Task.FromResult(service.RepairAutostart()));
++ [RelayCommand]private Task StageUpdateAsync(CancellationToken cancel)=>Run(()=>service.StageUpdateAsync(PublisherPublicKey,RequireSignature,cancel));
++ [RelayCommand]private Task RollbackAsync()=>Run(()=>Task.Run(()=>{service.Updater.Rollback();return "Zweryfikowano rollback. Poprzednia wersja uruchomi się przy kolejnym starcie."; }));
++ [RelayCommand]private Task ResolveSteamAsync()=>Run(async()=>{var items=await Task.Run(()=>service.ResolveSteam(SteamQuery));Games.Clear();foreach(var item in items)Games.Add(item);SelectedGame=null;return items.Count==0?"Nie znaleziono zainstalowanej gry. Użyj znanego numerycznego AppID w panelu Base.":"Wybierz dokładną grę. Jej AppID możesz skopiować do zadania Base.";});
++ public string SelectedAppId=>SelectedGame?.AppId??"";
++ partial void OnSelectedGameChanged(SteamGame? value)=>OnPropertyChanged(nameof(SelectedAppId));
++}
+diff --git a/Views/MainWindow.xaml b/Views/MainWindow.xaml
+index 52e542c..ae51f1e 100644
+--- a/Views/MainWindow.xaml
++++ b/Views/MainWindow.xaml
+@@ -1,6 +1,7 @@
+ <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:u="clr-namespace:SentinelX.Utilities" xmlns:controls="clr-namespace:SentinelX.Views.Controls" xmlns:vm="clr-namespace:SentinelX.ViewModels" xmlns:pages="clr-namespace:SentinelX.Views.Pages" x:Class="SentinelX.Views.MainWindow" Title="Sentinel X" Width="1400" Height="900" MinWidth="1100" MinHeight="700" WindowStartupLocation="CenterScreen" Background="{DynamicResource SxBackground}" FontFamily="{StaticResource SxFontFamily}" ThemeMode="Dark" Icon="/Assets/sentinel.ico" u:UiInteraction.LoadedCommand="{Binding InitializeCommand}">
+     <Window.InputBindings><KeyBinding Key="K" Modifiers="Control" Command="{Binding OpenPaletteCommand}"/></Window.InputBindings>
+     <Window.Resources>
++        <DataTemplate DataType="{x:Type vm:MaintenanceViewModel}"><pages:MaintenancePage/></DataTemplate>
+         <DataTemplate DataType="{x:Type vm:BaseViewModel}"><pages:BasePage/></DataTemplate>
+         <DataTemplate DataType="{x:Type vm:CommandCenterViewModel}">
+             <pages:CommandCenterPage/>
+diff --git a/Views/Pages/MaintenancePage.xaml b/Views/Pages/MaintenancePage.xaml
+new file mode 100644
+index 0000000..069dbe0
+--- /dev/null
++++ b/Views/Pages/MaintenancePage.xaml
+@@ -0,0 +1,27 @@
++<UserControl x:Class="SentinelX.Views.Pages.MaintenancePage" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
++ <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="28">
++ <TextBlock Text="Diagnostyka i aktualizacje" FontSize="28" FontWeight="Bold"/>
++ <ProgressBar IsIndeterminate="{Binding Busy}" Height="4" Margin="0,12"/>
++ <Border Style="{StaticResource SxCard}" Margin="0,8"><StackPanel>
++  <TextBlock Text="Sprawdź i napraw lokalnie" FontSize="18"/>
++  <WrapPanel Margin="0,8"><Button Content="Diagnostyka" Command="{Binding DiagnoseCommand}" Margin="4"/><Button Content="Odtwórz katalogi z kopią" Command="{Binding RepairDirectoriesCommand}" Margin="4"/><Button Content="Włącz i zweryfikuj autostart" Command="{Binding RepairAutostartCommand}" Margin="4"/></WrapPanel>
++  <ItemsControl ItemsSource="{Binding Checks}"><ItemsControl.ItemTemplate><DataTemplate><StackPanel Margin="0,6"><TextBlock Text="{Binding Name}" FontWeight="Bold"/><TextBlock Text="{Binding State}"/><TextBlock Text="{Binding Detail}" TextWrapping="Wrap"/></StackPanel></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
++ </StackPanel></Border>
++ <Border Style="{StaticResource SxCard}" Margin="0,8"><StackPanel>
++  <TextBlock Text="Zweryfikowana aktualizacja portable" FontSize="18"/>
++  <TextBlock Text="Wybierz ZIP i opis dostarczony przez wydawcę. Weryfikacja obejmuje wersję, x64, SHA-256, miejsce, ścieżki archiwum, staging i smoke test. Publikator nie generuje manifestu aktualizacji." TextWrapping="Wrap" Margin="0,8"/>
++  <TextBlock Text="Zaufany publiczny klucz RSA wydawcy (PEM)"/>
++  <TextBox Text="{Binding PublisherPublicKey}" AcceptsReturn="True" MinHeight="100" TextWrapping="Wrap" AutomationProperties.Name="Publiczny klucz wydawcy"/>
++  <CheckBox Content="Wymagaj podpisu RSA-PSS SHA-256" IsChecked="{Binding RequireSignature}" Margin="0,8"/>
++  <WrapPanel><Button Content="Sprawdź i przygotuj aktualizację" Command="{Binding StageUpdateCommand}" Margin="4"/><Button Content="Cofnij do zweryfikowanej wersji" Command="{Binding RollbackCommand}" Margin="4"/></WrapPanel>
++ </StackPanel></Border>
++ <Border Style="{StaticResource SxCard}" Margin="0,8"><StackPanel>
++  <TextBlock Text="Steam: znajdź zainstalowaną grę" FontSize="18"/>
++  <TextBox Text="{Binding SteamQuery}" AutomationProperties.Name="Nazwa gry Steam" Margin="0,8"/>
++  <Button Content="Znajdź AppID" Command="{Binding ResolveSteamCommand}" HorizontalAlignment="Left"/>
++  <ComboBox ItemsSource="{Binding Games}" SelectedItem="{Binding SelectedGame}" DisplayMemberPath="Name" AutomationProperties.Name="Wybór dokładnej gry" Margin="0,8"/>
++  <TextBox Text="{Binding SelectedAppId,Mode=OneWay}" IsReadOnly="True" AutomationProperties.Name="Zweryfikowany AppID"/>
++ </StackPanel></Border>
++ <TextBox Text="{Binding Result,Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" MinHeight="90" AutomationProperties.Name="Wynik diagnostyki lub aktualizacji"/>
++ </StackPanel></ScrollViewer>
++</UserControl>
+\ No newline at end of file
+diff --git a/Views/Pages/MaintenancePage.xaml.cs b/Views/Pages/MaintenancePage.xaml.cs
+new file mode 100644
+index 0000000..df73186
+--- /dev/null
++++ b/Views/Pages/MaintenancePage.xaml.cs
+@@ -0,0 +1,3 @@
++using System.Windows.Controls;
++namespace SentinelX.Views.Pages;
++public partial class MaintenancePage:UserControl { public MaintenancePage()=>InitializeComponent(); }
+diff --git a/docs/ARCHITECTURE.md b/docs/ARCHITECTURE.md
+index d83ffc1..38f405d 100644
+--- a/docs/ARCHITECTURE.md
++++ b/docs/ARCHITECTURE.md
+@@ -1,124 +1,9 @@
+-# Architektura SentinelX (0.90)
+-
+-Dokument opisuje stan faktyczny kodu na gałęzi `arena/01a0ca99-sentinelx`, nie plany.
+-Nazwy typów są rzeczywiste — można ich szukać `grep`-em w repozytorium.
+-
+-## 1. Warstwy
+-
+-```
+-Views/*.xaml            widoki WPF, code-behind ograniczony do okna głównego i overlaya
+-   │  (bindings, commands)
+-ViewModels/*            stan widoku i AsyncRelayCommand (CommunityToolkit.Mvvm), bez logiki domenowej
+-   │  (wywołania serwisów)
+-Services/* + *.cs       cała logika: pomiary, polecenia, pamięć, zadania, projekty, diagnostyka
+-   │  (JSON + odczyt zwrotny)
+-Magazyny lokalne        %LocalAppData%\SentinelX\{Settings,Memory,History,Backups,Logs,Cache}
+-```
+-
+-Zasada pilnowana przez `scripts/check-architecture.py` w CI: widok nie sięga do logiki,
+-ViewModel nie czyta plików bezpośrednio, serwis nie zna WPF.
+-
+-## 2. Ścieżka polecenia (od klawiatury do dowodu)
+-
+-```
+-CommandCenterViewModel.SendMessageCommand
+-  → IActionEngine (ActionEngine): jedna kolejka, zatrzask STOP, korelacja requestId
+-    → IIntentRouter (Services/Intent/IntentRouter)
+-        1. CommandUnderstanding.Repair        literówki i skróty (tylko przepisuje tekst)
+-        2. ReadOnlyCommandService             pomiary z katalogu aliasów (RAM/CPU/GPU/dyski/uptime/zegar/data)
+-        3. Services.Files.IFileService        pliki w jawnie nadanym zakresie
+-        4. SentinelToolboxService             uruchamianie programów, sieć, procesy, raporty
+-        5. CommandRouter                      pamięć, projekty, zadania, snapshoty, narzędzia, insights
+-        6. LocalAiService                     dopiero tu model językowy (wbudowany silnik llama.cpp, bez Ollamy — od 0.94)
+-```
+-
+-Kluczowa decyzja: **model językowy jest na końcu**, więc żadna odpowiedź modelu nie wykonuje
+-polecenia. Każda warstwa zwraca `null`/`NotHandled`, gdy polecenie nie jest jej — dlatego kolejność
+-jest częścią kontraktu, a nie szczegółem implementacji (np. `szukaj wszystkiego: …` jest jawnie
+-wyłączone z wyszukiwarki WWW w `SentinelToolboxService`).
+-
+-## 3. Rozumienie poleceń (`CommandUnderstanding` + `Core/IntentCatalog`)
+-
+-- Odległość Damerau-Levenshteina (transpozycja = 1 edycja), podobieństwo normalizowane długością.
+-- Trzy ścieżki: dokładne trafienie → brak naprawy; skrót z `IntentCatalog.Abbreviations` → rozwinięcie;
+-  w przeciwnym razie ranking fraz (`PhraseSimilarity` = lepsze z podobieństwa całości i dopasowania
+-  słowo po słowie), a dalej naprawa pojedynczych słów ze słownika `IntentCatalog.Vocabulary`.
+-- Progi: 0,80 dla frazy i dla słowa, margines 0,08 wobec drugiej najlepszej kandydatury.
+-- Naprawa **wyłącznie przepisuje tekst**. Katalog nie zawiera czasowników niszczących, więc
+-  literówka nie może wywołać usunięcia danych; `tests/UnderstandingRegression.cs` przegląda katalog
+-  i pilnuje tej własności przy każdej zmianie.
+-- Efekt naprawy jest zawsze komunikowany: „Zrozumiałem jako: …”.
+-
+-## 4. Dowody i statusy
+-
+-`ActionExecutionResult` rozróżnia `VerifiedSuccess` (niezależny odczyt zwrotny: nazwa procesu z PID,
+-hash pliku, powtórny pomiar), `UnverifiedSuccess` (polecenie wysłane, skutek niepotwierdzony)
+-i `Failure`. Status `Verified` w historii pojawia się tylko przy pierwszym wariancie — to reguła
+-produktowa, nie kosmetyka: `zamknij notatnik` bez potwierdzenia procesu nie może być „zweryfikowany”.
+-
+-## 5. Dane i prywatność
+-
+-- Każdy magazyn (`conversation-memory.json`, `tasks.json`, `projects.json`, `snapshots.json`,
+-  `settings.json`) ma: zapis atomowy przez plik tymczasowy, kopię uszkodzonego pliku zamiast
+-  nadpisania, odczyt zwrotny i SHA-256 przy eksporcie.
+-- `MemoryPrivacy` jest czytany **przy każdym wywołaniu** (`PrivacyProvider`), więc przełącznik
+-  w ustawieniach działa bez restartu. Tryb prywatny jest wyłącznie runtime i nigdy nie jest zapisywany.
+-- Archiwum rozmów (`MemoryArchiveService`) pisze do `Memory/Archives/RRRR-MM/` i kasuje wpisy
+-  z magazynu **dopiero po** zgodnym odczycie zwrotnym. Wspomnienia i profil nie podlegają archiwizacji.
+-- `WorkspaceInsightsService.Backup` kopiuje magazyny do `Backups/<data>/` z manifestem hashów
+-  i sprawdza każdą kopię odczytem zwrotnym.
+-
+-## 6. Narzędzia deterministyczne (`UtilityToolbox`)
+-
+-24 narzędzia to czyste funkcje statyczne: wejście → wynik, bez stanu, bez sieci, bez plików.
+-Dzięki temu `tests/UtilityRegression.cs` sprawdza je bezpośrednio, bez WPF i bez maszyny docelowej.
+-Kalkulator jest własnym parserem rekurencyjnym (`ExpressionParser`) — nie `DataTable.Compute`,
+-nie `eval`, nie kod z polecenia użytkownika.
+-
+-## 7. Testy i CI
+-
+-`--ui-smoke` uruchamia zestawy regresji (`tests/*.cs`, od 0.96 także `Testing/ForgeRegression.cs` i `Testing/RoutingRegression.cs`) na prawdziwym DI i prawdziwych stronach,
+-a następnie renderuje każdą stronę, zbierając błędy wiązań WPF z `PresentationTraceSources`.
+-`--self-test` odpala te same zestawy bez UI. CI (`windows-build.yml`): checki architektury → restore →
+-build → smoke UI → regresje → publish portable → sumy kontrolne → smoke portable → instalator Inno →
+-instalacja i smoke zainstalowanej aplikacji → artefakty.
+-
+-## 7a. Układ katalogów (od 0.96)
+-
+-```
+-Brain/            rozumienie i pamięć: CommandUnderstanding, ConversationMemoryService, LocalAiService, filtry
+-Brain/Router/     CommandRouter (ostatnia deterministyczna warstwa przed modelem), DecisionPreview („jak to rozumiem:”)
+-Tools/            UtilityToolbox (+ Extras, ForgeTools), SentinelToolboxService, ProcessToolService
+-Testing/          UiSmokeTestRunner, SelfTestRunner, runnery AI/ASR, RoutingRegression, ForgeRegression
+-Services/, Core/, ViewModels/, Views/   bez zmian
+-```
+-
+-Przestrzenie nazw nie zmieniły się przy przenosinach (`SentinelX`, `SentinelX.Tests`). `scripts/check-architecture.py`
+-pilnuje, że w `Brain/` i `Tools/` nie ma `System.Windows`, a `scripts/check-syntax-lite.py` wyłapuje błędy, które
+-inaczej kosztowałyby cały przebieg Windows CI.
+-
+-## 8. Znane granice architektury
+-
+-- `CommandRouter` jest duży (ponad 500 linii) i łączy obsługę pamięci, projektów, zadań, snapshotów
+-  i narzędzi. Rozbicie go jest na backlogu; celowo nie zrobiono tego w 0.90, bo plik jest gęsto
+-  pokryty testami i refaktor bez zielonego CI byłby ryzykiem, nie poprawą.
+-- Naprawa literówek działa na katalogu tekstowym — nie rozumie odmiany ani kontekstu rozmowy.
+-- Brak bazy danych: magazyny JSON wystarczają przy obecnych limitach (720 wpisów rozmowy,
+-  500 wspomnień, 500 zadań, 200 projektów, 20 odczytów). Próg, przy którym warto rozważyć SQLite,
+-  to realne przekroczenie tych limitów przez użytkownika, nie przewidywanie.
+-
+-## 9. Telefon, silnik AI i opiekun (0.94)
+-
+-```
+-Views/Link/*            okno zgody na parowanie (PairingWindow), panel „Telefon” z kodem QR (PhoneLinkWindow), LinkUi — kod w C#, bez XAML
+-Services/Link/*         serwer HTTPS dla telefonu: LinkService (TLS, routing, parowanie, wykrywanie UDP), LinkApi (endpointy po zalogowaniu),
+-                        LinkHttp (parser HTTP/1.1 i odpowiedzi, SSE), LinkCertificate (certyfikat + DPAPI), LinkDeviceStore (hasze tokenów), AlertFeed
+-Services/Engine/*       wbudowany silnik AI: EngineCatalog (przypięte wersje i SHA-256), EngineDownloader (wznawianie), LlamaServerHost (proces potomny),
+-                        EngineOllamaFacade (dialekt Ollamy w procesie → llama-server), EngineService (automatyczna instalacja i cykl życia)
+-Services/Care/*         CareService: start i pilnowanie łącza oraz silnika, autopilot (jednorazowo), alerty, linia „Wszystko działa samo”
+-Phone/web/*             interfejs telefonu (HTML/CSS/JS), osadzony w exe i serwowany przez LinkService
+-phone-android/*         aplikacja Android (Java, bez bibliotek): powłoka WebView + wykrywanie + przypięty certyfikat + alerty + WoL
+-```
+-
+-Polecenie z telefonu: `LinkApi` → `IActionEngine.ExecuteAsync(..., fromVoice: true)` — ta sama kolejka, te same dowody, te same zgody; ryzykowne akcje zatwierdza się wyłącznie na komputerze.
+-Protokół i model bezpieczeństwa: [PHONE-LINK.md](PHONE-LINK.md). Silnik AI: [ENGINE.md](ENGINE.md).
++# Architektura Build 1.0
++
++Windows: istniejący shell MVVM + BaseViewModel + MaintenanceViewModel. Serwisy oddzielają UI od operacji systemowych.
++WindowsBaseService utrzymuje TLS, heartbeat co 15 s, metryki/MAC, polling i osobny worker kolejki. Mikrofon nie kontroluje tych pętli. Granty i allowlista są sprawdzane lokalnie.
++AgentQueue zapisuje stan atomowo przez DPAPI CurrentUser, nie powtarza running po restarcie; zadania wygasają do 5 min, wymagają odblokowanej sesji i lokalnej zgody na zasilanie/instalację.
++Android: panel PC pozostaje dostępny. BaseActivity jest niezależny od PC: discovery, pinned TLS, challenge, capabilities, status, urządzenia, sceny, WoL, zadania i timery. Sekrety i token PC są szyfrowane kluczem AES-GCM z Keystore.
++VerifiedUpdater konsumuje zewnętrzny opis, weryfikuje pakiet, staging, inventory, smoke i zapisuje wskaźnik aktywnej/ostatniej dobrej wersji. Trzy niezdrowe starty w 5 min powodują rollback.
++OllamaSupervisor pilnuje jednej lokalnej instancji i nie ładuje modelu. Dotychczasowy silnik llama.cpp pozostaje w paczce.
++Base/relay są niezależnymi urządzeniami. Brak fizycznej Base i wdrożonego relayu jest jawnie opisany w BLOCKERS.md.
+diff --git a/docs/BUILD.md b/docs/BUILD.md
+new file mode 100644
+index 0000000..d8cab7b
+--- /dev/null
++++ b/docs/BUILD.md
+@@ -0,0 +1,8 @@
++# Budowanie
++
++Windows: `dotnet run --project verification/Build1/Build1.csproj -c Release`; `python scripts/check-architecture.py`; `dotnet publish SENTINEL-X.csproj -c Release -r win-x64 --self-contained true -o bin/portable`.
++Na Linuxie kompilacja wymaga `-p:EnableWindowsTargeting=true`; uruchomienie WPF wymaga Windows. Silnik: `pwsh scripts/fetch-llama.ps1` na Windows, SHA-256 przypięty w EngineCatalog. Instalator: Inno Setup 6, `ISCC /DAppVersion=1.0.0 installer/SentinelX.iss`.
++Android: JDK 17 + SDK/platform/build-tools 35; `cd phone-android && ./gradlew --no-daemon lintDebug testDebugUnitTest assembleDebug`. Wrapper i dystrybucja mają checksum. Lint błędy zatrzymują build.
++Produkcja: SX_ANDROID_KEYSTORE, SX_ANDROID_STORE_PASSWORD, SX_ANDROID_KEY_ALIAS, SX_ANDROID_KEY_PASSWORD ze środowiska. Brak klucza daje unsigned release; debug APK jest wyłącznie verification/debug.
++TLS integracja: `python scripts/test-sx4-tls.py` (Python + openssl + javac/java + dotnet). Testuje rzeczywiste klienty C# i Java z lokalnym TLS fixture, bez ESP32.
++CI: ci-windows.yml, ci-android.yml, security-check.yml; release.yml czeka na wszystkie trzy. Stare nazwy workflow są ręcznymi wrapperami.
+diff --git a/docs/PROTOCOL_SX4.md b/docs/PROTOCOL_SX4.md
+new file mode 100644
+index 0000000..aef020e
+--- /dev/null
++++ b/docs/PROTOCOL_SX4.md
+@@ -0,0 +1,23 @@
++# SX4 — rzeczywisty kontrakt binarny
++
++Zgodność binarna z dostarczonym V4/4.2.1: 49-bajtowy nagłówek.
++
++| Offset | Pole | Format |
++|---|---|---|
++|0|deviceId|uint16 big endian|
++|2|opcode|uint8|
++|3|nonce|uint32 big endian|
++|7|timestamp|uint64 big endian, Unix ms|
++|15|payload length|uint16 big endian, max 16384|
++|17|HMAC|SHA-256, 32 bajty|
++|49|payload|surowe bajty|
++
++HMAC obejmuje pierwsze 17 bajtów + surowy payload. Porównanie stałoczasowe. Timestamp ±5 s; replay cache 10 s; limit 120/min; klucz 32 bajty osobny dla urządzenia.
++OpCode **201** jest rozszerzeniem dla typed JSON. V4.2.1 opisuje opcodes 1–200, dlatego obsługa 201 musi być jawnie wdrożona w Base; nie deklarujemy zgodności pełnej usługi ze stock firmware.
++Payload ma dokładnie: version=4, type, requestId UUID, correlationId pusty albo UUID, expiresAt Unix ms do 5 min, data object. UTF-8 jest ścisłe; duplikaty nazw (także w zagnieżdżeniach), nadmiarowe pola i głębokość >16 są odrzucane.
++Przykład bez sekretów: `{"version":4,"type":"status","requestId":"00000000-0000-0000-0000-000000000001","correlationId":"","expiresAt":<przyszły Unix ms>,"data":{}}`.
++Odrzucane: version=3, powtórzony nonce, `type=../shell`, wygasła komenda, zły HMAC, response z innym correlationId.
++TLS 1.2/1.3 pin SHA-256 ważnego certyfikatu. session.prove niesie losowy challenge; Base odpowiada session.proved ze zgodnym echo i HMAC. Base ustala role/granty z wcześniej provisionowanego deviceId, nigdy z deklaracji klienta.
++Negocjacja capabilities zwraca types (max 32). Dopiero zadeklarowane typy można wywoływać. Każdy wynik ma type + .result albo error/code; zadania: accepted, running, succeeded, failed, expired, cancelled.
++LAN UDP 42421: SX4_DISCOVER_V421:<nonce>; JSON protocol, nonce, baseId, port, fingerprint, name. Discovery nie ustanawia zaufania — fingerprint porównuje się z fizyczną Base.
++Po IO błędzie retry 1–60 s + jitter, rediscovery tylko dla zgodnego BaseId i pinu. Auth/revocation/protocol powodują blokadę do ponownego parowania. Komendy telefonu nie są ponawiane automatycznie.
+diff --git a/docs/RELEASE.md b/docs/RELEASE.md
+new file mode 100644
+index 0000000..179dca9
+--- /dev/null
++++ b/docs/RELEASE.md
+@@ -0,0 +1,7 @@
++# Wydanie 1.0
++
++Semver 1.0.0; Android versionCode 100. Kontrakt: SentinelX-1.0.0-win-x64-setup.exe, portable ZIP, SentinelX-1.0.0-android.apk, wspólne SHA256SUMS.txt. **Manifest aktualizacji pominięty na polecenie użytkownika.**
++Publikator jest jeden, needs Windows + Android + security, waliduje wszystkie realne pliki razem. Brak pliku/hash/manifestu APK/runtime/x64/engine lub wynik testu != PASS blokuje publikację.
++Ręczne wydanie verification/debug jest prerelease z tagiem zależnym od SHA i nie przesuwa latest. Stabilne v1.0.0 wymaga produkcyjnego podpisu APK i jawnego potwierdzenia sprzętowych testów; dopiero potem latest.
++Windows EXE pozostaje bez Authenticode, gdy właściciel nie dostarczy certyfikatu. SHA-256 i testy nie oznaczają podpisu wydawcy.
++Źródłem prawdy jest konkretny commit/run i załączone logi, nigdy sama nazwa wersji. Nie deklarować RELEASE READY bez wszystkich gates.
+diff --git a/docs/RELEASE_NOTES.md b/docs/RELEASE_NOTES.md
+new file mode 100644
+index 0000000..6d5d6d0
+--- /dev/null
++++ b/docs/RELEASE_NOTES.md
+@@ -0,0 +1,6 @@
++Sentinel X Build 1.0 / 1.0.0
++
++Dodano binarny SX4, pinned TLS, challenge/capabilities, szyfrowaną kolejkę PC Agenta z expiry/zgodami/audytem, heartbeat niezależny od mikrofonu i panel Base na Windows/Android. Zachowano dotychczasowy panel PC/PWA, głos, tray i silnik AI.
++Dodano lokalny resolver Steam, nadzór Ollamy bez autoload modelu, diagnostykę/naprawę oraz konsumenta zweryfikowanych pakietów ze staging, health i rollback. CI łączy EXE/APK/security przed publikacją.
++Manifest aktualizacji nie jest generowany na polecenie właściciela.
++APK z wydania verification jest **debug-signed**, Windows jest bez Authenticode. Produkcja wymaga zewnętrznego klucza Androida. Pełna próba z ESP32/relay/LTE i sprzętem użytkownika pozostaje osobnym testem; stock V4.2.1 musi wdrożyć rozszerzenie 201.
+diff --git a/docs/REMOTE_ACCESS.md b/docs/REMOTE_ACCESS.md
+new file mode 100644
+index 0000000..7d827dc
+--- /dev/null
++++ b/docs/REMOTE_ACCESS.md
+@@ -0,0 +1,6 @@
++# LAN i poza domem
++
++LAN działa bez Internetu po provisionowaniu TLS/sekretów. PC i telefon łączą się wychodząco do skonfigurowanej Base. Tryby lan/vpn/relay korzystają z jednego uwierzytelnionego transportu TLS i pinu.
++VPN: podaj prywatny adres Base osiągalny przez własny tunel; fingerprint i sekret pozostają wymagane. Relay: podaj własny kompatybilny TLS endpoint; nie istnieje domyślny publiczny relay.
++Nie ustawiaj przekierowania portu Base jako domyślnej konfiguracji. Dostarczony master firmware nie implementuje jeszcze pełnego transportu TLS/relay. Brak wdrożenia i rzeczywistej próby LTE jest BLOCKED.
++Zmiana Wi-Fi/LTE zamyka stare połączenie telefonu i ponownie uwierzytelnia. Po stop Activity transport jest zamknięty. Odczyty mogą wrócić; komendy nie są automatycznie ponawiane.
+diff --git a/docs/REPOSITORY_AUDIT.md b/docs/REPOSITORY_AUDIT.md
+new file mode 100644
+index 0000000..e8408d8
+--- /dev/null
++++ b/docs/REPOSITORY_AUDIT.md
+@@ -0,0 +1,9 @@
++# Audyt Build 1.0
++
++Repo bazowe: main 3d202c53041d31f24537bf91bc89aba4f3bbbb90 (0.96.0).
++Windows: C# / .NET 10 WPF, Microsoft DI, CommunityToolkit MVVM. Android: Java 17, AGP 8.7.3, SDK 35, Gradle 8.9.
++Wejścia: App.xaml.cs; MainActivity (dotychczasowy panel PC); BaseActivity (natywna Base). Agent: WindowsBaseService.
++Zachowane: Brain/Router, Tools, legacy UI, polski głos i wake word, pamięć, tray, single-instance, telefon/PWA, wbudowany llama.cpp.
++Usunięto z bieżącego drzewa prywatny P12 i hasła podpisu, wyłączanie błędów lint. Starsza historia zawiera stary klucz; nie należy używać go do produkcji.
++Pierwszy build wykrył nullable query i użycie wygenerowanych pól MVVM. Naprawiono. Nowe widoki wymagają 15 stron w kontroli architektury.
++Nie przepisywano frameworków. Fizyczna Base nie znajduje się w repo. Dostarczony master 4.2.1 ma transport TLS/relay pozostawiony jako TODO.
+diff --git a/docs/SECURITY.md b/docs/SECURITY.md
+new file mode 100644
+index 0000000..48aeb5b
+--- /dev/null
++++ b/docs/SECURITY.md
+@@ -0,0 +1,9 @@
++# Bezpieczeństwo
++
++Sekrety Windows: DPAPI CurrentUser; Android: AES-256-GCM, losowy IV i AAD nazwy wpisu, klucz nieeksportowalny Android Keystore. Legacy token migruje i jest usuwany ze zwykłych preferences. Natywny WebView korzysta z Keystore, nie duplikuje tokena w localStorage.
++Certyfikat Base jest pinned i musi być ważny; nie ma publicznego nieuwierzytelnionego endpointu. LAN discovery jest tylko listą kandydatów. Role/granty Base muszą pochodzić z provisionowania urządzenia.
++Allowlista: lock, sleep/restart/shutdown ze zgodą, Sentinel show, notification, Ollama ensure, Steam run/install przez kanoniczny uint AppID. Brak arbitralnego shell. Stałe lokalne programy i argumenty nie są komendą otrzymaną z sieci.
++Usunięcie/re-pair/revocation anuluje starą kolejkę. Audit zapisuje czas, request, device, operację, cel i wynik; treść notification jest redagowana. Limity ramki, czasu, nonce/rate i liczby zadań chronią zasoby.
++P12 z dawnej wersji usunięty. Klucz nadal może występować w historii; nie wolno ufać mu jako sekretowi produkcyjnemu. Nowy klucz produkcyjny dostarcza właściciel poza repo. Nie zmieniamy historii Git.
++Updater: zewnętrzny opis o ścisłych polach, RSA-PSS SHA-256 (domyślnie wymagany), hash całego ZIP, semver, x64, brak downgrade/traversal/symlink i limity. Publiczny klucz trzeba uzyskać z zaufanego źródła. Wyłączenie wymagania podpisu pozostawia obowiązkowy SHA-256.
++Nie ma analityki zewnętrznej, haseł Windows/Steam, nagrywania mikrofonu domyślnie ani root Androida.
+diff --git a/docs/SELF_HEALING.md b/docs/SELF_HEALING.md
+new file mode 100644
+index 0000000..1e69f02
+--- /dev/null
++++ b/docs/SELF_HEALING.md
+@@ -0,0 +1,8 @@
++# Diagnostyka, naprawa i aktualizacje
++
++Panel Diagnostyka/aktualizacje sprawdza autostart, sieć, gateway/DNS, dysk, katalog ustawień, stan Base/SX4, DPAPI, relay/VPN, Steam, Ollama, logi i licznik crash-loop. Internet i Android mają osobne ograniczenia opisane w wyniku; diagnostyka offline nie wysyła raportów.
++Naprawa kolejki: zatrzymanie workera, detect → exact backup → repair → decrypt/readback verify → result. Uszkodzony plik nie jest kasowany po cichu. Naprawa katalogów zachowuje dane użytkownika; autostart zapisuje i odczytuje wpis HKCU.
++Aktualizacja: wybierz portable ZIP i **istniejący opis dostarczony przez wydawcę**. Pola opisu: Version, Architecture=win-x64, Sha256, Size, opcjonalne Signature. To wejście konsumenta; żaden build/release nie generuje manifestu aktualizacji zgodnie z decyzją użytkownika.
++Podpis: RSA-PSS SHA-256 nad UTF-8: SXUP1 + newline, Version + newline, Architecture + newline, Sha256 lowercase + newline, Size + newline.
++Po hash/signature/space/ZIP/path/x64/product-version checks pakiet trafia do staging. Dokładny kandydat wykonuje --ui-smoke; brak sukcesu nie zmienia aktywnej wersji. Inventory wszystkich plików sprawdza także rollback.
++Następny start przekierowuje do aktywnej wersji. Po 20 sekundach zdrowego działania licznik się zeruje. Trzy starty bez zdrowia w 5 minut cofają do last-known-good. Ręczny rollback w panelu również weryfikuje inventory.
+diff --git a/docs/TROUBLESHOOTING.md b/docs/TROUBLESHOOTING.md
+new file mode 100644
+index 0000000..c306498
+--- /dev/null
++++ b/docs/TROUBLESHOOTING.md
+@@ -0,0 +1,10 @@
++# Rozwiązywanie problemów
++
++Base niewidoczna: ta sama prywatna sieć, UDP 42421 i zgodny discovery; ręczny adres też działa. Nie ufaj pinowi wyłącznie z UDP.
++Auth/replay/revoked: połączenie blokowane. Sprawdź zegary (±5 s), provisionowanie osobnego ID/sekretu i ważny certyfikat. Unieważnij stary sekret po obu stronach i sparuj ponownie.
++unsupported/opcode: firmware nie negocjuje typu/rozszerzenia 201. Stock master 4.2.1 nie daje gotowego transportu tego rozszerzenia.
++PC locked/offline: zadanie czeka na odblokowaną sesję do expiry. Power/Steam install wymaga lokalnej zgody, która także wygasa.
++Steam interaction_required oznacza tylko przekazanie do Steam; aplikacja nie potwierdza instalacji/logowania bez dowodu.
++Ollama unavailable: zainstaluj lokalnie i sprawdź loopback 11434; ensure nie ładuje modelu.
++Updater hash/signature/path/version/health: pakiet odrzucony, aktywna wersja zachowana. Nie wyłączaj weryfikacji, aby przepchnąć wadliwy pakiet.
++Debug APK nie aktualizuje starej instalacji podpisanej innym kluczem. Wersja produkcyjna wymaga własnego stałego klucza. Nie nazywaj debug APK produkcyjnym.
+diff --git a/phone-android/app/src/main/java/pl/sentinelx/phone/AlertJobService.java b/phone-android/app/src/main/java/pl/sentinelx/phone/AlertJobService.java
+index d30effc..768fe65 100644
+--- a/phone-android/app/src/main/java/pl/sentinelx/phone/AlertJobService.java
++++ b/phone-android/app/src/main/java/pl/sentinelx/phone/AlertJobService.java
+@@ -15,6 +15,7 @@ import java.io.IOException;
+ /** Every ~15 minutes (the Android minimum) asks the PC for new alerts and shows them as notifications — no account, no cloud, no foreground service. */
+ public class AlertJobService extends JobService {
+     private static final int JOB_ID = 94;
++    private volatile long generation;private volatile BaseClient jobClient;private Thread jobThread;
+ 
+     static void schedule(Context context) {
+         try {
+@@ -34,23 +35,26 @@ public class AlertJobService extends JobService {
+     @Override
+     public boolean onStartJob(JobParameters params) {
+         final Context context = getApplicationContext();
+-        new Thread(() -> {
++        final long epoch=++generation;
++        jobThread=new Thread(() -> {
+             try {
+-                pollOnce(context);
++                pollBase(context,epoch);
++                if(epoch==generation)pollOnce(context,()->epoch==generation);
+             } catch (Exception ignored) {
+                 // next run will try again
+             } finally {
+-                jobFinished(params, false);
++                if(epoch==generation)jobFinished(params, false);
+             }
+-        }, "sentinelx-alerts").start();
++        }, "sentinelx-alerts");jobThread.start();
+         return true;
+     }
+ 
+     @Override
+-    public boolean onStopJob(JobParameters params) { return true; }
++    public boolean onStopJob(JobParameters params) { generation++;BaseClient c=jobClient;if(c!=null)c.close();if(jobThread!=null)jobThread.interrupt();return true; }
+ 
+     /** One polling round; also used when the app is opened. The first round only remembers the current state, so old alerts are not replayed. */
+-    static void pollOnce(Context context) throws Exception {
++    static void pollOnce(Context context) throws Exception {pollOnce(context,()->true);}
++    private static void pollOnce(Context context,java.util.function.BooleanSupplier current) throws Exception {
+         Session session = new Session(context);
+         if (!session.hasPc() || !session.hasToken()) return;
+         String body;
+@@ -73,10 +77,29 @@ public class AlertJobService extends JobService {
+             for (int i = 0; i < alerts.length(); i++) {
+                 JSONObject alert = alerts.getJSONObject(i);
+                 long id = alert.optLong("id");
+-                if (id > previous) Notifier.post(context, id, alert.optString("level", "info"), alert.optString("title", ""), alert.optString("text", ""));
++                if (id > previous && current.getAsBoolean()) Notifier.post(context, id, alert.optString("level", "info"), alert.optString("title", ""), alert.optString("text", ""));
+             }
+         }
+-        session.setLastAlert(json.optLong("last", previous));
++        if(current.getAsBoolean())session.setLastAlert(json.optLong("last", previous));
++    }
++
++    private void pollBase(Context context,long epoch) throws Exception {
++        BaseSession session=new BaseSession(context);if(session.configuration()==null||session.blocked())return;
++        try(BaseClient connection=session.open()){
++            jobClient=connection;if(epoch!=generation)return;connection.connect();
++            if(!connection.supports("notifications")||epoch!=generation)return;
++            java.util.Map<String,Object> response=StrictJson.object(connection.request("notifications",StrictJson.map("after",session.lastAlert())).get("data"));
++            Object alerts=response.get("alerts");long previous=session.lastAlert(),last=previous;
++            if(alerts instanceof java.util.List){if(((java.util.List<?>)alerts).size()>32)throw new Sx4.Error("size");
++                for(Object item:(java.util.List<?>)alerts){java.util.Map<String,Object> a=StrictJson.object(item);long id=((Number)a.get("id")).longValue();last=Math.max(last,id);
++                    if(epoch==generation&&previous!=0&&id>previous)Notifier.post(context,id,String.valueOf(a.getOrDefault("level","info")),String.valueOf(a.getOrDefault("title","Base")),String.valueOf(a.getOrDefault("text","")));
++                }
++            }
++            if(response.get("last") instanceof Number)last=Math.max(last,((Number)response.get("last")).longValue());
++            if(epoch==generation)session.lastAlert(last);
++        }catch(Sx4.Error e){if(!e.code.equals("unsupported")&&epoch==generation)session.setBlocked(true);}
++        catch(IOException ignored){/* next periodic job reconnects; no command retries */}
++        finally{jobClient=null;}
+     }
+ 
+     private static String fetch(Session session) throws IOException {
+diff --git a/phone-android/app/src/main/java/pl/sentinelx/phone/BaseActivity.java b/phone-android/app/src/main/java/pl/sentinelx/phone/BaseActivity.java
+index 61f0008..5c38886 100644
+--- a/phone-android/app/src/main/java/pl/sentinelx/phone/BaseActivity.java
++++ b/phone-android/app/src/main/java/pl/sentinelx/phone/BaseActivity.java
+@@ -23,7 +23,7 @@ public final class BaseActivity extends Activity {
+  private ConnectivityManager.NetworkCallback network;
+  private final Runnable poll=()->submitQuery("status");
+  @Override public void onCreate(Bundle state){
+-  super.onCreate(state);session=new BaseSession(this);worker=Executors.newSingleThreadExecutor();
++  super.onCreate(state);session=new BaseSession(this);blocked=session.blocked();worker=Executors.newSingleThreadExecutor();
+   ScrollView scroll=new ScrollView(this);LinearLayout box=new LinearLayout(this);box.setOrientation(1);box.setPadding(22,24,22,24);box.setBackgroundColor(0xff0d0f14);scroll.addView(box);setContentView(scroll);
+   label(box,"Sentinel Base · SX4 · 1.0.0",23);status=label(box,"Nie sparowano",16);result=label(box,"Porównaj fingerprint z Base. Sekret jest osobny dla telefonu.",14);result.setTextIsSelectable(true);
+   host=field(box,"Adres Base / VPN / relay",InputType.TYPE_CLASS_TEXT);
+@@ -131,7 +131,7 @@ public final class BaseActivity extends Activity {
+   if(value instanceof List){List<Object> safe=new ArrayList<>();for(Object x:(List<?>)value)safe.add(redact(x));return safe;}return value;
+  }
+  private void showError(Exception e){
+-  if(e instanceof Sx4.Error){String code=((Sx4.Error)e).code;if(!code.equals("unsupported")&&!code.equals("not_paired")){blocked=true;disconnect();}result.setText("SX4: "+code+(blocked?" · sprawdź tożsamość i sparuj ponownie":""));}
++  if(e instanceof Sx4.Error){String code=((Sx4.Error)e).code;if(!code.equals("unsupported")&&!code.equals("not_paired")){blocked=true;session.setBlocked(true);disconnect();}result.setText("SX4: "+code+(blocked?" · sprawdź tożsamość i sparuj ponownie":""));}
+   else result.setText("Połączenie przerwane. Komendy nie są automatycznie powtarzane.");
+  }
+  private void disconnect(){generation++;connectingEpoch=-1;ui.removeCallbacks(poll);BaseClient c=client;client=null;if(c!=null)c.close();}
+diff --git a/phone-android/app/src/main/java/pl/sentinelx/phone/BaseSession.java b/phone-android/app/src/main/java/pl/sentinelx/phone/BaseSession.java
+index 7f79d32..4b529b5 100644
+--- a/phone-android/app/src/main/java/pl/sentinelx/phone/BaseSession.java
++++ b/phone-android/app/src/main/java/pl/sentinelx/phone/BaseSession.java
+@@ -2,14 +2,18 @@ package pl.sentinelx.phone;
+ import android.content.Context;
+ import java.util.Map;
+ final class BaseSession {
+- private final SecretStore store;
+- BaseSession(Context context){store=new SecretStore(context);}
++ private final SecretStore store;private final android.content.SharedPreferences state;
++ BaseSession(Context context){store=new SecretStore(context);state=context.getSharedPreferences("base.state",Context.MODE_PRIVATE);}
+  Map<String,Object> configuration(){try{String saved=store.get("base.identity");return saved.isEmpty()?null:StrictJson.object(StrictJson.parse(saved));}catch(Exception e){return null;}}
+- BaseClient open() throws Exception {Map<String,Object> c=configuration();if(c==null)throw new Sx4.Error("not_paired");return create(c);}
++ BaseClient open() throws Exception {if(blocked())throw new Sx4.Error("revoked");Map<String,Object> c=configuration();if(c==null)throw new Sx4.Error("not_paired");return create(c);}
+  static BaseClient create(Map<String,Object> c) throws Exception {
+   Object mode=c.get("mode");if(!("lan".equals(mode)||"vpn".equals(mode)||"relay".equals(mode)))throw new Sx4.Error("mode");
+   return new BaseClient((String)c.get("host"),((Number)c.get("port")).intValue(),(String)c.get("fingerprint"),((Number)c.get("deviceId")).intValue(),((Number)c.get("baseId")).intValue(),(String)c.get("secret"));
+  }
+- void save(Map<String,Object> c){store.put("base.identity",StrictJson.encode(c));}
+- void forget(){store.remove("base.identity");}
++ void save(Map<String,Object> c){store.put("base.identity",StrictJson.encode(c));setBlocked(false);state.edit().remove("lastAlert").apply();}
++ void forget(){store.remove("base.identity");setBlocked(false);state.edit().remove("lastAlert").apply();}
++ boolean blocked(){return state.getBoolean("blocked",false);}
++ void setBlocked(boolean value){state.edit().putBoolean("blocked",value).apply();}
++ long lastAlert(){return state.getLong("lastAlert",0);}
++ void lastAlert(long id){state.edit().putLong("lastAlert",id).apply();}
+ }
+diff --git a/phone-android/app/src/test/java/pl/sentinelx/phone/KernelContract.java b/phone-android/app/src/test/java/pl/sentinelx/phone/KernelContract.java
+new file mode 100644
+index 0000000..f3abb9b
+--- /dev/null
++++ b/phone-android/app/src/test/java/pl/sentinelx/phone/KernelContract.java
+@@ -0,0 +1,42 @@
++package pl.sentinelx.phone;
++import java.nio.charset.StandardCharsets;
++import java.util.*;
++public final class KernelContract {
++ static int checks;
++ interface Throws {void run()throws Exception;}
++ static void check(boolean pass,String name){if(!pass)throw new AssertionError(name);checks++;System.out.println("PASS "+name);}
++ static void reject(Throws action,String code)throws Exception{try{action.run();throw new AssertionError("accepted "+code);}catch(Sx4.Error e){check(e.code.equals(code),"reject "+code);}}
++ public static void run() throws Exception {
++  byte[] key=new byte[32];new java.security.SecureRandom().nextBytes(key);long now=System.currentTimeMillis();
++  byte[] payload="{\"test\":\"Zażółć 🛰\"}".getBytes(StandardCharsets.UTF_8);
++  byte[] raw=Sx4.encode(new Sx4.Frame(7,201,-1,now,payload),key);
++  check(Sx4.utf8(Sx4.decode(raw,key).payload).contains("Zażółć"),"binary unicode");
++  try(Sx4.Authority authority=new Sx4.Authority(7,key)){authority.verify(raw,now);reject(()->authority.verify(raw,now),"replay");}
++  try(Sx4.Authority authority=new Sx4.Authority(7,key)){reject(()->authority.verify(raw,now+5001),"timestamp");}
++  try(Sx4.Authority authority=new Sx4.Authority(8,key)){reject(()->authority.verify(raw,now),"device");}
++  byte[] changed=raw.clone();changed[changed.length-1]^=1;reject(()->Sx4.decode(changed,key),"auth");
++  reject(()->Sx4.decode(Arrays.copyOf(raw,raw.length-1),key),"size");
++  reject(()->Sx4.decode(new byte[1],key),"format");
++  reject(()->Sx4.encode(new Sx4.Frame(1,201,1,now,new byte[16385]),key),"format");
++  reject(()->Sx4.utf8(new byte[]{(byte)255}),"utf8");
++  Sx4.Authority revoked=new Sx4.Authority(7,key);revoked.close();reject(()->revoked.verify(raw,now),"revoked");
++  try(Sx4.Authority authority=new Sx4.Authority(7,key)){for(int i=0;i<120;i++)authority.verify(Sx4.encode(new Sx4.Frame(7,201,i,now,payload),key),now);reject(()->authority.verify(Sx4.encode(new Sx4.Frame(7,201,121,now,payload),key),now),"rate_limit");}
++  reject(()->StrictJson.parse("{\"test\":1,\"TEST\":2}"),"duplicate_key");
++  reject(()->StrictJson.parse("{\"nested\":{\"a\":1,\"A\":2}}"),"duplicate_key");
++  check(StrictJson.object(StrictJson.parse("{\"version\":4}")).get("version") instanceof Long,"version is integral Long");
++  check(StrictJson.parse(StrictJson.encode(StrictJson.map("test","Zażółć 🛰","array",Arrays.asList(1,2)))) instanceof Map,"JSON roundtrip");
++  reject(()->new BaseClient("localhost",443,new String(new char[64]).replace('\0','0'),3,3,new String(new char[64]).replace('\0','0')),"configuration");
++  System.out.println("PASS "+checks+" Java checks");
++ }
++ public static void main(String[] args)throws Exception {
++  if(args.length==0){run();return;}
++  String mode=args[0];int port=Integer.parseInt(args[1]);String pin=args[2],secret=args[3];
++  try(BaseClient client=new BaseClient("127.0.0.1",port,pin,3,1,secret)){
++   try{client.connect();if(mode.equals("ok")){
++    check(client.supports("status"),"capability");Map<String,Object> reply=client.request("status",StrictJson.map());check(Boolean.TRUE.equals(StrictJson.object(reply.get("data")).get("online")),"TLS Base status");
++    reject(()->client.request("shell",StrictJson.map()),"unsupported");
++   }else{client.request("status",StrictJson.map());throw new AssertionError("bad server accepted");}}
++   catch(Exception e){if(mode.equals("ok"))throw e;if(e instanceof Sx4.Error)check(((Sx4.Error)e).code.equals(mode),"TLS reject "+mode);else if(mode.equals("pin"))check(true,"TLS pin rejected");else throw e;}
++  }
++ }
++}
+diff --git a/phone-android/app/src/test/java/pl/sentinelx/phone/KernelTest.java b/phone-android/app/src/test/java/pl/sentinelx/phone/KernelTest.java
+new file mode 100644
+index 0000000..885c236
+--- /dev/null
++++ b/phone-android/app/src/test/java/pl/sentinelx/phone/KernelTest.java
+@@ -0,0 +1,2 @@
++package pl.sentinelx.phone;
++public class KernelTest { @org.junit.Test public void securityContracts() throws Exception {KernelContract.run();} }
+diff --git a/phone-android/gradlew.bat b/phone-android/gradlew.bat
+index 9b42019..9d21a21 100644
+--- a/phone-android/gradlew.bat
++++ b/phone-android/gradlew.bat
+@@ -1,94 +1,94 @@
+-@rem
+-@rem Copyright 2015 the original author or authors.
+-@rem
+-@rem Licensed under the Apache License, Version 2.0 (the "License");
+-@rem you may not use this file except in compliance with the License.
+-@rem You may obtain a copy of the License at
+-@rem
+-@rem      https://www.apache.org/licenses/LICENSE-2.0
+-@rem
+-@rem Unless required by applicable law or agreed to in writing, software
+-@rem distributed under the License is distributed on an "AS IS" BASIS,
+-@rem WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-@rem See the License for the specific language governing permissions and
+-@rem limitations under the License.
+-@rem
+-@rem SPDX-License-Identifier: Apache-2.0
+-@rem
+-
+-@if "%DEBUG%"=="" @echo off
+-@rem ##########################################################################
+-@rem
+-@rem  Gradle startup script for Windows
+-@rem
+-@rem ##########################################################################
+-
+-@rem Set local scope for the variables with windows NT shell
+-if "%OS%"=="Windows_NT" setlocal
+-
+-set DIRNAME=%~dp0
+-if "%DIRNAME%"=="" set DIRNAME=.
+-@rem This is normally unused
+-set APP_BASE_NAME=%~n0
+-set APP_HOME=%DIRNAME%
+-
+-@rem Resolve any "." and ".." in APP_HOME to make it shorter.
+-for %%i in ("%APP_HOME%") do set APP_HOME=%%~fi
+-
+-@rem Add default JVM options here. You can also use JAVA_OPTS and GRADLE_OPTS to pass JVM options to this script.
+-set DEFAULT_JVM_OPTS="-Xmx64m" "-Xms64m"
+-
+-@rem Find java.exe
+-if defined JAVA_HOME goto findJavaFromJavaHome
+-
+-set JAVA_EXE=java.exe
+-%JAVA_EXE% -version >NUL 2>&1
+-if %ERRORLEVEL% equ 0 goto execute
+-
+-echo. 1>&2
+-echo ERROR: JAVA_HOME is not set and no 'java' command could be found in your PATH. 1>&2
+-echo. 1>&2
+-echo Please set the JAVA_HOME variable in your environment to match the 1>&2
+-echo location of your Java installation. 1>&2
+-
+-goto fail
+-
+-:findJavaFromJavaHome
+-set JAVA_HOME=%JAVA_HOME:"=%
+-set JAVA_EXE=%JAVA_HOME%/bin/java.exe
+-
+-if exist "%JAVA_EXE%" goto execute
+-
+-echo. 1>&2
+-echo ERROR: JAVA_HOME is set to an invalid directory: %JAVA_HOME% 1>&2
+-echo. 1>&2
+-echo Please set the JAVA_HOME variable in your environment to match the 1>&2
+-echo location of your Java installation. 1>&2
+-
+-goto fail
+-
+-:execute
+-@rem Setup the command line
+-
+-set CLASSPATH=%APP_HOME%\gradle\wrapper\gradle-wrapper.jar
+-
+-
+-@rem Execute Gradle
+-"%JAVA_EXE%" %DEFAULT_JVM_OPTS% %JAVA_OPTS% %GRADLE_OPTS% "-Dorg.gradle.appname=%APP_BASE_NAME%" -classpath "%CLASSPATH%" org.gradle.wrapper.GradleWrapperMain %*
+-
+-:end
+-@rem End local scope for the variables with windows NT shell
+-if %ERRORLEVEL% equ 0 goto mainEnd
+-
+-:fail
+-rem Set variable GRADLE_EXIT_CONSOLE if you need the _script_ return code instead of
+-rem the _cmd.exe /c_ return code!
+-set EXIT_CODE=%ERRORLEVEL%
+-if %EXIT_CODE% equ 0 set EXIT_CODE=1
+-if not ""=="%GRADLE_EXIT_CONSOLE%" exit %EXIT_CODE%
+-exit /b %EXIT_CODE%
+-
+-:mainEnd
+-if "%OS%"=="Windows_NT" endlocal
+-
+-:omega
++@rem
++@rem Copyright 2015 the original author or authors.
++@rem
++@rem Licensed under the Apache License, Version 2.0 (the "License");
++@rem you may not use this file except in compliance with the License.
++@rem You may obtain a copy of the License at
++@rem
++@rem      https://www.apache.org/licenses/LICENSE-2.0
++@rem
++@rem Unless required by applicable law or agreed to in writing, software
++@rem distributed under the License is distributed on an "AS IS" BASIS,
++@rem WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++@rem See the License for the specific language governing permissions and
++@rem limitations under the License.
++@rem
++@rem SPDX-License-Identifier: Apache-2.0
++@rem
++
++@if "%DEBUG%"=="" @echo off
++@rem ##########################################################################
++@rem
++@rem  Gradle startup script for Windows
++@rem
++@rem ##########################################################################
++
++@rem Set local scope for the variables with windows NT shell
++if "%OS%"=="Windows_NT" setlocal
++
++set DIRNAME=%~dp0
++if "%DIRNAME%"=="" set DIRNAME=.
++@rem This is normally unused
++set APP_BASE_NAME=%~n0
++set APP_HOME=%DIRNAME%
++
++@rem Resolve any "." and ".." in APP_HOME to make it shorter.
++for %%i in ("%APP_HOME%") do set APP_HOME=%%~fi
++
++@rem Add default JVM options here. You can also use JAVA_OPTS and GRADLE_OPTS to pass JVM options to this script.
++set DEFAULT_JVM_OPTS="-Xmx64m" "-Xms64m"
++
++@rem Find java.exe
++if defined JAVA_HOME goto findJavaFromJavaHome
++
++set JAVA_EXE=java.exe
++%JAVA_EXE% -version >NUL 2>&1
++if %ERRORLEVEL% equ 0 goto execute
++
++echo. 1>&2
++echo ERROR: JAVA_HOME is not set and no 'java' command could be found in your PATH. 1>&2
++echo. 1>&2
++echo Please set the JAVA_HOME variable in your environment to match the 1>&2
++echo location of your Java installation. 1>&2
++
++goto fail
++
++:findJavaFromJavaHome
++set JAVA_HOME=%JAVA_HOME:"=%
++set JAVA_EXE=%JAVA_HOME%/bin/java.exe
++
++if exist "%JAVA_EXE%" goto execute
++
++echo. 1>&2
++echo ERROR: JAVA_HOME is set to an invalid directory: %JAVA_HOME% 1>&2
++echo. 1>&2
++echo Please set the JAVA_HOME variable in your environment to match the 1>&2
++echo location of your Java installation. 1>&2
++
++goto fail
++
++:execute
++@rem Setup the command line
++
++set CLASSPATH=%APP_HOME%\gradle\wrapper\gradle-wrapper.jar
++
++
++@rem Execute Gradle
++"%JAVA_EXE%" %DEFAULT_JVM_OPTS% %JAVA_OPTS% %GRADLE_OPTS% "-Dorg.gradle.appname=%APP_BASE_NAME%" -classpath "%CLASSPATH%" org.gradle.wrapper.GradleWrapperMain %*
++
++:end
++@rem End local scope for the variables with windows NT shell
++if %ERRORLEVEL% equ 0 goto mainEnd
++
++:fail
++rem Set variable GRADLE_EXIT_CONSOLE if you need the _script_ return code instead of
++rem the _cmd.exe /c_ return code!
++set EXIT_CODE=%ERRORLEVEL%
++if %EXIT_CODE% equ 0 set EXIT_CODE=1
++if not ""=="%GRADLE_EXIT_CONSOLE%" exit %EXIT_CODE%
++exit /b %EXIT_CODE%
++
++:mainEnd
++if "%OS%"=="Windows_NT" endlocal
++
++:omega
+diff --git a/scripts/check-architecture.py b/scripts/check-architecture.py
+index bcb0c6d..dfe35fb 100644
+--- a/scripts/check-architecture.py
++++ b/scripts/check-architecture.py
+@@ -39,7 +39,7 @@ for path in (ROOT / "ViewModels").glob("*.cs"):
+ project = ET.parse(ROOT / "SENTINEL-X.csproj")
+ assert project.findtext(".//TargetFramework") == "net10.0-windows"
+ assert project.findtext(".//UseWindowsForms") != "true"
+-assert len(list((ROOT / "Views/Pages").glob("*Page.xaml"))) == 14
++assert len(list((ROOT / "Views/Pages").glob("*Page.xaml"))) == 15
+ assert (ROOT / "Views/Pages/BasePage.xaml").exists(), "Missing Base UI"
+ # 0.96 · KUŹNIA: the logic is split by responsibility, and the "brain" and the tools never touch WPF.
+ assert not (ROOT / "CommandRouter.cs").exists(), "CommandRouter.cs belongs in Brain/Router/"
+@@ -48,4 +48,4 @@ for required in ("Brain/Router/CommandRouter.cs", "Brain/Router/DecisionPreview.
+ for folder in ("Brain", "Tools"):
+     for path in (ROOT / folder).rglob("*.cs"):
+         assert "using System.Windows" not in path.read_text(encoding="utf-8-sig"), f"WPF in {folder}/: {path}"
+-print("PASS: XML, resources, 14 views, thin code-behind, VM boundaries, target framework, no WinForms flag, Brain/Tools layout without WPF")
++print("PASS: XML, resources, 15 views, thin code-behind, VM boundaries, target framework, no WinForms flag, Brain/Tools layout without WPF")
+diff --git a/scripts/check-release-artifacts.py b/scripts/check-release-artifacts.py
+new file mode 100644
+index 0000000..61fa355
+--- /dev/null
++++ b/scripts/check-release-artifacts.py
+@@ -0,0 +1,31 @@
++#!/usr/bin/env python3
++import argparse,hashlib,struct,zipfile
++from pathlib import Path
++def pe(data,machines):
++ assert len(data)>128 and data[:2]==b'MZ','Missing executable header'
++ offset=struct.unpack_from('<I',data,0x3c)[0]
++ assert offset+6<len(data) and data[offset:offset+4]==b'PE\0\0','Invalid PE'
++ assert struct.unpack_from('<H',data,offset+4)[0] in machines,'Wrong architecture'
++def present(path,minimum):
++ path=Path(path);assert path.is_file() and path.stat().st_size>=minimum,'Missing/tiny artifact: '+str(path)
++ print(hashlib.sha256(path.read_bytes()).hexdigest()+'  '+path.name)
++ return path
++def main():
++ p=argparse.ArgumentParser();p.add_argument('--windows');p.add_argument('--portable');p.add_argument('--android');a=p.parse_args()
++ assert a.windows or a.portable or a.android,'No artifacts supplied'
++ if a.windows:
++  path=present(a.windows,1048576);assert '1.0.0' in path.name,'Version filename';pe(path.read_bytes(),{0x14c,0x8664})
++ if a.portable:
++  path=present(a.portable,1048576)
++  with zipfile.ZipFile(path) as z:
++   names=set(z.namelist());assert {'SentinelX.exe','SentinelX.dll','coreclr.dll','SentinelX.runtimeconfig.json'}<=names,'Runtime/app missing'
++   pe(z.read('SentinelX.exe'),{0x8664})
++   engine=[n for n in names if n.startswith('Engine/') and n.endswith('/llama-server.exe')];assert len(engine)==1,'Engine missing'
++   pe(z.read(engine[0]),{0x8664});assert z.testzip() is None,'ZIP CRC failure'
++ if a.android:
++  path=present(a.android,20000)
++  with zipfile.ZipFile(path) as z:
++   assert {'AndroidManifest.xml','classes.dex','resources.arsc'}<=set(z.namelist()),'APK content'
++   assert z.testzip() is None,'APK CRC failure'
++ print('PASS real release artifact structure')
++if __name__=='__main__':main()
+diff --git a/scripts/security-check.py b/scripts/security-check.py
+new file mode 100644
+index 0000000..e683ee9
+--- /dev/null
++++ b/scripts/security-check.py
+@@ -0,0 +1,28 @@
++#!/usr/bin/env python3
++import hashlib,re,subprocess
++from pathlib import Path
++root=Path(__file__).resolve().parents[1]
++tracked=subprocess.check_output(['git','ls-files','-z'],cwd=root).decode().split('\0')
++errors=[]
++for name in tracked:
++ if not name:continue
++ p=root/name
++ if not p.is_file():continue
++ if p.suffix.lower() in ('.p12','.pfx','.jks','.keystore','.pem','.key'):errors.append('Private key material: '+name)
++ if p.suffix.lower() in ('.cs','.java','.gradle','.yml','.js','.json','.ps1'):
++  text=p.read_text(errors='replace')
++  if re.search(r'(storePassword|keyPassword)\s+[\'"][^\'"]+[\'"]',text):errors.append('Hardcoded signing password: '+name)
++  if re.search(r'-----BEGIN (?:RSA |EC |ENCRYPTED )?PRIVATE KEY-----',text):errors.append('Private key: '+name)
++  if re.search(r'gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{30,}',text):errors.append('GitHub credential: '+name)
++android=(root/'phone-android/app/build.gradle').read_text()
++assert 'abortOnError true' in android and 'checkReleaseBuilds true' in android,'Lint must fail on errors'
++assert "versionName '1.0.0'" in android and 'versionCode 100' in android,'Version mismatch'
++assert (root/'VERSION').read_text().strip()=='1.0.0'
++assert 'distributionSha256Sum=d725d707bfabd4dfdc958c624003b3c80accc03f7037b5122c4b1d0ef15cecab' in (root/'phone-android/gradle/wrapper/gradle-wrapper.properties').read_text(),'Wrapper checksum'
++session=(root/'phone-android/app/src/main/java/pl/sentinelx/phone/Session.java').read_text()
++assert 'return secrets.get("pc.token")' in session,'Plain token storage'
++release=(root/'.github/workflows/release.yml').read_text()
++assert 'needs: [security, windows, android]' in release and release.count('gh release create')==2,'Single aggregate publisher'
++assert 'update-manifest' not in release.lower(),'User requested no update manifest'
++assert not errors,'\n'.join(errors)
++print('PASS version, secret scan, Keystore token, wrapper integrity, strict lint and release gates')
+diff --git a/scripts/test-sx4-tls.py b/scripts/test-sx4-tls.py
+new file mode 100644
+index 0000000..7d1b408
+--- /dev/null
++++ b/scripts/test-sx4-tls.py
+@@ -0,0 +1,63 @@
++#!/usr/bin/env python3
++"""Local TLS Base fixture for the real C# and Java clients; never a public endpoint."""
++import argparse,hashlib,hmac,json,secrets,socket,ssl,struct,subprocess,tempfile,threading,time,uuid
++from pathlib import Path
++ROOT=Path(__file__).resolve().parents[1]
++def exactly(s,n):
++ b=b''
++ while len(b)<n:
++  chunk=s.recv(n-len(b))
++  if not chunk:raise EOFError('partial')
++  b+=chunk
++ return b
++def read(s,key):
++ header=exactly(s,49);device,op,nonce,stamp,n=struct.unpack('!HBIQH',header[:17])
++ if n>16384:raise ValueError('size')
++ payload=exactly(s,n)
++ if not hmac.compare_digest(header[17:],hmac.digest(key,header[:17]+payload,'sha256')):raise ValueError('auth')
++ if op!=201 or abs(int(time.time()*1000)-stamp)>5000:raise ValueError('protocol')
++ return device,json.loads(payload)
++def frame(key,message,nonce,stamp=None):
++ payload=json.dumps(message,ensure_ascii=False,separators=(',',':')).encode()
++ prefix=struct.pack('!HBIQH',1,201,nonce,stamp or int(time.time()*1000),len(payload))
++ return prefix+hmac.digest(key,prefix+payload,'sha256')+payload
++def serve(listener,context,key,mode,errors):
++ try:
++  raw,_=listener.accept()
++  with raw,context.wrap_socket(raw,server_side=True) as stream:
++   stream.settimeout(12);previous=None
++   for step in range(3):
++    device,request=read(stream,key)
++    if device not in (2,3):raise ValueError('device')
++    kind=request['type']
++    data={'challenge':request['data']['challenge']} if kind=='session.prove' else {'types':['status']} if kind=='capabilities' else {'online':True}
++    response={'version':4,'type':'session.proved' if kind=='session.prove' else kind+'.result','requestId':str(uuid.uuid4()),'correlationId':request['requestId'],'expiresAt':int(time.time()*1000)+30000,'data':data}
++    if step==2 and mode=='correlation':response['correlationId']=str(uuid.uuid4())
++    if step==2 and mode=='revoked':response['type']='error';response['data']={'code':'revoked'}
++    encoded=frame(key,response,step+1,int(time.time()*1000)-6000 if step==2 and mode=='timestamp' else None)
++    if step==2 and mode=='replay':encoded=previous
++    for i in range(0,len(encoded),7):stream.sendall(encoded[i:i+7])
++    previous=encoded
++ except (ssl.SSLError,EOFError,ConnectionError,OSError) as e:
++  if mode!='pin':errors.append(str(e))
++ finally:listener.close()
++def main():
++ parser=argparse.ArgumentParser();parser.add_argument('--dotnet',default='dotnet');parser.add_argument('--java',default='java');parser.add_argument('--javac',default='javac');args=parser.parse_args()
++ with tempfile.TemporaryDirectory(prefix='sx4-tls-') as tmp:
++  tmp=Path(tmp);cert=tmp/'cert.pem';keyfile=tmp/'key.pem'
++  subprocess.run(['openssl','req','-x509','-newkey','rsa:2048','-nodes','-days','1','-subj','/CN=localhost','-keyout',str(keyfile),'-out',str(cert)],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
++  der=ssl.PEM_cert_to_DER_cert(cert.read_text());pin=hashlib.sha256(der).hexdigest();context=ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER);context.minimum_version=ssl.TLSVersion.TLSv1_2;context.load_cert_chain(cert,keyfile)
++  java=ROOT/'phone-android/app/src/main/java/pl/sentinelx/phone'
++  subprocess.run([args.javac,'-d',str(tmp/'classes'),*[str(java/n) for n in ['Sx4.java','StrictJson.java','BaseClient.java']],str(ROOT/'verification/java/pl/sentinelx/phone/KernelContract.java')],check=True)
++  subprocess.run([args.dotnet,'build',str(ROOT/'verification/Build1/Build1.csproj'),'-c','Release','--nologo'],check=True)
++  for language in ['Java','C#']:
++   for mode in ['ok','pin','correlation','replay','timestamp','revoked']:
++    key=secrets.token_bytes(32);listener=socket.socket();listener.bind(('127.0.0.1',0));listener.listen(1);listener.settimeout(20);port=listener.getsockname()[1];errors=[]
++    thread=threading.Thread(target=serve,args=(listener,context,key,mode,errors),daemon=True);thread.start()
++    command=[args.java,'-cp',str(tmp/'classes'),'pl.sentinelx.phone.KernelContract'] if language=='Java' else [args.dotnet,str(ROOT/'verification/Build1/bin/Release/net10.0/Build1.dll')]
++    subprocess.run(command+[mode,str(port),'0'*64 if mode=='pin' else pin,key.hex()],check=True,timeout=35)
++    thread.join(20)
++    if thread.is_alive() or errors:raise RuntimeError(errors or ['TLS server stuck'])
++    print('PASS '+language+' TLS '+mode,flush=True)
++ print('PASS 12 real-client TLS cases')
++if __name__=='__main__':main()
+diff --git a/verification/Build1/Build1.csproj b/verification/Build1/Build1.csproj
+index c179f12..2a5a05d 100644
+--- a/verification/Build1/Build1.csproj
++++ b/verification/Build1/Build1.csproj
+@@ -1,4 +1,4 @@
+ <Project Sdk="Microsoft.NET.Sdk">
+ <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable></PropertyGroup>
+-<ItemGroup><Compile Include="../../Services/Base/Sx4Wire.cs" Link="Sx4Wire.cs"/><Compile Include="../../Services/Base/BaseClient.cs" Link="BaseClient.cs"/><Compile Include="../../Services/Base/AgentQueue.cs" Link="AgentQueue.cs"/><Compile Include="../../Services/Base/OllamaSupervisor.cs" Link="OllamaSupervisor.cs"/></ItemGroup>
++<ItemGroup><Compile Include="../../Services/Base/Sx4Wire.cs" Link="Sx4Wire.cs"/><Compile Include="../../Services/Base/BaseClient.cs" Link="BaseClient.cs"/><Compile Include="../../Services/Base/AgentQueue.cs" Link="AgentQueue.cs"/><Compile Include="../../Services/Base/OllamaSupervisor.cs" Link="OllamaSupervisor.cs"/><Compile Include="../../Services/Maintenance/VerifiedUpdater.cs" Link="VerifiedUpdater.cs"/><Compile Include="../../Services/Maintenance/SteamResolver.cs" Link="SteamResolver.cs"/></ItemGroup>
+ </Project>
+\ No newline at end of file
+diff --git a/verification/Build1/ContractRunner.cs b/verification/Build1/ContractRunner.cs
+index 0b3c34a..c1f6bbc 100644
+--- a/verification/Build1/ContractRunner.cs
++++ b/verification/Build1/ContractRunner.cs
+@@ -2,6 +2,16 @@ using System.Security.Cryptography;
+ using System.Text;
+ using System.Text.Json;
+ using SentinelX.Services.Base;
++if(args.Length==4){
++ string mode=args[0];await using var client=new BaseClient(new("127.0.0.1",int.Parse(args[1]),args[2],2,1,args[3]));
++ try{await client.ConnectAsync(CancellationToken.None);var reply=await client.RequestAsync("status",new{},CancellationToken.None);
++  if(mode!="ok"||!reply.Data.GetProperty("online").GetBoolean())throw new Exception("TLS expected failure");
++  try{await client.RequestAsync("shell",new{},CancellationToken.None);throw new Exception("unsupported accepted");}catch(Sx4Exception e)when(e.Code=="unsupported"){}
++  Console.WriteLine("PASS C# TLS status and capability guard");
++ }catch(Sx4Exception e)when(e.Code==mode){Console.WriteLine("PASS C# TLS reject "+mode);}
++ catch(System.Security.Authentication.AuthenticationException)when(mode=="pin"){Console.WriteLine("PASS C# TLS pin");}
++ return;
++}
+ int checks=0;
+ void Check(bool value,string name){if(!value)throw new Exception(name);checks++;Console.WriteLine("PASS "+name);}
+ void Reject(Action action,string code){try{action();throw new Exception("not rejected "+code);}catch(Sx4Exception e){Check(e.Code==code,"reject "+code);}}
+@@ -69,6 +79,7 @@ try{
+  Check(!ollama.AutoLoadModel,"Ollama no model preload");
+ }
+ finally{Directory.Delete(root,true);CryptographicOperations.ZeroMemory(secret);}
++await MaintenanceContract.Run(Check);
+ Console.WriteLine("PASS "+checks+" contract checks");
+ sealed class PartialStream(byte[] bytes):MemoryStream(bytes)
+ {public override ValueTask<int> ReadAsync(Memory<byte> buffer,CancellationToken cancellationToken=default)=>base.ReadAsync(buffer[..Math.Min(buffer.Length,3)],cancellationToken);}
+diff --git a/verification/Build1/MaintenanceContract.cs b/verification/Build1/MaintenanceContract.cs
+new file mode 100644
+index 0000000..a556b72
+--- /dev/null
++++ b/verification/Build1/MaintenanceContract.cs
+@@ -0,0 +1,51 @@
++using System.IO.Compression;
++using System.Security.Cryptography;
++using System.Text;
++using SentinelX.Services.Maintenance;
++static class MaintenanceContract
++{
++ public static async Task Run(Action<bool,string> check){
++  void Reject(Action action,string code){try{action();throw new Exception("accepted "+code);}catch(UpdateFailure e){check(e.Code==code,"updater rejects "+code);}}
++  async Task RejectAsync(Func<Task> action,string code){try{await action();throw new Exception("accepted "+code);}catch(UpdateFailure e){check(e.Code==code,"updater rejects "+code);}}
++  string root=Path.Combine(Path.GetTempPath(),"sentinel-update-test-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(root);
++  try{
++   string zip=Path.Combine(root,"package.zip");using(var archive=ZipFile.Open(zip,ZipArchiveMode.Create)){var entry=archive.CreateEntry("SentinelX.exe");using var output=entry.Open();output.Write(RandomNumberGenerator.GetBytes(8192));}
++   var meta=new UpdateDescriptor("2.0.0","win-x64",Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(zip))),new FileInfo(zip).Length);
++   Reject(()=>VerifiedUpdater.VerifyDescriptor(meta with{Version="1.0.0"},"1.0.0",null,false),"downgrade");
++   Reject(()=>VerifiedUpdater.VerifyDescriptor(meta with{Version="02.0.0"},"1.0.0",null,false),"semver");
++   Reject(()=>VerifiedUpdater.VerifyDescriptor(meta with{Architecture="win-arm64"},"1.0.0",null,false),"architecture");
++   Reject(()=>VerifiedUpdater.VerifyDescriptor(meta,"1.0.0",null,true),"signature_required");
++   Reject(()=>UpdateDescriptor.Parse("{\"Version\":\"2.0.0\",\"version\":\"3.0.0\"}"),"metadata_duplicate");
++   foreach(string path in new[]{"../escape","/outside","a\\b","a/../outside","C:/outside","a./bad"})Reject(()=>VerifiedUpdater.CanonicalChild(root,path),"path");
++   using var rsa=RSA.Create(2048);string publicKey=rsa.ExportSubjectPublicKeyInfoPem();
++   string signature=Convert.ToBase64String(rsa.SignData(Encoding.UTF8.GetBytes(meta.SignedText),HashAlgorithmName.SHA256,RSASignaturePadding.Pss));
++   VerifiedUpdater.VerifyDescriptor(meta with{Signature=signature},"1.0.0",publicKey,true);check(true,"updater publisher RSA-PSS signature");
++   Reject(()=>VerifiedUpdater.VerifyDescriptor(meta with{Signature=Convert.ToBase64String(new byte[256])},"1.0.0",publicKey,true),"signature");
++   var manager=new VerifiedUpdater(Path.Combine(root,"updates"),_=>true,_=>"2.0.0");
++   await RejectAsync(()=>manager.StageAsync(zip,meta,"1.0.0",null,false,10,CancellationToken.None),"disk_space");
++   await RejectAsync(()=>manager.StageAsync(zip,meta with{Sha256=new string('0',64)},"1.0.0",null,false,long.MaxValue/2,CancellationToken.None),"hash");
++   var mismatch=new VerifiedUpdater(Path.Combine(root,"wrong-version"),_=>true,_=>"1.0.0");
++   await RejectAsync(()=>mismatch.StageAsync(zip,meta,"1.0.0",null,false,long.MaxValue/2,CancellationToken.None),"package_version");
++   var candidate=await manager.StageAsync(zip,meta,"1.0.0",null,false,long.MaxValue/2,CancellationToken.None);
++   check(VerifiedUpdater.VerifyVersion(candidate),"updater staged inventory verified");
++   string baseline=Path.Combine(root,"current");Directory.CreateDirectory(baseline);File.WriteAllText(Path.Combine(baseline,"original"),"last good");
++   var current=new UpdateVersion("1.0.0",baseline,VerifiedUpdater.Inventory(baseline));
++   await RejectAsync(()=>manager.ActivateAsync(candidate,current,(_,_)=>Task.FromResult(false),CancellationToken.None),"health");
++   check(manager.ReadJournal().Active==null,"failed health never activated");
++   await manager.ActivateAsync(candidate,current,(_,_)=>Task.FromResult(true),CancellationToken.None);
++   check(manager.ReadJournal().Active?.Version=="2.0.0","good health activates");
++   manager.BeginLaunch();manager.BeginLaunch();check(manager.BeginLaunch()?.Version=="1.0.0","crash loop rolls back to last good");
++   await manager.ActivateAsync(candidate,current,(_,_)=>Task.FromResult(true),CancellationToken.None);
++   File.AppendAllText(Path.Combine(candidate.Directory,"SentinelX.exe"),"tampered");check(!VerifiedUpdater.VerifyVersion(candidate),"changed staged executable rejected");
++   check(manager.BeginLaunch()?.Version=="1.0.0","corrupt active version rolls back");
++   string traversal=Path.Combine(root,"traversal.zip");using(var archive=ZipFile.Open(traversal,ZipArchiveMode.Create)){using var output=archive.CreateEntry("../escape").Open();output.Write(RandomNumberGenerator.GetBytes(8192));}
++   var dangerous=meta with{Sha256=Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(traversal))),Size=new FileInfo(traversal).Length};
++   await RejectAsync(()=>manager.StageAsync(traversal,dangerous,"1.0.0",null,false,long.MaxValue/2,CancellationToken.None),"path");
++   string apps=Path.Combine(root,"Steam","steamapps");Directory.CreateDirectory(apps);
++   File.WriteAllText(Path.Combine(apps,"appmanifest_10.acf"),"\"appid\" \"10\"\n\"name\" \"Same game Deluxe\"");
++   File.WriteAllText(Path.Combine(apps,"appmanifest_11.acf"),"\"appid\" \"11\"\n\"name\" \"Same game Standard\"");
++   File.WriteAllText(Path.Combine(apps,"appmanifest_12.acf"),"\"appid\" \"12;calc\"\n\"name\" \"Same game Shell\"");
++   check(SteamResolver.Find("Same game",Path.GetDirectoryName(apps)!).Count==2,"Steam ambiguity retained and unsafe AppID rejected");
++  }finally{Directory.Delete(root,true);}
++ }
++}
+diff --git a/verification/java/pl/sentinelx/phone/KernelContract.java b/verification/java/pl/sentinelx/phone/KernelContract.java
+new file mode 100644
+index 0000000..f3abb9b
+--- /dev/null
++++ b/verification/java/pl/sentinelx/phone/KernelContract.java
+@@ -0,0 +1,42 @@
++package pl.sentinelx.phone;
++import java.nio.charset.StandardCharsets;
++import java.util.*;
++public final class KernelContract {
++ static int checks;
++ interface Throws {void run()throws Exception;}
++ static void check(boolean pass,String name){if(!pass)throw new AssertionError(name);checks++;System.out.println("PASS "+name);}
++ static void reject(Throws action,String code)throws Exception{try{action.run();throw new AssertionError("accepted "+code);}catch(Sx4.Error e){check(e.code.equals(code),"reject "+code);}}
++ public static void run() throws Exception {
++  byte[] key=new byte[32];new java.security.SecureRandom().nextBytes(key);long now=System.currentTimeMillis();
++  byte[] payload="{\"test\":\"Zażółć 🛰\"}".getBytes(StandardCharsets.UTF_8);
++  byte[] raw=Sx4.encode(new Sx4.Frame(7,201,-1,now,payload),key);
++  check(Sx4.utf8(Sx4.decode(raw,key).payload).contains("Zażółć"),"binary unicode");
++  try(Sx4.Authority authority=new Sx4.Authority(7,key)){authority.verify(raw,now);reject(()->authority.verify(raw,now),"replay");}
++  try(Sx4.Authority authority=new Sx4.Authority(7,key)){reject(()->authority.verify(raw,now+5001),"timestamp");}
++  try(Sx4.Authority authority=new Sx4.Authority(8,key)){reject(()->authority.verify(raw,now),"device");}
++  byte[] changed=raw.clone();changed[changed.length-1]^=1;reject(()->Sx4.decode(changed,key),"auth");
++  reject(()->Sx4.decode(Arrays.copyOf(raw,raw.length-1),key),"size");
++  reject(()->Sx4.decode(new byte[1],key),"format");
++  reject(()->Sx4.encode(new Sx4.Frame(1,201,1,now,new byte[16385]),key),"format");
++  reject(()->Sx4.utf8(new byte[]{(byte)255}),"utf8");
++  Sx4.Authority revoked=new Sx4.Authority(7,key);revoked.close();reject(()->revoked.verify(raw,now),"revoked");
++  try(Sx4.Authority authority=new Sx4.Authority(7,key)){for(int i=0;i<120;i++)authority.verify(Sx4.encode(new Sx4.Frame(7,201,i,now,payload),key),now);reject(()->authority.verify(Sx4.encode(new Sx4.Frame(7,201,121,now,payload),key),now),"rate_limit");}
++  reject(()->StrictJson.parse("{\"test\":1,\"TEST\":2}"),"duplicate_key");
++  reject(()->StrictJson.parse("{\"nested\":{\"a\":1,\"A\":2}}"),"duplicate_key");
++  check(StrictJson.object(StrictJson.parse("{\"version\":4}")).get("version") instanceof Long,"version is integral Long");
++  check(StrictJson.parse(StrictJson.encode(StrictJson.map("test","Zażółć 🛰","array",Arrays.asList(1,2)))) instanceof Map,"JSON roundtrip");
++  reject(()->new BaseClient("localhost",443,new String(new char[64]).replace('\0','0'),3,3,new String(new char[64]).replace('\0','0')),"configuration");
++  System.out.println("PASS "+checks+" Java checks");
++ }
++ public static void main(String[] args)throws Exception {
++  if(args.length==0){run();return;}
++  String mode=args[0];int port=Integer.parseInt(args[1]);String pin=args[2],secret=args[3];
++  try(BaseClient client=new BaseClient("127.0.0.1",port,pin,3,1,secret)){
++   try{client.connect();if(mode.equals("ok")){
++    check(client.supports("status"),"capability");Map<String,Object> reply=client.request("status",StrictJson.map());check(Boolean.TRUE.equals(StrictJson.object(reply.get("data")).get("online")),"TLS Base status");
++    reject(()->client.request("shell",StrictJson.map()),"unsupported");
++   }else{client.request("status",StrictJson.map());throw new AssertionError("bad server accepted");}}
++   catch(Exception e){if(mode.equals("ok"))throw e;if(e instanceof Sx4.Error)check(((Sx4.Error)e).code.equals(mode),"TLS reject "+mode);else if(mode.equals("pin"))check(true,"TLS pin rejected");else throw e;}
++  }
++ }
++}
