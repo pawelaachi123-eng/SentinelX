@@ -1,0 +1,474 @@
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+index 6a8cd8f..45be9ea 100644
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -1,4 +1,3 @@
+ # 1.0.0 — Build 1.0
+ 
+ SX4 binary/TLS, encrypted PC task queue, Base dashboards, Keystore token migration, Ollama supervisor, Steam resolver, diagnostics/repair and verified updater/rollback. Aggregate EXE/APK/security gates. No generated update manifest.
+-
+diff --git a/Services/Base/BaseClient.cs b/Services/Base/BaseClient.cs
+index 64e2862..0026fd1 100644
+--- a/Services/Base/BaseClient.cs
++++ b/Services/Base/BaseClient.cs
+@@ -59,7 +59,7 @@ public sealed class BaseClient : IAsyncDisposable
+             if(frame.OpCode!=ExtensionOpCode)throw new Sx4Exception("opcode");
+             var response=Sx4Wire.Parse(frame.Payload);
+             if(response.CorrelationId!=message.RequestId)throw new Sx4Exception("correlation");
+-            if(response.Type=="error"){string code=response.Data.GetProperty("code").GetString()??"remote_error";throw new Sx4Exception(code);}
++            if(response.Type=="error"){string code=response.Data.GetProperty("code").GetString()??"remote_error";throw new Sx4Exception(System.Text.RegularExpressions.Regex.IsMatch(code,"^[a-z_]{1,64}$")?code:"remote_error");}
+             if(response.Type!=expected)throw new Sx4Exception("response_type");
+             return response;
+         }
+diff --git a/Services/Base/WindowsBaseService.cs b/Services/Base/WindowsBaseService.cs
+index a80b1e9..d2bbc87 100644
+--- a/Services/Base/WindowsBaseService.cs
++++ b/Services/Base/WindowsBaseService.cs
+@@ -100,8 +100,8 @@ public sealed class WindowsBaseService : IDisposable
+                         }
+                     }
+                     if(connection.Supports("tasks.status")){
+-                        var statuses=(await queue.SnapshotAsync()).OrderByDescending(x=>x.State is "accepted" or "running").Take(32);
+-                        await RequestAsync("tasks.status",new{tasks=statuses.Select(x=>new{id=x.Id,state=x.State,code=x.Code})},cancel);
++                        var statuses=await queue.SnapshotAsync();
++                        foreach(var batch in statuses.Chunk(32))await RequestAsync("tasks.status",new{tasks=batch.Select(x=>new{id=x.Id,state=x.State,code=x.Code})},cancel);
+                     }
+                     await Task.Delay(TimeSpan.FromSeconds(15),cancel);
+                 }
+diff --git a/Services/Maintenance/DirectoryRepair.cs b/Services/Maintenance/DirectoryRepair.cs
+new file mode 100644
+index 0000000..85b3fd4
+--- /dev/null
++++ b/Services/Maintenance/DirectoryRepair.cs
+@@ -0,0 +1,25 @@
++using System.IO;
++using System.Text.Json;
++namespace SentinelX.Services.Maintenance;
++public static class DirectoryRepair
++{
++ public static string Run(string[] folders,string backups,Action<string>? create=null){
++  create??=p=>Directory.CreateDirectory(p); // replaced with lambda below
++  string backup=Path.Combine(backups,"repair-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(backup);
++  string log=Path.Combine(backup,"repair.jsonl");var created=new List<string>();
++  void Record(string phase,string result)=>File.AppendAllText(log,JsonSerializer.Serialize(new{time=DateTimeOffset.UtcNow,phase,result})+"\n");
++  Record("detect","started");
++  File.WriteAllText(Path.Combine(backup,"directories.json"),JsonSerializer.Serialize(folders.Select(p=>new{path=Path.GetFileName(p),exists=Directory.Exists(p)})));
++  Record("backup","succeeded");
++  try{
++   foreach(string folder in folders){if(!Directory.Exists(folder)){created.Add(folder);create(folder);}}
++   Record("repair","succeeded");
++   if(folders.Any(p=>!Directory.Exists(p)))throw new IOException("verify");
++   Record("verify","succeeded");Record("result","succeeded");return backup;
++  }catch{
++   foreach(string folder in created.AsEnumerable().Reverse())if(Directory.Exists(folder)&&!Directory.EnumerateFileSystemEntries(folder).Any())Directory.Delete(folder);
++   Record("rollback",created.All(p=>!Directory.Exists(p))?"succeeded":"preserved_nonempty_directory");
++   Record("result","failed");throw;
++  }
++ }
++}
+diff --git a/Services/Maintenance/MaintenanceService.cs b/Services/Maintenance/MaintenanceService.cs
+index ec9c251..1e1f3d7 100644
+--- a/Services/Maintenance/MaintenanceService.cs
++++ b/Services/Maintenance/MaintenanceService.cs
+@@ -11,7 +11,7 @@ public sealed record DiagnosticCheck(string Name,string State,string Detail);
+ public sealed class MaintenanceService(WindowsBaseService agent,OllamaSupervisor ollama)
+ {
+  public VerifiedUpdater Updater{get;}=new(Path.Combine(AppPaths.Root,"Updates"),ValidPackage,folder=>FileVersionInfo.GetVersionInfo(Path.Combine(folder,"SentinelX.exe")).ProductVersion);
+- public async Task<IReadOnlyList<DiagnosticCheck>> DiagnoseAsync(CancellationToken cancel){
++ public async Task<IReadOnlyList<DiagnosticCheck>> DiagnoseAsync(string internetProbe,CancellationToken cancel){
+   var checks=new List<DiagnosticCheck>();
+   void Check(string name,bool ok,string detail)=>checks.Add(new(name,ok?"PASS":"BLOCKED",detail));
+   await Task.Run(()=>{
+@@ -28,25 +28,31 @@ public sealed class MaintenanceService(WindowsBaseService agent,OllamaSupervisor
+    Check("Steam",File.Exists(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),"Steam","steam.exe")),"Lokalna instalacja");
+    Check("Logi",Directory.Exists(AppPaths.LogsDirectory),"Lokalne logi; dziennik Base ma limit 8 MiB");
+    var state=Updater.ReadJournal();Check("Crash-loop",state.LaunchFailures<3,"Licznik: "+state.LaunchFailures);
+-   Check("Internet",false,"Sprawdź żądaniem do własnego relayu; diagnostyka offline nie wysyła danych na zewnętrzny serwer");
++
+    Check("Android",false,"Stan telefonu jest dostępny przez devices/status Base");
+   },cancel);
++  if(string.IsNullOrWhiteSpace(internetProbe))checks.Add(new("Internet","SKIPPED","Podaj opcjonalny HTTPS endpoint, aby sprawdzić połączenie"));
++  else {
++   if(!Uri.TryCreate(internetProbe,UriKind.Absolute,out var address)||address.Scheme!="https"||!string.IsNullOrEmpty(address.UserInfo))throw new ArgumentException("probe_url");
++   try{using var http=new System.Net.Http.HttpClient(new System.Net.Http.HttpClientHandler{AllowAutoRedirect=false}){Timeout=TimeSpan.FromSeconds(3)};
++    using var request=new System.Net.Http.HttpRequestMessage(System.Net.Http.HttpMethod.Head,address);using var response=await http.SendAsync(request,System.Net.Http.HttpCompletionOption.ResponseHeadersRead,cancel);
++    Check("Internet",response.IsSuccessStatusCode,"Wskazany HTTPS endpoint odpowiedział: "+(int)response.StatusCode);
++   }catch(System.Net.Http.HttpRequestException){Check("Internet",false,"Wskazany endpoint niedostępny");}catch(TaskCanceledException)when(!cancel.IsCancellationRequested){Check("Internet",false,"Timeout 3 s");}
++  }
+   Check("Ollama",await ollama.StatusAsync(cancel),"Tylko loopback /api/tags; bez ładowania modelu");
+   return checks;
+  }
+- public async Task<string> RepairDirectoriesAsync(){
+-  return await Task.Run(()=>{
+-   string backup=Path.Combine(AppPaths.BackupsDirectory,"repair-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(backup);
+-   string log=Path.Combine(backup,"repair.jsonl");
+-   void Record(string phase,string state)=>File.AppendAllText(log,JsonSerializer.Serialize(new{time=DateTimeOffset.UtcNow,phase,state})+"\n");
+-   string[] folders=[AppPaths.SettingsDirectory,AppPaths.LogsDirectory,AppPaths.HistoryDirectory,AppPaths.MemoryDirectory,AppPaths.CacheDirectory];
+-   Record("detect","started");File.WriteAllText(Path.Combine(backup,"directories.json"),JsonSerializer.Serialize(folders.Select(p=>new{path=Path.GetFileName(p),exists=Directory.Exists(p)})));Record("backup","succeeded");
+-   try{foreach(string folder in folders)Directory.CreateDirectory(folder);Record("repair","succeeded");
+-    if(folders.Any(p=>!Directory.Exists(p)))throw new IOException("verify");Record("verify","succeeded");Record("result","succeeded");return "Sprawdzono katalogi. Kopia i dziennik: "+backup;
+-   }catch{Record("rollback","no_user_data_changed");Record("result","failed");throw;}
+-  });
++ public async Task<string> RepairDirectoriesAsync()=>await Task.Run(()=>"Sprawdzono katalogi. Kopia i dziennik: "+DirectoryRepair.Run([AppPaths.SettingsDirectory,AppPaths.LogsDirectory,AppPaths.HistoryDirectory,AppPaths.MemoryDirectory,AppPaths.CacheDirectory],AppPaths.BackupsDirectory));
++ public string RepairAutostart(){
++  string backup=Path.Combine(AppPaths.BackupsDirectory,"startup-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(backup);string log=Path.Combine(backup,"repair.jsonl");
++  void Record(string phase,string result)=>File.AppendAllText(log,JsonSerializer.Serialize(new{time=DateTimeOffset.UtcNow,phase,result})+"\n");
++  const string path=@"Software\Microsoft\Windows\CurrentVersion\Run";
++  using var key=Registry.CurrentUser.CreateSubKey(path,true);if(key==null)throw new IOException("registry");object? previous=key.GetValue("Sentinel X");
++  Record("detect","started");File.WriteAllText(Path.Combine(backup,"previous.json"),JsonSerializer.Serialize(previous));Record("backup","succeeded");
++  if(new StartupService("Sentinel X").Enable()){Record("repair","succeeded");Record("verify","succeeded");Record("result","succeeded");return "Autostart zapisany i zweryfikowany";}
++  if(previous==null)key.DeleteValue("Sentinel X",false);else key.SetValue("Sentinel X",previous,RegistryValueKind.String);
++  Record("rollback",Equals(key.GetValue("Sentinel X"),previous)?"succeeded":"failed");Record("result","failed");return "Autostart nie został potwierdzony; przywrócono poprzedni wpis";
+  }
+- public string RepairAutostart()=>new StartupService("Sentinel X").Enable()?"Autostart zapisany i zweryfikowany":"Nie udało się potwierdzić autostartu";
+  public IReadOnlyList<SteamGame> ResolveSteam(string query)=>SteamResolver.Find(query,Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),"Steam"));
+  public static bool ValidPackage(string folder){
+   try{
+diff --git a/Services/Maintenance/VerifiedUpdater.cs b/Services/Maintenance/VerifiedUpdater.cs
+index 0b724ee..2b3dbce 100644
+--- a/Services/Maintenance/VerifiedUpdater.cs
++++ b/Services/Maintenance/VerifiedUpdater.cs
+@@ -39,7 +39,7 @@ public sealed class VerifiedUpdater
+   }
+  }
+  public static string CanonicalChild(string root,string relative){
+-  if(string.IsNullOrWhiteSpace(relative)||relative.Contains('\\')||relative.Contains(':')||relative.Split('/').Any(x=>x is ".." or "."||x.EndsWith(' ')||x.EndsWith('.')))throw new UpdateFailure("path");
++  if(string.IsNullOrWhiteSpace(relative)||relative.Contains('\\')||relative.Any(c=>c is ':' or '*' or '?' or '<' or '>' or '|'||char.IsControl(c))||relative.Split('/').Any(x=>x is ".." or "."||x.EndsWith(' ')||x.EndsWith('.')||Regex.IsMatch(x.Split('.')[0],"^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$",RegexOptions.IgnoreCase)))throw new UpdateFailure("path");
+   string full=Path.GetFullPath(Path.Combine(root,relative)),prefix=Path.GetFullPath(root).TrimEnd(Path.DirectorySeparatorChar)+Path.DirectorySeparatorChar;
+   if(!full.StartsWith(prefix,StringComparison.OrdinalIgnoreCase))throw new UpdateFailure("path");return full;
+  }
+diff --git a/ViewModels/MaintenanceViewModel.cs b/ViewModels/MaintenanceViewModel.cs
+index e93cf1c..2af534f 100644
+--- a/ViewModels/MaintenanceViewModel.cs
++++ b/ViewModels/MaintenanceViewModel.cs
+@@ -7,6 +7,7 @@ public partial class MaintenanceViewModel(MaintenanceService service):Observable
+ {
+  [ObservableProperty]private string result="";
+  [ObservableProperty]private bool busy;
++ [ObservableProperty]private string internetProbeUrl="";
+  [ObservableProperty]private string publisherPublicKey="";
+  [ObservableProperty]private bool requireSignature=true;
+  [ObservableProperty]private string steamQuery="";
+@@ -14,7 +15,7 @@ public partial class MaintenanceViewModel(MaintenanceService service):Observable
+  public ObservableCollection<DiagnosticCheck> Checks{get;}=[];
+  public ObservableCollection<SteamGame> Games{get;}=[];
+  private async Task Run(Func<Task<string>> action){if(Busy)return;Busy=true;Result="Pracuję…";try{Result=await action();}catch(Exception e){Result=e is UpdateFailure x?"Aktualizacja odrzucona: "+x.Code:"Operacja nie powiodła się. Sprawdź lokalną konfigurację.";}finally{Busy=false;}}
+- [RelayCommand]private Task DiagnoseAsync(CancellationToken cancel)=>Run(async()=>{var items=await service.DiagnoseAsync(cancel);Checks.Clear();foreach(var item in items)Checks.Add(item);return "Diagnostyka zakończona. BLOCKED wskazuje brak konfiguracji lub zewnętrznego komponentu.";});
++ [RelayCommand]private Task DiagnoseAsync(CancellationToken cancel)=>Run(async()=>{var items=await service.DiagnoseAsync(InternetProbeUrl,cancel);Checks.Clear();foreach(var item in items)Checks.Add(item);return "Diagnostyka zakończona. BLOCKED wskazuje brak konfiguracji lub zewnętrznego komponentu.";});
+  [RelayCommand]private Task RepairDirectoriesAsync()=>Run(service.RepairDirectoriesAsync);
+  [RelayCommand]private Task RepairAutostartAsync()=>Run(()=>Task.FromResult(service.RepairAutostart()));
+  [RelayCommand]private Task StageUpdateAsync(CancellationToken cancel)=>Run(()=>service.StageUpdateAsync(PublisherPublicKey,RequireSignature,cancel));
+diff --git a/Views/Pages/MaintenancePage.xaml b/Views/Pages/MaintenancePage.xaml
+index 069dbe0..7835aaf 100644
+--- a/Views/Pages/MaintenancePage.xaml
++++ b/Views/Pages/MaintenancePage.xaml
+@@ -4,6 +4,7 @@
+  <ProgressBar IsIndeterminate="{Binding Busy}" Height="4" Margin="0,12"/>
+  <Border Style="{StaticResource SxCard}" Margin="0,8"><StackPanel>
+   <TextBlock Text="Sprawdź i napraw lokalnie" FontSize="18"/>
++  <TextBlock Text="Opcjonalny adres HTTPS do sprawdzenia Internetu"/><TextBox Text="{Binding InternetProbeUrl}" AutomationProperties.Name="Adres testu Internetu"/>
+   <WrapPanel Margin="0,8"><Button Content="Diagnostyka" Command="{Binding DiagnoseCommand}" Margin="4"/><Button Content="Odtwórz katalogi z kopią" Command="{Binding RepairDirectoriesCommand}" Margin="4"/><Button Content="Włącz i zweryfikuj autostart" Command="{Binding RepairAutostartCommand}" Margin="4"/></WrapPanel>
+   <ItemsControl ItemsSource="{Binding Checks}"><ItemsControl.ItemTemplate><DataTemplate><StackPanel Margin="0,6"><TextBlock Text="{Binding Name}" FontWeight="Bold"/><TextBlock Text="{Binding State}"/><TextBlock Text="{Binding Detail}" TextWrapping="Wrap"/></StackPanel></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+  </StackPanel></Border>
+diff --git a/docs/SELF_HEALING.md b/docs/SELF_HEALING.md
+index 1e69f02..6da956f 100644
+--- a/docs/SELF_HEALING.md
++++ b/docs/SELF_HEALING.md
+@@ -1,6 +1,6 @@
+ # Diagnostyka, naprawa i aktualizacje
+ 
+-Panel Diagnostyka/aktualizacje sprawdza autostart, sieć, gateway/DNS, dysk, katalog ustawień, stan Base/SX4, DPAPI, relay/VPN, Steam, Ollama, logi i licznik crash-loop. Internet i Android mają osobne ograniczenia opisane w wyniku; diagnostyka offline nie wysyła raportów.
++Panel Diagnostyka/aktualizacje sprawdza autostart, sieć, gateway/DNS, dysk, katalog ustawień, stan Base/SX4, DPAPI, relay/VPN, Steam, Ollama, logi i licznik crash-loop. Internet: opcjonalny wskazany przez użytkownika HTTPS HEAD, timeout 3 s; bez adresu SKIPPED. Stan Androida jest dostępny przez devices w Base. Diagnostyka nie wysyła raportów.
+ Naprawa kolejki: zatrzymanie workera, detect → exact backup → repair → decrypt/readback verify → result. Uszkodzony plik nie jest kasowany po cichu. Naprawa katalogów zachowuje dane użytkownika; autostart zapisuje i odczytuje wpis HKCU.
+ Aktualizacja: wybierz portable ZIP i **istniejący opis dostarczony przez wydawcę**. Pola opisu: Version, Architecture=win-x64, Sha256, Size, opcjonalne Signature. To wejście konsumenta; żaden build/release nie generuje manifestu aktualizacji zgodnie z decyzją użytkownika.
+ Podpis: RSA-PSS SHA-256 nad UTF-8: SXUP1 + newline, Version + newline, Architecture + newline, Sha256 lowercase + newline, Size + newline.
+diff --git a/phone-android/app/src/main/java/pl/sentinelx/phone/BaseActivity.java b/phone-android/app/src/main/java/pl/sentinelx/phone/BaseActivity.java
+index 5c38886..7ad26bd 100644
+--- a/phone-android/app/src/main/java/pl/sentinelx/phone/BaseActivity.java
++++ b/phone-android/app/src/main/java/pl/sentinelx/phone/BaseActivity.java
+@@ -15,7 +15,7 @@ public final class BaseActivity extends Activity {
+  private volatile BaseClient client;
+  private BaseSession session;
+  private volatile boolean active,blocked;
+- private volatile int generation;private int retries,connectingEpoch=-1;
++ private final ConnectionLifecycle lifecycle=new ConnectionLifecycle();private int connectingEpoch=-1;
+  private TextView status,result;
+  private EditText host,port,pin,secret,device,base,target,appId,seconds;
+  private Spinner mode,operation;
+@@ -81,49 +81,49 @@ public final class BaseActivity extends Activity {
+  private void pair(){
+   Map<String,Object> c=StrictJson.map("host",host.getText().toString().trim(),"port",Integer.parseInt(port.getText().toString()),"fingerprint",pin.getText().toString().trim(),
+    "deviceId",Integer.parseInt(device.getText().toString()),"baseId",Integer.parseInt(base.getText().toString()),"secret",secret.getText().toString().trim(),"mode",mode.getSelectedItem().toString());
+-  disconnect();int epoch=generation;status.setText("Sprawdzam podpis i challenge…");
++  disconnect();int epoch=lifecycle.epoch();status.setText("Sprawdzam podpis i challenge…");
+   worker.execute(()->{
+    try(BaseClient verify=BaseSession.create(c)){
+     client=verify;verify.connect();
+-    if(!active||epoch!=generation)return;
+-    session.save(c);ui.post(()->{if(active&&epoch==generation){secret.setText("");blocked=false;retries=0;disconnect();connect();AlertJobService.schedule(this);}});
+-   }catch(Exception e){ui.post(()->{if(active&&epoch==generation)showError(e);});}
+-   finally{if(epoch==generation)client=null;}
++    if(!active||epoch!=lifecycle.epoch())return;
++    session.save(c);ui.post(()->{if(active&&epoch==lifecycle.epoch()){secret.setText("");blocked=false;lifecycle.paired();lifecycle.connected();disconnect();connect();AlertJobService.schedule(this);}});
++   }catch(Exception e){ui.post(()->{if(active&&epoch==lifecycle.epoch())showError(e);});}
++   finally{if(epoch==lifecycle.epoch())client=null;}
+   });
+  }
+  private void discover(){
+-  status.setText("Szukam w LAN…");int epoch=generation;
++  status.setText("Szukam w LAN…");int epoch=lifecycle.epoch();
+   worker.execute(()->{
+    try{List<Map<String,Object>> found=BaseDiscovery.discover();ui.post(()->{
+-    if(!active||epoch!=generation)return;if(found.isEmpty()){result.setText("Brak zgodnych odpowiedzi. Możesz wpisać adres ręcznie.");return;}
++    if(!active||epoch!=lifecycle.epoch())return;if(found.isEmpty()){result.setText("Brak zgodnych odpowiedzi. Możesz wpisać adres ręcznie.");return;}
+     String[] names=new String[found.size()];for(int i=0;i<names.length;i++)names[i]=String.valueOf(found.get(i).get("host"));
+     new AlertDialog.Builder(this).setTitle("Wybierz Base").setItems(names,(d,w)->{
+      Map<String,Object> c=found.get(w);host.setText(String.valueOf(c.get("host")));port.setText(String.valueOf(c.get("port")));base.setText(String.valueOf(c.get("baseId")));
+      result.setText("Kandydat fingerprint: "+c.get("fingerprint")+"\nPorównaj go z fizyczną Base i wpisz powyżej.");mode.setSelection(0);
+     }).show();
+-   });}catch(Exception e){ui.post(()->{if(active&&epoch==generation)showError(e);});}
++   });}catch(Exception e){ui.post(()->{if(active&&epoch==lifecycle.epoch())showError(e);});}
+   });
+  }
+  private void connect(){
+-  if(!active||blocked||session.configuration()==null||connectingEpoch==generation)return;int epoch=generation;connectingEpoch=epoch;status.setText("Łączenie · "+session.configuration().get("mode"));
++  if(!active||blocked||session.configuration()==null||connectingEpoch==lifecycle.epoch())return;int epoch=lifecycle.epoch();connectingEpoch=epoch;status.setText("Łączenie · "+session.configuration().get("mode"));
+   worker.execute(()->{
+    try{
+-    BaseClient next=session.open();if(!active||epoch!=generation){next.close();return;}client=next;next.connect();
+-    ui.post(()->{if(active&&epoch==generation){connectingEpoch=-1;retries=0;status.setText("Base połączona · SX4 · "+networkLabel());submitQuery("status");}});
+-   }catch(Exception e){ui.post(()->{if(active&&epoch==generation){connectingEpoch=-1;showError(e);scheduleReconnect();}});}
++    BaseClient next=session.open();if(!active||epoch!=lifecycle.epoch()){next.close();return;}client=next;next.connect();
++    ui.post(()->{if(active&&epoch==lifecycle.epoch()){connectingEpoch=-1;lifecycle.connected();status.setText("Base połączona · SX4 · "+networkLabel());submitQuery("status");}});
++   }catch(Exception e){ui.post(()->{if(active&&epoch==lifecycle.epoch()){connectingEpoch=-1;showError(e);scheduleReconnect();}});}
+   });
+  }
+  private String networkLabel(){Network n=connectivity.getActiveNetwork();NetworkCapabilities c=connectivity.getNetworkCapabilities(n);return c!=null&&c.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)?"Wi-Fi · "+mode.getSelectedItem():"remote · "+mode.getSelectedItem();}
+- private void scheduleReconnect(){if(!active||blocked)return;ui.removeCallbacks(poll);int epoch=generation;long delay=Math.min(60000,1000L<<Math.min(++retries,6))+ThreadLocalRandom.current().nextInt(1000);ui.postDelayed(()->{if(active&&epoch==generation){disconnect();connect();}},delay);}
++ private void scheduleReconnect(){if(!active||blocked)return;ui.removeCallbacks(poll);int epoch=lifecycle.epoch();long delay=lifecycle.retryDelay(ThreadLocalRandom.current().nextInt(1000));ui.postDelayed(()->{if(active&&epoch==lifecycle.epoch()){disconnect();connect();}},delay);}
+  private void submitQuery(String type){request(type,StrictJson.map(),true);}
+  private void request(String type,Map<String,Object> data,boolean read){
+-  BaseClient connection=client;int epoch=generation;if(!active||connection==null||blocked){result.setText("Base offline. Sparuj urządzenie lub poczekaj na połączenie.");return;}
++  BaseClient connection=client;int epoch=lifecycle.epoch();if(!active||connection==null||blocked){result.setText("Base offline. Sparuj urządzenie lub poczekaj na połączenie.");return;}
+   if(!read)result.setText("Wysyłam jednorazowo…");
+   worker.execute(()->{
+    try{Map<String,Object> reply=connection.request(type,data);ui.post(()->{
+-    if(!active||epoch!=generation)return;result.setText(StrictJson.encode(redact(reply.get("data"))));status.setText("Base połączona · "+networkLabel());
++    if(!active||epoch!=lifecycle.epoch())return;result.setText(StrictJson.encode(redact(reply.get("data"))));status.setText("Base połączona · "+networkLabel());
+     if(type.equals("status")){ui.removeCallbacks(poll);ui.postDelayed(poll,15000);}
+-   });}catch(Exception e){ui.post(()->{if(active&&epoch==generation){showError(e);if(!(e instanceof Sx4.Error)){disconnect();scheduleReconnect();}}});}
++   });}catch(Exception e){ui.post(()->{if(active&&epoch==lifecycle.epoch()){showError(e);if(!(e instanceof Sx4.Error)){disconnect();scheduleReconnect();}}});}
+   });
+  }
+  private static Object redact(Object value){
+@@ -131,11 +131,11 @@ public final class BaseActivity extends Activity {
+   if(value instanceof List){List<Object> safe=new ArrayList<>();for(Object x:(List<?>)value)safe.add(redact(x));return safe;}return value;
+  }
+  private void showError(Exception e){
+-  if(e instanceof Sx4.Error){String code=((Sx4.Error)e).code;if(!code.equals("unsupported")&&!code.equals("not_paired")){blocked=true;session.setBlocked(true);disconnect();}result.setText("SX4: "+code+(blocked?" · sprawdź tożsamość i sparuj ponownie":""));}
++  if(e instanceof Sx4.Error){String code=((Sx4.Error)e).code;if(!code.equals("unsupported")&&!code.equals("not_paired")){blocked=true;lifecycle.revoke();session.setBlocked(true);disconnect();}result.setText("SX4: "+code+(blocked?" · sprawdź tożsamość i sparuj ponownie":""));}
+   else result.setText("Połączenie przerwane. Komendy nie są automatycznie powtarzane.");
+  }
+- private void disconnect(){generation++;connectingEpoch=-1;ui.removeCallbacks(poll);BaseClient c=client;client=null;if(c!=null)c.close();}
+- @Override protected void onResume(){super.onResume();active=true;connectivity.registerDefaultNetworkCallback(network);connect();}
+- @Override protected void onStop(){active=false;disconnect();ui.removeCallbacksAndMessages(null);try{connectivity.unregisterNetworkCallback(network);}catch(IllegalArgumentException ignored){}super.onStop();}
++ private void disconnect(){lifecycle.networkChanged();connectingEpoch=-1;ui.removeCallbacks(poll);BaseClient c=client;client=null;if(c!=null)c.close();}
++ @Override protected void onResume(){super.onResume();active=true;blocked=session.blocked();lifecycle.resume(blocked);connectivity.registerDefaultNetworkCallback(network);connect();}
++ @Override protected void onStop(){active=false;lifecycle.stop();disconnect();ui.removeCallbacksAndMessages(null);try{connectivity.unregisterNetworkCallback(network);}catch(IllegalArgumentException ignored){}super.onStop();}
+  @Override protected void onDestroy(){disconnect();worker.shutdownNow();super.onDestroy();}
+ }
+diff --git a/phone-android/app/src/main/java/pl/sentinelx/phone/BaseClient.java b/phone-android/app/src/main/java/pl/sentinelx/phone/BaseClient.java
+index 65eba01..2b5651f 100644
+--- a/phone-android/app/src/main/java/pl/sentinelx/phone/BaseClient.java
++++ b/phone-android/app/src/main/java/pl/sentinelx/phone/BaseClient.java
+@@ -39,7 +39,7 @@ public final class BaseClient implements AutoCloseable {
+    Map<String,Object> caps=StrictJson.object(exchange("capabilities",StrictJson.map(),"capabilities.result").get("data"));
+    Object values=caps.get("types");if(!(values instanceof List)||((List<?>)values).size()>32)throw new Sx4.Error("capabilities");
+    for(Object c:(List<?>)values)if(!(c instanceof String)||!((String)c).matches("[A-Za-z0-9._]{1,64}")||!capabilities.add((String)c))throw new Sx4.Error("capabilities");
+-  }catch(Exception e){close();throw e;}
++  }catch(Exception e){close();if(e instanceof javax.net.ssl.SSLHandshakeException)throw new Sx4.Error("auth");throw e;}
+  }
+  public synchronized Map<String,Object> request(String type,Map<String,Object> data) throws Exception {
+   if(!supports(type))throw new Sx4.Error("unsupported");return exchange(type,data,type+".result");
+diff --git a/phone-android/app/src/main/java/pl/sentinelx/phone/ConnectionLifecycle.java b/phone-android/app/src/main/java/pl/sentinelx/phone/ConnectionLifecycle.java
+new file mode 100644
+index 0000000..0b91b1e
+--- /dev/null
++++ b/phone-android/app/src/main/java/pl/sentinelx/phone/ConnectionLifecycle.java
+@@ -0,0 +1,14 @@
++package pl.sentinelx.phone;
++/** Epoch and revocation rules used by the Activity and tested without Android hardware. */
++public final class ConnectionLifecycle {
++ private int epoch;private boolean active,blocked;private int retries;
++ public synchronized int resume(boolean revoked){active=true;blocked=revoked;return ++epoch;}
++ public synchronized int stop(){active=false;return ++epoch;}
++ public synchronized int networkChanged(){return ++epoch;}
++ public synchronized void revoke(){blocked=true;epoch++;}
++ public synchronized void paired(){blocked=false;retries=0;}
++ public synchronized boolean current(int candidate){return active&&!blocked&&epoch==candidate;}
++ public synchronized int epoch(){return epoch;}
++ public synchronized long retryDelay(int jitter){if(jitter<0||jitter>=1000)throw new IllegalArgumentException("jitter");return Math.min(60000,1000L<<Math.min(++retries,6))+jitter;}
++ public synchronized void connected(){retries=0;}
++}
+diff --git a/phone-android/app/src/main/java/pl/sentinelx/phone/SecretCipher.java b/phone-android/app/src/main/java/pl/sentinelx/phone/SecretCipher.java
+new file mode 100644
+index 0000000..1e79cd5
+--- /dev/null
++++ b/phone-android/app/src/main/java/pl/sentinelx/phone/SecretCipher.java
+@@ -0,0 +1,22 @@
++package pl.sentinelx.phone;
++import java.nio.charset.StandardCharsets;
++import java.util.Arrays;
++import javax.crypto.Cipher;
++import javax.crypto.SecretKey;
++import javax.crypto.spec.GCMParameterSpec;
++/** Platform independent AES-GCM envelope; key provider remains Android Keystore. */
++public final class SecretCipher {
++ public static byte[] encrypt(String name,String value,SecretKey key)throws Exception {
++  if(name.isEmpty()||name.length()>64||value.length()>8192)throw new IllegalArgumentException("secret_size");
++  Cipher c=Cipher.getInstance("AES/GCM/NoPadding");c.init(Cipher.ENCRYPT_MODE,key);c.updateAAD(name.getBytes(StandardCharsets.UTF_8));
++  byte[] iv=c.getIV(),encrypted=c.doFinal(value.getBytes(StandardCharsets.UTF_8));if(iv.length!=12)throw new IllegalStateException("iv");
++  byte[] packed=new byte[13+encrypted.length];packed[0]=1;System.arraycopy(iv,0,packed,1,12);System.arraycopy(encrypted,0,packed,13,encrypted.length);return packed;
++ }
++ public static String decrypt(String name,byte[] packed,SecretKey key)throws Exception {
++  if(packed.length<29||packed.length>32768||packed[0]!=1)throw new IllegalArgumentException("secret_format");
++  Cipher c=Cipher.getInstance("AES/GCM/NoPadding");c.init(Cipher.DECRYPT_MODE,key,new GCMParameterSpec(128,Arrays.copyOfRange(packed,1,13)));
++  c.updateAAD(name.getBytes(StandardCharsets.UTF_8));byte[] plain=c.doFinal(Arrays.copyOfRange(packed,13,packed.length));
++  try{return Sx4.utf8(plain);}finally{Arrays.fill(plain,(byte)0);}
++ }
++ private SecretCipher(){}
++}
+diff --git a/phone-android/app/src/main/java/pl/sentinelx/phone/SecretStore.java b/phone-android/app/src/main/java/pl/sentinelx/phone/SecretStore.java
+index 7ec400b..480ccf7 100644
+--- a/phone-android/app/src/main/java/pl/sentinelx/phone/SecretStore.java
++++ b/phone-android/app/src/main/java/pl/sentinelx/phone/SecretStore.java
+@@ -27,17 +27,15 @@ final class SecretStore {
+  }
+  synchronized void put(String name,String value){
+   try{
+-   Cipher cipher=Cipher.getInstance("AES/GCM/NoPadding");cipher.init(Cipher.ENCRYPT_MODE,key());cipher.updateAAD(name.getBytes(StandardCharsets.UTF_8));
+-   byte[] encrypted=cipher.doFinal(value.getBytes(StandardCharsets.UTF_8));String packed=Base64.encodeToString(cipher.getIV(),Base64.NO_WRAP)+":"+Base64.encodeToString(encrypted,Base64.NO_WRAP);
++   String packed=Base64.encodeToString(SecretCipher.encrypt(name,value,key()),Base64.NO_WRAP);
+    if(!preferences.edit().putString(name,packed).commit())throw new IllegalStateException("secret_write");
+   }catch(Exception e){throw new IllegalStateException("secret_store",e);}
+  }
+  synchronized String get(String name){
+   String packed=preferences.getString(name,"");if(packed.isEmpty())return "";
+   try{
+-   String[] parts=packed.split(":",-1);if(parts.length!=2||packed.length()>16384)throw new IllegalStateException("secret_format");
+-   Cipher cipher=Cipher.getInstance("AES/GCM/NoPadding");cipher.init(Cipher.DECRYPT_MODE,key(),new GCMParameterSpec(128,Base64.decode(parts[0],Base64.NO_WRAP)));
+-   cipher.updateAAD(name.getBytes(StandardCharsets.UTF_8));return new String(cipher.doFinal(Base64.decode(parts[1],Base64.NO_WRAP)),StandardCharsets.UTF_8);
++   if(packed.length()>65536)throw new IllegalStateException("secret_format");
++   return SecretCipher.decrypt(name,Base64.decode(packed,Base64.NO_WRAP),key());
+   }catch(Exception e){preferences.edit().remove(name).commit();return "";}
+  }
+  synchronized void remove(String name){if(!preferences.edit().remove(name).commit())throw new IllegalStateException("secret_write");}
+diff --git a/phone-android/app/src/test/java/pl/sentinelx/phone/KernelContract.java b/phone-android/app/src/test/java/pl/sentinelx/phone/KernelContract.java
+index f3abb9b..425ef6a 100644
+--- a/phone-android/app/src/test/java/pl/sentinelx/phone/KernelContract.java
++++ b/phone-android/app/src/test/java/pl/sentinelx/phone/KernelContract.java
+@@ -26,6 +26,15 @@ public final class KernelContract {
+   check(StrictJson.object(StrictJson.parse("{\"version\":4}")).get("version") instanceof Long,"version is integral Long");
+   check(StrictJson.parse(StrictJson.encode(StrictJson.map("test","Zażółć 🛰","array",Arrays.asList(1,2)))) instanceof Map,"JSON roundtrip");
+   reject(()->new BaseClient("localhost",443,new String(new char[64]).replace('\0','0'),3,3,new String(new char[64]).replace('\0','0')),"configuration");
++  javax.crypto.KeyGenerator generator=javax.crypto.KeyGenerator.getInstance("AES");generator.init(256);javax.crypto.SecretKey aes=generator.generateKey();
++  byte[] one=SecretCipher.encrypt("base.identity","sensitive 🛰",aes),two=SecretCipher.encrypt("base.identity","sensitive 🛰",aes);
++  check(!Arrays.equals(one,two),"Keystore cipher random IV");check(SecretCipher.decrypt("base.identity",one,aes).equals("sensitive 🛰"),"Keystore cipher roundtrip");
++  one[one.length-1]^=1;try{SecretCipher.decrypt("base.identity",one,aes);throw new AssertionError("tamper");}catch(javax.crypto.AEADBadTagException e){check(true,"Keystore tamper rejected");}
++  try{SecretCipher.decrypt("pc.token",two,aes);throw new AssertionError("AAD");}catch(javax.crypto.AEADBadTagException e){check(true,"Keystore name binding");}
++  ConnectionLifecycle life=new ConnectionLifecycle();int epoch=life.resume(false);check(life.current(epoch),"lifecycle resume");
++  life.networkChanged();check(!life.current(epoch),"Wi-Fi/LTE cancels old epoch");epoch=life.epoch();life.stop();check(!life.current(epoch),"stop blocks stale callbacks");
++  epoch=life.resume(true);check(!life.current(epoch),"revocation survives resume");life.paired();epoch=life.epoch();check(life.current(epoch),"repair pairing restores connection");
++  long delay=0;for(int i=0;i<10;i++){long next=life.retryDelay(0);check(next>=delay&&next<=60000,"bounded exponential reconnect");delay=next;}
+   System.out.println("PASS "+checks+" Java checks");
+  }
+  public static void main(String[] args)throws Exception {
+@@ -36,7 +45,7 @@ public final class KernelContract {
+     check(client.supports("status"),"capability");Map<String,Object> reply=client.request("status",StrictJson.map());check(Boolean.TRUE.equals(StrictJson.object(reply.get("data")).get("online")),"TLS Base status");
+     reject(()->client.request("shell",StrictJson.map()),"unsupported");
+    }else{client.request("status",StrictJson.map());throw new AssertionError("bad server accepted");}}
+-   catch(Exception e){if(mode.equals("ok"))throw e;if(e instanceof Sx4.Error)check(((Sx4.Error)e).code.equals(mode),"TLS reject "+mode);else if(mode.equals("pin"))check(true,"TLS pin rejected");else throw e;}
++   catch(Exception e){if(mode.equals("ok"))throw e;if(e instanceof Sx4.Error)check(((Sx4.Error)e).code.equals(mode)||(mode.equals("pin")&&((Sx4.Error)e).code.equals("auth")),"TLS reject "+mode);else if(mode.equals("pin"))check(true,"TLS pin rejected");else throw e;}
+   }
+  }
+ }
+diff --git a/scripts/test-sx4-tls.py b/scripts/test-sx4-tls.py
+index 7d1b408..75e500e 100644
+--- a/scripts/test-sx4-tls.py
++++ b/scripts/test-sx4-tls.py
+@@ -48,7 +48,7 @@ def main():
+   subprocess.run(['openssl','req','-x509','-newkey','rsa:2048','-nodes','-days','1','-subj','/CN=localhost','-keyout',str(keyfile),'-out',str(cert)],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+   der=ssl.PEM_cert_to_DER_cert(cert.read_text());pin=hashlib.sha256(der).hexdigest();context=ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER);context.minimum_version=ssl.TLSVersion.TLSv1_2;context.load_cert_chain(cert,keyfile)
+   java=ROOT/'phone-android/app/src/main/java/pl/sentinelx/phone'
+-  subprocess.run([args.javac,'-d',str(tmp/'classes'),*[str(java/n) for n in ['Sx4.java','StrictJson.java','BaseClient.java']],str(ROOT/'verification/java/pl/sentinelx/phone/KernelContract.java')],check=True)
++  subprocess.run([args.javac,'-d',str(tmp/'classes'),*[str(java/n) for n in ['Sx4.java','StrictJson.java','BaseClient.java','SecretCipher.java','ConnectionLifecycle.java']],str(ROOT/'verification/java/pl/sentinelx/phone/KernelContract.java')],check=True)
+   subprocess.run([args.dotnet,'build',str(ROOT/'verification/Build1/Build1.csproj'),'-c','Release','--nologo'],check=True)
+   for language in ['Java','C#']:
+    for mode in ['ok','pin','correlation','replay','timestamp','revoked']:
+diff --git a/verification/Build1/Build1.csproj b/verification/Build1/Build1.csproj
+index 2a5a05d..261a879 100644
+--- a/verification/Build1/Build1.csproj
++++ b/verification/Build1/Build1.csproj
+@@ -1,4 +1,4 @@
+ <Project Sdk="Microsoft.NET.Sdk">
+ <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable></PropertyGroup>
+-<ItemGroup><Compile Include="../../Services/Base/Sx4Wire.cs" Link="Sx4Wire.cs"/><Compile Include="../../Services/Base/BaseClient.cs" Link="BaseClient.cs"/><Compile Include="../../Services/Base/AgentQueue.cs" Link="AgentQueue.cs"/><Compile Include="../../Services/Base/OllamaSupervisor.cs" Link="OllamaSupervisor.cs"/><Compile Include="../../Services/Maintenance/VerifiedUpdater.cs" Link="VerifiedUpdater.cs"/><Compile Include="../../Services/Maintenance/SteamResolver.cs" Link="SteamResolver.cs"/></ItemGroup>
++<ItemGroup><Compile Include="../../Services/Base/Sx4Wire.cs" Link="Sx4Wire.cs"/><Compile Include="../../Services/Base/BaseClient.cs" Link="BaseClient.cs"/><Compile Include="../../Services/Base/AgentQueue.cs" Link="AgentQueue.cs"/><Compile Include="../../Services/Base/OllamaSupervisor.cs" Link="OllamaSupervisor.cs"/><Compile Include="../../Services/Maintenance/VerifiedUpdater.cs" Link="VerifiedUpdater.cs"/><Compile Include="../../Services/Maintenance/SteamResolver.cs" Link="SteamResolver.cs"/><Compile Include="../../Services/Maintenance/DirectoryRepair.cs" Link="DirectoryRepair.cs"/></ItemGroup>
+ </Project>
+\ No newline at end of file
+diff --git a/verification/Build1/MaintenanceContract.cs b/verification/Build1/MaintenanceContract.cs
+index a556b72..c1b491c 100644
+--- a/verification/Build1/MaintenanceContract.cs
++++ b/verification/Build1/MaintenanceContract.cs
+@@ -16,7 +16,7 @@ static class MaintenanceContract
+    Reject(()=>VerifiedUpdater.VerifyDescriptor(meta with{Architecture="win-arm64"},"1.0.0",null,false),"architecture");
+    Reject(()=>VerifiedUpdater.VerifyDescriptor(meta,"1.0.0",null,true),"signature_required");
+    Reject(()=>UpdateDescriptor.Parse("{\"Version\":\"2.0.0\",\"version\":\"3.0.0\"}"),"metadata_duplicate");
+-   foreach(string path in new[]{"../escape","/outside","a\\b","a/../outside","C:/outside","a./bad"})Reject(()=>VerifiedUpdater.CanonicalChild(root,path),"path");
++   foreach(string path in new[]{"../escape","/outside","a\\b","a/../outside","C:/outside","a./bad","CON.txt","a/<bad>"})Reject(()=>VerifiedUpdater.CanonicalChild(root,path),"path");
+    using var rsa=RSA.Create(2048);string publicKey=rsa.ExportSubjectPublicKeyInfoPem();
+    string signature=Convert.ToBase64String(rsa.SignData(Encoding.UTF8.GetBytes(meta.SignedText),HashAlgorithmName.SHA256,RSASignaturePadding.Pss));
+    VerifiedUpdater.VerifyDescriptor(meta with{Signature=signature},"1.0.0",publicKey,true);check(true,"updater publisher RSA-PSS signature");
+@@ -41,6 +41,13 @@ static class MaintenanceContract
+    string traversal=Path.Combine(root,"traversal.zip");using(var archive=ZipFile.Open(traversal,ZipArchiveMode.Create)){using var output=archive.CreateEntry("../escape").Open();output.Write(RandomNumberGenerator.GetBytes(8192));}
+    var dangerous=meta with{Sha256=Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(traversal))),Size=new FileInfo(traversal).Length};
+    await RejectAsync(()=>manager.StageAsync(traversal,dangerous,"1.0.0",null,false,long.MaxValue/2,CancellationToken.None),"path");
++   string first=Path.Combine(root,"repair-one"),second=Path.Combine(root,"repair-two");
++   try{DirectoryRepair.Run([first,second],Path.Combine(root,"backups"),p=>{if(p==second)throw new IOException("injected");Directory.CreateDirectory(p);});throw new Exception("repair fault accepted");}catch(IOException){}
++   check(!Directory.Exists(first)&&!Directory.Exists(second),"directory repair rolls back only newly created empty folders");
++   check(Directory.EnumerateFiles(Path.Combine(root,"backups"),"repair.jsonl",SearchOption.AllDirectories).Select(File.ReadAllText).Any(x=>x.Contains("rollback")&&x.Contains("succeeded")),"repair phases persisted");
++   string original=Path.Combine(root,"original-data");Directory.CreateDirectory(original);File.WriteAllText(Path.Combine(original,"user"),"keep");
++   DirectoryRepair.Run([original,first],Path.Combine(root,"backups"));
++   check(File.ReadAllText(Path.Combine(original,"user"))=="keep"&&Directory.Exists(first),"repair preserves existing user data and verifies directories");
+    string apps=Path.Combine(root,"Steam","steamapps");Directory.CreateDirectory(apps);
+    File.WriteAllText(Path.Combine(apps,"appmanifest_10.acf"),"\"appid\" \"10\"\n\"name\" \"Same game Deluxe\"");
+    File.WriteAllText(Path.Combine(apps,"appmanifest_11.acf"),"\"appid\" \"11\"\n\"name\" \"Same game Standard\"");
+diff --git a/verification/java/pl/sentinelx/phone/KernelContract.java b/verification/java/pl/sentinelx/phone/KernelContract.java
+index f3abb9b..425ef6a 100644
+--- a/verification/java/pl/sentinelx/phone/KernelContract.java
++++ b/verification/java/pl/sentinelx/phone/KernelContract.java
+@@ -26,6 +26,15 @@ public final class KernelContract {
+   check(StrictJson.object(StrictJson.parse("{\"version\":4}")).get("version") instanceof Long,"version is integral Long");
+   check(StrictJson.parse(StrictJson.encode(StrictJson.map("test","Zażółć 🛰","array",Arrays.asList(1,2)))) instanceof Map,"JSON roundtrip");
+   reject(()->new BaseClient("localhost",443,new String(new char[64]).replace('\0','0'),3,3,new String(new char[64]).replace('\0','0')),"configuration");
++  javax.crypto.KeyGenerator generator=javax.crypto.KeyGenerator.getInstance("AES");generator.init(256);javax.crypto.SecretKey aes=generator.generateKey();
++  byte[] one=SecretCipher.encrypt("base.identity","sensitive 🛰",aes),two=SecretCipher.encrypt("base.identity","sensitive 🛰",aes);
++  check(!Arrays.equals(one,two),"Keystore cipher random IV");check(SecretCipher.decrypt("base.identity",one,aes).equals("sensitive 🛰"),"Keystore cipher roundtrip");
++  one[one.length-1]^=1;try{SecretCipher.decrypt("base.identity",one,aes);throw new AssertionError("tamper");}catch(javax.crypto.AEADBadTagException e){check(true,"Keystore tamper rejected");}
++  try{SecretCipher.decrypt("pc.token",two,aes);throw new AssertionError("AAD");}catch(javax.crypto.AEADBadTagException e){check(true,"Keystore name binding");}
++  ConnectionLifecycle life=new ConnectionLifecycle();int epoch=life.resume(false);check(life.current(epoch),"lifecycle resume");
++  life.networkChanged();check(!life.current(epoch),"Wi-Fi/LTE cancels old epoch");epoch=life.epoch();life.stop();check(!life.current(epoch),"stop blocks stale callbacks");
++  epoch=life.resume(true);check(!life.current(epoch),"revocation survives resume");life.paired();epoch=life.epoch();check(life.current(epoch),"repair pairing restores connection");
++  long delay=0;for(int i=0;i<10;i++){long next=life.retryDelay(0);check(next>=delay&&next<=60000,"bounded exponential reconnect");delay=next;}
+   System.out.println("PASS "+checks+" Java checks");
+  }
+  public static void main(String[] args)throws Exception {
+@@ -36,7 +45,7 @@ public final class KernelContract {
+     check(client.supports("status"),"capability");Map<String,Object> reply=client.request("status",StrictJson.map());check(Boolean.TRUE.equals(StrictJson.object(reply.get("data")).get("online")),"TLS Base status");
+     reject(()->client.request("shell",StrictJson.map()),"unsupported");
+    }else{client.request("status",StrictJson.map());throw new AssertionError("bad server accepted");}}
+-   catch(Exception e){if(mode.equals("ok"))throw e;if(e instanceof Sx4.Error)check(((Sx4.Error)e).code.equals(mode),"TLS reject "+mode);else if(mode.equals("pin"))check(true,"TLS pin rejected");else throw e;}
++   catch(Exception e){if(mode.equals("ok"))throw e;if(e instanceof Sx4.Error)check(((Sx4.Error)e).code.equals(mode)||(mode.equals("pin")&&((Sx4.Error)e).code.equals("auth")),"TLS reject "+mode);else if(mode.equals("pin"))check(true,"TLS pin rejected");else throw e;}
+   }
+  }
+ }
