@@ -2,6 +2,16 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using SentinelX.Services.Base;
+if(args.Length==4){
+ string mode=args[0];await using var client=new BaseClient(new("127.0.0.1",int.Parse(args[1]),args[2],2,1,args[3]));
+ try{await client.ConnectAsync(CancellationToken.None);var reply=await client.RequestAsync("status",new{},CancellationToken.None);
+  if(mode!="ok"||!reply.Data.GetProperty("online").GetBoolean())throw new Exception("TLS expected failure");
+  try{await client.RequestAsync("shell",new{},CancellationToken.None);throw new Exception("unsupported accepted");}catch(Sx4Exception e)when(e.Code=="unsupported"){}
+  Console.WriteLine("PASS C# TLS status and capability guard");
+ }catch(Sx4Exception e)when(e.Code==mode){Console.WriteLine("PASS C# TLS reject "+mode);}
+ catch(System.Security.Authentication.AuthenticationException)when(mode=="pin"){Console.WriteLine("PASS C# TLS pin");}
+ return;
+}
 int checks=0;
 void Check(bool value,string name){if(!value)throw new Exception(name);checks++;Console.WriteLine("PASS "+name);}
 void Reject(Action action,string code){try{action();throw new Exception("not rejected "+code);}catch(Sx4Exception e){Check(e.Code==code,"reject "+code);}}
@@ -69,6 +79,7 @@ try{
  Check(!ollama.AutoLoadModel,"Ollama no model preload");
 }
 finally{Directory.Delete(root,true);CryptographicOperations.ZeroMemory(secret);}
+await MaintenanceContract.Run(Check);
 Console.WriteLine("PASS "+checks+" contract checks");
 sealed class PartialStream(byte[] bytes):MemoryStream(bytes)
 {public override ValueTask<int> ReadAsync(Memory<byte> buffer,CancellationToken cancellationToken=default)=>base.ReadAsync(buffer[..Math.Min(buffer.Length,3)],cancellationToken);}

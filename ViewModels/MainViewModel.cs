@@ -50,7 +50,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         CommandCenterViewModel command, SystemViewModel system, GamingViewModel gaming,
         VoiceViewModel voice, AiViewModel ai, ActionsViewModel actions, HistoryViewModel history, SettingsViewModel settings,
         CommandPaletteViewModel palette, ReadinessViewModel readiness, MemoryViewModel memory, ProjectViewModel projects, TaskViewModel tasks,
-        DiagnosticViewModel diagnostics, ToolsViewModel tools, ISettingsService settingsService, BaseViewModel? basePanel = null)
+        DiagnosticViewModel diagnostics, ToolsViewModel tools, ISettingsService settingsService, BaseViewModel? basePanel = null, MaintenanceViewModel? maintenance = null)
     {
         this.engine = engine; this.desktop = desktop; this.dispatcher = dispatcher; this.settings = settingsService;
         Voice = voice; Palette = palette; Readiness = readiness; commandCenter = command; System = system; Tools = tools;
@@ -59,6 +59,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         [
             new NavItem("command", "⌘", "Centrum", command),
             new NavItem("base", "⌁", "Base i Agent", (object?)basePanel ?? tools),
+            new NavItem("maintenance", "◇", "Diagnostyka / aktualizacje", (object?)maintenance ?? tools),
             new NavItem("tools", "🧰", "Narzędzia", tools),
             new NavItem("memory", "▤", "Pamięć", memory),
             new NavItem("projects", "▣", "Projekty", projects),

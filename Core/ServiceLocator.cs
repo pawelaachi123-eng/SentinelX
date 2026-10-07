@@ -93,6 +93,8 @@ public static class ServiceLocator
         services.AddSingleton<Services.Base.OllamaSupervisor>();
         services.AddSingleton<Services.Base.WindowsBaseService>();
         services.AddSingleton<BaseViewModel>();
+        services.AddSingleton<Services.Maintenance.MaintenanceService>();
+        services.AddSingleton<MaintenanceViewModel>();
         services.AddSingleton<Services.Care.CareService>();
         services.AddSingleton<IDesktopService, DesktopService>();
         services.AddSingleton<Services.Readiness.IReadinessService, Services.Readiness.ReadinessService>();

@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using SentinelX.Core;
 using SentinelX.Services.Care;
 using SentinelX.Services.Desktop;
+using SentinelX.Services.Maintenance;
 namespace SentinelX;
 public partial class App : Application
 {
@@ -25,6 +26,21 @@ public partial class App : Application
         {
             instance = new SingleInstanceService(AppPaths.Root);
             if (!instance.IsPrimary) { instance.ActivateExisting(); Shutdown(); return; }
+            try{
+                var updater=new VerifiedUpdater(Path.Combine(AppPaths.Root,"Updates"),MaintenanceService.ValidPackage);
+                var journal=updater.ReadJournal();
+                if(journal.Active!=null){
+                    string current=Path.GetFullPath(AppContext.BaseDirectory).TrimEnd(Path.DirectorySeparatorChar);
+                    var active=current.Equals(journal.Active.Directory.TrimEnd(Path.DirectorySeparatorChar),StringComparison.OrdinalIgnoreCase)?updater.BeginLaunch():journal.Active;
+                    if(active!=null&&VerifiedUpdater.VerifyVersion(active)&&!current.Equals(active.Directory.TrimEnd(Path.DirectorySeparatorChar),StringComparison.OrdinalIgnoreCase)){
+                        instance.Dispose();instance=null;
+                        var launch=new System.Diagnostics.ProcessStartInfo(Path.Combine(active.Directory,"SentinelX.exe")){UseShellExecute=false,WorkingDirectory=active.Directory};
+                        if(AutostartLaunch)launch.ArgumentList.Add("--autostart");
+                        System.Diagnostics.Process.Start(launch);Shutdown();return;
+                    }
+                }
+            }catch(Exception updateError){AppLog.Write(updateError);}
+
         }
         try
         {
@@ -54,6 +70,7 @@ public partial class App : Application
                 try { provider.GetRequiredService<CareService>().Start(); provider.GetRequiredService<Services.Base.WindowsBaseService>().Start(); }
                 catch (Exception careError) { AppLog.Write(careError); }
             }
+            if(!uiTest){_ = Task.Run(async()=>{await Task.Delay(20000);try{provider.GetRequiredService<MaintenanceService>().Updater.MarkHealthy(AppContext.BaseDirectory);}catch(Exception error){AppLog.Write(error);}});}
             if (uiTest)
             {
                 await UiSmokeTestRunner.RunAsync(provider, shell, Path.GetFullPath(e.Args[1]));

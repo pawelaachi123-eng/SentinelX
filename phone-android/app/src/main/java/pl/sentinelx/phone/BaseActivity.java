@@ -23,7 +23,7 @@ public final class BaseActivity extends Activity {
  private ConnectivityManager.NetworkCallback network;
  private final Runnable poll=()->submitQuery("status");
  @Override public void onCreate(Bundle state){
-  super.onCreate(state);session=new BaseSession(this);worker=Executors.newSingleThreadExecutor();
+  super.onCreate(state);session=new BaseSession(this);blocked=session.blocked();worker=Executors.newSingleThreadExecutor();
   ScrollView scroll=new ScrollView(this);LinearLayout box=new LinearLayout(this);box.setOrientation(1);box.setPadding(22,24,22,24);box.setBackgroundColor(0xff0d0f14);scroll.addView(box);setContentView(scroll);
   label(box,"Sentinel Base · SX4 · 1.0.0",23);status=label(box,"Nie sparowano",16);result=label(box,"Porównaj fingerprint z Base. Sekret jest osobny dla telefonu.",14);result.setTextIsSelectable(true);
   host=field(box,"Adres Base / VPN / relay",InputType.TYPE_CLASS_TEXT);
@@ -131,7 +131,7 @@ public final class BaseActivity extends Activity {
   if(value instanceof List){List<Object> safe=new ArrayList<>();for(Object x:(List<?>)value)safe.add(redact(x));return safe;}return value;
  }
  private void showError(Exception e){
-  if(e instanceof Sx4.Error){String code=((Sx4.Error)e).code;if(!code.equals("unsupported")&&!code.equals("not_paired")){blocked=true;disconnect();}result.setText("SX4: "+code+(blocked?" · sprawdź tożsamość i sparuj ponownie":""));}
+  if(e instanceof Sx4.Error){String code=((Sx4.Error)e).code;if(!code.equals("unsupported")&&!code.equals("not_paired")){blocked=true;session.setBlocked(true);disconnect();}result.setText("SX4: "+code+(blocked?" · sprawdź tożsamość i sparuj ponownie":""));}
   else result.setText("Połączenie przerwane. Komendy nie są automatycznie powtarzane.");
  }
  private void disconnect(){generation++;connectingEpoch=-1;ui.removeCallbacks(poll);BaseClient c=client;client=null;if(c!=null)c.close();}

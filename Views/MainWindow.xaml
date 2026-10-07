@@ -1,6 +1,7 @@
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:u="clr-namespace:SentinelX.Utilities" xmlns:controls="clr-namespace:SentinelX.Views.Controls" xmlns:vm="clr-namespace:SentinelX.ViewModels" xmlns:pages="clr-namespace:SentinelX.Views.Pages" x:Class="SentinelX.Views.MainWindow" Title="Sentinel X" Width="1400" Height="900" MinWidth="1100" MinHeight="700" WindowStartupLocation="CenterScreen" Background="{DynamicResource SxBackground}" FontFamily="{StaticResource SxFontFamily}" ThemeMode="Dark" Icon="/Assets/sentinel.ico" u:UiInteraction.LoadedCommand="{Binding InitializeCommand}">
     <Window.InputBindings><KeyBinding Key="K" Modifiers="Control" Command="{Binding OpenPaletteCommand}"/></Window.InputBindings>
     <Window.Resources>
+        <DataTemplate DataType="{x:Type vm:MaintenanceViewModel}"><pages:MaintenancePage/></DataTemplate>
         <DataTemplate DataType="{x:Type vm:BaseViewModel}"><pages:BasePage/></DataTemplate>
         <DataTemplate DataType="{x:Type vm:CommandCenterViewModel}">
             <pages:CommandCenterPage/>
