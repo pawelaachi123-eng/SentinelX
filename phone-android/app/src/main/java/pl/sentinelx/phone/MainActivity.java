@@ -79,6 +79,8 @@ public class MainActivity extends Activity {
         root.addView(web, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         overlay = buildOverlay();
         root.addView(overlay, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        Button baseShortcut=button("Base SX4",false,v->startActivity(new Intent(this,BaseActivity.class)));
+        FrameLayout.LayoutParams shortcut=new FrameLayout.LayoutParams(dp(112),dp(44),Gravity.TOP|Gravity.END);root.addView(baseShortcut,shortcut);
         setContentView(root);
         applyInsets();
         askForNotifications();
@@ -146,6 +148,8 @@ public class MainActivity extends Activity {
         box.addView(overlayTitle, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         box.addView(overlayText, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         box.addView(spinner, new LinearLayout.LayoutParams(dp(40), dp(40)));
+        Button baseButton=button("Sentinel Base · działa także bez PC",true,v->startActivity(new Intent(this,BaseActivity.class)));
+        box.addView(baseButton,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,dp(54)));
         for (Button b : new Button[] { retryButton, wakeButton, addressButton, resetButton }) {
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(50));
             params.topMargin = dp(10);
@@ -208,7 +212,7 @@ public class MainActivity extends Activity {
             public void onReceivedSslError(WebView view, SslErrorHandler handler, SslError error) {
                 String expected = session.fingerprint();
                 String actual = fingerprintOf(error.getCertificate());
-                if (!expected.isEmpty() && expected.equalsIgnoreCase(actual)) {
+                if (!expected.isEmpty() && expected.equalsIgnoreCase(actual) && error.getPrimaryError()!=SslError.SSL_EXPIRED && error.getPrimaryError()!=SslError.SSL_NOTYETVALID && isPcOrigin(error.getUrl())) {
                     handler.proceed(); // exactly the certificate pinned during pairing
                 } else {
                     handler.cancel();
@@ -226,15 +230,17 @@ public class MainActivity extends Activity {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 Uri uri = request.getUrl();
-                return uri.getHost() == null || !uri.getHost().equals(session.host()); // never leave the PC's own page
+                return !isPcOrigin(uri.toString()); // never leave the PC's own page
             }
 
             @Override
             public void onPageFinished(WebView view, String url) {
-                if (url != null && url.startsWith("https://")) hideStatus();
+                if (isPcOrigin(url)) hideStatus();
             }
         });
     }
+
+    private boolean isPcOrigin(String url) { if(url==null)return false; Uri u=Uri.parse(url);return "https".equals(u.getScheme())&&session.host().equals(u.getHost())&&(u.getPort()==session.port()||u.getPort()==-1&&session.port()==443); }
 
     private static String fingerprintOf(SslCertificate certificate) {
         try {

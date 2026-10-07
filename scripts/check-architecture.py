@@ -39,7 +39,8 @@ for path in (ROOT / "ViewModels").glob("*.cs"):
 project = ET.parse(ROOT / "SENTINEL-X.csproj")
 assert project.findtext(".//TargetFramework") == "net10.0-windows"
 assert project.findtext(".//UseWindowsForms") != "true"
-assert len(list((ROOT / "Views/Pages").glob("*Page.xaml"))) == 13
+assert len(list((ROOT / "Views/Pages").glob("*Page.xaml"))) == 14
+assert (ROOT / "Views/Pages/BasePage.xaml").exists(), "Missing Base UI"
 # 0.96 · KUŹNIA: the logic is split by responsibility, and the "brain" and the tools never touch WPF.
 assert not (ROOT / "CommandRouter.cs").exists(), "CommandRouter.cs belongs in Brain/Router/"
 for required in ("Brain/Router/CommandRouter.cs", "Brain/Router/DecisionPreview.cs", "Tools/UtilityToolbox.cs", "Tools/ForgeTools.cs", "Testing/UiSmokeTestRunner.cs"):
@@ -47,4 +48,4 @@ for required in ("Brain/Router/CommandRouter.cs", "Brain/Router/DecisionPreview.
 for folder in ("Brain", "Tools"):
     for path in (ROOT / folder).rglob("*.cs"):
         assert "using System.Windows" not in path.read_text(encoding="utf-8-sig"), f"WPF in {folder}/: {path}"
-print("PASS: XML, resources, 13 views, thin code-behind, VM boundaries, target framework, no WinForms flag, Brain/Tools layout without WPF")
+print("PASS: XML, resources, 14 views, thin code-behind, VM boundaries, target framework, no WinForms flag, Brain/Tools layout without WPF")

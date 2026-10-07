@@ -51,7 +51,7 @@ public partial class App : Application
             // The caretaker starts the phone link and the AI engine and keeps them running (it does nothing in the UI smoke test).
             if (!uiTest)
             {
-                try { provider.GetRequiredService<CareService>().Start(); }
+                try { provider.GetRequiredService<CareService>().Start(); provider.GetRequiredService<Services.Base.WindowsBaseService>().Start(); }
                 catch (Exception careError) { AppLog.Write(careError); }
             }
             if (uiTest)

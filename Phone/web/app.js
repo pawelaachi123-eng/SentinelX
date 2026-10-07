@@ -51,9 +51,9 @@ function ask(message, okText = 'Tak') {
   });
 }
 const store = {
-  get(k, d = '') { try { const v = localStorage.getItem('sx.' + k); return v == null ? d : v; } catch { return d; } },
-  set(k, v) { try { localStorage.setItem('sx.' + k, String(v)); } catch { /* prywatny tryb */ } },
-  del(k) { try { localStorage.removeItem('sx.' + k); } catch { /* ignoruj */ } }
+  get(k, d = '') { if(k === 'token' && window.SXNative) return String(window.SXNative.savedToken() || d); try { const v = localStorage.getItem('sx.' + k); return v == null ? d : v; } catch { return d; } },
+  set(k, v) { if(k === 'token' && window.SXNative) { localStorage.removeItem('sx.token'); return; } try { localStorage.setItem('sx.' + k, String(v)); } catch { /* prywatny tryb */ } },
+  del(k) { if(k === 'token' && window.SXNative) window.SXNative.clearSession(); try { localStorage.removeItem('sx.' + k); } catch { /* ignoruj */ } }
 };
 const nf = (v, d = 0) => Number.isFinite(v) ? v.toLocaleString('pl-PL', { maximumFractionDigits: d, minimumFractionDigits: 0 }) : '–';
 const pad2 = n => String(n).padStart(2, '0');

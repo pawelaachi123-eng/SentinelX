@@ -54,6 +54,7 @@ final class PinnedTls {
             if (chain == null || chain.length == 0) throw new CertificateException("empty certificate chain");
             try {
                 seen = sha256Hex(chain[0].getEncoded());
+                if(!expected.isEmpty())chain[0].checkValidity();
             } catch (Exception e) {
                 throw new CertificateException(e);
             }

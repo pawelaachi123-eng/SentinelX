@@ -33,6 +33,8 @@
             </intent-filter>
         </activity>
 
+        <activity android:name=".BaseActivity" android:exported="false" />
+
         <service
             android:name=".AlertJobService"
             android:exported="false"

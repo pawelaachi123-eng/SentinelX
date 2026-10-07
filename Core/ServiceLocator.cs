@@ -90,6 +90,9 @@ public static class ServiceLocator
             sp.GetRequiredService<TaskService>(), sp.GetRequiredService<ConversationMemoryService>(), sp.GetRequiredService<Services.Link.AlertFeed>(),
             () => sp.GetRequiredService<Services.Care.CareService>().BuildLinkInfo(), () => sp.GetRequiredService<Services.Link.LinkService>().Urls),
             sp.GetRequiredService<Services.Link.ILinkApprovalUi>(), () => sp.GetRequiredService<ISettingsService>().Current.Link));
+        services.AddSingleton<Services.Base.OllamaSupervisor>();
+        services.AddSingleton<Services.Base.WindowsBaseService>();
+        services.AddSingleton<BaseViewModel>();
         services.AddSingleton<Services.Care.CareService>();
         services.AddSingleton<IDesktopService, DesktopService>();
         services.AddSingleton<Services.Readiness.IReadinessService, Services.Readiness.ReadinessService>();
