@@ -17,24 +17,74 @@ public sealed class MaintenanceService(IBaseControl agent,OllamaSupervisor ollam
  public async Task<IReadOnlyList<DiagnosticCheck>> DiagnoseAsync(string internetProbe,CancellationToken cancel){
   var checks=new List<DiagnosticCheck>();
   void Check(string name,bool ok,string detail)=>checks.Add(new(name,ok?"PASS":"BLOCKED",detail));
+  void Skip(string name,string detail)=>checks.Add(new(name,"SKIPPED",detail));
+  var settingsHealth=new AppSettingsService();
+  string dpapiDetail;bool dpapiOk;
+  try{
+   byte[] probe=RandomNumberGenerator.GetBytes(32);
+   byte[] roundtrip=ProtectedData.Unprotect(ProtectedData.Protect(probe,null,DataProtectionScope.CurrentUser),null,DataProtectionScope.CurrentUser);
+   dpapiOk=probe.AsSpan().SequenceEqual(roundtrip);
+   dpapiDetail=dpapiOk?"Magazyn Windows odpowiada (próba szyfrowania)":"Próba szyfrowania nie powiodła się";
+   string identity=Path.Combine(AppPaths.Root,"Base","identity.bin");
+   if(dpapiOk&&File.Exists(identity)){
+    try{ProtectedData.Unprotect(File.ReadAllBytes(identity),null,DataProtectionScope.CurrentUser);dpapiDetail+="; parowanie odszyfrowane";}
+    catch(Exception e)when(e is CryptographicException or IOException){dpapiOk=false;dpapiDetail="Plik parowania nie odszyfrowuje się — zarchiwizuj go z ekranu odzyskiwania i sparuj ponownie";}
+   }
+  }catch(Exception e)when(e is CryptographicException or IOException){dpapiOk=false;dpapiDetail="Magazyn Windows niedostępny";}
+  string? queueError=null;try{queueError=await agent.QueueStorageErrorAsync(cancel);}catch(Exception e)when(e is IOException or AgentException or OperationCanceledException){queueError="unreachable";}
   await Task.Run(()=>{
    Check("Autostart",new StartupService("Sentinel X").IsEnabled(),"Rejestr użytkownika; bez stałego administratora");
    Check("Sieć",NetworkInterface.GetIsNetworkAvailable(),"Interfejs sieci");
-   var adapters=NetworkInterface.GetAllNetworkInterfaces().Where(x=>x.OperationalStatus==OperationalStatus.Up).ToArray();
-   Check("Gateway",adapters.Any(x=>x.GetIPProperties().GatewayAddresses.Count>0),"Gateway skonfigurowany");
-   Check("DNS",adapters.Any(x=>x.GetIPProperties().DnsAddresses.Count>0),"DNS skonfigurowany; brak wysyłania rozmów");
+   NetworkInterface[] adapters;
+   try{adapters=NetworkInterface.GetAllNetworkInterfaces().Where(x=>x.OperationalStatus==OperationalStatus.Up).ToArray();}
+   catch(NetworkInformationException){adapters=[];}
+   Check("Gateway",adapters.Any(x=>{try{return x.GetIPProperties().GatewayAddresses.Count>0;}catch(NetworkInformationException){return false;}}),"Gateway skonfigurowany");
+   Check("DNS",adapters.Any(x=>{try{return x.GetIPProperties().DnsAddresses.Count>0;}catch(NetworkInformationException){return false;}}),"DNS skonfigurowany; brak wysyłania rozmów");
+   bool apipa=adapters.SelectMany(x=>{try{return x.GetIPProperties().UnicastAddresses;}catch(NetworkInformationException){return Enumerable.Empty<UnicastIPAddressInformation>();}}).Any(x=>x.Address.ToString().StartsWith("169.254.",StringComparison.Ordinal));
+   Check("DHCP",!apipa,apipa?"Wykryto adres APIPA — router nie przydzielił adresu":"Brak adresów APIPA");
+   string? gateway=adapters.SelectMany(x=>{try{return x.GetIPProperties().GatewayAddresses;}catch(NetworkInformationException){return Enumerable.Empty<GatewayIPAddressInformation>();}}).Select(x=>x.Address.ToString()).FirstOrDefault(x=>!string.IsNullOrEmpty(x));
+   if(gateway==null)Skip("Router","Brak gateway do sprawdzenia");
+   else{
+    try{using var ping=new Ping();var reply=ping.Send(gateway,1500);Check("Router",reply.Status==IPStatus.Success,"Gateway "+gateway+": "+reply.Status+" "+reply.RoundtripTime+" ms");}
+    catch(Exception e)when(e is PingException or InvalidOperationException){Check("Router",false,"Gateway "+gateway+" nie odpowiada");}
+   }
    Check("Dysk",new DriveInfo(Path.GetPathRoot(AppPaths.Root)!).AvailableFreeSpace>536870912,"Wymagane co najmniej 512 MiB wolnego");
-   Check("Konfiguracja",Directory.Exists(AppPaths.SettingsDirectory),"Katalog ustawień");
+   Check("Konfiguracja",settingsHealth.LastError==null,settingsHealth.LastError??"Ustawienia sparsowane i zwalidowane względem schematu");
    Check("Base/auth/SX4",agent.Capabilities.Count>0,agent.Status);
-   Check("DPAPI",agent.PublicConfiguration!=null,"Sekret nie jest odczytywany do raportu");
-   Check("Relay/VPN",agent.PublicConfiguration?.Mode is "vpn" or "relay","Wymaga własnego skonfigurowanego endpointu");
+   Check("DPAPI",dpapiOk,dpapiDetail);
+   var relayMode=agent.PublicConfiguration?.Mode;
+   if(relayMode is "vpn" or "relay"){
+    var relayConfig=agent.PublicConfiguration!;
+    try{
+     using var tcp=new System.Net.Sockets.TcpClient();
+     var connected=tcp.ConnectAsync(relayConfig.Host,relayConfig.Port);
+     if(connected.Wait(TimeSpan.FromSeconds(3)))Check("Relay/VPN",tcp.Connected,"Endpoint "+relayConfig.Host+":"+relayConfig.Port+" osiągalny (TCP; bez logowania)");
+     else Check("Relay/VPN",false,"Endpoint "+relayConfig.Host+":"+relayConfig.Port+" nie odpowiada w 3 s");
+    }catch(Exception e)when(e is System.Net.Sockets.SocketException or InvalidOperationException or ArgumentException){Check("Relay/VPN",false,"Endpoint nieosiągalny");}
+   }
+   else Skip("Relay/VPN","Tryb Base: "+(relayMode??"brak parowania")+"; test endpointu tylko dla vpn/relay");
+   Check("Kolejka",queueError==null,queueError==null?"Magazyn kolejki odszyfrowany i spójny":"Kolejka: "+queueError);
    Check("Steam",File.Exists(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),"Steam","steam.exe")),"Lokalna instalacja");
-   Check("Logi",Directory.Exists(AppPaths.LogsDirectory),"Lokalne logi; dziennik Base ma limit 8 MiB");
+   string logProbe=Path.Combine(AppPaths.LogsDirectory,".probe");bool logsWritable=false;
+   try{Directory.CreateDirectory(AppPaths.LogsDirectory);File.WriteAllText(logProbe,"probe");File.Delete(logProbe);logsWritable=true;}catch(Exception e)when(e is IOException or UnauthorizedAccessException){}
+   long errorBytes=0;try{string errors=Path.Combine(AppPaths.LogsDirectory,"errors.log");if(File.Exists(errors))errorBytes=new FileInfo(errors).Length;}catch(Exception e)when(e is IOException or UnauthorizedAccessException){}
+   Check("Logi",logsWritable,"Zapis do katalogu logów "+(logsWritable?"działa":"NIEDOSTĘPNY")+"; errors.log "+errorBytes+" B; dziennik Base ma limit 8 MiB");
    var state=Updater.ReadJournal();Check("Crash-loop",state.LaunchFailures<3,"Licznik: "+state.LaunchFailures);
+   Check("Aktualizacje",state.LaunchFailures<3,"Aktywna: "+(state.Active?.Version??"brak")+"; ostatnia dobra: "+(state.LastGood?.Version??"brak"));
    var runs=RunHealth.Read(AppPaths.Root,"ui");var agentRuns=RunHealth.Read(AppPaths.Root,"agent");Check("Uruchomienia",runs.ConsecutiveFailures==0&&agentRuns.ConsecutiveFailures==0,"Nieczyste starty UI/Agent: "+runs.ConsecutiveFailures+"/"+agentRuns.ConsecutiveFailures);
 
-   Check("Android",false,"Stan telefonu jest dostępny przez devices/status Base");
   },cancel);
+  if(agent.PublicConfiguration==null)Skip("Android","Base nie jest sparowana");
+  else{
+   try{
+    using var deviceTimeout=CancellationTokenSource.CreateLinkedTokenSource(cancel);deviceTimeout.CancelAfter(TimeSpan.FromSeconds(10));
+    var devices=await agent.RequestAsync("devices/status",new{},deviceTimeout.Token);
+    if(devices.Data.TryGetProperty("devices",out var list)&&list.ValueKind==JsonValueKind.Array)
+     Check("Android",true,"Urządzenia przez Base: "+list.GetArrayLength());
+    else Check("Android",true,"Base odpowiada na devices/status");
+   }catch(Sx4Exception e){Check("Android",false,"Base: "+e.Code);}
+   catch(Exception e)when(e is IOException or OperationCanceledException){Check("Android",false,"Zapytanie devices/status nie powiodło się");}
+  }
   if(string.IsNullOrWhiteSpace(internetProbe))checks.Add(new("Internet","SKIPPED","Podaj opcjonalny HTTPS endpoint, aby sprawdzić połączenie"));
   else {
    if(!Uri.TryCreate(internetProbe,UriKind.Absolute,out var address)||address.Scheme!="https"||!string.IsNullOrEmpty(address.UserInfo))throw new ArgumentException("probe_url");
@@ -45,6 +95,27 @@ public sealed class MaintenanceService(IBaseControl agent,OllamaSupervisor ollam
   }
   Check("Ollama",await ollama.StatusAsync(cancel),"Tylko loopback /api/tags; bez ładowania modelu");
   return checks;
+ }
+ public async Task<IReadOnlyList<string>> PreviewRepairAsync(CancellationToken cancel){
+  var plan=new List<string>();
+  foreach(var dir in new[]{AppPaths.SettingsDirectory,AppPaths.LogsDirectory,AppPaths.HistoryDirectory,AppPaths.MemoryDirectory,AppPaths.CacheDirectory})
+   plan.Add((Directory.Exists(dir)?"OK ":"UTWORZĘ ")+dir);
+  string? previewQueue;try{previewQueue=await agent.QueueStorageErrorAsync(cancel);}catch{previewQueue="unreachable";}
+  plan.Add(previewQueue==null?"OK kolejka spójna":"NAPRAWIĘ kolejkę (kopia + odbudowa): "+previewQueue);
+  await Task.Run(()=>{
+   string? autostart=null;
+   try{using var key=Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run",false);autostart=key?.GetValue("Sentinel X")?.ToString();}catch{}
+   plan.Add(autostart==null?"UTWORZĘ wpis autostartu Sentinel X":"OK wpis autostartu istnieje");
+   try{var journal=Updater.ReadJournal();plan.Add(journal.Active==null?"OK brak oczekującej aktualizacji":"INFO aktywna aktualizacja "+journal.Active.Version+" (rollback dostępny: "+(journal.LastGood!=null?"tak":"nie")+")");}catch(Exception e){plan.Add("UWAGA dziennik aktualizacji nieczytelny: "+e.GetType().Name);}
+  },cancel);
+  return plan;
+ }
+ public async Task<string> ExportDiagnosticsAsync(CancellationToken cancel){
+  var dialog=new SaveFileDialog{Filter="Diagnostyka|*.json",FileName="sentinel-diagnostics.json"};if(dialog.ShowDialog()!=true)return "Anulowano";
+  var checks=await DiagnoseAsync("",cancel);
+  string json=JsonSerializer.Serialize(new{time=DateTimeOffset.UtcNow,version=AppConstants.SemanticVersion,checks},new JsonSerializerOptions{WriteIndented=true});
+  await File.WriteAllTextAsync(dialog.FileName,DiagnosticRedaction.Redact(json),cancel);
+  return "Zapisano zredagowaną diagnostykę: "+dialog.FileName;
  }
  public async Task<string> RepairDirectoriesAsync()=>await Task.Run(()=>"Sprawdzono katalogi. Kopia i dziennik: "+DirectoryRepair.Run([AppPaths.SettingsDirectory,AppPaths.LogsDirectory,AppPaths.HistoryDirectory,AppPaths.MemoryDirectory,AppPaths.CacheDirectory],AppPaths.BackupsDirectory));
  public string RepairAutostart(){
