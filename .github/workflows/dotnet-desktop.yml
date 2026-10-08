@@ -38,7 +38,8 @@ jobs:
           dotnet build $target --configuration Release --no-restore
 
   winui:
-    runs-on: windows-latest
+    # windows-2022: XamlCompiler (net472) z WinAppSDK 1.5.x milcząco pada na windows-latest (diagnostyka w adnotacjach).
+    runs-on: windows-2022
 
     steps:
       - name: Checkout repository
