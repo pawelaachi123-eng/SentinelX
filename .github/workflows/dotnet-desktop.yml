@@ -102,18 +102,23 @@ jobs:
                 $B += ('genxbf: ' + $ij.GenXbfPath + ' exists=' + (Test-Path $ij.GenXbfPath))
                 $sdkp = @($ij.SdkXamlPages)
                 $B += "sdkxaml: count=$($sdkp.Count)"
-                foreach ($s in ($sdkp | Select-Object -First 4)) { $sp = $s.ItemSpec; if (-not $sp) { $sp = $s.FullPath }; $B += ('  sdk: ' + $sp + ' exists=' + (Test-Path $sp)) }
-                $B += ('localasm: ' + $ij.LocalAssembly)
-                $B += ('vc: dir=' + $ij.VCInstallDir + ' exists=' + (Test-Path $ij.VCInstallDir))
-                $B += ('vc64: ' + $ij.VCInstallPath64 + ' exists=' + (Test-Path $ij.VCInstallPath64))
-                $B += ('winsdk: ' + $ij.WindowsSdkPath + ' exists=' + (Test-Path $ij.WindowsSdkPath))
-                $B += ('pch: ' + $ij.PrecompiledHeaderFile)
-                $B += ('outpath: ' + $ij.OutputPath)
+                foreach ($s in ($sdkp | Select-Object -First 4)) {
+                  $sj = ($s | ConvertTo-Json -Compress -Depth 4); if ($sj.Length -gt 500) { $sj = $sj.Substring(0, 500) }
+                  $B += ('  sdk: ' + $sj)
+                }
+                $tpx = { param($p) if ($p) { (Test-Path $p) } else { '(null)' } }
+                $B += ('localasm: [' + $ij.LocalAssembly + ']')
+                $B += ('vc: dir=[' + $ij.VCInstallDir + '] exists=' + (& $tpx $ij.VCInstallDir))
+                $B += ('vc64: [' + $ij.VCInstallPath64 + '] exists=' + (& $tpx $ij.VCInstallPath64))
+                $B += ('winsdk: [' + $ij.WindowsSdkPath + '] exists=' + (& $tpx $ij.WindowsSdkPath))
+                $B += ('pch: [' + $ij.PrecompiledHeaderFile + ']')
+                $B += ('savedstate: [' + $ij.SavedStateFile + '] rootslog: [' + $ij.RootsLog + ']')
+                $B += ('outpath: [' + $ij.OutputPath + '] fname: [' + $ij.TargetFileName + '] priname: [' + $ij.PriIndexName + ']')
                 $rap = @($ij.ReferenceAssemblyPaths); $ra = @($ij.ReferenceAssemblies)
                 $B += "refcounts: paths=$($rap.Count) assemblies=$($ra.Count)"
                 $cl = @($ij.ClIncludeFiles); $ci = @($ij.CIncludeDirectories)
                 $B += "cl: includes=$($cl.Count) dirs=$($ci.Count)"
-                foreach ($d in ($ci | Select-Object -First 3)) { $B += ('  incdir: ' + $d + ' exists=' + (Test-Path $d)) }
+                foreach ($d in ($ci | Select-Object -First 3)) { $B += ('  incdir: [' + $d + '] exists=' + (& $tpx $d)) }
                 $script:bisN = 0
                 $runBisect = { param($tag, $a, $p, $noxbf)
                   $script:bisN++
