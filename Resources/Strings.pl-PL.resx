@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <!-- Powłoka (pl-PL). Neutralny resx niesie wartości EN. -->
+  <data name="NavCenter" xml:space="preserve"><value>Centrum</value></data>
+  <data name="NavBase" xml:space="preserve"><value>Base i Agent</value></data>
+  <data name="NavMaintenance" xml:space="preserve"><value>Diagnostyka / aktualizacje</value></data>
+  <data name="NavTools" xml:space="preserve"><value>Narzędzia</value></data>
+  <data name="NavMemory" xml:space="preserve"><value>Pamięć</value></data>
+  <data name="NavProjects" xml:space="preserve"><value>Projekty</value></data>
+  <data name="NavSettings" xml:space="preserve"><value>Ustawienia</value></data>
+  <data name="ThemeDark" xml:space="preserve"><value>Ciemny</value></data>
+  <data name="ThemeDeepDark" xml:space="preserve"><value>Czarny</value></data>
+  <data name="ThemeLight" xml:space="preserve"><value>Jasny</value></data>
+  <data name="ThemeSystem" xml:space="preserve"><value>Jak Windows</value></data>
+  <data name="SearchButton" xml:space="preserve"><value>⌕  Szukaj · Ctrl+K</value></data>
+  <data name="SearchHelp" xml:space="preserve"><value>Otwórz paletę poleceń</value></data>
+  <data name="ToolsButton" xml:space="preserve"><value>🧰  Narzędzia</value></data>
+  <data name="ToolsHelp" xml:space="preserve"><value>Otwórz katalog narzędzi</value></data>
+  <data name="NowOnPc" xml:space="preserve"><value>TERAZ NA KOMPUTERZE</value></data>
+  <data name="ThemeCaption" xml:space="preserve"><value>MOTYW</value></data>
+  <data name="ReadinessButton" xml:space="preserve"><value>◇  Konfiguracja i gotowość</value></data>
+  <data name="EmergencyStop" xml:space="preserve"><value>ϟ  EMERGENCY STOP</value></data>
+  <data name="EmergencyStopTip" xml:space="preserve"><value>Ctrl+Shift+X · blokuje nowe akcje i wyłącza głos</value></data>
+  <data name="ResumeButton" xml:space="preserve"><value>Wznów Sentinel</value></data>
+  <data name="ExitButton" xml:space="preserve"><value>Wyjdź z aplikacji</value></data>
+  <data name="VersionHelp" xml:space="preserve"><value>Wersja Sentinel X</value></data>
+</root>
