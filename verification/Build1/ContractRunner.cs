@@ -157,9 +157,15 @@ Check(TextScrubber.Scrub("plain note")=="plain note","scrub keeps plain text");
     Check(AgentAuth.OwnerMutexName(troot).StartsWith(@"Local\SentinelX-BaseOwner-"), "owner mutex name");
     try
     {
-        using (var first = AgentAuth.TryOwnBase(troot)) { Check(first != null, "base owner acquired");
-        var rival = await Task.Run(() => AgentAuth.TryOwnBase(troot)); Check(rival == null, "second owner refused"); }
-        using (var again = AgentAuth.TryOwnBase(troot)) { Check(again != null, "owner released and reacquired"); }
+        var owned = AgentAuth.TryOwnBase(troot);
+        Check(owned != null, "base owner acquired");
+        try
+        {
+            var rival = await Task.Run(() => AgentAuth.TryOwnBase(troot));
+            Check(rival == null, "second owner refused");
+        }
+        finally { owned.ReleaseMutex(); owned.Dispose(); }
+        using (var again = AgentAuth.TryOwnBase(troot)) { Check(again != null, "owner released and reacquired"); again?.ReleaseMutex(); }
     }
     catch (Exception e) when (e is PlatformNotSupportedException or IOException or UnauthorizedAccessException)
     { Check(true, "named mutex unavailable on this runner: " + e.GetType().Name + " (semantics verified on Windows"); }
