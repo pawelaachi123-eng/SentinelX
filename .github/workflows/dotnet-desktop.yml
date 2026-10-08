@@ -83,19 +83,41 @@ jobs:
             $inner = @(Select-String -Path build-winui.log -Pattern 'WMC\d+|XamlCompiler|Markup\.Compiler.*(error|fail|exception)|GENERATE.*FAIL' | Select-Object -First 15)
             foreach ($m in $inner) {
               Write-Output ('::error title=XAML compiler output::' + (($m.Line -replace '::', ';').Trim()))
-              $script:errCount++
             }
             $outJson = Get-ChildItem -Path SentinelX.WinUI/obj -Recurse -Filter output.json -ErrorAction SilentlyContinue | Select-Object -First 1
             if ($outJson) {
               $txt = (Get-Content $outJson.FullName -Raw)
               if ($txt.Length -gt 3000) { $txt = $txt.Substring(0, 3000) + '…[truncated]' }
               Write-Output ('::error title=XAML output.json::' + (($txt -replace '::', ';' -replace "`r`n", '%0A' -replace "`n", '%0A')))
-              $script:errCount++
             }
-            if ($script:errCount -eq 0) {
-              $tail = ((Get-Content build-winui.log -Tail 60) -join '%0A' -replace '::', ';')
-              Write-Output "::error title=WinUI build failed (exit $bc), raw tail::$tail"
+            # Context: 8 lines before/after each XamlCompiler mention.
+            $lines = Get-Content build-winui.log
+            for ($i = 0; $i -lt $lines.Count; $i++) {
+              if ($lines[$i] -match 'XamlCompiler\.exe') {
+                $a = [Math]::Max(0, $i - 8); $b = [Math]::Min($lines.Count - 1, $i + 8)
+                $ctx = (($lines[$a..$b] -join '%0A') -replace '::', ';')
+                Write-Output "::error title=XAML context @$i::$ctx"
+              }
             }
+            # Input file: does input.json exist and what does it feed the compiler?
+            $inJson = Get-ChildItem -Path SentinelX.WinUI/obj -Recurse -Filter input.json -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($inJson) {
+              $itxt = (Get-Content $inJson.FullName -Raw)
+              if ($itxt.Length -gt 2500) { $itxt = $itxt.Substring(0, 2500) + '…[truncated]' }
+              Write-Output ('::error title=XAML input.json::' + (($itxt -replace '::', ';' -replace "`r`n", '%0A' -replace "`n", '%0A')))
+              # Decisive test: run XamlCompiler manually and capture its own stdout/stderr.
+              $xc = Join-Path $env:USERPROFILE '.nuget/packages/microsoft.windowsappsdk/1.5.240627000/tools/net472/XamlCompiler.exe'
+              $manual = (& $xc $inJson.FullName (Join-Path $env:TEMP 'xc-manual-out.json') 2>&1 | Out-String)
+              $xccode = $LASTEXITCODE
+              if ($manual.Length -gt 2500) { $manual = $manual.Substring(0, 2500) + '…[truncated]' }
+              if (-not $manual.Trim()) { $manual = '(no output at all)' }
+              Write-Output ('::error title=XAML manual run exit ' + $xccode + '::' + (($manual -replace '::', ';' -replace "`r`n", '%0A' -replace "`n", '%0A')))
+            } else {
+              Write-Output '::error title=XAML input.json::(missing — targets did not generate input)'
+            }
+            # Raw tail, always (cheap insurance against parser blind spots).
+            $tail = ((Get-Content build-winui.log -Tail 40) -join '%0A' -replace '::', ';')
+            Write-Output "::error title=WinUI build failed (exit $bc), raw tail::$tail"
           }
           if ($rc -ne 0) { exit $rc } else { exit $bc }
 
