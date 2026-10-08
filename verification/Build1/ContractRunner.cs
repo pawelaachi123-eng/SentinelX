@@ -5,6 +5,13 @@ using System.Text.Json;
 using SentinelX.Services.Base;
 using SentinelX.Services.Agent;
 using System.IO.Pipes;
+AppDomain.CurrentDomain.UnhandledException += (_, e) =>
+{
+    string detail = e.ExceptionObject is Exception ex ? ex.GetType().Name + ": " + (ex.Message ?? "") : "?";
+    detail = detail.Replace("\r", " ").Replace("\n", " ").Trim();
+    if (detail.Length > 300) detail = detail[..300];
+    Console.WriteLine("::error::Build1 crash: " + detail);
+};
 if(args.Length==4){
  string mode=args[0];await using var client=new BaseClient(new("127.0.0.1",int.Parse(args[1]),args[2],2,1,args[3]));
  try{await client.ConnectAsync(CancellationToken.None);var reply=await client.RequestAsync("status",new{},CancellationToken.None);
