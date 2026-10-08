@@ -38,8 +38,8 @@ jobs:
           dotnet build $target --configuration Release --no-restore
 
   winui:
-    # windows-2022: build przez pełny MSBuild (in-proc XAML compiler); `dotnet build` wymusza milczący XamlCompiler.exe (microsoft-ui-xaml#8871).
-    runs-on: windows-2022
+    # Build przez pełny MSBuild (in-proc XAML compiler); `dotnet build` wymusza milczący XamlCompiler.exe (microsoft-ui-xaml#8871).
+    runs-on: windows-latest
 
     steps:
       - name: Checkout repository
