@@ -100,41 +100,27 @@ jobs:
                 $leafOf = { param($e) $p = $e.ItemSpec; if (-not $p) { $p = $e.FullPath }; if (-not $p) { $p = ($e.PSObject.Properties.Value -join '|') }; (Split-Path $p -Leaf) }
                 $B += ('page-keys: ' + (($pages[0].PSObject.Properties.Name) -join ','))
                 $B += ('pages: ' + ((@($pages) | ForEach-Object { & $leafOf $_ }) -join ','))
-                $B += ('genxbf: ' + $ij.GenXbfPath + ' exists=' + (Test-Path $ij.GenXbfPath))
-                $sdkp = @($ij.SdkXamlPages)
-                $B += "sdkxaml: count=$($sdkp.Count)"
-                foreach ($s in ($sdkp | Select-Object -First 4)) {
-                  $sj = ($s | ConvertTo-Json -Compress -Depth 4); if ($sj.Length -gt 500) { $sj = $sj.Substring(0, 500) }
-                  $B += ('  sdk: ' + $sj)
-                }
-                $tpx = { param($p) if ($p) { (Test-Path $p) } else { '(null)' } }
-                $B += ('localasm: [' + $ij.LocalAssembly + ']')
-                $B += ('vc: dir=[' + $ij.VCInstallDir + '] exists=' + (& $tpx $ij.VCInstallDir))
-                $B += ('vc64: [' + $ij.VCInstallPath64 + '] exists=' + (& $tpx $ij.VCInstallPath64))
-                $B += ('winsdk: [' + $ij.WindowsSdkPath + '] exists=' + (& $tpx $ij.WindowsSdkPath))
-                $B += ('pch: [' + $ij.PrecompiledHeaderFile + ']')
-                $B += ('savedstate: [' + $ij.SavedStateFile + '] rootslog: [' + $ij.RootsLog + ']')
-                $B += ('outpath: [' + $ij.OutputPath + '] fname: [' + $ij.TargetFileName + '] priname: [' + $ij.PriIndexName + ']')
-                $rap = @($ij.ReferenceAssemblyPaths); $ra = @($ij.ReferenceAssemblies)
-                $B += "refcounts: paths=$($rap.Count) assemblies=$($ra.Count)"
-                $cl = @($ij.ClIncludeFiles); $ci = @($ij.CIncludeDirectories)
-                $B += "cl: includes=$($cl.Count) dirs=$($ci.Count)"
-                foreach ($d in ($ci | Select-Object -First 3)) { $B += ('  incdir: [' + $d + '] exists=' + (& $tpx $d)) }
+                $B += ('scalars: TPMV=[' + $ij.TargetPlatformMinVersion + '] FName=[' + $ij.TargetFileName + '] RootNS=[' + $ij.RootNamespace + '] Proj=[' + $ij.ProjectName + '] PRI=[' + $ij.PriIndexName + '] Lang=[' + $ij.Language + '] XPlat=[' + $ij.XamlPlatform + '] SDKPath refs=' + (@($ij.ReferenceAssemblyPaths)).Count)
+                $tg = Join-Path $env:USERPROFILE '.nuget/packages/microsoft.windowsappsdk/1.5.240627000/buildTransitive/Microsoft.UI.Xaml.Markup.Compiler.interop.targets'
+                $hits = @(Select-String -Path $tg -Pattern 'XamlPlatform|TargetFileName|RootNamespace|ProjectName|PriIndexName|XamlCompilerPath|XamlCompiler\.exe|_GenerateXamlInput|WriteLinesToFile' | Select-Object -First 14)
+                foreach ($h in $hits) { $B += ('targets[' + $h.LineNumber + ']: ' + $h.Line.Trim()) }
                 $script:bisN = 0
-                $runBisect = { param($tag, $a, $p, $noxbf)
+                $runMut = { param($tag, $mut)
                   $script:bisN++
-                  $ij.XamlApplications = @($a); $ij.XamlPages = @($p); $ij.DisableXbfGeneration = $noxbf
-                  $jf = Join-Path $env:TEMP ("xc-bis$script:bisN.json"); $of = Join-Path $env:TEMP ("xc-biso$script:bisN.json")
-                  ($ij | ConvertTo-Json -Depth 20 -Compress) | Set-Content $jf -Encoding utf8
+                  $jj = (Get-Content $inJson.FullName -Raw) | ConvertFrom-Json -Depth 20
+                  & $mut $jj
+                  $jf = Join-Path $env:TEMP ("xc-mut$script:bisN.json"); $of = Join-Path $env:TEMP ("xc-muto$script:bisN.json")
+                  ($jj | ConvertTo-Json -Depth 20 -Compress) | Set-Content $jf -Encoding utf8
                   if (Test-Path $of) { Remove-Item $of -Force }
                   $t = (Measure-Command { $o = (& $xc $jf $of 2>&1 | Out-String); $script:bx = $LASTEXITCODE }).TotalSeconds
                   $ot = $o.Trim(); if ($ot.Length -gt 120) { $ot = $ot.Substring(0, 120) }; if (-not $ot) { $ot = '(silent)' } else { $ot = "[$ot]" }
-                  "bisect[$tag]: exit=$script:bx time=$([Math]::Round($t,1))s outfile=$((Test-Path $of)) $ot"
+                  "mut[$tag]: exit=$script:bx time=$([Math]::Round($t,1))s outfile=$((Test-Path $of)) $ot"
                 }
-                $B += (& $runBisect 'EMPTY-NOXBF' @() @() $true)
-                $B += (& $runBisect 'FULL-NOXBF' $apps $pages $true)
-                $B += (& $runBisect 'FULL-XBF' $apps $pages $false)
-              } catch { $B += ('BISECT-FAIL: ' + $_.Exception.Message) }
+                $B += (& $runMut 'XPlat=Windows' { param($j) $j.XamlPlatform = 'Windows' })
+                $B += (& $runMut 'XPlat=UAP' { param($j) $j.XamlPlatform = 'UAP' })
+                $B += (& $runMut 'FName=dll' { param($j) $j.TargetFileName = 'SentinelX.dll' })
+                $B += (& $runMut 'XPlat+FName' { param($j) $j.XamlPlatform = 'Windows'; $j.TargetFileName = 'SentinelX.dll' })
+              } catch { $B += ('MUT-FAIL: ' + $_.Exception.Message) }
             } else { $B += 'input: MISSING' }
             $wmc = @(Select-String -Path build-winui.log -Pattern 'WMC\d+' | Select-Object -First 5)
             foreach ($w in $wmc) { $B += "WMC: $($w.Line.Trim())" }
