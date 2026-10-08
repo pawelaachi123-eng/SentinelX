@@ -75,6 +75,7 @@ static class MaintenanceContract
 
    Reject(()=>UpdateDescriptor.Parse("{bad json"),"metadata");
    Reject(()=>UpdateDescriptor.Parse("{\"Version\":\"2.0.0\"}"),"metadata");
+   Reject(()=>UpdateDescriptor.Parse("[1,2]"),"metadata");
    var corruptJournal=new VerifiedUpdater(Path.Combine(root,"corrupt-journal"),_=>true);
    Directory.CreateDirectory(Path.Combine(root,"corrupt-journal"));File.WriteAllText(Path.Combine(root,"corrupt-journal","state.json"),"{broken");
    Reject(()=>corruptJournal.ReadJournal(),"state");
