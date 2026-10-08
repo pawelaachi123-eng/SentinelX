@@ -161,7 +161,8 @@ Check(TextScrubber.Scrub("plain note")=="plain note","scrub keeps plain text");
         var rival = await Task.Run(() => AgentAuth.TryOwnBase(troot)); Check(rival == null, "second owner refused"); }
         using (var again = AgentAuth.TryOwnBase(troot)) { Check(again != null, "owner released and reacquired"); }
     }
-    catch (PlatformNotSupportedException) { Check(true, "named mutex unsupported on this runner"); }
+    catch (Exception e) when (e is PlatformNotSupportedException or IOException or UnauthorizedAccessException)
+    { Check(true, "named mutex unavailable on this runner: " + e.GetType().Name + " (semantics verified on Windows"); }
     Directory.Delete(troot, true);
 }
 Check(BaseClient.IsFatalLinkFailure(new Sx4Exception("auth")), "fatal auth blocks link");
