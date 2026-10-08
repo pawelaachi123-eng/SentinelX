@@ -90,45 +90,34 @@ jobs:
             $B += "no-args: exit=$nc out=[$($noargs.Trim())]"
             $inJson = Get-ChildItem -Path SentinelX.WinUI/obj -Recurse -Filter input.json -ErrorAction SilentlyContinue | Select-Object -First 1
             if ($inJson) {
-              $itxt = (Get-Content $inJson.FullName -Raw)
-              $B += "input: len=$($itxt.Length) cwd=$PWD"
+              $B += "input: len=$((Get-Item $inJson.FullName).Length)"
               try {
                 $ij = (Get-Content $inJson.FullName -Raw) | ConvertFrom-Json -Depth 20
-                $B += ('input-keys: ' + (($ij.PSObject.Properties.Name) -join ','))
-                $pg = $ij.Pages; if ($null -eq $pg) { $pg = $ij.Page }; if ($null -eq $pg) { $pg = $ij.MarkupFiles }; if ($null -eq $pg) { $pg = $ij.Files }; if ($null -eq $pg) { $pg = $ij.XamlFiles }
-                if ($null -eq $pg) { $B += 'page-array: (key not found)' }
-                elseif ($pg -is [array]) { $B += "page-array: count=$($pg.Count)" }
-                else { $B += 'page-array: single-object' }
-                if ($null -ne $pg) {
-                  $first = ($pg | Select-Object -First 1 | ConvertTo-Json -Compress -Depth 6)
-                  if ($first.Length -gt 900) { $first = $first.Substring(0, 900) }
-                  $B += "page-first: $first"
+                $apps = @($ij.XamlApplications); $pages = @($ij.XamlPages)
+                $B += "counts: apps=$($apps.Count) pages=$($pages.Count)"
+                $B += ('flags: CompileMode=' + $ij.CompileMode + ' IsPass1=' + $ij.IsPass1 + ' DisableXbf=' + $ij.DisableXbfGeneration + ' Platform=' + $ij.XamlPlatform + ' OutputType=' + $ij.OutputType)
+                $leafOf = { param($e) $p = $e.ItemSpec; if (-not $p) { $p = $e.FullPath }; if (-not $p) { $p = ($e.PSObject.Properties.Value -join '|') }; (Split-Path $p -Leaf) }
+                $B += ('page-keys: ' + (($pages[0].PSObject.Properties.Name) -join ','))
+                $B += ('pages: ' + ((@($pages) | ForEach-Object { & $leafOf $_ }) -join ','))
+                $script:bisN = 0
+                $runBisect = { param($tag, $a, $p)
+                  $script:bisN++
+                  $ij.XamlApplications = @($a); $ij.XamlPages = @($p)
+                  $jf = Join-Path $env:TEMP ("xc-bis$script:bisN.json"); $of = Join-Path $env:TEMP ("xc-biso$script:bisN.json")
+                  ($ij | ConvertTo-Json -Depth 20 -Compress) | Set-Content $jf -Encoding utf8
+                  if (Test-Path $of) { Remove-Item $of -Force }
+                  $t = (Measure-Command { $o = (& $xc $jf $of 2>&1 | Out-String); $script:bx = $LASTEXITCODE }).TotalSeconds
+                  $ot = $o.Trim(); if ($ot.Length -gt 120) { $ot = $ot.Substring(0, 120) }; if (-not $ot) { $ot = '(silent)' } else { $ot = "[$ot]" }
+                  "bisect[$tag]: exit=$script:bx time=$([Math]::Round($t,1))s outfile=$((Test-Path $of)) $ot"
                 }
-              } catch { $B += ('JSONPROBE-FAIL: ' + $_.Exception.Message) }
-              # Timed manual runs: from repo root vs from project dir (relative paths in input!).
-              try {
-                $tRoot = (Measure-Command { $m1 = (& $xc $inJson.FullName (Join-Path $env:TEMP 'xc-r1.json') 2>&1 | Out-String); $script:c1 = $LASTEXITCODE }).TotalSeconds
-                if ($m1.Length -gt 300) { $m1 = $m1.Substring(0, 300) }
-                if (-not $m1.Trim()) { $m1 = '(silent)' }
-                $B += "manual-root: exit=$script:c1 time=$([Math]::Round($tRoot,1))s out=[$($m1.Trim())] outfile=$((Test-Path (Join-Path $env:TEMP 'xc-r1.json')))"
-              } catch { $B += ('ROOTPROBE-FAIL: ' + $_.Exception.Message) }
-              try {
-                Push-Location SentinelX.WinUI
-                try {
-                  $tProj = (Measure-Command { $m2 = (& $xc $inJson.FullName (Join-Path $env:TEMP 'xc-r2.json') 2>&1 | Out-String); $script:c2 = $LASTEXITCODE }).TotalSeconds
-                } finally { Pop-Location }
-                if ($m2.Length -gt 300) { $m2 = $m2.Substring(0, 300) }
-                if (-not $m2.Trim()) { $m2 = '(silent)' }
-                $r2 = Test-Path (Join-Path $env:TEMP 'xc-r2.json')
-                $B += "manual-projdir: exit=$script:c2 time=$([Math]::Round($tProj,1))s out=[$($m2.Trim())] outfile=$r2"
-                if ($r2) {
-                  $mo = (Get-Content (Join-Path $env:TEMP 'xc-r2.json') -Raw)
-                  if ($mo.Length -gt 1500) { $mo = $mo.Substring(0, 1500) + '…[trunc]' }
-                  $B += "projdir-out-file: $mo"
+                $B += (& $runBisect 'FULL' $apps $pages)
+                $B += (& $runBisect 'NO-PAGES' $apps @())
+                $B += (& $runBisect 'EMPTY' @() @())
+                for ($i = 0; $i -lt $pages.Count; $i++) {
+                  $rest = @(); for ($j = 0; $j -lt $pages.Count; $j++) { if ($j -ne $i) { $rest += $pages[$j] } }
+                  $B += (& $runBisect ('ALL-BUT-' + (& $leafOf $pages[$i])) $apps $rest)
                 }
-              } catch { $B += ('PROJDIRPROBE-FAIL: ' + $_.Exception.Message) }
-              $ix = Get-ChildItem -Path SentinelX.WinUI/obj -Recurse -Directory -Filter intermediatexaml -ErrorAction SilentlyContinue | Select-Object -First 1
-              if ($ix) { $ixn = ((Get-ChildItem $ix.FullName -File | ForEach-Object { $_.Name }) -join ', '); if (-not $ixn) { $ixn = '(empty)' }; $B += "intermediatexaml: $ixn" }
+              } catch { $B += ('BISECT-FAIL: ' + $_.Exception.Message) }
             } else { $B += 'input: MISSING' }
             $wmc = @(Select-String -Path build-winui.log -Pattern 'WMC\d+' | Select-Object -First 5)
             foreach ($w in $wmc) { $B += "WMC: $($w.Line.Trim())" }
