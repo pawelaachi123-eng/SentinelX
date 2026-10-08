@@ -7,6 +7,7 @@ using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using SentinelX.Core;
+using SentinelX.Services.Agent;
 using SentinelX.Services.Desktop;
 using SentinelX.Services.Link;
 namespace SentinelX.Services.Base;
@@ -14,10 +15,11 @@ public sealed class WindowsBaseService : IBaseControl
 {
     private readonly IDesktopService desktop;private readonly SystemMonitor monitor;private readonly OllamaSupervisor ollama;private readonly AlertFeed alerts;
     private readonly string folder=Path.Combine(AppPaths.Root,"Base");private readonly SemaphoreSlim connectGate=new(1);private readonly object stateGate=new();
-    private BaseIdentity? identity;private BaseClient? client;private CancellationTokenSource? stop;private Task? loop,worker;
+    private BaseIdentity? identity;private BaseClient? client;private CancellationTokenSource? stop;private Task? loop,worker;private Mutex? owner;
     private readonly AgentQueue queue;private string status="Base nie jest sparowana";private bool authBlocked,disposed;
     public event Action? Changed;
     public string Status{get{lock(stateGate)return status;}}
+    public bool OwnsBase=>owner!=null;
     /// <summary>Set by the headless Agent: queue consent is denied (nobody can confirm),
     /// and window-bound operations become no-ops instead of touching the UI thread.</summary>
     public bool Headless{get;set;}
@@ -38,6 +40,8 @@ public sealed class WindowsBaseService : IBaseControl
     public void Start()
     {
         if(identity==null||authBlocked||disposed||loop is{IsCompleted:false}||Environment.GetEnvironmentVariable("SENTINEL_UI_SMOKE")=="1")return;
+        owner=AgentAuth.TryOwnBase(AppPaths.Root);
+        if(owner==null){SetStatus("Base obsługiwana przez inny proces — ten proces nie uruchomił pętli. Uruchom UI ponownie, aby połączyć się przez Agenta.");return;}
         stop=new();loop=Task.Run(()=>RunAsync(stop.Token));worker=Task.Run(()=>WorkerAsync(stop.Token));
     }
     public async Task PairAsync(BaseIdentity next,CancellationToken cancel)
@@ -61,6 +65,7 @@ public sealed class WindowsBaseService : IBaseControl
         if(loop!=null)try{await loop;}catch(OperationCanceledException){}
         if(worker!=null)try{await worker;}catch(OperationCanceledException){}
         client=null;stop?.Dispose();stop=null;
+        var owned=owner;owner=null;if(owned!=null){try{owned.ReleaseMutex();}catch{}owned.Dispose();}
     }
     public Task<IReadOnlyList<AgentTask>> TasksAsync()=>queue.SnapshotAsync();
     public string? QueueStorageErrorText=>queue.StorageError;
@@ -99,8 +104,10 @@ public sealed class WindowsBaseService : IBaseControl
                         if(result.Data.TryGetProperty("tasks",out var tasks)){
                             if(tasks.ValueKind!=JsonValueKind.Array||tasks.GetArrayLength()>32)throw new Sx4Exception("size");
                             foreach(var data in tasks.EnumerateArray()){
+                                try{
                                 var task=data.Deserialize<AgentTask>(new JsonSerializerOptions{PropertyNameCaseInsensitive=false,PropertyNamingPolicy=JsonNamingPolicy.CamelCase,UnmappedMemberHandling=System.Text.Json.Serialization.JsonUnmappedMemberHandling.Disallow})??throw new Sx4Exception("task");
                                 await queue.AddAsync(task,new HashSet<string>(configured.Grants??[]));Audit(task.Id,task.DeviceId,task.Operation,AuditTarget(task),"accepted","");
+                                }catch(Exception taskError)when(taskError is Sx4Exception or JsonException){Audit("rejected",0,"tasks.poll","","rejected",taskError is Sx4Exception x?x.Code:"task");}
                             }
                         }
                     }
@@ -113,7 +120,8 @@ public sealed class WindowsBaseService : IBaseControl
             }
             catch(OperationCanceledException)when(cancel.IsCancellationRequested){break;}
             catch(Exception e)when(e is Sx4Exception or System.Security.Authentication.AuthenticationException or CryptographicException or JsonException or InvalidOperationException or KeyNotFoundException){
-                authBlocked=true;stop?.Cancel();await queue.CancelAllAsync("authorization_blocked");SetStatus("Base: przerwano bezpiecznie ("+(e is Sx4Exception x?x.Code:"auth_or_protocol")+"). Sprawdź konfigurację i sparuj ponownie.");break;
+                if(!BaseClient.IsFatalLinkFailure(e))SetStatus("Base: błąd ("+(e is Sx4Exception x?x.Code:"protocol")+") — ponawiam połączenie");
+                else{authBlocked=true;stop?.Cancel();await queue.CancelAllAsync("authorization_blocked");SetStatus("Base: przerwano bezpiecznie ("+(e is Sx4Exception x?x.Code:"auth_or_protocol")+"). Sprawdź konfigurację i sparuj ponownie.");break;}
             }
             catch(Exception e)when(e is IOException or System.Net.Sockets.SocketException or OperationCanceledException){SetStatus("Base offline — ponawiam połączenie");}
             finally{client=null;if(connection!=null)await connection.DisposeAsync();}
@@ -208,7 +216,7 @@ public sealed class WindowsBaseService : IBaseControl
             File.AppendAllText(p,JsonSerializer.Serialize(new{time=DateTimeOffset.UtcNow,id,device,action,target,state,code})+"\n");}
     }
     private void SetStatus(string value){lock(stateGate)status=value;Changed?.Invoke();}
-    public void Dispose(){if(disposed)return;disposed=true;stop?.Cancel();client?.DisposeAsync().AsTask().GetAwaiter().GetResult();}
+    public void Dispose(){if(disposed)return;disposed=true;stop?.Cancel();client?.DisposeAsync().AsTask().GetAwaiter().GetResult();var owned=owner;owner=null;if(owned!=null){try{owned.ReleaseMutex();}catch{}owned.Dispose();}}
     [DllImport("user32.dll",SetLastError=true)]private static extern bool LockWorkStation();
     [DllImport("user32.dll",SetLastError=true)]private static extern IntPtr OpenInputDesktop(uint flags,bool inherit,uint access);
     [DllImport("user32.dll",SetLastError=true)]private static extern bool CloseDesktop(IntPtr desktop);

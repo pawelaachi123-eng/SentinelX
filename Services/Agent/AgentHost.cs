@@ -184,6 +184,11 @@ public sealed class AgentHost : IAsyncDisposable
                 await provider.GetRequiredService<OllamaSupervisor>().ReleaseIdleModelsAsync(30, cancel);
             }
             catch (Exception e) when (e is IOException or OperationCanceledException) { }
+            if (!direct.OwnsBase)
+            {
+                try { direct.Start(); } catch { }
+                if (direct.OwnsBase) Log("base loops acquired after the other process released them");
+            }
         }
     }
 

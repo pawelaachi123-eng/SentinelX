@@ -35,6 +35,11 @@ public final class KernelContract {
   life.networkChanged();check(!life.current(epoch),"Wi-Fi/LTE cancels old epoch");epoch=life.epoch();life.stop();check(!life.current(epoch),"stop blocks stale callbacks");
   epoch=life.resume(true);check(!life.current(epoch),"revocation survives resume");life.paired();epoch=life.epoch();check(life.current(epoch),"repair pairing restores connection");
   long delay=0;for(int i=0;i<10;i++){long next=life.retryDelay(0);check(next>=delay&&next<=60000,"bounded exponential reconnect");delay=next;}
+  check(ConnectionLifecycle.fatalLink("auth"),"fatal auth blocks");
+  check(ConnectionLifecycle.fatalLink("revoked"),"fatal revoked blocks");
+  check(!ConnectionLifecycle.fatalLink("size"),"transient size reconnects");
+  check(!ConnectionLifecycle.fatalLink("unsupported"),"unsupported is steady state");
+  check(!ConnectionLifecycle.fatalLink("not_paired"),"not_paired is steady state");
   System.out.println("PASS "+checks+" Java checks");
  }
  public static void main(String[] args)throws Exception {

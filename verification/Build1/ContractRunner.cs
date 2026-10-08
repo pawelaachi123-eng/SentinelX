@@ -139,6 +139,48 @@ Check(TextScrubber.Scrub("key "+new string('b',64))=="key <hash>","scrub hashes"
 Check(TextScrubber.Scrub("{\"token\": \"abc\"}")=="{\"token\": \"<redacted>\"}","scrub redacts JSON secrets with shape");
 Check(TextScrubber.Scrub("api_key=abcdef")=="api_key=<redacted>","scrub secrets");
 Check(TextScrubber.Scrub("plain note")=="plain note","scrub keeps plain text");
+
+{
+    using var huge = new MemoryStream(Encoding.UTF8.GetBytes(new string('a', 2 * 1024 * 1024) + "\n"));
+    try { await AgentProtocol.ReadMessageAsync(huge, CancellationToken.None); throw new Exception("oversize accepted"); }
+    catch (AgentException e) when (e.Code == "size") { Check(true, "pipe rejects oversize envelope incrementally"); }
+    using var crlf = new MemoryStream(Encoding.UTF8.GetBytes("{\"op\":\"ping\"}\r\n"));
+    Check(await AgentProtocol.ReadMessageAsync(crlf, CancellationToken.None) == "{\"op\":\"ping\"}", "pipe strips CRLF");
+    using var empty = new MemoryStream([]);
+    Check(await AgentProtocol.ReadMessageAsync(empty, CancellationToken.None) == null, "pipe clean EOF is null");
+}
+{
+    string troot = Path.Combine(Path.GetTempPath(), "sentinel-token-" + Guid.NewGuid().ToString("N"));
+    string created = AgentAuth.CreateToken();
+    AgentAuth.SaveToken(troot, created, b => b);
+    Check(AgentAuth.LoadToken(troot, b => b) == created && created.Length == 64, "agent token roundtrip");
+    Check(AgentAuth.OwnerMutexName(troot).StartsWith(@"Local\SentinelX-BaseOwner-"), "owner mutex name");
+    try
+    {
+        using (var first = AgentAuth.TryOwnBase(troot)) { Check(first != null, "base owner acquired"); Check(AgentAuth.TryOwnBase(troot) == null, "second owner refused"); }
+        using (var again = AgentAuth.TryOwnBase(troot)) { Check(again != null, "owner released and reacquired"); }
+    }
+    catch (PlatformNotSupportedException) { Check(true, "named mutex unsupported on this runner"); }
+    Directory.Delete(troot, true);
+}
+Check(BaseClient.IsFatalLinkFailure(new Sx4Exception("auth")), "fatal auth blocks link");
+Check(BaseClient.IsFatalLinkFailure(new Sx4Exception("revoked")), "fatal revoked blocks link");
+Check(BaseClient.IsFatalLinkFailure(new Sx4Exception("unsupported")), "fatal unsupported blocks link");
+Check(!BaseClient.IsFatalLinkFailure(new Sx4Exception("size")), "transient size reconnects");
+Check(!BaseClient.IsFatalLinkFailure(new Sx4Exception("correlation")), "transient correlation reconnects");
+Check(!BaseClient.IsFatalLinkFailure(new JsonException()), "protocol parse reconnects");
+Check(BaseClient.IsFatalLinkFailure(new System.Security.Authentication.AuthenticationException()), "fatal TLS auth blocks link");
+Check(BaseClient.IsCapabilityType("pc.heartbeat"), "capability charset ok");
+Check(!BaseClient.IsCapabilityType("a/b"), "capability charset rejects slash");
+Check(!BaseClient.IsCapabilityType(""), "capability charset rejects empty");
+{
+    using var okDoc = JsonDocument.Parse("{\"code\":\"busy\"}");
+    Check(Sx4Wire.RemoteErrorCode(okDoc.RootElement) == "busy", "remote error code passthrough");
+    using var evilDoc = JsonDocument.Parse("{\"code\":\"A;rm\"}");
+    Check(Sx4Wire.RemoteErrorCode(evilDoc.RootElement) == "remote_error", "remote error code sanitized");
+    using var missingDoc = JsonDocument.Parse("{}");
+    Check(Sx4Wire.RemoteErrorCode(missingDoc.RootElement) == "remote_error", "remote error code default");
+}
 await MaintenanceContract.Run(Check);
 Console.WriteLine("PASS "+checks+" contract checks");
 sealed class PartialStream(byte[] bytes):MemoryStream(bytes)

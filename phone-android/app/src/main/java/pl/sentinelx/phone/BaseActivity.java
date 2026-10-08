@@ -131,7 +131,7 @@ public final class BaseActivity extends Activity {
   if(value instanceof List){List<Object> safe=new ArrayList<>();for(Object x:(List<?>)value)safe.add(redact(x));return safe;}return value;
  }
  private void showError(Exception e){
-  if(e instanceof Sx4.Error){String code=((Sx4.Error)e).code;if(!code.equals("unsupported")&&!code.equals("not_paired")){blocked=true;lifecycle.revoke();session.setBlocked(true);disconnect();}result.setText("SX4: "+code+(blocked?" · sprawdź tożsamość i sparuj ponownie":""));}
+  if(e instanceof Sx4.Error){String code=((Sx4.Error)e).code;if(ConnectionLifecycle.fatalLink(code)){blocked=true;lifecycle.revoke();session.setBlocked(true);disconnect();}else if(!code.equals("unsupported")&&!code.equals("not_paired")){disconnect();scheduleReconnect();}result.setText("SX4: "+code+(blocked?" · sprawdź tożsamość i sparuj ponownie":""));}
   else result.setText("Połączenie przerwane. Komendy nie są automatycznie powtarzane.");
  }
  private void disconnect(){lifecycle.networkChanged();connectingEpoch=-1;ui.removeCallbacks(poll);BaseClient c=client;client=null;if(c!=null)c.close();}

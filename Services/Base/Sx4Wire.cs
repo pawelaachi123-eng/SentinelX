@@ -65,6 +65,13 @@ public static class Sx4Wire
         catch (JsonException) { throw new Sx4Exception("json"); }
         catch (DecoderFallbackException) { throw new Sx4Exception("utf8"); }
     }
+    public static string RemoteErrorCode(JsonElement data)
+    {
+        if (data.ValueKind == JsonValueKind.Object && data.TryGetProperty("code", out var code)
+            && code.ValueKind == JsonValueKind.String
+            && System.Text.RegularExpressions.Regex.IsMatch(code.GetString() ?? "", "^[a-z_]{1,64}$")) return code.GetString()!;
+        return "remote_error";
+    }
     public static void Validate(BaseMessage m)
     {
         if (m.Version != 4) throw new Sx4Exception("version");

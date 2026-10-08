@@ -7,7 +7,9 @@ namespace SentinelX.Services.Maintenance;
 /// <summary>HTTPS download with resume and bounded retries. There is no default
 /// server in Build 1.0 (no update manifest by user decision) — the caller
 /// supplies explicit https URLs, and every byte is still verified by
-/// VerifiedUpdater (size, SHA-256, version, signature) before staging.</summary>
+/// VerifiedUpdater (size, SHA-256, version, signature) before staging.
+/// The supplied HttpClient MUST disable auto-redirect (AllowAutoRedirect=false):
+/// redirects fail closed so an https URL can never be downgraded to http.</summary>
 public static class UpdateDownloader
 {
     public const int MaxAttempts = 4;
@@ -88,9 +90,17 @@ public static class UpdateDownloader
                 using var response = await http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancel);
                 response.EnsureSuccessStatusCode();
                 if (response.Content.Headers.ContentLength > maxBytes) throw new UpdateFailure("metadata_size");
-                byte[] bytes = await response.Content.ReadAsByteArrayAsync(cancel);
-                if (bytes.Length > maxBytes) throw new UpdateFailure("metadata_size");
-                return System.Text.Encoding.UTF8.GetString(bytes);
+                using var input = await response.Content.ReadAsStreamAsync(cancel);
+                using var limited = new MemoryStream();
+                var buffer = new byte[4096];
+                int total = 0, read;
+                while ((read = await input.ReadAsync(buffer, cancel)) > 0)
+                {
+                    total += read;
+                    if (total > maxBytes) throw new UpdateFailure("metadata_size");
+                    limited.Write(buffer, 0, read);
+                }
+                return System.Text.Encoding.UTF8.GetString(limited.ToArray());
             }
             catch (OperationCanceledException) when (cancel.IsCancellationRequested) { throw; }
             catch (Exception e) when (e is HttpRequestException or TaskCanceledException)

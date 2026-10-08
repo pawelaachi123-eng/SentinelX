@@ -25,6 +25,8 @@ public sealed class BaseClient : IAsyncDisposable
     public BaseClient(BaseIdentity identity)
     {identity.Validate();this.identity=identity;secret=Convert.FromHexString(identity.SecretHex);authority=new(identity.BaseId,secret);nonce=BitConverter.ToUInt32(RandomNumberGenerator.GetBytes(4));}
     public bool Supports(string type)=>Capabilities.Contains(type);
+    public static bool IsCapabilityType(string type)=>type.Length is >=1 and <=64&&type.All(c=>char.IsAsciiLetterOrDigit(c)||c is '.' or '_');
+    public static bool IsFatalLinkFailure(Exception e)=>e switch{Sx4Exception x=>x.Code is "revoked" or "auth" or "challenge" or "device" or "configuration" or "capabilities" or "unsupported" or "opcode",System.Security.Authentication.AuthenticationException=>true,CryptographicException=>true,_=>false};
     public async Task ConnectAsync(CancellationToken cancel)
     {
         using var deadline=CancellationTokenSource.CreateLinkedTokenSource(cancel,stop.Token);deadline.CancelAfter(TimeSpan.FromSeconds(10));
@@ -38,10 +40,10 @@ public sealed class BaseClient : IAsyncDisposable
         var proof=await ExchangeAsync("session.prove",new{challenge,role="agent",deviceId=identity.DeviceId},"session.proved",cancel);
         if(!proof.Data.TryGetProperty("challenge",out var echo)||echo.GetString()!=challenge)throw new Sx4Exception("challenge");
         var capabilities=await ExchangeAsync("capabilities",new{},"capabilities.result",cancel);
-        var caps=capabilities.Data.GetProperty("types");
+        if(!capabilities.Data.TryGetProperty("types",out var caps))throw new Sx4Exception("capabilities");
         if(caps.ValueKind!=JsonValueKind.Array||caps.GetArrayLength()>32)throw new Sx4Exception("capabilities");
         foreach(var c in caps.EnumerateArray())
-        { string type=c.GetString()??"";if(type.Length is <1 or >64||!Capabilities.Add(type))throw new Sx4Exception("capabilities"); }
+        { string type=c.GetString()??"";if(!IsCapabilityType(type)||!Capabilities.Add(type))throw new Sx4Exception("capabilities"); }
     }
     public Task<BaseMessage> RequestAsync(string type,object data,CancellationToken cancel)
     {if(!Supports(type))throw new Sx4Exception("unsupported");return ExchangeAsync(type,data,type+".result",cancel);}
@@ -59,11 +61,11 @@ public sealed class BaseClient : IAsyncDisposable
             if(frame.OpCode!=ExtensionOpCode)throw new Sx4Exception("opcode");
             var response=Sx4Wire.Parse(frame.Payload);
             if(response.CorrelationId!=message.RequestId)throw new Sx4Exception("correlation");
-            if(response.Type=="error"){string code=response.Data.GetProperty("code").GetString()??"remote_error";throw new Sx4Exception(System.Text.RegularExpressions.Regex.IsMatch(code,"^[a-z_]{1,64}$")?code:"remote_error");}
+            if(response.Type=="error")throw new Sx4Exception(Sx4Wire.RemoteErrorCode(response.Data));
             if(response.Type!=expected)throw new Sx4Exception("response_type");
             return response;
         }
-        catch {stream?.Dispose();tcp?.Dispose();throw;}
+        catch {var s=stream;stream=null;var t=tcp;tcp=null;s?.Dispose();t?.Dispose();throw;}
         finally{requestGate.Release();}
     }
     public async ValueTask DisposeAsync()

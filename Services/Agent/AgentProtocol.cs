@@ -24,8 +24,23 @@ public static class AgentProtocol
     public static async Task<string?> ReadMessageAsync(Stream stream, CancellationToken cancel)
     {
         using var reader = new StreamReader(stream, Encoding.UTF8, false, 4096, true);
-        string? line = await reader.ReadLineAsync(cancel).ConfigureAwait(false);
-        if (line != null && Encoding.UTF8.GetByteCount(line) > MaxMessage) throw new AgentException("size");
+        var builder = new StringBuilder();
+        var buffer = new char[4096];
+        while (true)
+        {
+            int read = await reader.ReadAsync(buffer, cancel).ConfigureAwait(false);
+            if (read == 0) break;
+            int newline = Array.IndexOf(buffer, '\n', 0, read);
+            builder.Append(buffer, 0, newline >= 0 ? newline : read);
+            // Incremental cap: past MaxMessage chars the bytes already exceed it,
+            // so an unauthenticated peer cannot grow this buffer without a newline.
+            if (builder.Length > MaxMessage) throw new AgentException("size");
+            if (newline >= 0) break;
+        }
+        if (builder.Length == 0) return null;
+        if (builder[^1] == '\r') builder.Length--;
+        string line = builder.ToString();
+        if (Encoding.UTF8.GetByteCount(line) > MaxMessage) throw new AgentException("size");
         return line;
     }
 

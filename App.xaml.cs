@@ -105,8 +105,10 @@ public partial class App : Application
                 try
                 {
                     // Controlled autostart heals itself: when the user enabled the background
-                    // Agent (e.g. after an update stopped it), the UI starts it again.
+                    // Agent (e.g. after an update stopped it), the UI starts it again — but only
+                    // in proxy mode. A UI that runs Base directly must not spawn a second owner.
                     if (provider.GetRequiredService<Services.Settings.ISettingsService>().Current.Startup.AgentAutostart
+                        && provider.GetRequiredService<Services.Base.IBaseControl>() is Services.Agent.AgentBaseProxy
                         && !AgentClient.IsAgentRunning(AppPaths.Root) && Environment.ProcessPath is string exe)
                         System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(exe, "--agent") { UseShellExecute = false });
                 }

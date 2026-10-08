@@ -72,6 +72,20 @@ static class MaintenanceContract
    var text=new ScriptHandler(_=>new HttpResponseMessage(System.Net.HttpStatusCode.OK){Content=new StringContent("{\"Version\":\"2.0.0\"}")});
    using var textHttp=new HttpClient(text);
    check((await UpdateDownloader.DownloadStringAsync(textHttp,"https://updates.example/meta.json",16384,CancellationToken.None)).Contains("2.0.0"),"descriptor download");
+
+   Reject(()=>UpdateDescriptor.Parse("{bad json"),"metadata");
+   Reject(()=>UpdateDescriptor.Parse("{\"Version\":\"2.0.0\"}"),"metadata");
+   var corruptJournal=new VerifiedUpdater(Path.Combine(root,"corrupt-journal"),_=>true);
+   Directory.CreateDirectory(Path.Combine(root,"corrupt-journal"));File.WriteAllText(Path.Combine(root,"corrupt-journal","state.json"),"{broken");
+   Reject(()=>corruptJournal.ReadJournal(),"state");
+   var flood=new ScriptHandler(_=>new HttpResponseMessage(System.Net.HttpStatusCode.OK){Content=new StreamContent(new MemoryStream(Encoding.UTF8.GetBytes(new string('x',20000))))});
+   using var floodHttp=new HttpClient(flood);
+   await RejectAsync(()=>UpdateDownloader.DownloadStringAsync(floodHttp,"https://updates.example/meta.json",16384,CancellationToken.None),"metadata_size");
+   var seen=new List<string>();
+   var redirect=new ScriptHandler(req=>{seen.Add(req.RequestUri?.Scheme??"?");return new HttpResponseMessage(System.Net.HttpStatusCode.Found);});
+   using var redirectHttp=new HttpClient(redirect);
+   await RejectAsync(()=>UpdateDownloader.DownloadStringAsync(redirectHttp,"https://updates.example/meta.json",16384,CancellationToken.None),"download");
+   check(seen.TrueForAll(s=>s=="https"),"redirect never fetched over http");
    string runs=Path.Combine(root,"runs");
    var run1=RunHealth.BeginRun(runs,"ui");check(run1.ConsecutiveFailures==0&&!run1.CleanExit,"first run starts dirty");
    RunHealth.EndRun(runs,"ui");check(RunHealth.Read(runs,"ui").CleanExit,"clean exit recorded");

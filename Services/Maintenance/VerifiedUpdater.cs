@@ -11,7 +11,8 @@ public sealed record UpdateDescriptor(string Version,string Architecture,string 
   if(json.Length>16384)throw new UpdateFailure("metadata_size");
   using var doc=JsonDocument.Parse(json,new(){MaxDepth=4});var names=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
   foreach(var p in doc.RootElement.EnumerateObject())if(!names.Add(p.Name))throw new UpdateFailure("metadata_duplicate");
-  return JsonSerializer.Deserialize<UpdateDescriptor>(json,new JsonSerializerOptions{UnmappedMemberHandling=System.Text.Json.Serialization.JsonUnmappedMemberHandling.Disallow})??throw new UpdateFailure("metadata");
+  try{return JsonSerializer.Deserialize<UpdateDescriptor>(json,new JsonSerializerOptions{UnmappedMemberHandling=System.Text.Json.Serialization.JsonUnmappedMemberHandling.Disallow})??throw new UpdateFailure("metadata");}
+  catch(JsonException){throw new UpdateFailure("metadata");}
  }
  public string SignedText=>$"SXUP1\n{Version}\n{Architecture}\n{Sha256.ToLowerInvariant()}\n{Size}\n";
 }
@@ -87,7 +88,8 @@ public sealed class VerifiedUpdater
  public UpdateJournal ReadJournal(){
   string path=Path.Combine(root,"state.json");if(!File.Exists(path))return new();
   if(new FileInfo(path).Length>2097152)throw new UpdateFailure("state");
-  return JsonSerializer.Deserialize<UpdateJournal>(File.ReadAllText(path))??throw new UpdateFailure("state");
+  try{return JsonSerializer.Deserialize<UpdateJournal>(File.ReadAllText(path))??throw new UpdateFailure("state");}
+  catch(JsonException){throw new UpdateFailure("state");}
  }
  private void Save(UpdateJournal state){
   Directory.CreateDirectory(root);string path=Path.Combine(root,"state.json"),temp=path+".tmp";

@@ -151,7 +151,7 @@ public sealed class MaintenanceService(IBaseControl agent,OllamaSupervisor ollam
  }
  public async Task<string> DownloadUpdateAsync(string packageUrl,string descriptorUrl,string publicPem,bool requireSignature,IProgress<double>? progress,CancellationToken cancel){
   UpdateDownloader.ValidateUrl(packageUrl);UpdateDownloader.ValidateUrl(descriptorUrl);
-  using var http=new HttpClient{Timeout=System.Threading.Timeout.InfiniteTimeSpan};
+  using var http=new HttpClient(new HttpClientHandler{AllowAutoRedirect=false}){Timeout=System.Threading.Timeout.InfiniteTimeSpan};
   string descriptorJson=await UpdateDownloader.DownloadStringAsync(http,descriptorUrl,16384,cancel);
   var descriptor=UpdateDescriptor.Parse(descriptorJson);
   string downloads=Path.Combine(AppPaths.Root,"Updates","downloads");Directory.CreateDirectory(downloads);

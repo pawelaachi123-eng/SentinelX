@@ -2,6 +2,7 @@ package pl.sentinelx.phone;
 /** Epoch and revocation rules used by the Activity and tested without Android hardware. */
 public final class ConnectionLifecycle {
  private int epoch;private boolean active,blocked;private int retries;
+ public static boolean fatalLink(String code){return code.equals("revoked")||code.equals("auth")||code.equals("challenge")||code.equals("device")||code.equals("configuration")||code.equals("capabilities");}
  public synchronized int resume(boolean revoked){active=true;blocked=revoked;return ++epoch;}
  public synchronized int stop(){active=false;return ++epoch;}
  public synchronized int networkChanged(){return ++epoch;}
