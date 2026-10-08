@@ -128,3 +128,40 @@ zewnętrznych (szczegóły w `BLOCKERS.md`); pliki i testy to dowody.
   i tag `v1.0.0` wolno ustawić dopiero po spełnieniu warunków stabilnych
   (sprzęt) — do tego czasu BLOCKED.
 - Dowód: ten plik, `VERSION`, `CHANGELOG.md`, `BLOCKERS.md`, artefakty CI.
+
+## Audyt 2026-10-08 (po zielonym 56bf739, naprawy zielone na 84619ed)
+
+Ręczny audyt kodu (Agent, SX4, aktualizacje, UI, Android) + testy sprzętowe
+w `docs/HARDWARE_TEST.md`. Znaleziska i dyspozycje:
+
+- F1 (potok): nieograniczone buforowanie wiersza przed autoryzacją → odczyt
+  przyrostowy z limitem + ograniczony drain (8 MiB) — naprawione, kontrakt.
+- F2 (token): nieatomowy zapis tokenu → tmp+move — naprawione, kontrakt.
+- F3 (stop Agenta): niedrenowane handlery — uniewinnione (zapis kolejki atomowy).
+- F4 (stale config w UI): uniewinnione (celowe: nie nadpisywać formularza parowania).
+- F5 (capabilities): brak walidacji znaków typów → `IsCapabilityType` — naprawione, kontrakt.
+- F6 (`GetProperty` bez `Try`): `KeyNotFoundException` zamiast kodu SX4 →
+  `RemoteErrorCode` + `TryGetProperty` — naprawione, kontrakt.
+- F7 (strumień po dispose): pole nie nullowane → nullowanie w `catch` — naprawione.
+- F8 (wyjątki): surowy `JsonException` z opisu/dziennika → `UpdateFailure` —
+  naprawione, kontrakt.
+- F9 (pobieranie): auto-redirect (downgrade https→http) i nieograniczony odczyt
+  opisu → `AllowAutoRedirect=false` + odczyt z limitem — naprawione, kontrakt.
+  Silnik AI (EngineDownloader) celowo przekierowuje (CDN), integralność daje
+  pinned SHA-256 — bez zmian.
+- F10 (link PC): każdy błąd protokołu blokował link do restartu/re-pair →
+  `IsFatalLinkFailure` (krytyczne blokują, przejściowe reconnect z backoff) +
+  izolacja pojedynczych zadań w `tasks.poll` — naprawione, kontrakt.
+- F10b (link Android): jak F10 → `fatalLink` + reconnect przejściowych —
+  naprawione, testy KernelContract.
+- F11 (HIGH): UI-direct + Agent mogli jednocześnie pisać kolejkę (self-heal UI
+  sam tworzył drugiego właściciela) → mutex właściciela pętli Base, przejęcie
+  w heartbeat Agenta, self-heal tylko w trybie proxy — naprawione, kontrakt.
+- F12 (opis): brakujące pola opisu przechodziły `Parse` → odrzut `metadata` —
+  naprawione, kontrakt.
+- Handoff aktualizacji, single-instance, sekrety w logach/audycie, bindingi XAML
+  (12/12 x:Static, 8/8 komend recovery), kodowanie SX4 w workerze Androida —
+  zweryfikowane, bez zmian.
+
+Lekcja CI: nieobsłużony wyjątek w kontraktach to exit 134 bez adnotacji
+plikowych — ContractRunner raportuje teraz crash adnotacją `::error::`.
