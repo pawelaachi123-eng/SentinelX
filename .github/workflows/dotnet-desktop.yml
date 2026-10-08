@@ -52,24 +52,37 @@ jobs:
       - name: Restore and build WinUI shell
         shell: pwsh
         run: |
-          dotnet restore SentinelX.WinUI/SentinelX.WinUI.csproj
-          dotnet build SentinelX.WinUI/SentinelX.WinUI.csproj --configuration Release --no-restore --nologo -v minimal 2>&1 | Tee-Object -FilePath build-winui.log
-          $code = $LASTEXITCODE
-          if ($code -ne 0) {
-            # Surface compiler errors as check annotations (readable via API when raw logs are not).
-            $ws = ($env:GITHUB_WORKSPACE -replace '\\', '/') + '/'
-            $errors = Select-String -Path build-winui.log -Pattern '^(.+?)\((\d+)(?:,(\d+))?\):\s+error\s+([A-Z]+\d+):\s*(.*)$'
-            foreach ($m in $errors) {
+          $ws = ($env:GITHUB_WORKSPACE -replace '\\', '/') + '/'
+          function Emit-Errors([string]$log) {
+            $n = 0
+            $withLoc = @(Select-String -Path $log -Pattern '^(.+?)\((\d+)(?:,(\d+))?\):\s+error\s+([A-Z]+\d+):\s*(.*)$')
+            foreach ($m in $withLoc) {
               $g = $m.Matches[0].Groups
               $file = ($g[1].Value -replace '\\', '/') -replace [regex]::Escape($ws), ''
               $msg = (($g[4].Value + ' ' + $g[5].Value) -replace '::', ';').Trim()
               if ($g[3].Value) { Write-Output "::error file=$file,line=$($g[2].Value),col=$($g[3].Value)::$msg" }
               else { Write-Output "::error file=$file,line=$($g[2].Value)::$msg" }
+              $n++
             }
-            $msb = Select-String -Path build-winui.log -Pattern 'error\s+(MSB\d+):\s*(.*)$' | Select-Object -First 5
-            foreach ($m in $msb) { Write-Output ('::error title=MSBuild failure::' + (($m.Line -replace '::', ';').Trim())) }
+            $bare = @((Select-String -Path $log -Pattern ':\s*error\s+([A-Z]+\d+):' | Where-Object { $_.Line -notmatch '\(\d+,\d*\):\s*error' } | Select-Object -First 10))
+            foreach ($m in $bare) {
+              Write-Output ('::error title=Restore/build failure::' + (($m.Line -replace '::', ';').Trim()))
+              $n++
+            }
+            return $n
           }
-          exit $code
+          dotnet restore SentinelX.WinUI/SentinelX.WinUI.csproj --nologo -v minimal 2>&1 | Tee-Object -FilePath restore-winui.log
+          $rc = $LASTEXITCODE
+          dotnet build SentinelX.WinUI/SentinelX.WinUI.csproj --configuration Release --nologo -v minimal 2>&1 | Tee-Object -FilePath build-winui.log
+          $bc = $LASTEXITCODE
+          $n = 0
+          if ($rc -ne 0) { $n += Emit-Errors 'restore-winui.log' }
+          if ($bc -ne 0) { $n += Emit-Errors 'build-winui.log' }
+          if ($bc -ne 0 -and $n -eq 0) {
+            $tail = ((Get-Content build-winui.log -Tail 12) -join '%0A' -replace '::', ';')
+            Write-Output "::error title=WinUI build failed (exit $bc), raw tail::$tail"
+          }
+          if ($rc -ne 0) { exit $rc } else { exit $bc }
 
       - name: WinUI smoke test (headless)
         shell: pwsh

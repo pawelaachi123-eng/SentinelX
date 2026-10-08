@@ -76,7 +76,17 @@ public sealed class VoiceService : IVoiceService, IDisposable
             if (command.Length > 0) CommandRecognized?.Invoke(command);
         });
     }
-    private void Tick(object? sender, EventArgs args)
+    private void StartTimer()
+    {
+        StopTimer();
+        timer = new Timer(_ => dispatcher.Post(() => { if (!disposed) Tick(); }), null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+    }
+    private void StopTimer()
+    {
+        try { timer?.Dispose(); } catch { }
+        timer = null;
+    }
+    private void Tick()
     {
         if (!capture.IsListening) { Stop(); return; }
         if (State == VoiceState.Active && DateTime.Now > activeUntil && !engine.IsBusy)
@@ -103,7 +113,7 @@ public sealed class VoiceService : IVoiceService, IDisposable
     {
         if (disposed) return;
         Stop(); disposed = true;
-        timer.Tick -= Tick; capture.SpeechRecognized -= Recognized; capture.StatusChanged -= SetStatus;
+        capture.SpeechRecognized -= Recognized; capture.StatusChanged -= SetStatus;
         capture.ErrorOccurred -= SetStatus; settings.Changed -= ApplySettings; engine.Changed -= EngineChanged;
         speech.Completed -= SpeechCompleted;
     }
