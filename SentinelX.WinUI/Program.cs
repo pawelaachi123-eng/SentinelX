@@ -36,7 +36,7 @@ internal static class AppBootstrap
 
         ComWrappersSupport.InitializeComWrappers();
 
-        global::Microsoft.UI.Xaml.Application.Start(_ =>
+        global::Microsoft.UI.Xaml.Application.Start(p =>
         {
             var sync = new global::Microsoft.UI.Dispatching.DispatcherQueueSynchronizationContext(
                 global::Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread());

@@ -4,6 +4,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
+using SentinelX.WinUI.Core;
 using SentinelX.WinUI.ViewModels;
 using Windows.System;
 
@@ -66,7 +67,7 @@ public sealed partial class ShellWindow : Window
 
     private void OnPolicyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(Core.GamingPolicyService.AnimationsAllowed)) UpdateCoreAnimations();
+        if (e.PropertyName == nameof(GamingPolicyService.AnimationsAllowed)) UpdateCoreAnimations();
     }
 
     private void OnAppWindowChanged(AppWindow sender, AppWindowChangedEventArgs args)

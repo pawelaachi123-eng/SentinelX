@@ -13,7 +13,7 @@ public sealed record SettingsSection(string Key, string Label);
 /// <summary>
 /// Settings flyout: General / Voice / AI / Sentinel Watch / Appearance / Advanced.
 /// Rows are generated from the shared <see cref="SettingField"/> catalogue — the same
-/// settings the WPF build edits, with per-field validation and save.
+/// settings the WPF build edits, with per-spec validation and save.
 /// </summary>
 public sealed partial class SettingsPanelViewModel : ObservableObject, IDisposable
 {
@@ -67,8 +67,8 @@ public sealed partial class SettingsPanelViewModel : ObservableObject, IDisposab
     {
         Rows.Clear();
         if (SelectedSection == null) return;
-        foreach (var field in fields.Where(f => MapSection(f.Section) == SelectedSection.Key))
-            Rows.Add(new SettingRow(field, store));
+        foreach (var spec in fields.Where(f => MapSection(f.Section) == SelectedSection.Key))
+            Rows.Add(new SettingRow(spec, store));
         StoreError = settings.LastError ?? "";
     }
 
@@ -127,24 +127,24 @@ public sealed partial class SettingsPanelViewModel : ObservableObject, IDisposab
 
 public sealed partial class SettingRow : ObservableObject
 {
-    private readonly SettingField field;
+    private readonly SettingField spec;
     private readonly AppSettingsService store;
     private bool loading = true;
 
-    public string Label => field.Label;
-    public string Description => field.Description;
-    public bool IsToggle => field.IsToggle;
-    public string[]? Choices => field.Choices;
-    public bool ShowChoices => !field.IsToggle && field.Choices != null;
-    public bool ShowText => !field.IsToggle && field.Choices == null;
+    public string Label => spec.Label;
+    public string Description => spec.Description;
+    public bool IsToggle => spec.IsToggle;
+    public string[]? Choices => spec.Choices;
+    public bool ShowChoices => !spec.IsToggle && spec.Choices != null;
+    public bool ShowText => !spec.IsToggle && spec.Choices == null;
 
     [ObservableProperty] private string textValue = "";
     [ObservableProperty] private bool boolValue;
     [ObservableProperty] private string error = "";
 
-    public SettingRow(SettingField field, AppSettingsService store)
+    public SettingRow(SettingField spec, AppSettingsService store)
     {
-        this.field = field;
+        this.spec = spec;
         this.store = store;
         Reload();
         loading = false;
@@ -154,7 +154,7 @@ public sealed partial class SettingRow : ObservableObject
     {
         try
         {
-            TextValue = field.Read();
+            TextValue = spec.Read();
             BoolValue = bool.TryParse(TextValue, out bool parsed) && parsed;
         }
         catch (Exception ex)
@@ -181,7 +181,7 @@ public sealed partial class SettingRow : ObservableObject
     {
         try
         {
-            string? failure = field.Write(IsToggle ? BoolValue.ToString() : TextValue.Trim());
+            string? failure = spec.Write(IsToggle ? BoolValue.ToString() : TextValue.Trim());
             if (failure != null)
             {
                 Error = failure;

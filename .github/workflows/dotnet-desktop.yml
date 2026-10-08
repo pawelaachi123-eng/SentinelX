@@ -95,6 +95,17 @@ jobs:
           }
           if ($rc -ne 0) { exit $rc } else { exit $bc }
 
+      - name: Upload WinUI build logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: winui-logs
+          path: |
+            restore-winui.log
+            build-winui.log
+          if-no-files-found: warn
+          retention-days: 3
+
       - name: WinUI smoke test (headless)
         shell: pwsh
         run: |
