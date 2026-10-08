@@ -224,7 +224,7 @@ public sealed class WorkspaceInsightsService
             builder.AppendLine("Wspomnienia (" + notes.Length + "):");
             foreach (var note in notes) builder.AppendLine("· " + Truncate(note.Text, 140) + (note.Category.Length > 0 ? "  [" + note.Category + "]" : ""));
         }
-        var turns = memory.SearchConversation(query, 5);
+        var turns = memory.SearchConversation(query ?? "", 5);
         if (turns.Count > 0)
         {
             total += turns.Count;

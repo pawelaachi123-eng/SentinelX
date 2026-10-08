@@ -10,6 +10,8 @@ public sealed class AiSettings
     /// <summary>ON by default (0.94): the built-in engine downloads its runtime and models by itself. Turn it off on a metered connection;
     /// „Sprawdź i napraw” / „napraw AI” still fetches what is missing once, on request.</summary>
     public bool AutoInstallEngine { get; set; } = true;
+    public bool EnsureOllamaServer { get; set; } = true;
+    public bool AutoLoadModel { get; set; } = false;
     public double Temperature { get; set; } = 0.22;
     public int MaxContextTokens { get; set; } = 4096;
     public int MaxResponseTokens { get; set; } = 700;

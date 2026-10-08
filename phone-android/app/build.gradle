@@ -1,45 +1,36 @@
-plugins {
-    id 'com.android.application'
-}
-
+plugins { id 'com.android.application' }
 android {
     namespace 'pl.sentinelx.phone'
     compileSdk 35
-
+    buildToolsVersion '35.0.0'
     defaultConfig {
         applicationId 'pl.sentinelx.phone'
         minSdk 24
         targetSdk 35
-        versionCode 99
-        versionName '0.99.0'
+        versionCode 100
+        versionName '1.0.0'
     }
-
-    // Stały klucz podpisu (repozytorium prywatne): kolejne wersje instalują się na poprzednie bez odinstalowywania.
-    // To nie jest klucz do sklepu Play — aplikacja jest instalowana ręcznie z wydania na GitHubie.
     signingConfigs {
         release {
-            storeFile file('sentinelx-phone.p12')
-            storeType 'pkcs12'
-            storePassword 'sentinelx'
-            keyAlias 'sentinelx'
-            keyPassword 'sentinelx'
+            def path = System.getenv('SX_ANDROID_KEYSTORE')
+            if (path) {
+                storeFile file(path)
+                storePassword System.getenv('SX_ANDROID_STORE_PASSWORD')
+                keyAlias System.getenv('SX_ANDROID_KEY_ALIAS')
+                keyPassword System.getenv('SX_ANDROID_KEY_PASSWORD')
+            }
         }
     }
-
     buildTypes {
         release {
-            signingConfig signingConfigs.release
+            if (System.getenv('SX_ANDROID_KEYSTORE')) signingConfig signingConfigs.release
             minifyEnabled false
         }
     }
-
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
-
-    lint {
-        abortOnError false
-        checkReleaseBuilds false
-    }
+    lint { abortOnError true; checkReleaseBuilds true }
 }
+dependencies { testImplementation 'junit:junit:4.13.2' }

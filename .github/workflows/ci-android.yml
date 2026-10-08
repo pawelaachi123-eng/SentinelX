@@ -1,0 +1,98 @@
+name: CI Android 1.0
+on:
+  push:
+    branches: [main, 'arena/**']
+  pull_request:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      production:
+        type: boolean
+        default: false
+    secrets:
+      ANDROID_SIGNING_KEY_BASE64:
+        required: false
+      ANDROID_STORE_PASSWORD:
+        required: false
+      ANDROID_KEY_ALIAS:
+        required: false
+      ANDROID_KEY_PASSWORD:
+        required: false
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
+      - uses: gradle/actions/wrapper-validation@v4
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Configure production signing when requested
+        if: inputs.production
+        shell: bash
+        env:
+          KEY: ${{ secrets.ANDROID_SIGNING_KEY_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "$KEY" && test -n "$STORE_PASSWORD" && test -n "$KEY_ALIAS" && test -n "$KEY_PASSWORD" || { echo "::error::Production signing secrets missing"; exit 1; }
+          printf '%s' "$KEY" | base64 --decode > "$RUNNER_TEMP/android-key.p12"
+          chmod 600 "$RUNNER_TEMP/android-key.p12"
+          echo "SX_ANDROID_KEYSTORE=$RUNNER_TEMP/android-key.p12" >> "$GITHUB_ENV"
+          echo "SX_ANDROID_STORE_PASSWORD=$STORE_PASSWORD" >> "$GITHUB_ENV"
+          echo "SX_ANDROID_KEY_ALIAS=$KEY_ALIAS" >> "$GITHUB_ENV"
+          echo "SX_ANDROID_KEY_PASSWORD=$KEY_PASSWORD" >> "$GITHUB_ENV"
+      - name: Lint, security contracts and APK
+        working-directory: phone-android
+        shell: bash
+        env:
+          PRODUCTION: ${{ inputs.production }}
+        run: |
+          set -euo pipefail
+          chmod +x gradlew
+          ./gradlew --no-daemon --console=plain lintDebug testDebugUnitTest assembleDebug
+          if [ "$PRODUCTION" = true ]; then ./gradlew --no-daemon lintRelease assembleRelease; fi
+      - name: Verify manifest and signature
+        shell: bash
+        env:
+          PRODUCTION: ${{ inputs.production }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          apk=phone-android/app/build/outputs/apk/debug/app-debug.apk
+          if [ "$PRODUCTION" = true ]; then apk=phone-android/app/build/outputs/apk/release/app-release.apk; fi
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$apk"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$apk" > dist/ANDROID-BADGING.txt
+          grep -q "versionName='1.0.0'" dist/ANDROID-BADGING.txt
+          grep -q "versionCode='100'" dist/ANDROID-BADGING.txt
+          if [ "$PRODUCTION" = true ]; then ! grep -q application-debuggable dist/ANDROID-BADGING.txt; fi
+          cp "$apk" dist/SentinelX-1.0.0-android.apk
+          printf 'production=%s\n' "$PRODUCTION" > dist/ANDROID-BUILD.txt
+          python3 scripts/check-release-artifacts.py --android dist/SentinelX-1.0.0-android.apk
+          cd dist && sha256sum SentinelX-1.0.0-android.apk > ANDROID-SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-1.0.0
+          path: dist/
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: android-validation
+          path: |
+            phone-android/app/build/reports/
+            phone-android/app/build/test-results/
+      - name: Remove temporary signing key
+        if: always()
+        shell: bash
+        run: rm -f "$RUNNER_TEMP/android-key.p12"

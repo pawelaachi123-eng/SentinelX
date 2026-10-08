@@ -1,0 +1,28 @@
+<UserControl x:Class="SentinelX.Views.Pages.MaintenancePage" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+ <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="28">
+ <TextBlock Text="Diagnostyka i aktualizacje" FontSize="28" FontWeight="Bold"/>
+ <ProgressBar IsIndeterminate="{Binding Busy}" Height="4" Margin="0,12"/>
+ <Border Style="{StaticResource SxCard}" Margin="0,8"><StackPanel>
+  <TextBlock Text="Sprawdź i napraw lokalnie" FontSize="18"/>
+  <TextBlock Text="Opcjonalny adres HTTPS do sprawdzenia Internetu"/><TextBox Text="{Binding InternetProbeUrl}" AutomationProperties.Name="Adres testu Internetu"/>
+  <WrapPanel Margin="0,8"><Button Content="Diagnostyka" Command="{Binding DiagnoseCommand}" Margin="4"/><Button Content="Odtwórz katalogi z kopią" Command="{Binding RepairDirectoriesCommand}" Margin="4"/><Button Content="Włącz i zweryfikuj autostart" Command="{Binding RepairAutostartCommand}" Margin="4"/></WrapPanel>
+  <ItemsControl ItemsSource="{Binding Checks}"><ItemsControl.ItemTemplate><DataTemplate><StackPanel Margin="0,6"><TextBlock Text="{Binding Name}" FontWeight="Bold"/><TextBlock Text="{Binding State}"/><TextBlock Text="{Binding Detail}" TextWrapping="Wrap"/></StackPanel></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+ </StackPanel></Border>
+ <Border Style="{StaticResource SxCard}" Margin="0,8"><StackPanel>
+  <TextBlock Text="Zweryfikowana aktualizacja portable" FontSize="18"/>
+  <TextBlock Text="Wybierz ZIP i opis dostarczony przez wydawcę. Weryfikacja obejmuje wersję, x64, SHA-256, miejsce, ścieżki archiwum, staging i smoke test. Publikator nie generuje manifestu aktualizacji." TextWrapping="Wrap" Margin="0,8"/>
+  <TextBlock Text="Zaufany publiczny klucz RSA wydawcy (PEM)"/>
+  <TextBox Text="{Binding PublisherPublicKey}" AcceptsReturn="True" MinHeight="100" TextWrapping="Wrap" AutomationProperties.Name="Publiczny klucz wydawcy"/>
+  <CheckBox Content="Wymagaj podpisu RSA-PSS SHA-256" IsChecked="{Binding RequireSignature}" Margin="0,8"/>
+  <WrapPanel><Button Content="Sprawdź i przygotuj aktualizację" Command="{Binding StageUpdateCommand}" Margin="4"/><Button Content="Cofnij do zweryfikowanej wersji" Command="{Binding RollbackCommand}" Margin="4"/></WrapPanel>
+ </StackPanel></Border>
+ <Border Style="{StaticResource SxCard}" Margin="0,8"><StackPanel>
+  <TextBlock Text="Steam: znajdź zainstalowaną grę" FontSize="18"/>
+  <TextBox Text="{Binding SteamQuery}" AutomationProperties.Name="Nazwa gry Steam" Margin="0,8"/>
+  <Button Content="Znajdź AppID" Command="{Binding ResolveSteamCommand}" HorizontalAlignment="Left"/>
+  <ComboBox ItemsSource="{Binding Games}" SelectedItem="{Binding SelectedGame}" DisplayMemberPath="Name" AutomationProperties.Name="Wybór dokładnej gry" Margin="0,8"/>
+  <TextBox Text="{Binding SelectedAppId,Mode=OneWay}" IsReadOnly="True" AutomationProperties.Name="Zweryfikowany AppID"/>
+ </StackPanel></Border>
+ <TextBox Text="{Binding Result,Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" MinHeight="90" AutomationProperties.Name="Wynik diagnostyki lub aktualizacji"/>
+ </StackPanel></ScrollViewer>
+</UserControl>
