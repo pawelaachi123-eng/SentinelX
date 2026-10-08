@@ -2,6 +2,10 @@
 
 Lokalny asystent Windows 10/11 (C# 14, .NET 10, WPF) z aplikacją na telefon. **Nic nie trzeba pilnować:** instalujesz raz, a Sentinel sam startuje z Windows, sam pobiera i naprawia swój silnik AI, sam pilnuje komputera i daje znać na telefon. Poprzedni interfejs jest nadal dostępny przez `--legacy`.
 
+> 🆕 **Nowy interfejs WinUI 3 (podgląd):** katalog `SentinelX.WinUI/` zawiera przebudowaną powłokę — centralny animowany Sentinel Core, panele zamiast zakładek, paletę komend (Ctrl+K), Mini Mode, toasty i nową ikonę. Korzysta z tego samego backendu, co klasyczna aplikacja.
+> Budowanie (Windows, .NET 10 SDK): `dotnet build SentinelX.WinUI/SentinelX.WinUI.csproj -c Release`.
+> Szczegóły architektury: [docs/WINUI_SHELL.md](docs/WINUI_SHELL.md).
+
 ## Szybki start (trzy kroki)
 
 1. **Komputer.** Z [najnowszego wydania](https://github.com/pawelaachi123-eng/SentinelX/releases) pobierz `SentinelX-<wersja>-win-x64-setup.exe` i kliknij go dwa razy (bez uprawnień administratora). Gdy Windows zapyta o zaporę, wybierz **Zezwól** (sieć prywatna) — to potrzebne tylko po to, żeby telefon mógł się połączyć.

@@ -140,8 +140,17 @@ def main() -> int:
     for path in sources():
         names.setdefault(path.name, []).append(path)
     for name, paths in names.items():
-        if len(paths) > 1 and name not in {"AssemblyInfo.cs", "MainWindow.xaml.cs"}:
-            errors.append(f"duplicate file name {name}: " + ", ".join(str(p.relative_to(ROOT)) for p in paths))
+        if name in {"AssemblyInfo.cs", "MainWindow.xaml.cs"}:
+            continue
+        # The WinUI shell is a separate project with deliberate counterparts of a few
+        # WPF files (App, ServiceLocator, IDesktopService, CommandPalette) — a shared
+        # name only matters within the same project.
+        groups: dict[bool, list] = {}
+        for path in paths:
+            groups.setdefault("SentinelX.WinUI" in path.relative_to(ROOT).parts, []).append(path)
+        for same in groups.values():
+            if len(same) > 1:
+                errors.append(f"duplicate file name {name}: " + ", ".join(str(p.relative_to(ROOT)) for p in same))
 
     # Every tool of the Forge category must have a routing branch in Tools/ForgeTools.cs.
     catalog = (ROOT / "Core/ToolCatalog.cs").read_text(encoding="utf-8")

@@ -1,0 +1,43 @@
+<UserControl
+    x:Class="SentinelX.WinUI.UI.Dialogs.CommandPalette"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Visibility="{Binding IsOpen, Converter={StaticResource BoolToVisibility}}">
+    <Grid Background="#80000000" Tapped="Dim_Tapped">
+        <Border Background="{StaticResource SxAcrylicPanel}" BorderBrush="{StaticResource SxBorderSubtle}"
+                BorderThickness="1" CornerRadius="16" Padding="16" Width="580"
+                VerticalAlignment="Top" Margin="0,110,0,0" Tapped="Card_Tapped">
+            <StackPanel Spacing="10">
+                <TextBox x:Name="QueryBox" PlaceholderText="Wpisz polecenie lub nazwę funkcji…"
+                         Style="{StaticResource SxField}"
+                         Text="{Binding Query, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                         KeyDown="QueryBox_KeyDown" />
+                <ListView x:Name="Results" ItemsSource="{Binding Results}"
+                          SelectedItem="{Binding SelectedEntry, Mode=TwoWay}"
+                          SelectionMode="Single" IsItemClickEnabled="True" ItemClick="Results_ItemClick"
+                          MaxHeight="340">
+                    <ListView.ItemTemplate>
+                        <DataTemplate>
+                            <Grid Padding="4,8" ColumnSpacing="12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Spacing="2">
+                                    <TextBlock Text="{Binding Title}" Style="{StaticResource SxBody}" FontWeight="SemiBold" />
+                                    <TextBlock Text="{Binding Description}" Style="{StaticResource SxCaption}" TextWrapping="Wrap" />
+                                </StackPanel>
+                                <TextBlock Grid.Column="1" Text="{Binding Kind}" Style="{StaticResource SxEyebrow}"
+                                           VerticalAlignment="Center" />
+                            </Grid>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
+                <TextBlock Text="Brak wyników — Enter wstawi własne polecenie."
+                           Style="{StaticResource SxMuted}"
+                           Visibility="{Binding HasNoResults, Converter={StaticResource BoolToVisibility}}" />
+                <TextBlock Text="↑↓ wybierz · Enter wstaw do pola komend · Esc zamknij" Style="{StaticResource SxMuted}" />
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

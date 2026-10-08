@@ -1,0 +1,39 @@
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <SolidColorBrush x:Key="SxBackground" Color="{StaticResource SxBackgroundColor}" />
+    <SolidColorBrush x:Key="SxSurface" Color="{StaticResource SxSurfaceColor}" />
+    <SolidColorBrush x:Key="SxSurface2" Color="{StaticResource SxSurface2Color}" />
+    <SolidColorBrush x:Key="SxSurfaceHover" Color="{StaticResource SxSurfaceHoverColor}" />
+    <SolidColorBrush x:Key="SxBorderSubtle" Color="{StaticResource SxBorderSubtleColor}" />
+
+    <SolidColorBrush x:Key="SxTextPrimary" Color="{StaticResource SxTextPrimaryColor}" />
+    <SolidColorBrush x:Key="SxTextSecondary" Color="{StaticResource SxTextSecondaryColor}" />
+    <SolidColorBrush x:Key="SxTextMuted" Color="{StaticResource SxTextMutedColor}" />
+
+    <SolidColorBrush x:Key="SxAccent" Color="{StaticResource SxAccentColor}" />
+    <SolidColorBrush x:Key="SxAccentSoft" Color="{StaticResource SxAccentSoftColor}" />
+    <SolidColorBrush x:Key="SxSuccess" Color="{StaticResource SxSuccessColor}" />
+    <SolidColorBrush x:Key="SxWarning" Color="{StaticResource SxWarningColor}" />
+    <SolidColorBrush x:Key="SxError" Color="{StaticResource SxErrorColor}" />
+    <SolidColorBrush x:Key="SxOffline" Color="{StaticResource SxOfflineColor}" />
+
+    <LinearGradientBrush x:Key="SxAccentGradient" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Offset="0" Color="{StaticResource SxAccentColor}" />
+        <GradientStop Offset="1" Color="{StaticResource SxAccentSoftColor}" />
+    </LinearGradientBrush>
+
+    <!-- Acrylic for the slide-in panels: readable, calm, blurred. -->
+    <AcrylicBrush x:Key="SxAcrylicPanel"
+                  TintColor="{StaticResource SxSurfaceColor}"
+                  TintOpacity="0.72"
+                  TintLuminosityOpacity="0.92"
+                  FallbackColor="{StaticResource SxSurfaceColor}" />
+
+    <AcrylicBrush x:Key="SxAcrylicBar"
+                  TintColor="{StaticResource SxBackgroundColor}"
+                  TintOpacity="0.6"
+                  TintLuminosityOpacity="0.9"
+                  FallbackColor="{StaticResource SxBackgroundColor}" />
+</ResourceDictionary>

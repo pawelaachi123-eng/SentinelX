@@ -1,0 +1,17 @@
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:converters="using:SentinelX.WinUI.Converters">
+
+    <converters:BoolToVisibilityConverter x:Key="BoolToVisibility" />
+    <converters:NullToVisibilityConverter x:Key="NullToVisibility" />
+    <converters:EnumMatchToVisibilityConverter x:Key="EnumMatchToVisibility" />
+    <converters:IntZeroToVisibilityConverter x:Key="IntZeroToVisibility" />
+    <converters:CoreStateToBrushConverter x:Key="CoreStateToBrush" />
+    <converters:CoreStateToLabelConverter x:Key="CoreStateToLabel" />
+    <converters:ActionStatusToBrushConverter x:Key="ActionStatusToBrush" />
+    <converters:BoolToBrushConverter x:Key="OkBrush"
+                                     TrueBrush="{StaticResource SxAccentSoft}"
+                                     FalseBrush="{StaticResource SxTextMuted}" />
+    <converters:DateToShortConverter x:Key="DateToShort" />
+</ResourceDictionary>

@@ -1,0 +1,12 @@
+<UserControl
+    x:Class="SentinelX.WinUI.UI.Controls.StatusPill"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Button Style="{StaticResource SxChipButton}" Command="{x:Bind PillCommand, Mode=OneWay}">
+        <StackPanel Orientation="Horizontal" Spacing="8">
+            <Ellipse Width="8" Height="8" Fill="{x:Bind Accent, Mode=OneWay}" />
+            <TextBlock Text="{x:Bind Text, Mode=OneWay}" FontSize="11" FontWeight="SemiBold"
+                       Foreground="{StaticResource SxTextSecondary}" VerticalAlignment="Center" />
+        </StackPanel>
+    </Button>
+</UserControl>

@@ -36,3 +36,34 @@ jobs:
 
           dotnet restore $target
           dotnet build $target --configuration Release --no-restore
+
+  winui:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore and build WinUI shell
+        shell: pwsh
+        run: |
+          dotnet restore SentinelX.WinUI/SentinelX.WinUI.csproj
+          dotnet build SentinelX.WinUI/SentinelX.WinUI.csproj --configuration Release --no-restore
+
+      - name: WinUI smoke test (headless)
+        shell: pwsh
+        run: |
+          $exe = 'SentinelX.WinUI/bin/Release/net8.0-windows10.0.22621.0/win-x64/SentinelX.exe'
+          if (-not (Test-Path $exe)) { $exe = Get-ChildItem -Path SentinelX.WinUI/bin/Release -Recurse -Filter SentinelX.exe | Select-Object -First 1 -ExpandProperty FullName }
+          if (-not $exe) { throw 'Nie znaleziono zbudowanego SentinelX.exe (WinUI).' }
+          $output = Join-Path $PWD 'test-results/winui'
+          $p = Start-Process $exe -ArgumentList '--ui-smoke', $output -PassThru
+          if (-not $p.WaitForExit(240000)) { $p.Kill(); throw 'Test WinUI przekroczył czas.' }
+          if (Test-Path (Join-Path $output 'SMOKE.txt')) { Get-Content (Join-Path $output 'SMOKE.txt') }
+          if ($p.ExitCode -ne 0) { throw "Test WinUI nie przeszedł (kod $($p.ExitCode)); szczegóły: $output" }
+          Write-Output 'Test WinUI: OK'

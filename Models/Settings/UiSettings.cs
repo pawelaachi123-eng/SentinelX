@@ -16,5 +16,7 @@ public sealed class UiSettings
     public double WindowWidth { get; set; } = 1260;
     public double WindowHeight { get; set; } = 860;
     public string SelectedPage { get; set; } = "Chat";
+    /// <summary>WinUI shell: Mini Mode stays above other windows.</summary>
+    public bool MiniModeAlwaysOnTop { get; set; } = true;
 }
 
