@@ -24,7 +24,7 @@ public final class BaseActivity extends Activity {
  private final Runnable poll=()->submitQuery("status");
  @Override public void onCreate(Bundle state){
   super.onCreate(state);session=new BaseSession(this);blocked=session.blocked();worker=Executors.newSingleThreadExecutor();
-  ScrollView scroll=new ScrollView(this);LinearLayout box=new LinearLayout(this);box.setOrientation(1);box.setPadding(22,24,22,24);box.setBackgroundColor(0xff0d0f14);scroll.addView(box);setContentView(scroll);
+  ScrollView scroll=new ScrollView(this);LinearLayout box=new LinearLayout(this);box.setOrientation(LinearLayout.VERTICAL);box.setPadding(22,24,22,24);box.setBackgroundColor(0xff0d0f14);scroll.addView(box);setContentView(scroll);
   label(box,"Sentinel Base · SX4 · 1.0.0",23);status=label(box,"Nie sparowano",16);result=label(box,"Porównaj fingerprint z Base. Sekret jest osobny dla telefonu.",14);result.setTextIsSelectable(true);
   host=field(box,"Adres Base / VPN / relay",InputType.TYPE_CLASS_TEXT);
   port=field(box,"Port TLS",InputType.TYPE_CLASS_NUMBER);port.setText("443");
