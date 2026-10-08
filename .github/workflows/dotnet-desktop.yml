@@ -52,33 +52,33 @@ jobs:
       - name: Restore and build WinUI shell
         shell: pwsh
         run: |
+          # NOTE: Emit-Errors must be invoked as a bare statement (never in an expression),
+          # otherwise its Write-Output is captured and the runner never sees the ::error lines.
           $ws = ($env:GITHUB_WORKSPACE -replace '\\', '/') + '/'
+          $script:errCount = 0
           function Emit-Errors([string]$log) {
-            $n = 0
-            $withLoc = @(Select-String -Path $log -Pattern '^(.+?)\((\d+)(?:,(\d+))?\):\s+error\s+([A-Z]+\d+):\s*(.*)$')
+            $withLoc = @(Select-String -Path $log -Pattern '^(.+?)\((\d+)(?:,(\d+))?\):\s*error\s*(?:([A-Z]+\d+):)?\s*(.*)$')
             foreach ($m in $withLoc) {
               $g = $m.Matches[0].Groups
               $file = ($g[1].Value -replace '\\', '/') -replace [regex]::Escape($ws), ''
-              $msg = (($g[4].Value + ' ' + $g[5].Value) -replace '::', ';').Trim()
+              $msg = ((($g[4].Value + ' ' + $g[5].Value) -replace '::', ';').Trim())
               if ($g[3].Value) { Write-Output "::error file=$file,line=$($g[2].Value),col=$($g[3].Value)::$msg" }
               else { Write-Output "::error file=$file,line=$($g[2].Value)::$msg" }
-              $n++
+              $script:errCount++
             }
-            $bare = @((Select-String -Path $log -Pattern ':\s*error\s+([A-Z]+\d+):' | Where-Object { $_.Line -notmatch '\(\d+,\d*\):\s*error' } | Select-Object -First 10))
+            $bare = @((Select-String -Path $log -Pattern ':\s*error\s*:|:\s*error\s+[A-Z]+\d+:' | Where-Object { $_.Line -notmatch '\(\d+,\d*\):\s*error' } | Select-Object -First 10))
             foreach ($m in $bare) {
               Write-Output ('::error title=Restore/build failure::' + (($m.Line -replace '::', ';').Trim()))
-              $n++
+              $script:errCount++
             }
-            return $n
           }
           dotnet restore SentinelX.WinUI/SentinelX.WinUI.csproj --nologo -v minimal 2>&1 | Tee-Object -FilePath restore-winui.log
           $rc = $LASTEXITCODE
           dotnet build SentinelX.WinUI/SentinelX.WinUI.csproj --configuration Release -p:Platform=x64 --nologo -v minimal 2>&1 | Tee-Object -FilePath build-winui.log
           $bc = $LASTEXITCODE
-          $n = 0
-          if ($rc -ne 0) { $n += Emit-Errors 'restore-winui.log' }
-          if ($bc -ne 0) { $n += Emit-Errors 'build-winui.log' }
-          if ($bc -ne 0 -and $n -eq 0) {
+          if ($rc -ne 0) { Emit-Errors 'restore-winui.log' }
+          if ($bc -ne 0) { Emit-Errors 'build-winui.log' }
+          if ($bc -ne 0 -and $script:errCount -eq 0) {
             $tail = ((Get-Content build-winui.log -Tail 12) -join '%0A' -replace '::', ';')
             Write-Output "::error title=WinUI build failed (exit $bc), raw tail::$tail"
           }
