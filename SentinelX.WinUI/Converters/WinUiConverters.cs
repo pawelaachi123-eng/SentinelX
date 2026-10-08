@@ -1,4 +1,5 @@
 using Microsoft.UI.Xaml;
+using System.Globalization;
 using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Media;
 using SentinelX.Models;
@@ -141,6 +142,18 @@ public sealed class DateToShortConverter : IValueConverter
         DateTime dt => dt.ToString("dd.MM HH:mm"),
         _ => ""
     };
+
+    public object ConvertBack(object value, Type targetType, object parameter, string language) =>
+        throw new NotSupportedException();
+}
+
+/// <summary>WinUI Binding has no StringFormat — one-way string.Format(parameter, value).</summary>
+public sealed class StringFormatConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, string language) =>
+        parameter is string format && !string.IsNullOrEmpty(format)
+            ? string.Format(CultureInfo.CurrentCulture, format, value)
+            : value?.ToString() ?? "";
 
     public object ConvertBack(object value, Type targetType, object parameter, string language) =>
         throw new NotSupportedException();

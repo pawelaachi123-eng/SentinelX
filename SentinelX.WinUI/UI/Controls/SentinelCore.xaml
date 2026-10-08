@@ -85,7 +85,7 @@
             <Grid.RenderTransform>
                 <RotateTransform />
             </Grid.RenderTransform>
-            <Path StrokeThickness="5" Opacity="0.75" StrokeLineCap="Round"
+            <Path StrokeThickness="5" Opacity="0.75" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
                   Data="M 177,46 A 94,94 0 0 1 177,154 M 153.9,177 A 94,94 0 0 1 46.1,177 M 23,154 A 94,94 0 0 1 23,46 M 46.1,23 A 94,94 0 0 1 153.9,23">
                 <Path.Stroke>
                     <SolidColorBrush x:Name="RingBrushTicks" Color="#00D4FF" />
@@ -120,7 +120,7 @@
             <Grid.RenderTransform>
                 <RotateTransform />
             </Grid.RenderTransform>
-            <Path StrokeThickness="6" Opacity="0.9" StrokeLineCap="Round"
+            <Path StrokeThickness="6" Opacity="0.9" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
                   Data="M 102.3,20.6 A 58,58 0 0 1 102.3,109.4 M 84.8,119.5 A 58,58 0 0 1 7.9,75.1 M 7.9,54.9 A 58,58 0 0 1 84.8,10.5">
                 <Path.Stroke>
                     <SolidColorBrush x:Name="RingBrushInner" Color="#00D4FF" />
@@ -133,7 +133,7 @@
             <Grid.RenderTransform>
                 <RotateTransform />
             </Grid.RenderTransform>
-            <Path StrokeThickness="4" StrokeLineCap="Round" Data="M 123.1,26.9 A 68,68 0 0 1 123.1,123.1">
+            <Path StrokeThickness="4" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Data="M 123.1,26.9 A 68,68 0 0 1 123.1,123.1">
                 <Path.Stroke>
                     <SolidColorBrush x:Name="ProgressBrush" Color="#5EEAD4" />
                 </Path.Stroke>

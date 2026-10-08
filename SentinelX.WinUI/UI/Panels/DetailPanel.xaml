@@ -57,8 +57,8 @@
                                             <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
                                         <TextBlock Text="{Binding Name}" Style="{StaticResource SxBody}" TextTrimming="CharacterEllipsis" />
-                                        <TextBlock Grid.Column="1" Text="{Binding MemoryMb, StringFormat='{}{0:F0} MB'}" Style="{StaticResource SxCaption}" />
-                                        <TextBlock Grid.Column="2" Text="{Binding CpuPercent, StringFormat='{}{0:F0}%'}" Style="{StaticResource SxCaption}" MinWidth="48" TextAlignment="Right" />
+                                        <TextBlock Grid.Column="1" Text="{Binding MemoryMb, Converter={StaticResource StringFormat}, ConverterParameter='{}{0:F0} MB'}" Style="{StaticResource SxCaption}" />
+                                        <TextBlock Grid.Column="2" Text="{Binding CpuPercent, Converter={StaticResource StringFormat}, ConverterParameter='{}{0:F0}%'}" Style="{StaticResource SxCaption}" MinWidth="48" TextAlignment="Right" />
                                     </Grid>
                                 </DataTemplate>
                             </ListView.ItemTemplate>
