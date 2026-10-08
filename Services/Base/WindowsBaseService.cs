@@ -10,7 +10,7 @@ using SentinelX.Core;
 using SentinelX.Services.Desktop;
 using SentinelX.Services.Link;
 namespace SentinelX.Services.Base;
-public sealed class WindowsBaseService : IDisposable
+public sealed class WindowsBaseService : IBaseControl
 {
     private readonly IDesktopService desktop;private readonly SystemMonitor monitor;private readonly OllamaSupervisor ollama;private readonly AlertFeed alerts;
     private readonly string folder=Path.Combine(AppPaths.Root,"Base");private readonly SemaphoreSlim connectGate=new(1);private readonly object stateGate=new();
@@ -18,6 +18,9 @@ public sealed class WindowsBaseService : IDisposable
     private readonly AgentQueue queue;private string status="Base nie jest sparowana";private bool authBlocked,disposed;
     public event Action? Changed;
     public string Status{get{lock(stateGate)return status;}}
+    /// <summary>Set by the headless Agent: queue consent is denied (nobody can confirm),
+    /// and window-bound operations become no-ops instead of touching the UI thread.</summary>
+    public bool Headless{get;set;}
     public BaseIdentity? PublicConfiguration=>identity is{} i?i with{SecretHex=""}:null;
     public IReadOnlyList<string> Capabilities=>client?.Capabilities.ToArray()??[];
     private static byte[] Protect(byte[] value)=>ProtectedData.Protect(value,null,DataProtectionScope.CurrentUser);
@@ -126,7 +129,7 @@ public sealed class WindowsBaseService : IDisposable
         while(!cancel.IsCancellationRequested)
         {
             var grants=new HashSet<string>(authBlocked?[]:identity?.Grants??[]);
-            try{await queue.DrainAsync(IsUnlocked,ConfirmAsync,ExecuteAsync,grants,cancel);}
+            try{await queue.DrainAsync(IsUnlocked,ConsentAsync,ExecuteAsync,grants,cancel);}
             catch(OperationCanceledException)when(cancel.IsCancellationRequested){break;}
             catch(Exception){SetStatus("Kolejka Agenta wymaga sprawdzenia");}
             await Task.Delay(1000,cancel);
@@ -145,7 +148,7 @@ public sealed class WindowsBaseService : IDisposable
         if(!IsUnlocked())throw new Sx4Exception("session_locked");
         switch(task.Operation){
             case "lock":if(!LockWorkStation())throw new Sx4Exception("lock_failed");break;
-            case "sentinel.show":Application.Current.Dispatcher.Invoke(desktop.ShowWindow);break;
+            case "sentinel.show":if(!Headless)Application.Current.Dispatcher.Invoke(desktop.ShowWindow);break;
             case "notification":alerts.Add("info","Sentinel Base",task.Target);break;
             case "ollama.ensure":if(!await ollama.EnsureAsync(cancel))throw new Sx4Exception("ollama_unavailable");break;
             case "steam.run":case "steam.install":
@@ -160,6 +163,7 @@ public sealed class WindowsBaseService : IDisposable
         }
         Audit(task.Id,task.DeviceId,task.Operation,AuditTarget(task),"submitted",task.Operation.StartsWith("steam.",StringComparison.Ordinal)?"steam_interaction_required":"");
     }
+    private Task<bool> ConsentAsync(AgentTask task,CancellationToken cancel)=>Headless?Task.FromResult(false):ConfirmAsync(task,cancel);
     public static Task<bool> ConfirmAsync(AgentTask task,CancellationToken cancel)
     {
         var completion=new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);

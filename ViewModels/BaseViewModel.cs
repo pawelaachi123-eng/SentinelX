@@ -6,7 +6,7 @@ using SentinelX.Services.Base;
 namespace SentinelX.ViewModels;
 public partial class BaseViewModel : ObservableObject,IDisposable
 {
-    private readonly WindowsBaseService service;private readonly IUiDispatcher ui;
+    private readonly IBaseControl service;private readonly IUiDispatcher ui;
     [ObservableProperty]private string host="";
     [ObservableProperty]private int port=443;
     [ObservableProperty]private string fingerprint="";
@@ -26,7 +26,7 @@ public partial class BaseViewModel : ObservableObject,IDisposable
     public string[] TimerOperations{get;}=["lock","sentinel.show","ollama.ensure"];
     public ObservableCollection<DiscoveredBase> Bases{get;}=[];
     public ObservableCollection<AgentTask> Tasks{get;}=[];
-    public BaseViewModel(WindowsBaseService service,IUiDispatcher ui)
+    public BaseViewModel(IBaseControl service,IUiDispatcher ui)
     {
         this.service=service;this.ui=ui;service.Changed+=Sync;Status=service.Status;
         if(service.PublicConfiguration is{} c){Host=c.Host;Port=c.Port;Fingerprint=c.Fingerprint;DeviceId=c.DeviceId;BaseId=c.BaseId;Mode=c.Mode;}

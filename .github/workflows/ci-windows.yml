@@ -36,7 +36,7 @@ jobs:
         shell: pwsh
         run: |
           $exe = (Resolve-Path bin/portable/SentinelX.exe).Path
-          foreach ($mode in @('ui-smoke', 'self-test')) {
+          foreach ($mode in @('ui-smoke', 'self-test', 'agent-smoke')) {
             $result = Join-Path $PWD "test-results/$mode"
             $p = Start-Process $exe -ArgumentList "--$mode", $result -PassThru
             if (-not $p.WaitForExit(300000)) { $p.Kill(); throw "$mode timeout" }

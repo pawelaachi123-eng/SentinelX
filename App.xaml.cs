@@ -2,6 +2,7 @@ using System.IO;
 using System.Windows;
 using Microsoft.Extensions.DependencyInjection;
 using SentinelX.Core;
+using SentinelX.Services.Agent;
 using SentinelX.Services.Care;
 using SentinelX.Services.Desktop;
 using SentinelX.Services.Maintenance;
@@ -10,6 +11,7 @@ public partial class App : Application
 {
     private SingleInstanceService? instance;
     private ServiceProvider? provider;
+    private AgentHost? agentHost;
     public static IServiceProvider Services { get; private set; } = null!;
     /// <summary>True when Windows started the app at login (registry Run entry with --autostart).</summary>
     public static bool AutostartLaunch { get; private set; }
@@ -20,7 +22,23 @@ public partial class App : Application
         AutostartLaunch = e.Args.Contains("--autostart");
         bool selfTest = e.Args.Length == 2 && e.Args[0] is "--self-test" or "--asr-test" or "--ai-test" or "--builder-test";
         bool uiTest = e.Args.Length == 2 && e.Args[0] == "--ui-smoke";
+        bool agentSmoke = e.Args.Length == 2 && e.Args[0] == "--agent-smoke";
+        bool agent = e.Args.Contains("--agent");
         if (selfTest || uiTest) Environment.SetEnvironmentVariable("SENTINEL_DATA_DIR", Path.Combine(Path.GetFullPath(e.Args[1]), "data"));
+        if (agentSmoke) Environment.SetEnvironmentVariable("SENTINEL_DATA_DIR", Path.Combine(Path.GetFullPath(e.Args[1]), "data"));
+        if (agentSmoke)
+        {
+            try { int code = await AgentSmokeRunner.RunAsync(Path.GetFullPath(e.Args[1])); Shutdown(code); }
+            catch (Exception ex) { try { Directory.CreateDirectory(e.Args[1]); File.WriteAllText(Path.Combine(e.Args[1], "FAILED.txt"), ex.ToString()); } catch { } Shutdown(1); }
+            return;
+        }
+        if (agent)
+        {
+            ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            try { agentHost = await AgentHost.StartAsync(); }
+            catch (Exception ex) { AppLog.Write(ex); Shutdown(2); }
+            return;
+        }
         if (uiTest) Environment.SetEnvironmentVariable("SENTINEL_UI_SMOKE", "1");
         if (!selfTest && !uiTest)
         {
@@ -67,7 +85,7 @@ public partial class App : Application
             // The caretaker starts the phone link and the AI engine and keeps them running (it does nothing in the UI smoke test).
             if (!uiTest)
             {
-                try { provider.GetRequiredService<CareService>().Start(); provider.GetRequiredService<Services.Base.WindowsBaseService>().Start(); }
+                try { provider.GetRequiredService<CareService>().Start(); provider.GetRequiredService<Services.Base.IBaseControl>().Start(); }
                 catch (Exception careError) { AppLog.Write(careError); }
             }
             if(!uiTest){_ = Task.Run(async()=>{await Task.Delay(20000);try{provider.GetRequiredService<MaintenanceService>().Updater.MarkHealthy(AppContext.BaseDirectory);}catch(Exception error){AppLog.Write(error);}});}
@@ -84,10 +102,15 @@ public partial class App : Application
             else { MessageBox.Show("Nie udało się uruchomić Sentinel:\n" + ex.Message, "Sentinel X"); Shutdown(1); }
         }
     }
-    protected override void OnExit(ExitEventArgs e) { provider?.Dispose(); instance?.Dispose(); base.OnExit(e); }
+    protected override void OnExit(ExitEventArgs e)
+    {
+        if (agentHost != null) try { agentHost.StopAsync().GetAwaiter().GetResult(); } catch { }
+        provider?.Dispose(); instance?.Dispose(); base.OnExit(e);
+    }
     protected override void OnSessionEnding(SessionEndingCancelEventArgs e)
     {
-        if (provider != null) provider.GetRequiredService<IDesktopService>().Exit();
+        if (agentHost != null) try { agentHost.StopAsync().GetAwaiter().GetResult(); } catch (Exception ex) { AppLog.Write(ex); }
+        else if (provider != null) provider.GetRequiredService<IDesktopService>().Exit();
         else (MainWindow as MainWindow)?.CloseTestWindow();
         base.OnSessionEnding(e);
     }

@@ -92,6 +92,21 @@ public static class ServiceLocator
             sp.GetRequiredService<Services.Link.ILinkApprovalUi>(), () => sp.GetRequiredService<ISettingsService>().Current.Link));
         services.AddSingleton<Services.Base.OllamaSupervisor>();
         services.AddSingleton<Services.Base.WindowsBaseService>();
+        services.AddSingleton<Services.Base.IBaseControl>(sp =>
+        {
+            try
+            {
+                // When the headless Agent owns the queue, the UI never touches
+                // queue.bin/identity.bin itself — every Base operation goes over
+                // the authenticated pipe (single writer, no double execution).
+                if (Services.Agent.AgentClient.IsAgentRunning(AppPaths.Root))
+                    return new Services.Agent.AgentBaseProxy(new Services.Agent.AgentClient(
+                        Services.Agent.AgentAuth.PipeName(AppPaths.Root),
+                        () => Services.Agent.AgentAuth.LoadToken(AppPaths.Root, AgentUnprotect)));
+            }
+            catch (Exception agentFallback) { AppLog.Write(agentFallback); }
+            return sp.GetRequiredService<Services.Base.WindowsBaseService>();
+        });
         services.AddSingleton<BaseViewModel>();
         services.AddSingleton<Services.Maintenance.MaintenanceService>();
         services.AddSingleton<MaintenanceViewModel>();
@@ -120,6 +135,22 @@ public static class ServiceLocator
         services.AddSingleton<Views.MainWindow>();
         return services.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });
     }
+    /// <summary>Headless graph for the independent Agent: Base + queue + metrics +
+    /// diagnostics. No windows, no voice, no phone link.</summary>
+    public static ServiceProvider BuildAgent()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<SystemMonitor>();
+        services.AddSingleton<GamingModeService>();
+        services.AddSingleton<Services.Base.OllamaSupervisor>();
+        services.AddSingleton<Services.Link.AlertFeed>();
+        services.AddSingleton<Services.Desktop.IDesktopService, Services.Agent.HeadlessDesktopService>();
+        services.AddSingleton<Services.Base.WindowsBaseService>();
+        services.AddSingleton<Services.Maintenance.MaintenanceService>();
+        return services.BuildServiceProvider();
+    }
+    private static byte[] AgentUnprotect(byte[] value) =>
+        System.Security.Cryptography.ProtectedData.Unprotect(value, null, System.Security.Cryptography.DataProtectionScope.CurrentUser);
     private static MemoryPrivacy MapPrivacy(MemorySettings s) =>
         new(s.SaveConversations, s.UseHistoryForAi, s.SaveMemories, s.UseMemoriesForAi, s.RetentionDays, s.ContextPreviewEnabled);
 }

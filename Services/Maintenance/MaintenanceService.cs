@@ -8,7 +8,7 @@ using SentinelX.Core;
 using SentinelX.Services.Base;
 namespace SentinelX.Services.Maintenance;
 public sealed record DiagnosticCheck(string Name,string State,string Detail);
-public sealed class MaintenanceService(WindowsBaseService agent,OllamaSupervisor ollama)
+public sealed class MaintenanceService(IBaseControl agent,OllamaSupervisor ollama)
 {
  public VerifiedUpdater Updater{get;}=new(Path.Combine(AppPaths.Root,"Updates"),ValidPackage,folder=>FileVersionInfo.GetVersionInfo(Path.Combine(folder,"SentinelX.exe")).ProductVersion);
  public async Task<IReadOnlyList<DiagnosticCheck>> DiagnoseAsync(string internetProbe,CancellationToken cancel){

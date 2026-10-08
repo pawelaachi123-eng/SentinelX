@@ -25,6 +25,7 @@ public sealed class DesktopService(ISettingsService settings, IActionEngine engi
     private bool exiting;
     private bool disposed;
     private bool? startupApplied;
+    private bool? agentApplied;
     private readonly StartupService startup = new("Sentinel X");
     private ResourceDictionary? palette;
     private DateTime? highUsageSince;
@@ -143,6 +144,13 @@ public sealed class DesktopService(ISettingsService settings, IActionEngine engi
             bool ok = desired ? startup.Enable() : startup.Disable();
             if (ok) startupApplied = desired;
             else SetStatus("Nie udało się zastosować autostartu w rejestrze Windows.");
+        }
+        bool agentDesired = settings.Current.Startup.AgentAutostart;
+        if (agentApplied != agentDesired)
+        {
+            bool ok = agentDesired ? startup.EnableAgent() : startup.DisableAgent();
+            if (ok) agentApplied = agentDesired;
+            else SetStatus("Nie udało się zastosować autostartu Agenta w rejestrze Windows.");
         }
     }
     private void ApplyOverlay()

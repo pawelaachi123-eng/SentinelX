@@ -2,6 +2,8 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using SentinelX.Services.Base;
+using SentinelX.Services.Agent;
+using System.IO.Pipes;
 if(args.Length==4){
  string mode=args[0];await using var client=new BaseClient(new("127.0.0.1",int.Parse(args[1]),args[2],2,1,args[3]));
  try{await client.ConnectAsync(CancellationToken.None);var reply=await client.RequestAsync("status",new{},CancellationToken.None);
@@ -79,6 +81,48 @@ try{
  Check(!ollama.AutoLoadModel,"Ollama no model preload");
 }
 finally{Directory.Delete(root,true);CryptographicOperations.ZeroMemory(secret);}
+AgentRequest parsed=AgentProtocol.ParseRequest("{\"op\":\"status\",\"token\":\"abc\",\"payload\":{\"a\":1}}");
+Check(parsed.Op=="status"&&parsed.Token=="abc"&&parsed.Payload.GetProperty("a").GetInt32()==1,"agent protocol parse");
+try{AgentProtocol.ParseRequest("{bad");throw new Exception("not rejected format");}catch(AgentException e){Check(e.Code=="format","reject agent format");}
+string agentDir=Path.Combine(Path.GetTempPath(),"sentinel-agent-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(agentDir);
+try{
+ byte[] AgentId(byte[] x)=>x;
+ string bootToken=AgentAuth.CreateToken();
+ AgentAuth.SaveToken(agentDir,bootToken,AgentId);
+ Check(AgentAuth.LoadToken(agentDir,AgentId)==bootToken,"agent token roundtrip");
+ Check(!AgentAuth.ValidToken(new string('0',64),bootToken),"agent token reject");
+ Check(AgentAuth.LoadToken(Path.Combine(agentDir,"nope"),AgentId)==null,"agent token missing");
+ string agentPipe="sentinel-test-"+Guid.NewGuid().ToString("N")[..12];
+ var canned=new AgentTask(Guid.NewGuid().ToString("D"),7,"lock","",DateTimeOffset.UtcNow.AddMinutes(1).ToUnixTimeMilliseconds());
+ await using var agentServer=new AgentPipeServer(agentPipe,()=>bootToken,(request,_)=>request.Op switch{
+  "status"=>Task.FromResult<object>(new{status="Base połączona",config=(object?)null,capabilities=new[]{"pc.heartbeat"}}),
+  "tasks"=>Task.FromResult<object>(new[]{canned}),
+  _=>throw new AgentException("unknown_op")});
+ using var agentCts=new CancellationTokenSource(TimeSpan.FromSeconds(30));
+ var agentServe=agentServer.RunAsync(agentCts.Token);
+ var agentClient=new AgentClient(agentPipe,()=>bootToken);
+ Check((await agentClient.SendAsync("status",new{},CancellationToken.None)).GetProperty("status").GetString()=="Base połączona","agent pipe status");
+ try{await new AgentClient(agentPipe,()=>new string('0',64)).SendAsync("status",new{},CancellationToken.None);throw new Exception("not rejected auth");}catch(AgentException e){Check(e.Code=="auth","reject agent auth");}
+ try{await agentClient.SendAsync("nope",new{},CancellationToken.None);throw new Exception("not rejected op");}catch(AgentException e){Check(e.Code=="unknown_op","reject agent op");}
+ using(var rawPipe=new NamedPipeClientStream(".",agentPipe,PipeDirection.InOut,PipeOptions.Asynchronous)){
+  await rawPipe.ConnectAsync(CancellationToken.None);
+  using var oversizeWriter=new StreamWriter(rawPipe,new System.Text.UTF8Encoding(false),4096,true);
+  await oversizeWriter.WriteLineAsync(new string('x',AgentProtocol.MaxMessage+8));
+  await oversizeWriter.FlushAsync();
+  using var oversizeReader=new StreamReader(rawPipe,System.Text.Encoding.UTF8,false,4096,true);
+  string? oversizeReply=await oversizeReader.ReadLineAsync(CancellationToken.None);
+  Check(oversizeReply!=null&&oversizeReply.Contains("size"),"agent oversize envelope");
+ }
+ using var proxy=new AgentBaseProxy(agentClient);
+ proxy.Start();
+ var proxyDeadline=DateTime.UtcNow.AddSeconds(10);
+ while(proxy.Status!="Base połączona"&&DateTime.UtcNow<proxyDeadline)await Task.Delay(100);
+ Check(proxy.Status=="Base połączona"&&proxy.Capabilities.Count==1,"agent proxy poll");
+ Check((await proxy.TasksAsync()).Count==1,"agent proxy tasks");
+ agentCts.Cancel();
+ await agentServe;
+}
+finally{Directory.Delete(agentDir,true);}
 await MaintenanceContract.Run(Check);
 Console.WriteLine("PASS "+checks+" contract checks");
 sealed class PartialStream(byte[] bytes):MemoryStream(bytes)
