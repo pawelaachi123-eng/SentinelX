@@ -36,17 +36,21 @@ public static class AgentProtocol
             // so an unauthenticated peer cannot grow this buffer without a newline.
             if (builder.Length > MaxMessage)
             {
-                // Drain the remainder so the explicit error reply still fits the
-                // one-request-per-connection protocol. Bounded: an infinite stream
-                // aborts the drain and the reply is best-effort.
-                long drained = 0;
-                var drain = new char[4096];
-                while (drained < 8L * 1024 * 1024)
+                // The line is oversize. If its newline arrived in this chunk the
+                // line is complete; otherwise drain the bounded remainder so the
+                // explicit error reply still fits the protocol (an infinite stream
+                // aborts the drain and the reply is best-effort).
+                if (newline < 0)
                 {
-                    int rest = await reader.ReadAsync(drain, cancel).ConfigureAwait(false);
-                    if (rest == 0) break;
-                    drained += rest;
-                    if (Array.IndexOf(drain, '\n', 0, rest) >= 0) break;
+                    long drained = 0;
+                    var drain = new char[4096];
+                    while (drained < 8L * 1024 * 1024)
+                    {
+                        int rest = await reader.ReadAsync(drain, cancel).ConfigureAwait(false);
+                        if (rest == 0) break;
+                        drained += rest;
+                        if (Array.IndexOf(drain, '\n', 0, rest) >= 0) break;
+                    }
                 }
                 throw new AgentException("size");
             }

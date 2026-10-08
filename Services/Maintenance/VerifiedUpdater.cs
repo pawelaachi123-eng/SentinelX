@@ -12,7 +12,9 @@ public sealed record UpdateDescriptor(string Version,string Architecture,string 
   try{
    using var doc=JsonDocument.Parse(json,new(){MaxDepth=4});var names=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
    foreach(var p in doc.RootElement.EnumerateObject())if(!names.Add(p.Name))throw new UpdateFailure("metadata_duplicate");
-   return JsonSerializer.Deserialize<UpdateDescriptor>(json,new JsonSerializerOptions{UnmappedMemberHandling=System.Text.Json.Serialization.JsonUnmappedMemberHandling.Disallow})??throw new UpdateFailure("metadata");
+   var descriptor=JsonSerializer.Deserialize<UpdateDescriptor>(json,new JsonSerializerOptions{UnmappedMemberHandling=System.Text.Json.Serialization.JsonUnmappedMemberHandling.Disallow})??throw new UpdateFailure("metadata");
+   if(string.IsNullOrEmpty(descriptor.Version)||string.IsNullOrEmpty(descriptor.Architecture)||string.IsNullOrEmpty(descriptor.Sha256)||descriptor.Size==0)throw new UpdateFailure("metadata");
+   return descriptor;
   }catch(Exception e)when(e is JsonException or InvalidOperationException){throw new UpdateFailure("metadata");}
  }
  public string SignedText=>$"SXUP1\n{Version}\n{Architecture}\n{Sha256.ToLowerInvariant()}\n{Size}\n";
