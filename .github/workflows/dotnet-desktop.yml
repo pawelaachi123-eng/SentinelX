@@ -81,7 +81,7 @@ jobs:
             }
             $allErr = @($withLoc + $bare | ForEach-Object { $_.Line.Trim() } | Sort-Object -Unique | Select-Object -First 40)
             if ($allErr.Count -gt 0) {
-              $eb = ((($allErr | ForEach-Object { (($_ -replace "`r`n", chr(32)) -replace "`n", chr(32)) }) -join "%0A") -replace "::", ";")
+              $eb = ((($allErr | ForEach-Object { (($_ -replace "`r`n", ' ') -replace "`n", ' ') }) -join "%0A") -replace "::", ";")
               Write-Output ("::error title=WinUI all errors (" + $log + ")::" + $eb)
             }
           }
