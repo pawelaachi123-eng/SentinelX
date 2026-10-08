@@ -30,7 +30,7 @@ public sealed class AgentHost : IAsyncDisposable
         this.root = root;
         this.token = token;
         this.provider = provider;
-        mutex = mutex;
+        this.mutex = mutex;
         direct = provider.GetRequiredService<WindowsBaseService>();
         direct.Headless = true;
         pipe = new AgentPipeServer(AgentAuth.PipeName(root), () => token, DispatchAsync);
