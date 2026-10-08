@@ -34,7 +34,22 @@ public static class AgentProtocol
             builder.Append(buffer, 0, newline >= 0 ? newline : read);
             // Incremental cap: past MaxMessage chars the bytes already exceed it,
             // so an unauthenticated peer cannot grow this buffer without a newline.
-            if (builder.Length > MaxMessage) throw new AgentException("size");
+            if (builder.Length > MaxMessage)
+            {
+                // Drain the remainder so the explicit error reply still fits the
+                // one-request-per-connection protocol. Bounded: an infinite stream
+                // aborts the drain and the reply is best-effort.
+                long drained = 0;
+                var drain = new char[4096];
+                while (drained < 8L * 1024 * 1024)
+                {
+                    int rest = await reader.ReadAsync(drain, cancel).ConfigureAwait(false);
+                    if (rest == 0) break;
+                    drained += rest;
+                    if (Array.IndexOf(drain, '\n', 0, rest) >= 0) break;
+                }
+                throw new AgentException("size");
+            }
             if (newline >= 0) break;
         }
         if (builder.Length == 0) return null;
