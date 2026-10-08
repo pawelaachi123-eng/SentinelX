@@ -1,5 +1,5 @@
 using System.Runtime.InteropServices;
-using Microsoft.WindowsAppSDK;
+using Microsoft.Windows.ApplicationModel.DynamicDependency;
 using WinRT;
 
 namespace SentinelX.WinUI;
@@ -9,7 +9,7 @@ namespace SentinelX.WinUI;
 /// dependency explicitly (so the portable EXE and the Inno Setup installer work
 /// without a separately installed runtime) and then starts the XAML application.
 /// </summary>
-internal static class Program
+internal static class AppBootstrap
 {
     // Windows App SDK 1.5 → major 1, minor 5.
     private const uint MajorMinorVersion = 0x00010005;

@@ -64,6 +64,7 @@ jobs:
           $script:errCount = 0
           function Emit-Errors([string]$log) {
             $withLoc = @(Select-String -Path $log -Pattern '^(.+?)\((\d+)(?:,(\d+))?\):\s*(?:[A-Za-z]+\s+)?error\s*(?:([A-Z]+\d+):)?\s*(.*)$')
+            $withLoc = @($withLoc | Sort-Object Line -Unique | Select-Object -First 6)
             foreach ($m in $withLoc) {
               $g = $m.Matches[0].Groups
               $file = ($g[1].Value -replace '\\', '/') -replace [regex]::Escape($ws), ''
@@ -73,6 +74,7 @@ jobs:
               $script:errCount++
             }
             $bare = @((Select-String -Path $log -Pattern ':\s*(?:[A-Za-z]+\s+)?error\s*:|:\s*(?:[A-Za-z]+\s+)?error\s+[A-Z]+\d+:' | Where-Object { $_.Line -notmatch '\(\d+,\d*\):\s*error' } | Select-Object -First 10))
+            $bare = @($bare | Sort-Object Line -Unique | Select-Object -First 2)
             foreach ($m in $bare) {
               Write-Output ('::error title=Restore/build failure::' + (($m.Line -replace '::', ';').Trim()))
               $script:errCount++

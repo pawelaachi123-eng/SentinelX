@@ -31,7 +31,7 @@
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Assets\sentinel.ico</ApplicationIcon>
-    <StartupObject>SentinelX.WinUI.Program</StartupObject>
+    <StartupObject>SentinelX.WinUI.AppBootstrap</StartupObject>
     <NoWarn>$(NoWarn);WFO1001</NoWarn>
   </PropertyGroup>
 
