@@ -100,18 +100,46 @@ jobs:
               }
             }
             # Input file: does input.json exist and what does it feed the compiler?
+            $sdkRoot = Join-Path $env:USERPROFILE '.nuget/packages/microsoft.windowsappsdk/1.5.240627000/tools'
+            $xc = Join-Path $sdkRoot 'net472/XamlCompiler.exe'
+            $xcInfo = if (Test-Path $xc) { $v = [Diagnostics.FileVersionInfo]::GetVersionInfo($xc); "exists, $($v.FileVersion), $((Get-Item $xc).Length) bytes" } else { '(MISSING)' }
+            Write-Output "::error title=XAML compiler binary::$xcInfo"
+            $toolsListing = (Get-ChildItem $sdkRoot -Recurse -File -ErrorAction SilentlyContinue | Select-Object -First 40 | ForEach-Object { $_.FullName -replace [regex]::Escape($sdkRoot + '\'), '' }) -join '%0A'
+            Write-Output "::error title=XAML tools dir::$toolsListing"
+            # Probe 1: does the exe even run (no args)?
+            $noargs = (& $xc 2>&1 | Out-String)
+            $noargsCode = $LASTEXITCODE
+            if ($noargs.Length -gt 1500) { $noargs = $noargs.Substring(0, 1500) + '…[truncated]' }
+            if (-not $noargs.Trim()) { $noargs = '(no output at all)' }
+            Write-Output ('::error title=XAML no-args run exit ' + $noargsCode + '::' + (($noargs -replace '::', ';' -replace "`r`n", '%0A' -replace "`n", '%0A')))
             $inJson = Get-ChildItem -Path SentinelX.WinUI/obj -Recurse -Filter input.json -ErrorAction SilentlyContinue | Select-Object -First 1
             if ($inJson) {
               $itxt = (Get-Content $inJson.FullName -Raw)
-              if ($itxt.Length -gt 2500) { $itxt = $itxt.Substring(0, 2500) + '…[truncated]' }
-              Write-Output ('::error title=XAML input.json::' + (($itxt -replace '::', ';' -replace "`r`n", '%0A' -replace "`n", '%0A')))
-              # Decisive test: run XamlCompiler manually and capture its own stdout/stderr.
-              $xc = Join-Path $env:USERPROFILE '.nuget/packages/microsoft.windowsappsdk/1.5.240627000/tools/net472/XamlCompiler.exe'
-              $manual = (& $xc $inJson.FullName (Join-Path $env:TEMP 'xc-manual-out.json') 2>&1 | Out-String)
+              Write-Output ('::error title=XAML input stats::length=' + $itxt.Length + ' xaml-refs=' + ([regex]::Matches($itxt, '\.xaml', 'IgnoreCase').Count))
+              foreach ($mm in [regex]::Matches($itxt, '.{0,200}\.xaml.{0,120}')) {
+                Write-Output ('::error title=XAML input files::' + (($mm.Value -replace '::', ';' -replace "`r`n", ' ' -replace "`n", ' ' -replace '\s+', ' ').Trim()))
+              }
+              # Probe 2: run XamlCompiler manually and READ BACK its output file.
+              $manualOut = Join-Path $env:TEMP 'xc-manual-out.json'
+              if (Test-Path $manualOut) { Remove-Item $manualOut -Force }
+              $manual = (& $xc $inJson.FullName $manualOut 2>&1 | Out-String)
               $xccode = $LASTEXITCODE
-              if ($manual.Length -gt 2500) { $manual = $manual.Substring(0, 2500) + '…[truncated]' }
+              if ($manual.Length -gt 1500) { $manual = $manual.Substring(0, 1500) + '…[truncated]' }
               if (-not $manual.Trim()) { $manual = '(no output at all)' }
               Write-Output ('::error title=XAML manual run exit ' + $xccode + '::' + (($manual -replace '::', ';' -replace "`r`n", '%0A' -replace "`n", '%0A')))
+              if (Test-Path $manualOut) {
+                $motxt = (Get-Content $manualOut -Raw)
+                if ($motxt.Length -gt 2500) { $motxt = $motxt.Substring(0, 2500) + '…[truncated]' }
+                Write-Output ('::error title=XAML manual output file::' + (($motxt -replace '::', ';' -replace "`r`n", '%0A' -replace "`n", '%0A')))
+              } else {
+                Write-Output '::error title=XAML manual output file::(not written)'
+              }
+              $ix = Get-ChildItem -Path SentinelX.WinUI/obj -Recurse -Directory -Filter intermediatexaml -ErrorAction SilentlyContinue | Select-Object -First 1
+              if ($ix) {
+                $ixFiles = ((Get-ChildItem $ix.FullName -File | ForEach-Object { $_.Name }) -join ', ')
+                if (-not $ixFiles) { $ixFiles = '(empty)' }
+                Write-Output "::error title=XAML intermediatexaml::$ixFiles"
+              }
             } else {
               Write-Output '::error title=XAML input.json::(missing — targets did not generate input)'
             }
