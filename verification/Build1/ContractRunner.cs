@@ -134,6 +134,10 @@ try{
  await agentServe;
 }
 finally{Directory.Delete(agentDir,true);}
+Check(TextScrubber.Scrub("key "+new string('b',64))=="key <hash>","scrub hashes");
+Check(TextScrubber.Scrub("{\"token\": \"abc\"}")=="{\"token\": \"<redacted>\"}","scrub redacts JSON secrets with shape");
+Check(TextScrubber.Scrub("api_key=abcdef")=="api_key=<redacted>","scrub secrets");
+Check(TextScrubber.Scrub("plain note")=="plain note","scrub keeps plain text");
 await MaintenanceContract.Run(Check);
 Console.WriteLine("PASS "+checks+" contract checks");
 sealed class PartialStream(byte[] bytes):MemoryStream(bytes)
