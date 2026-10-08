@@ -97,6 +97,7 @@ try{
  await using var agentServer=new AgentPipeServer(agentPipe,()=>bootToken,(request,_)=>request.Op switch{
   "status"=>Task.FromResult<object>(new{status="Base połączona",config=(object?)null,capabilities=new[]{"pc.heartbeat"}}),
   "tasks"=>Task.FromResult<object>(new[]{canned}),
+  "health"=>Task.FromResult<object>(new{queueError=(string?)null}),
   _=>throw new AgentException("unknown_op")});
  using var agentCts=new CancellationTokenSource(TimeSpan.FromSeconds(30));
  var agentServe=agentServer.RunAsync(agentCts.Token);
@@ -119,6 +120,7 @@ try{
  while(proxy.Status!="Base połączona"&&DateTime.UtcNow<proxyDeadline)await Task.Delay(100);
  Check(proxy.Status=="Base połączona"&&proxy.Capabilities.Count==1,"agent proxy poll");
  Check((await proxy.TasksAsync()).Count==1,"agent proxy tasks");
+ Check(await proxy.QueueStorageErrorAsync(CancellationToken.None)==null,"agent proxy health");
  agentCts.Cancel();
  await agentServe;
 }

@@ -50,14 +50,14 @@ public sealed class FileWorkspaceService : Services.Files.IFileService
                 if (!IsSafeName(name)) throw new InvalidOperationException("Podaj zwykłą nazwę, np. test.txt. Ścieżki i nazwy urządzeń Windows są niedozwolone.");
                 string root = create.Groups[2].Value.Equals("na pulpicie", StringComparison.OrdinalIgnoreCase) ? desktop : workspace;
                 Directory.CreateDirectory(root);
-                path = Path.Combine(root, name); content = create.Groups[3].Value;
+                path = Contain(Path.Combine(root, name)); content = create.Groups[3].Value;
                 if (content.Length > 1000000) throw new InvalidOperationException("Treść przekracza limit 1 MB.");
                 await using var file = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None, 4096, true);
                 await file.WriteAsync(Encoding.UTF8.GetBytes(content), token); await file.FlushAsync(token);
             }
             else
             {
-                path = LastFile ?? throw new InvalidOperationException("Najpierw utwórz plik. „Do niego” odnosi się wyłącznie do ostatnio utworzonego pliku.");
+                path = Contain(LastFile ?? throw new InvalidOperationException("Najpierw utwórz plik. „Do niego” odnosi się wyłącznie do ostatnio utworzonego pliku."));
                 if (!File.Exists(path) || new FileInfo(path).Length > 1024 * 1024) throw new InvalidOperationException("Plik nie istnieje albo przekracza limit 1 MB.");
                 if ((File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0) throw new InvalidOperationException("Edycja dowiązań jest niedozwolona.");
                 string before = await File.ReadAllTextAsync(path, token);
@@ -97,11 +97,11 @@ public sealed class FileWorkspaceService : Services.Files.IFileService
         try
         {
             if (!IsSafeName(name)) throw new InvalidOperationException("Podaj zwykłą nazwę pliku bez ścieżki.");
-            string source = LastFile ?? throw new InvalidOperationException("Najpierw utwórz plik w tej rozmowie.");
+            string source = Contain(LastFile ?? throw new InvalidOperationException("Najpierw utwórz plik w tej rozmowie."));
             var info = new FileInfo(source);
             if (!info.Exists || info.Length > 1024 * 1024 || (info.Attributes & FileAttributes.ReparsePoint) != 0)
                 throw new InvalidOperationException("Plik niedostępny, większy niż 1 MB lub jest dowiązaniem.");
-            string target = Path.Combine(Path.GetDirectoryName(source)!, name);
+            string target = Contain(Path.Combine(Path.GetDirectoryName(source)!, name));
             byte[] before = await File.ReadAllBytesAsync(source, token);
             token.ThrowIfCancellationRequested();
             // No overwrite. Move is restricted to the same directory of a file created by Sentinel.
@@ -120,6 +120,18 @@ public sealed class FileWorkspaceService : Services.Files.IFileService
             history.AddResult(id, type, command, ActionExecutionResult.Failure(ex.Message));
             return $"FAILED • {id}\n{ex.Message}";
         }
+    }
+    /// <summary>Canonicalizes a path and proves it stays inside an approved directory
+    /// (workspace or desktop). Symlink/hardlink escapes fail closed.</summary>
+    private string Contain(string path)
+    {
+        string full = Path.GetFullPath(path);
+        foreach (string approved in new[] { Path.GetFullPath(workspace), Path.GetFullPath(desktop) })
+        {
+            string prefix = approved.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+            if (full.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) return full;
+        }
+        throw new InvalidOperationException("Plik jest poza zatwierdzonym katalogiem.");
     }
     internal static bool IsSafeName(string name)
     {

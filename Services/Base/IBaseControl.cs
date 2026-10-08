@@ -16,4 +16,5 @@ public interface IBaseControl : IDisposable
     Task<IReadOnlyList<AgentTask>> TasksAsync();
     Task<BaseMessage> RequestAsync(string type, object data, CancellationToken cancel);
     Task<string> RepairQueueAsync();
+    Task<string?> QueueStorageErrorAsync(CancellationToken cancel);
 }

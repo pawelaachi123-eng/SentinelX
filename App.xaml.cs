@@ -87,8 +87,17 @@ public partial class App : Application
             {
                 try { provider.GetRequiredService<CareService>().Start(); provider.GetRequiredService<Services.Base.IBaseControl>().Start(); }
                 catch (Exception careError) { AppLog.Write(careError); }
+                try
+                {
+                    // Controlled autostart heals itself: when the user enabled the background
+                    // Agent (e.g. after an update stopped it), the UI starts it again.
+                    if (provider.GetRequiredService<Services.Settings.ISettingsService>().Current.Startup.AgentAutostart
+                        && !AgentClient.IsAgentRunning(AppPaths.Root) && Environment.ProcessPath is string exe)
+                        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(exe, "--agent") { UseShellExecute = false });
+                }
+                catch (Exception agentError) { AppLog.Write(agentError); }
             }
-            if(!uiTest){_ = Task.Run(async()=>{await Task.Delay(20000);try{provider.GetRequiredService<MaintenanceService>().Updater.MarkHealthy(AppContext.BaseDirectory);}catch(Exception error){AppLog.Write(error);}});}
+            if(!uiTest){_ = Task.Run(async()=>{await Task.Delay(60000);try{string report=await provider.GetRequiredService<MaintenanceService>().ConfirmHealthyAsync(CancellationToken.None);if(report.StartsWith("Wersja niezdrowa",StringComparison.Ordinal))AppLog.Write(new InvalidOperationException("UpdateHealth: "+report));}catch(Exception error){AppLog.Write(error);}});}
             if (uiTest)
             {
                 await UiSmokeTestRunner.RunAsync(provider, shell, Path.GetFullPath(e.Args[1]));

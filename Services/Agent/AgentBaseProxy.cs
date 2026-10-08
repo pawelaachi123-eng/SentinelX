@@ -110,6 +110,12 @@ public sealed class AgentBaseProxy : IBaseControl
             : throw new AgentException("protocol");
     }
 
+    public async Task<string?> QueueStorageErrorAsync(CancellationToken cancel)
+    {
+        var data = await client.SendAsync("health", new { }, cancel);
+        return data.TryGetProperty("queueError", out var q) && q.ValueKind == JsonValueKind.String ? q.GetString() : null;
+    }
+
     public async Task<string> RepairQueueAsync()
     {
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(60));

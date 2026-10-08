@@ -38,6 +38,9 @@ public static class AgentSmokeRunner
             Pass("pipe tasks");
             await client.SendAsync("config", new { }, cancel);
             Pass("pipe config");
+            var health = await client.SendAsync("health", new { }, cancel);
+            if (!health.TryGetProperty("version", out _)) throw new InvalidOperationException("health shape");
+            Pass("pipe health");
             try
             {
                 await new AgentClient(AgentAuth.PipeName(root), () => new string('0', 64)).SendAsync("status", new { }, cancel);

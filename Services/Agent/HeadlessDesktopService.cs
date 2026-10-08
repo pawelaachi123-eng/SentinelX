@@ -7,7 +7,7 @@ namespace SentinelX.Services.Agent;
 public sealed class HeadlessDesktopService : IDesktopService
 {
     public string Status => "";
-    public event Action? StatusChanged;
+    public event Action? StatusChanged { add { } remove { } }
     public void Attach(Window window) { }
     public void ShowWindow() { }
     public void ToggleOverlay() { }

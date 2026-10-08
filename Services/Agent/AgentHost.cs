@@ -107,6 +107,8 @@ public sealed class AgentHost : IAsyncDisposable
                     Log("repair-queue");
                     return backup;
                 }
+                case "health":
+                    return new { queueError = direct.QueueStorageErrorText, paired = direct.PublicConfiguration != null, version = AppConstants.SemanticVersion };
                 case "diagnose":
                     return await provider.GetRequiredService<MaintenanceService>().DiagnoseAsync("", cancel);
                 case "stop":

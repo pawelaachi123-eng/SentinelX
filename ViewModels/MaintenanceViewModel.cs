@@ -9,6 +9,8 @@ public partial class MaintenanceViewModel(MaintenanceService service):Observable
  [ObservableProperty]private bool busy;
  [ObservableProperty]private string internetProbeUrl="";
  [ObservableProperty]private string publisherPublicKey="";
+ [ObservableProperty]private string packageUrl="";
+ [ObservableProperty]private string descriptorUrl="";
  [ObservableProperty]private bool requireSignature=true;
  [ObservableProperty]private string steamQuery="";
  [ObservableProperty]private SteamGame? selectedGame;
@@ -19,6 +21,7 @@ public partial class MaintenanceViewModel(MaintenanceService service):Observable
  [RelayCommand]private Task RepairDirectoriesAsync()=>Run(service.RepairDirectoriesAsync);
  [RelayCommand]private Task RepairAutostartAsync()=>Run(()=>Task.FromResult(service.RepairAutostart()));
  [RelayCommand]private Task StageUpdateAsync(CancellationToken cancel)=>Run(()=>service.StageUpdateAsync(PublisherPublicKey,RequireSignature,cancel));
+ [RelayCommand]private Task DownloadUpdateAsync(CancellationToken cancel)=>Run(()=>service.DownloadUpdateAsync(PackageUrl,DescriptorUrl,PublisherPublicKey,RequireSignature,null,cancel));
  [RelayCommand]private Task RollbackAsync()=>Run(()=>Task.Run(()=>{service.Updater.Rollback();return "Zweryfikowano rollback. Poprzednia wersja uruchomi się przy kolejnym starcie."; }));
  [RelayCommand]private Task ResolveSteamAsync()=>Run(async()=>{var items=await Task.Run(()=>service.ResolveSteam(SteamQuery));Games.Clear();foreach(var item in items)Games.Add(item);SelectedGame=null;return items.Count==0?"Nie znaleziono zainstalowanej gry. Użyj znanego numerycznego AppID w panelu Base.":"Wybierz dokładną grę. Jej AppID możesz skopiować do zadania Base.";});
  public string SelectedAppId=>SelectedGame?.AppId??"";

@@ -40,7 +40,13 @@ jobs:
             $result = Join-Path $PWD "test-results/$mode"
             $p = Start-Process $exe -ArgumentList "--$mode", $result -PassThru
             if (-not $p.WaitForExit(300000)) { $p.Kill(); throw "$mode timeout" }
-            if ($p.ExitCode -ne 0) { Get-ChildItem $result -Recurse -Include FAILED.txt,errors.log,bindings.log | ForEach-Object { Get-Content $_.FullName }; throw "$mode failed" }
+            if ($p.ExitCode -ne 0) {
+              Get-ChildItem $result -Recurse -Include FAILED.txt,errors.log,bindings.log -ErrorAction SilentlyContinue | ForEach-Object { Get-Content $_.FullName }
+              $detail = Get-ChildItem $result -Recurse -Include FAILED.txt -ErrorAction SilentlyContinue | Select-Object -First 1 | ForEach-Object { Get-Content $_.FullName -Raw }
+              if ($detail) { $detail = ($detail -replace "`r", "") -replace "`n", "%0A"; if ($detail.Length -gt 2800) { $detail = $detail.Substring(0, 2800) }; echo "::error::$mode exit=$($p.ExitCode): $detail" }
+              else { echo "::error::$mode failed with exit=$($p.ExitCode), no FAILED.txt under $result" }
+              throw "$mode failed"
+            }
           }
           if (-not (Test-Path test-results/ui-smoke/ui-smoke.txt)) { throw 'Smoke proof missing' }
       - name: Installer, portable and checksums

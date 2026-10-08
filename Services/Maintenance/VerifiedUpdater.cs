@@ -117,6 +117,10 @@ public sealed class VerifiedUpdater
   var state=ReadJournal();if(state.Active!=null&&Path.GetFullPath(directory).TrimEnd(Path.DirectorySeparatorChar).Equals(state.Active.Directory.TrimEnd(Path.DirectorySeparatorChar),StringComparison.OrdinalIgnoreCase)&&VerifyVersion(state.Active))
    Save(state with{LaunchFailures=0,LastLaunch=0});
  }
+ public void NoteUnhealthy(){
+  var state=ReadJournal();if(state.Active==null)return;
+  Save(state with{LaunchFailures=state.LaunchFailures+1,LastLaunch=DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()});
+ }
  public UpdateVersion Rollback(){
   var state=ReadJournal();if(state.LastGood==null||!VerifyVersion(state.LastGood))throw new UpdateFailure("rollback_unavailable");
   Save(new(state.LastGood,null));return state.LastGood;

@@ -63,6 +63,8 @@ public sealed class WindowsBaseService : IBaseControl
         client=null;stop?.Dispose();stop=null;
     }
     public Task<IReadOnlyList<AgentTask>> TasksAsync()=>queue.SnapshotAsync();
+    public string? QueueStorageErrorText=>queue.StorageError;
+    public Task<string?> QueueStorageErrorAsync(CancellationToken cancel)=>Task.FromResult(queue.StorageError);
     public async Task<BaseMessage> RequestAsync(string type,object data,CancellationToken cancel)
     {
         await connectGate.WaitAsync(cancel);try{if(client==null||authBlocked)throw new Sx4Exception("offline");return await client.RequestAsync(type,data,cancel);}

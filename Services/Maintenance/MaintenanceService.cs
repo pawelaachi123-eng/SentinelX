@@ -1,10 +1,13 @@
 using System.IO;
 using System.Diagnostics;
+using System.Net.Http;
 using System.Net.NetworkInformation;
+using System.Security.Cryptography;
 using System.Text.Json;
 using System.Windows;
 using Microsoft.Win32;
 using SentinelX.Core;
+using SentinelX.Services.Agent;
 using SentinelX.Services.Base;
 namespace SentinelX.Services.Maintenance;
 public sealed record DiagnosticCheck(string Name,string State,string Detail);
@@ -72,16 +75,90 @@ public sealed class MaintenanceService(IBaseControl agent,OllamaSupervisor ollam
  public async Task<string> StageUpdateAsync(string publicPem,bool requireSignature,CancellationToken cancel){
   var zip=new OpenFileDialog{Filter="Portable package|*.zip",CheckFileExists=true};if(zip.ShowDialog()!=true)return "Anulowano";
   var metadata=new OpenFileDialog{Filter="Opis aktualizacji|*.json",CheckFileExists=true};if(metadata.ShowDialog()!=true)return "Anulowano";
-  string package=zip.FileName,description=metadata.FileName;
+  return await InstallUpdateAsync(zip.FileName,metadata.FileName,publicPem,requireSignature,cancel);
+ }
+ public async Task<string> DownloadUpdateAsync(string packageUrl,string descriptorUrl,string publicPem,bool requireSignature,IProgress<double>? progress,CancellationToken cancel){
+  UpdateDownloader.ValidateUrl(packageUrl);UpdateDownloader.ValidateUrl(descriptorUrl);
+  using var http=new HttpClient{Timeout=System.Threading.Timeout.InfiniteTimeSpan};
+  string descriptorJson=await UpdateDownloader.DownloadStringAsync(http,descriptorUrl,16384,cancel);
+  var descriptor=UpdateDescriptor.Parse(descriptorJson);
+  string downloads=Path.Combine(AppPaths.Root,"Updates","downloads");Directory.CreateDirectory(downloads);
+  string package=Path.Combine(downloads,"update-"+descriptor.Sha256[..16].ToLowerInvariant()+".zip");
+  string descriptorPath=package+".json";await File.WriteAllTextAsync(descriptorPath,descriptorJson,cancel);
+  await UpdateDownloader.DownloadAsync(http,packageUrl,package,descriptor.Size,progress,cancel);
+  return await InstallUpdateAsync(package,descriptorPath,publicPem,requireSignature,cancel);
+ }
+ public async Task<string> InstallUpdateAsync(string package,string description,string publicPem,bool requireSignature,CancellationToken cancel){
   return await Task.Run(async()=>{
    if(new FileInfo(description).Length>16384)throw new UpdateFailure("metadata_size");
    var descriptor=UpdateDescriptor.Parse(await File.ReadAllTextAsync(description,cancel));
+   var deadline=DateTime.UtcNow.AddSeconds(60);
+   while(DateTime.UtcNow<deadline){cancel.ThrowIfCancellationRequested();if((await agent.TasksAsync()).All(x=>x.State!="running"))break;await Task.Delay(2000,cancel);}
+   if((await agent.TasksAsync()).Any(x=>x.State=="running"))throw new UpdateFailure("busy");
+   await StopAgentForUpdateAsync(cancel);
+   string backup=BackupUpdateState(descriptor);
    long free=new DriveInfo(Path.GetPathRoot(AppPaths.Root)!).AvailableFreeSpace;
    var staged=await Updater.StageAsync(package,descriptor,AppConstants.SemanticVersion,publicPem,requireSignature,free,cancel);
    string shipped=AppContext.BaseDirectory;
    var current=new UpdateVersion(AppConstants.SemanticVersion,shipped,VerifiedUpdater.Inventory(shipped));
    await Updater.ActivateAsync(staged,current,SmokeAsync,cancel);
-   return "Zweryfikowano pakiet i smoke test. Aktualizacja uruchomi się przy kolejnym starcie Sentinel.";
+   return "Zweryfikowano pakiet i smoke test; kopia: "+backup+". Aktualizacja uruchomi się przy kolejnym starcie Sentinel.";
   },cancel);
+ }
+ public string BackupUpdateState(UpdateDescriptor descriptor){
+  string backup=Path.Combine(AppPaths.BackupsDirectory,"update-"+descriptor.Version.Split('+')[0]+"-"+DateTime.UtcNow.ToString("yyyyMMddHHmmss"));
+  Directory.CreateDirectory(backup);
+  foreach(var dir in new[]{AppPaths.SettingsDirectory,Path.Combine(AppPaths.Root,"Base")}){
+   if(!Directory.Exists(dir))continue;
+   foreach(var file in Directory.EnumerateFiles(dir,"*",SearchOption.AllDirectories)){
+    if((File.GetAttributes(file)&FileAttributes.ReparsePoint)!=0)continue;
+    string target=Path.Combine(backup,Path.GetFileName(dir),Path.GetRelativePath(dir,file));
+    Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+    File.Copy(file,target,true);
+   }
+  }
+  bool hadIdentity=File.Exists(Path.Combine(AppPaths.Root,"Base","identity.bin"));
+  File.WriteAllText(Path.Combine(backup,"pairing.json"),JsonSerializer.Serialize(new{version=descriptor.Version,hadIdentity,time=DateTimeOffset.UtcNow}));
+  return backup;
+ }
+ public async Task<string> ConfirmHealthyAsync(CancellationToken cancel){
+  var journal=Updater.ReadJournal();
+  string current=Path.GetFullPath(AppContext.BaseDirectory).TrimEnd(Path.DirectorySeparatorChar);
+  if(journal.Active==null)return "Brak oczekującej aktualizacji; stan stabilny.";
+  if(!current.Equals(journal.Active.Directory.TrimEnd(Path.DirectorySeparatorChar),StringComparison.OrdinalIgnoreCase))
+   return "Aktualizacja "+journal.Active.Version+" gotowa; uruchom Sentinel ponownie, aby ją zastosować.";
+  var problems=new List<string>();
+  if(!VerifiedUpdater.VerifyVersion(journal.Active))problems.Add("inventory");
+  if(new AppSettingsService().LastError!=null)problems.Add("settings");
+  try{
+   string? queueError=await agent.QueueStorageErrorAsync(cancel);
+   if(queueError!=null)problems.Add("queue:"+queueError);
+  }catch(Exception e)when(e is IOException or AgentException or OperationCanceledException){problems.Add("queue_unreachable");}
+  if(Directory.Exists(AppPaths.BackupsDirectory)){
+   string? pairingFile=Directory.EnumerateFiles(AppPaths.BackupsDirectory,"pairing.json",SearchOption.AllDirectories)
+    .Where(x=>Path.GetDirectoryName(x)!.StartsWith(Path.Combine(AppPaths.BackupsDirectory,"update-"+journal.Active.Version.Split('+')[0]+"-"),StringComparison.OrdinalIgnoreCase))
+    .OrderByDescending(x=>x).FirstOrDefault();
+   if(pairingFile!=null){
+    try{
+     using var doc=JsonDocument.Parse(File.ReadAllText(pairingFile));
+     if(doc.RootElement.TryGetProperty("hadIdentity",out var had)&&had.ValueKind==JsonValueKind.True&&agent.PublicConfiguration==null)
+      problems.Add("pairing_missing");
+    }catch(Exception e)when(e is IOException or JsonException){}
+   }
+  }
+  if(problems.Count==0){Updater.MarkHealthy(current);return "Wersja "+journal.Active.Version+" potwierdzona: inwentarz, ustawienia, kolejka i parowanie sprawne.";}
+  try{Updater.NoteUnhealthy();}catch(Exception e)when(e is IOException or UpdateFailure){}
+  return "Wersja niezdrowa ("+string.Join(",",problems)+"); odnotowano awarię — rollback po 3 niezdrowych startach.";
+ }
+ private static async Task StopAgentForUpdateAsync(CancellationToken cancel){
+  if(!AgentClient.IsAgentRunning(AppPaths.Root))return;
+  string? token=AgentAuth.LoadToken(AppPaths.Root,value=>ProtectedData.Unprotect(value,null,DataProtectionScope.CurrentUser));
+  if(token==null)throw new UpdateFailure("agent_running");
+  await new AgentClient(AgentAuth.PipeName(AppPaths.Root),()=>token).SendAsync("stop",new{},cancel);
+  var deadline=DateTime.UtcNow.AddSeconds(40);
+  while(AgentClient.IsAgentRunning(AppPaths.Root)){
+   if(DateTime.UtcNow>=deadline)throw new UpdateFailure("agent_running");
+   await Task.Delay(500,cancel);
+  }
  }
 }
