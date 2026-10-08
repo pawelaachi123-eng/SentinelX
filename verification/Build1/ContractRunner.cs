@@ -168,10 +168,12 @@ Check(TextScrubber.Scrub("plain note")=="plain note","scrub keeps plain text");
         Check(owned != null, "base owner acquired");
         try
         {
-            var rival = await Task.Run(() => AgentAuth.TryOwnBase(troot));
-            Check(rival == null, "second owner refused");
+            // Blocking wait (not await): ReleaseMutex must run on the owning thread.
+            var rivalTask = Task.Run(() => AgentAuth.TryOwnBase(troot));
+            Check(rivalTask.Wait(TimeSpan.FromSeconds(10)), "rival attempt finished");
+            Check(rivalTask.Result == null, "second owner refused");
         }
-        finally { owned.ReleaseMutex(); owned.Dispose(); }
+        finally { try { owned.ReleaseMutex(); } catch { } owned.Dispose(); }
         using (var again = AgentAuth.TryOwnBase(troot)) { Check(again != null, "owner released and reacquired"); again?.ReleaseMutex(); }
     }
     catch (Exception e) when (e is PlatformNotSupportedException or IOException or UnauthorizedAccessException)
