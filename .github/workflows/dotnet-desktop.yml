@@ -116,7 +116,8 @@ jobs:
             foreach ($w in $wmc) { $B += "WMC: $($w.Line.Trim())" }
             $B += '--- tail ---'
             foreach ($t in (Get-Content build-winui.log -Tail 12)) { $B += $t }
-            $bundle = (($B -join '%0A') -replace '::', ';')
+            $clean = { param($s) ((($s -replace "`r`n", ' ') -replace "`n", ' ') -replace '\s+', ' ').Trim() }
+            $bundle = (((($B | ForEach-Object { & $clean $_ }) -join '%0A') -replace '::', ';'))
             Write-Output "::error title=XAML diagnosis::$bundle"
           }
           if ($rc -ne 0) { exit $rc } else { exit $bc }
