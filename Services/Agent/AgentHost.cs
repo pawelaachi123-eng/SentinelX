@@ -179,6 +179,11 @@ public sealed class AgentHost : IAsyncDisposable
                 await WriteHeartbeatAsync(cancel);
             }
             catch (Exception e) when (e is IOException or UnauthorizedAccessException or OperationCanceledException) { }
+            try
+            {
+                await provider.GetRequiredService<OllamaSupervisor>().ReleaseIdleModelsAsync(30, cancel);
+            }
+            catch (Exception e) when (e is IOException or OperationCanceledException) { }
         }
     }
 

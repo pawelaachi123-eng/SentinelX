@@ -79,6 +79,15 @@ try{
  await Task.WhenAll(Enumerable.Range(0,8).Select(_=>ollama.EnsureAsync(CancellationToken.None)));
  Check(launches==1,"Ollama concurrent single server");
  Check(!ollama.AutoLoadModel,"Ollama no model preload");
+ Check(OllamaSupervisor.IsModelName("llama3.1:8b"),"Ollama model name");
+ Check(!OllamaSupervisor.IsModelName("x; rm -rf /"),"Ollama model name reject");
+ Check(!OllamaSupervisor.IsModelName(new string('m',129)),"Ollama model name length");
+ using(var genDoc=JsonDocument.Parse(OllamaSupervisor.GenerateRequest("m","5m")))
+  Check(genDoc.RootElement.GetProperty("model").GetString()=="m"&&genDoc.RootElement.GetProperty("keep_alive").GetString()=="5m","Ollama generate request");
+ using var models=new OllamaSupervisor(_=>Task.FromResult(true),()=>false);
+ Check(!await models.EnsureModelAsync("bad name!",5,CancellationToken.None),"Ollama model validation");
+ Check(!await models.EnsureModelAsync("llama3.1:8b",5,CancellationToken.None),"Ollama model load fails closed");
+ Check(await models.ReleaseIdleModelsAsync(30,CancellationToken.None)==0&&models.TrackedModels==0,"Ollama idle none tracked");
 }
 finally{Directory.Delete(root,true);CryptographicOperations.ZeroMemory(secret);}
 AgentRequest parsed=AgentProtocol.ParseRequest("{\"op\":\"status\",\"token\":\"abc\",\"payload\":{\"a\":1}}");

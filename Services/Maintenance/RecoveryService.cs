@@ -2,6 +2,9 @@ using System.IO;
 using System.Security.Cryptography;
 using System.Text.Json;
 using SentinelX.Core;
+using SentinelX.Services.Agent;
+using SentinelX.Services.Base;
+using SentinelX.Services.Link;
 
 namespace SentinelX.Services.Maintenance;
 
@@ -100,6 +103,20 @@ public static class RecoveryService
         File.Copy(p, backup, false);
         File.Delete(p);
         return "Uszkodzone parowanie zarchiwizowano (" + backup + "). Sparuj Base ponownie z głównego ekranu.";
+    }
+
+    public static MaintenanceService CreateMaintenance()
+    {
+        var ollama = new OllamaSupervisor();
+        return new MaintenanceService(
+            new WindowsBaseService(new HeadlessDesktopService(), new SystemMonitor(), ollama, new AlertFeed()), ollama);
+    }
+
+    public static string OpenLogs()
+    {
+        Directory.CreateDirectory(AppPaths.LogsDirectory);
+        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(AppPaths.LogsDirectory) { UseShellExecute = true });
+        return "Otwarto katalog logów.";
     }
 
     public static string RollbackUpdate()
