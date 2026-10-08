@@ -7,7 +7,7 @@ namespace SentinelX.Services.Info;
 /// <summary>Weather (Open-Meteo, no API key) and currency rates (NBP table A, no API key).
 /// Only public read-only endpoints are called; the city name is the only user data sent. Redirects are refused
 /// and every call has a short timeout. Failures come back as plain Polish text, never as exceptions.</summary>
-public static class InfoService
+public static partial class InfoService
 {
     /// <summary>Used when the user asks just for "pogoda" (no city yet — a settings field comes later).</summary>
     public const string DefaultCity = "Wilamowice";

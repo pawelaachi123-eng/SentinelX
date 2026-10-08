@@ -44,6 +44,30 @@ internal static class InfoRegression
         try { InfoParsers.ParseTableA("[]"); } catch (FormatException) { rejectedEmpty = true; }
         Check(rejectedEmpty, "an empty NBP answer must be rejected explicitly");
 
+        // --- 7-day forecast: date, max/min, rain chance; a missing minimum is stated, not invented
+        const string dailyFixture = """
+            {"daily":{"time":["2026-10-09","2026-10-10"],"temperature_2m_max":[18.4,20],
+            "temperature_2m_min":[6.1,null],"precipitation_probability_max":[60,10],
+            "wind_speed_10m_max":[30.2,22],"uv_index_max":[4.1,3]}}
+            """;
+        var days = InfoParsers.ParseDaily(dailyFixture, 7);
+        Check(days.Count == 2, "both fixture days must be read: " + days.Count);
+        string week = InfoParsers.FormatDaily("Wilamowice", days);
+        Check(week.Contains("09.10 (") && week.Contains("max 18,4 °C, min 6,1 °C, szansa opadów 60%, wiatr do 30,2 km/h, UV 4,1"),
+            "first day must carry max, min, rain, wind and UV: " + week);
+        Check(week.Contains("10.10 (") && week.Contains("min brak danych"), "a missing minimum must be stated: " + week);
+        Check(InfoParsers.ParseDaily(dailyFixture, 1).Count == 1, "the day limit must hold");
+        Check(InfoParsers.ParseDaily("{}", 7).Count == 0, "an empty daily document must give no days");
+
+        // --- currency conversion on the NBP fixture (PLN = 1)
+        string toPln = InfoParsers.FormatConversion(table, 100m, "eur", "pln");
+        Check(toPln.Contains("100 EUR = 423,01 PLN"), "100 EUR must convert to 423,01 PLN: " + toPln);
+        string toEur = InfoParsers.FormatConversion(table, 423.01m, "PLN", "EUR");
+        Check(toEur.Contains("423,01 PLN = 100,00 EUR"), "PLN to EUR must round-trip: " + toEur);
+        Check(InfoParsers.FormatConversion(table, 10m, "XYZ", "PLN").Contains("Nie znam waluty"), "an unknown currency must be reported");
+        Check(InfoParsers.FormatConversion(table, -5m, "EUR", "PLN").StartsWith("Podaj kwotę"), "a non-positive amount must be refused");
+        Check(InfoParsers.KnownCurrencies.Contains("EUR") && !InfoParsers.KnownCurrencies.Contains("MILE"), "known-currency list must gate the converter");
+
         return Task.CompletedTask;
     }
 }

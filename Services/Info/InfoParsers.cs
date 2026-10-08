@@ -15,9 +15,10 @@ public sealed record RateTable(string EffectiveDate, IReadOnlyList<CurrencyRate>
 
 /// <summary>Pure parsers and formatters for the weather and currency answers. No network, no WPF —
 /// everything here is covered offline by <c>Tests.InfoRegression</c>.</summary>
-public static class InfoParsers
+public static partial class InfoParsers
 {
     private static readonly CultureInfo Pl = new("pl-PL");
+    private static readonly HashSet<string> PerHundredQuoted = new(StringComparer.Ordinal) { "JPY", "HUF", "ISK", "KRW", "IDR" };
 
     /// <summary>Reads Open-Meteo hourly arrays and returns up to <paramref name="hours"/> entries starting at
     /// <paramref name="fromLocal"/>. Unknown or malformed hours are skipped instead of failing the whole answer.</summary>
@@ -81,7 +82,10 @@ public static class InfoParsers
             string code = rate.GetProperty("code").GetString() ?? "";
             if (code.Length != 3) continue;
             string name = rate.GetProperty("currency").GetString() ?? code;
-            rates.Add(new CurrencyRate(code, name, rate.GetProperty("mid").GetDecimal()));
+            decimal mid = rate.GetProperty("mid").GetDecimal();
+            // NBP quotes these currencies per 100 units; store per unit so all conversions share one basis.
+            if (PerHundredQuoted.Contains(code)) mid /= 100m;
+            rates.Add(new CurrencyRate(code, name, mid));
         }
         return new RateTable(date, rates);
     }

@@ -6,8 +6,8 @@ Zasady: wszystko w istniejących zakładkach i oknach, bez nowych zakładek. Bez
 
 ## Pogoda i finanse
 
-1. Pogoda: okno „pokaż pogodę” z wykresem 24 h, tabelą godzinową (np. „16:00 — 30 °C, wilgotność 16%”), prognozą 7 dni, jakością powietrza, UV, wiatrem, alertami i odczytem głosowym; push na telefon zawsze przy deszczu, mrozie, upale, burzy i smogu — **W TOKU** (tekst godzinowy z routingiem gotowy; wykres, okno, prognoza 7 dni i push na telefon są w planie)
-2. Waluty i finanse: kursy NBP na żywo, push z kursami wybranych walut zawsze na telefon, kalkulator kantorowy, alerty progów, złoto, wykres 30/90 dni, budżet, wydatki, subskrypcje, eksport CSV — **W TOKU** (kursy NBP tekstem z routingiem gotowe; push na telefon, wykres, alerty i budżet w planie)
+1. Pogoda: okno „pokaż pogodę” z wykresem 24 h, tabelą godzinową (np. „16:00 — 30 °C, wilgotność 16%”), prognozą 7 dni, jakością powietrza, UV, wiatrem, alertami i odczytem głosowym; push na telefon zawsze przy deszczu, mrozie, upale, burzy i smogu — **W TOKU** (w czacie: prognoza godzinowa „pogoda”, 7 dni „prognoza na 7 dni”; w planie: okno z wykresem i push na telefon)
+2. Waluty i finanse: kursy NBP na żywo, push z kursami wybranych walut zawsze na telefon, kalkulator kantorowy, alerty progów, złoto, wykres 30/90 dni, budżet, wydatki, subskrypcje, eksport CSV — **W TOKU** (w czacie: kursy NBP „kursy walut”, „kurs eur”, przeliczanie „przelicz 100 eur na pln”; w planie: push na telefon, wykres, alerty i budżet)
 3. GitHub: powiadomienia, PR do review, status CI repozytoriów z alertem o błędzie — ZABLOKOWANE: konto GitHub i zgoda
 4. Gmail: liczba nieprzeczytanych i nadawcy w jednym widoku — ZABLOKOWANE: własny klucz OAuth i zgoda
 5. Gmail: szukanie wiadomości i załączników po frazie, nadawcy i dacie — ZABLOKOWANE: konto Gmail

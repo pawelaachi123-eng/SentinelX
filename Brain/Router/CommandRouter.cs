@@ -47,6 +47,8 @@ public sealed class CommandRouter
         string text = Normalize(command).TrimEnd('?', '!', '.', ' ');
         string? snapshotResponse = await TryHandleSnapshotCommandAsync(command.Trim(), text, cancellationToken);
         if (snapshotResponse != null) return snapshotResponse;
+        string? conversionResponse = await TryHandleCurrencyConversionAsync(command.Trim().TrimEnd('?', '!', '.', ' '), cancellationToken);
+        if (conversionResponse != null) return conversionResponse;
         string? utilityResponse = UtilityToolbox.Process(command.Trim(), text);
         if (utilityResponse != null) return utilityResponse;
         string? infoResponse = await TryHandleInfoCommandAsync(command.Trim().TrimEnd('?', '!', '.', ' '), cancellationToken);
@@ -636,10 +638,37 @@ public sealed class CommandRouter
         @"^(?:kursy walut|kursy nbp|kurs walut|waluty|kurs\s+([a-z]{3}))$",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
+    private static readonly Regex WeekCommand = new(
+        @"^(?:poka[żz] |sprawd[źz] )?(?:prognoz[aęy] (?:na )?(?:tydzie[ńn]|7 dni)|pogod[aęy] (?:na )?(?:tydzie[ńn]|7 dni))(?:\s+(?:w|dla)\s+(.+))?$",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+    private static readonly Regex ConvertCommand = new(
+        @"^przelicz (\d+(?:[.,]\d{1,4})?) ([a-z]{3})(?: na ([a-z]{3}))?$",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
+    /// <summary>„przelicz 100 eur” or „przelicz 100 eur na usd”: only for known currency codes, so unit conversions
+    /// such as „przelicz 5 km na mile” keep going to the unit converter.</summary>
+    private static async Task<string?> TryHandleCurrencyConversionAsync(string command, CancellationToken cancellationToken)
+    {
+        Match match = ConvertCommand.Match(command);
+        if (!match.Success) return null;
+        string from = match.Groups[2].Value.ToUpperInvariant();
+        string to = match.Groups[3].Success ? match.Groups[3].Value.ToUpperInvariant() : "PLN";
+        if (!InfoParsers.KnownCurrencies.Contains(from) || !InfoParsers.KnownCurrencies.Contains(to)) return null;
+        string amountText = match.Groups[1].Value.Replace(',', '.');
+        if (!decimal.TryParse(amountText, NumberStyles.Number, CultureInfo.InvariantCulture, out decimal amount)) return null;
+        return await InfoService.ConvertCurrencyAsync(amount, from, to, cancellationToken);
+    }
+
     /// <summary>Weather and NBP currency answers. Only these two read-only public services are called;
     /// everything else falls through to the existing routing.</summary>
     private static async Task<string?> TryHandleInfoCommandAsync(string command, CancellationToken cancellationToken)
     {
+        Match week = WeekCommand.Match(command);
+        if (week.Success)
+        {
+            string weekCity = week.Groups[1].Success ? week.Groups[1].Value.Trim() : InfoService.DefaultCity;
+            return await InfoService.GetWeekAsync(weekCity, cancellationToken);
+        }
         Match weather = WeatherCommand.Match(command);
         if (weather.Success)
         {
