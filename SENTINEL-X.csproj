@@ -51,4 +51,13 @@
     <Content Include="Engine/llama/**/*" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- The WinUI 3 shell is a separate project (SentinelX.WinUI) — keep it out of the WPF build. -->
+    <Compile Remove="SentinelX.WinUI/**/*.cs" />
+    <Page Remove="SentinelX.WinUI/**/*.xaml" />
+    <ApplicationDefinition Remove="SentinelX.WinUI/**/*.xaml" />
+    <Resource Remove="SentinelX.WinUI/**/*" />
+    <Content Remove="SentinelX.WinUI/**/*" />
+  </ItemGroup>
+
 </Project>

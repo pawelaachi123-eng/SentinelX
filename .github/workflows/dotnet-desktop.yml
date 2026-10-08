@@ -53,7 +53,23 @@ jobs:
         shell: pwsh
         run: |
           dotnet restore SentinelX.WinUI/SentinelX.WinUI.csproj
-          dotnet build SentinelX.WinUI/SentinelX.WinUI.csproj --configuration Release --no-restore
+          dotnet build SentinelX.WinUI/SentinelX.WinUI.csproj --configuration Release --no-restore --nologo -v minimal 2>&1 | Tee-Object -FilePath build-winui.log
+          $code = $LASTEXITCODE
+          if ($code -ne 0) {
+            # Surface compiler errors as check annotations (readable via API when raw logs are not).
+            $ws = ($env:GITHUB_WORKSPACE -replace '\\', '/') + '/'
+            $errors = Select-String -Path build-winui.log -Pattern '^(.+?)\((\d+)(?:,(\d+))?\):\s+error\s+([A-Z]+\d+):\s*(.*)$'
+            foreach ($m in $errors) {
+              $g = $m.Matches[0].Groups
+              $file = ($g[1].Value -replace '\\', '/') -replace [regex]::Escape($ws), ''
+              $msg = (($g[4].Value + ' ' + $g[5].Value) -replace '::', ';').Trim()
+              if ($g[3].Value) { Write-Output "::error file=$file,line=$($g[2].Value),col=$($g[3].Value)::$msg" }
+              else { Write-Output "::error file=$file,line=$($g[2].Value)::$msg" }
+            }
+            $msb = Select-String -Path build-winui.log -Pattern 'error\s+(MSB\d+):\s*(.*)$' | Select-Object -First 5
+            foreach ($m in $msb) { Write-Output ('::error title=MSBuild failure::' + (($m.Line -replace '::', ';').Trim())) }
+          }
+          exit $code
 
       - name: WinUI smoke test (headless)
         shell: pwsh

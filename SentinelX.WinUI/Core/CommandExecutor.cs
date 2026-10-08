@@ -27,6 +27,8 @@ public sealed partial class CommandExecutor : ObservableObject, IDisposable
     [ObservableProperty] private string phase = "";
     [ObservableProperty] private bool isStreaming;
     [ObservableProperty] private string streamingText = "";
+    [ObservableProperty] private bool hasPendingPermission;
+    [ObservableProperty] private string permissionSummary = "";
 
     public CommandExecutor(IActionEngine engine, IVoiceService voice, ICoreStateService core, IUiDispatcher dispatcher)
     {

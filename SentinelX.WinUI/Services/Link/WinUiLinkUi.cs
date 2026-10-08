@@ -49,7 +49,7 @@ public sealed class WinUiLinkUi(
 
             try
             {
-                showWindow();
+                ShowWindowAction();
             }
             catch (Exception ex)
             {
@@ -131,7 +131,7 @@ public sealed class WinUiLinkUi(
             if (root == null) return;
             try
             {
-                showWindow();
+                ShowWindowAction();
             }
             catch (Exception ex)
             {

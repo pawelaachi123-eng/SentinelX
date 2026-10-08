@@ -23,6 +23,7 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
     private readonly IEngineService aiEngine;
     private readonly IDesktopService desktop;
     private readonly GamingPolicyService gaming;
+    private readonly IVoiceService voiceService;
     private bool disposed;
 
     public string ProductName => "Sentinel X";
@@ -52,13 +53,15 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
     [ObservableProperty] private bool pcOk = true;
     [ObservableProperty] private string gamingText = "";
     [ObservableProperty] private string desktopStatus = "";
+    [ObservableProperty] private bool voiceModelsMissing;
 
     public GamingPolicyService GamingPolicy => gaming;
 
     public ShellViewModel(ICoreStateService core, CommandBarViewModel commands, TelemetryViewModel telemetry,
         DetailPanelViewModel details, SettingsPanelViewModel settingsPanel, HistoryPanelViewModel history,
         MiniModeViewModel mini, CommandPaletteViewModel palette, VoiceViewModel voice, GamingViewModel gamingVm,
-        IActionEngine engine, IEngineService aiEngine, IDesktopService desktop, GamingPolicyService gaming)
+        IActionEngine engine, IEngineService aiEngine, IDesktopService desktop, GamingPolicyService gaming,
+        IVoiceService voiceService)
     {
         Core = core;
         Commands = commands;
@@ -74,11 +77,13 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         this.aiEngine = aiEngine;
         this.desktop = desktop;
         this.gaming = gaming;
+        this.voiceService = voiceService;
 
         Telemetry.PropertyChanged += OnTelemetryChanged;
         Details.Ai.PropertyChanged += OnAiChanged;
         Details.PropertyChanged += OnDetailsChanged;
         Voice.PropertyChanged += OnVoiceChanged;
+        voiceService.Changed += OnVoiceServiceChanged;
         gaming.PropertyChanged += OnGamingChanged;
         desktop.StatusChanged += OnDesktopStatus;
         Palette.Chosen += OnPaletteChosen;
@@ -86,6 +91,7 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
         Commands.SlashNavigationRequested += OnSlashNavigation;
 
         SyncMic();
+        OnVoiceServiceChanged();
         SyncAi();
         SyncWatch();
         SyncPc();
@@ -115,6 +121,8 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
     {
         if (e.PropertyName == nameof(VoiceViewModel.State)) SyncMic();
     }
+
+    private void OnVoiceServiceChanged() => VoiceModelsMissing = !voiceService.HasLocalModels;
 
     private void OnGamingChanged(object? sender, PropertyChangedEventArgs e)
     {
@@ -226,6 +234,9 @@ public sealed partial class ShellViewModel : ObservableObject, IDisposable
 
     [RelayCommand]
     private void QuickCommand(string text) => Commands.StageCommand(text);
+
+    [RelayCommand]
+    private void DownloadVoiceModels() => Voice.DownloadModelsCommand.Execute(null);
 
     [RelayCommand]
     private void EmergencyStop() => engine.EmergencyStop();

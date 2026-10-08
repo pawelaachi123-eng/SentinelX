@@ -36,6 +36,8 @@ public interface ICoreStateService
     /// <summary>Live microphone energy 0..1, for the Listening animation. 0 when the mic is off.</summary>
     double AudioLevel { get; }
     event Action<CoreStateChanged>? Changed;
+    /// <summary>Called by the command path when <see cref="Services.Actions.IActionEngine.ExecuteAsync"/> finishes.</summary>
+    void ReportResult(ActionRecord? action);
 }
 
 /// <summary>

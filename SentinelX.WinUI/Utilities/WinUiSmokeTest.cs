@@ -45,7 +45,7 @@ public static class WinUiSmokeTest
             report.AppendLine($"voice={voice.State} mics={voice.GetMicrophones().Count}");
             report.AppendLine("engine=" + ai.Status.State);
             report.AppendLine("settingsError=" + (settings.LastError ?? "none"));
-            File.WriteAllText(Path.Combine(outputDir(outputDirectory), "SMOKE.txt"), report.ToString());
+            File.WriteAllText(Path.Combine(outputDirectory, "SMOKE.txt"), report.ToString());
 
             if (result.Action?.Status == ActionStatus.Failed)
             {
