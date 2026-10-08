@@ -74,78 +74,50 @@ jobs:
           }
           dotnet restore SentinelX.WinUI/SentinelX.WinUI.csproj --nologo -v minimal 2>&1 | Tee-Object -FilePath restore-winui.log
           $rc = $LASTEXITCODE
-          dotnet build SentinelX.WinUI/SentinelX.WinUI.csproj --configuration Release -p:Platform=x64 --nologo -v normal 2>&1 | Tee-Object -FilePath build-winui.log
+          dotnet build SentinelX.WinUI/SentinelX.WinUI.csproj --configuration Release -p:Platform=x64 --nologo -v minimal 2>&1 | Tee-Object -FilePath build-winui.log
           $bc = $LASTEXITCODE
           if ($rc -ne 0) { Emit-Errors 'restore-winui.log' }
           if ($bc -ne 0) { Emit-Errors 'build-winui.log' }
           if ($bc -ne 0) {
-            # XamlCompiler inner diagnostics (it often fails without an MSBuild error code).
-            $inner = @(Select-String -Path build-winui.log -Pattern 'WMC\d+|XamlCompiler|Markup\.Compiler.*(error|fail|exception)|GENERATE.*FAIL' | Select-Object -First 15)
-            foreach ($m in $inner) {
-              Write-Output ('::error title=XAML compiler output::' + (($m.Line -replace '::', ';').Trim()))
-            }
-            $outJson = Get-ChildItem -Path SentinelX.WinUI/obj -Recurse -Filter output.json -ErrorAction SilentlyContinue | Select-Object -First 1
-            if ($outJson) {
-              $txt = (Get-Content $outJson.FullName -Raw)
-              if ($txt.Length -gt 3000) { $txt = $txt.Substring(0, 3000) + '…[truncated]' }
-              Write-Output ('::error title=XAML output.json::' + (($txt -replace '::', ';' -replace "`r`n", '%0A' -replace "`n", '%0A')))
-            }
-            # Context: 8 lines before/after each XamlCompiler mention.
-            $lines = Get-Content build-winui.log
-            for ($i = 0; $i -lt $lines.Count; $i++) {
-              if ($lines[$i] -match 'XamlCompiler\.exe') {
-                $a = [Math]::Max(0, $i - 8); $b = [Math]::Min($lines.Count - 1, $i + 8)
-                $ctx = (($lines[$a..$b] -join '%0A') -replace '::', ';')
-                Write-Output "::error title=XAML context @$i::$ctx"
-              }
-            }
-            # Input file: does input.json exist and what does it feed the compiler?
+            # NOTE: GitHub keeps ~10 error annotations per step — pack everything into ONE bundle.
+            $B = @()
             $sdkRoot = Join-Path $env:USERPROFILE '.nuget/packages/microsoft.windowsappsdk/1.5.240627000/tools'
             $xc = Join-Path $sdkRoot 'net472/XamlCompiler.exe'
-            $xcInfo = if (Test-Path $xc) { $v = [Diagnostics.FileVersionInfo]::GetVersionInfo($xc); "exists, $($v.FileVersion), $((Get-Item $xc).Length) bytes" } else { '(MISSING)' }
-            Write-Output "::error title=XAML compiler binary::$xcInfo"
-            $toolsListing = (Get-ChildItem $sdkRoot -Recurse -File -ErrorAction SilentlyContinue | Select-Object -First 40 | ForEach-Object { $_.FullName -replace [regex]::Escape($sdkRoot + '\'), '' }) -join '%0A'
-            Write-Output "::error title=XAML tools dir::$toolsListing"
-            # Probe 1: does the exe even run (no args)?
-            $noargs = (& $xc 2>&1 | Out-String)
-            $noargsCode = $LASTEXITCODE
-            if ($noargs.Length -gt 1500) { $noargs = $noargs.Substring(0, 1500) + '…[truncated]' }
-            if (-not $noargs.Trim()) { $noargs = '(no output at all)' }
-            Write-Output ('::error title=XAML no-args run exit ' + $noargsCode + '::' + (($noargs -replace '::', ';' -replace "`r`n", '%0A' -replace "`n", '%0A')))
+            if (Test-Path $xc) { $v = [Diagnostics.FileVersionInfo]::GetVersionInfo($xc); $B += "exe: v$($v.FileVersion), $((Get-Item $xc).Length) bytes" } else { $B += 'exe: MISSING' }
+            $noargs = (& $xc 2>&1 | Out-String); $nc = $LASTEXITCODE
+            if ($noargs.Length -gt 800) { $noargs = $noargs.Substring(0, 800) }
+            if (-not $noargs.Trim()) { $noargs = '(silent)' }
+            $B += "no-args: exit=$nc out=[$($noargs.Trim())]"
             $inJson = Get-ChildItem -Path SentinelX.WinUI/obj -Recurse -Filter input.json -ErrorAction SilentlyContinue | Select-Object -First 1
             if ($inJson) {
               $itxt = (Get-Content $inJson.FullName -Raw)
-              Write-Output ('::error title=XAML input stats::length=' + $itxt.Length + ' xaml-refs=' + ([regex]::Matches($itxt, '\.xaml', 'IgnoreCase').Count))
-              foreach ($mm in [regex]::Matches($itxt, '.{0,200}\.xaml.{0,120}')) {
-                Write-Output ('::error title=XAML input files::' + (($mm.Value -replace '::', ';' -replace "`r`n", ' ' -replace "`n", ' ' -replace '\s+', ' ').Trim()))
-              }
-              # Probe 2: run XamlCompiler manually and READ BACK its output file.
+              $B += "input: len=$($itxt.Length)"
+              $xp = [regex]::Matches($itxt, '"[^"]*\.xaml"') | ForEach-Object { $_.Value } | Select-Object -Unique
+              $B += "xaml-files($($xp.Count)): $($xp -join ' | ')"
+              $refs = [regex]::Matches($itxt, '"FullPath":"([^"]+)"') | ForEach-Object { $_.Groups[1].Value } | Select-Object -Unique
+              $missing = @(foreach ($r in $refs) { if (-not (Test-Path $r)) { $r } })
+              $B += "refs: $($refs.Count) total, $($missing.Count) missing"
+              foreach ($m in ($missing | Select-Object -First 8)) { $B += "  MISSING-REF: $m" }
               $manualOut = Join-Path $env:TEMP 'xc-manual-out.json'
               if (Test-Path $manualOut) { Remove-Item $manualOut -Force }
-              $manual = (& $xc $inJson.FullName $manualOut 2>&1 | Out-String)
-              $xccode = $LASTEXITCODE
-              if ($manual.Length -gt 1500) { $manual = $manual.Substring(0, 1500) + '…[truncated]' }
-              if (-not $manual.Trim()) { $manual = '(no output at all)' }
-              Write-Output ('::error title=XAML manual run exit ' + $xccode + '::' + (($manual -replace '::', ';' -replace "`r`n", '%0A' -replace "`n", '%0A')))
+              $manual = (& $xc $inJson.FullName $manualOut 2>&1 | Out-String); $xcc = $LASTEXITCODE
+              if ($manual.Length -gt 800) { $manual = $manual.Substring(0, 800) }
+              if (-not $manual.Trim()) { $manual = '(silent)' }
+              $B += "manual: exit=$xcc out=[$($manual.Trim())]"
               if (Test-Path $manualOut) {
-                $motxt = (Get-Content $manualOut -Raw)
-                if ($motxt.Length -gt 2500) { $motxt = $motxt.Substring(0, 2500) + '…[truncated]' }
-                Write-Output ('::error title=XAML manual output file::' + (($motxt -replace '::', ';' -replace "`r`n", '%0A' -replace "`n", '%0A')))
-              } else {
-                Write-Output '::error title=XAML manual output file::(not written)'
-              }
+                $mo = (Get-Content $manualOut -Raw)
+                if ($mo.Length -gt 2000) { $mo = $mo.Substring(0, 2000) + '…[trunc]' }
+                $B += "manual-out-file: $mo"
+              } else { $B += 'manual-out-file: (not written)' }
               $ix = Get-ChildItem -Path SentinelX.WinUI/obj -Recurse -Directory -Filter intermediatexaml -ErrorAction SilentlyContinue | Select-Object -First 1
-              if ($ix) {
-                $ixFiles = ((Get-ChildItem $ix.FullName -File | ForEach-Object { $_.Name }) -join ', ')
-                if (-not $ixFiles) { $ixFiles = '(empty)' }
-                Write-Output "::error title=XAML intermediatexaml::$ixFiles"
-              }
-            } else {
-              Write-Output '::error title=XAML input.json::(missing — targets did not generate input)'
-            }
-            # Raw tail, always (cheap insurance against parser blind spots).
-            $tail = ((Get-Content build-winui.log -Tail 40) -join '%0A' -replace '::', ';')
-            Write-Output "::error title=WinUI build failed (exit $bc), raw tail::$tail"
+              if ($ix) { $ixn = ((Get-ChildItem $ix.FullName -File | ForEach-Object { $_.Name }) -join ', '); if (-not $ixn) { $ixn = '(empty)' }; $B += "intermediatexaml: $ixn" }
+            } else { $B += 'input: MISSING' }
+            $wmc = @(Select-String -Path build-winui.log -Pattern 'WMC\d+' | Select-Object -First 5)
+            foreach ($w in $wmc) { $B += "WMC: $($w.Line.Trim())" }
+            $B += '--- tail ---'
+            foreach ($t in (Get-Content build-winui.log -Tail 12)) { $B += $t }
+            $bundle = (($B -join '%0A') -replace '::', ';')
+            Write-Output "::error title=XAML diagnosis::$bundle"
           }
           if ($rc -ne 0) { exit $rc } else { exit $bc }
 
