@@ -31,6 +31,7 @@ public sealed class MaintenanceService(IBaseControl agent,OllamaSupervisor ollam
    Check("Steam",File.Exists(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),"Steam","steam.exe")),"Lokalna instalacja");
    Check("Logi",Directory.Exists(AppPaths.LogsDirectory),"Lokalne logi; dziennik Base ma limit 8 MiB");
    var state=Updater.ReadJournal();Check("Crash-loop",state.LaunchFailures<3,"Licznik: "+state.LaunchFailures);
+   var runs=RunHealth.Read(AppPaths.Root,"ui");var agentRuns=RunHealth.Read(AppPaths.Root,"agent");Check("Uruchomienia",runs.ConsecutiveFailures==0&&agentRuns.ConsecutiveFailures==0,"Nieczyste starty UI/Agent: "+runs.ConsecutiveFailures+"/"+agentRuns.ConsecutiveFailures);
 
    Check("Android",false,"Stan telefonu jest dostępny przez devices/status Base");
   },cancel);

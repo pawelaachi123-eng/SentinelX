@@ -53,6 +53,7 @@ public sealed class AgentHost : IAsyncDisposable
         var provider = ServiceLocator.BuildAgent();
         var host = new AgentHost(root, token, provider, mutex);
         host.Log("agent started pid=" + Environment.ProcessId + " version=" + AppConstants.SemanticVersion);
+        try { RunHealth.BeginRun(root, "agent"); } catch { }
         try
         {
             host.direct.Start();
@@ -217,6 +218,7 @@ public sealed class AgentHost : IAsyncDisposable
         if (stopped) return;
         stopped = true;
         Log("agent stopping");
+        try { RunHealth.EndRun(root, "agent"); } catch { }
         stop.Cancel();
         try { await pipeTask; } catch (OperationCanceledException) { } catch (Exception) { }
         try { await beatTask; } catch (OperationCanceledException) { } catch (Exception) { }

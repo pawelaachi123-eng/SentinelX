@@ -146,6 +146,7 @@ public static class ServiceLocator
         services.AddSingleton<Services.Link.AlertFeed>();
         services.AddSingleton<Services.Desktop.IDesktopService, Services.Agent.HeadlessDesktopService>();
         services.AddSingleton<Services.Base.WindowsBaseService>();
+        services.AddSingleton<Services.Base.IBaseControl>(sp => sp.GetRequiredService<Services.Base.WindowsBaseService>());
         services.AddSingleton<Services.Maintenance.MaintenanceService>();
         return services.BuildServiceProvider();
     }

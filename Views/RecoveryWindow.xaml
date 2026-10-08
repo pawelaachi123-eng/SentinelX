@@ -1,0 +1,24 @@
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" x:Class="SentinelX.Views.RecoveryWindow" Title="Sentinel X — odzyskiwanie" Width="640" Height="560" MinWidth="520" MinHeight="480" WindowStartupLocation="CenterScreen" Background="{DynamicResource SxBackground}" FontFamily="{StaticResource SxFontFamily}" ThemeMode="Dark" ResizeMode="CanResize">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="24">
+        <StackPanel>
+            <TextBlock Text="Sentinel nie zamknął się poprawnie" Style="{StaticResource SxHeading}"/>
+            <TextBlock x:Name="SummaryText" TextWrapping="Wrap" Style="{StaticResource SxCaption}" Margin="0,8,0,0"/>
+            <TextBlock Text="Co wykryto" Style="{StaticResource SxSectionTitle}" Margin="0,16,0,4"/>
+            <TextBlock x:Name="StateText" TextWrapping="Wrap" Style="{StaticResource SxCaption}"/>
+            <TextBlock x:Name="ErrorText" TextWrapping="Wrap" Style="{StaticResource SxCaption}" Margin="0,8,0,0}"/>
+            <TextBlock Text="Naprawa" Style="{StaticResource SxSectionTitle}" Margin="0,16,0,4"/>
+            <WrapPanel>
+                <Button Content="Uruchom normalnie" Style="{StaticResource SxPrimaryButton}" Margin="0,4,8,4" Click="OnContinue"/>
+                <Button Content="Wycofaj aktualizację" Style="{StaticResource SxGhostButton}" Margin="0,4,8,4" Click="OnRollback"/>
+                <Button Content="Napraw katalogi" Style="{StaticResource SxGhostButton}" Margin="0,4,8,4" Click="OnRepairDirs"/>
+                <Button Content="Napraw autostart" Style="{StaticResource SxGhostButton}" Margin="0,4,8,4" Click="OnRepairAutostart"/>
+                <Button Content="Resetuj ustawienia" Style="{StaticResource SxDangerButton}" Margin="0,4,8,4" Click="OnResetSettings"/>
+                <Button Content="Archiwizuj uszkodzone parowanie" Style="{StaticResource SxGhostButton}" Margin="0,4,8,4" Click="OnBackupIdentity"/>
+                <Button Content="Otwórz logi" Style="{StaticResource SxGhostButton}" Margin="0,4,8,4" Click="OnOpenLogs"/>
+                <Button Content="Zamknij" Style="{StaticResource SxGhostButton}" Margin="0,4,8,4" Click="OnClose"/>
+            </WrapPanel>
+            <TextBlock Text="Wynik" Style="{StaticResource SxSectionTitle}" Margin="0,16,0,4"/>
+            <TextBlock x:Name="ResultText" TextWrapping="Wrap" Style="{StaticResource SxCaption}" Text="Wybierz akcję. Nic nie dzieje się samo — także parowanie Base zostaje nietknięte, dopóki jawnie je zarchiwizujesz."/>
+        </StackPanel>
+    </ScrollViewer>
+</Window>

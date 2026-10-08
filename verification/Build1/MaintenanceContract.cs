@@ -72,6 +72,13 @@ static class MaintenanceContract
    var text=new ScriptHandler(_=>new HttpResponseMessage(System.Net.HttpStatusCode.OK){Content=new StringContent("{\"Version\":\"2.0.0\"}")});
    using var textHttp=new HttpClient(text);
    check((await UpdateDownloader.DownloadStringAsync(textHttp,"https://updates.example/meta.json",16384,CancellationToken.None)).Contains("2.0.0"),"descriptor download");
+   string runs=Path.Combine(root,"runs");
+   var first=RunHealth.BeginRun(runs,"ui");check(first.ConsecutiveFailures==0&&!first.CleanExit,"first run starts dirty");
+   RunHealth.EndRun(runs,"ui");check(RunHealth.Read(runs,"ui").CleanExit,"clean exit recorded");
+   var second=RunHealth.BeginRun(runs,"ui");check(second.ConsecutiveFailures==0,"clean previous resets counter");
+   var third=RunHealth.BeginRun(runs,"ui");check(third.ConsecutiveFailures==1,"crash counted");
+   File.WriteAllText(RunHealth.StatePath(runs,"ui"),"{broken");
+   check(RunHealth.Read(runs,"ui").ConsecutiveFailures==1&&!File.Exists(RunHealth.StatePath(runs,"ui")),"corrupt state fails closed and is archived");
    string apps=Path.Combine(root,"Steam","steamapps");Directory.CreateDirectory(apps);
    File.WriteAllText(Path.Combine(apps,"appmanifest_10.acf"),"\"appid\" \"10\"\n\"name\" \"Same game Deluxe\"");
    File.WriteAllText(Path.Combine(apps,"appmanifest_11.acf"),"\"appid\" \"11\"\n\"name\" \"Same game Standard\"");

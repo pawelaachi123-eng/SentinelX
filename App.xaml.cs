@@ -12,6 +12,7 @@ public partial class App : Application
     private SingleInstanceService? instance;
     private ServiceProvider? provider;
     private AgentHost? agentHost;
+    private bool cleanRun;
     public static IServiceProvider Services { get; private set; } = null!;
     /// <summary>True when Windows started the app at login (registry Run entry with --autostart).</summary>
     public static bool AutostartLaunch { get; private set; }
@@ -38,6 +39,20 @@ public partial class App : Application
             try { agentHost = await AgentHost.StartAsync(); }
             catch (Exception ex) { AppLog.Write(ex); Shutdown(2); }
             return;
+        }
+        if (!selfTest && !uiTest && !agentSmoke && !agent)
+        {
+            try { RunHealth.BeginRun(AppPaths.Root, "ui"); } catch (Exception ex) { AppLog.Write(ex); }
+            try
+            {
+                var recovery = RecoveryService.Evaluate();
+                if (RecoveryService.Needed(recovery))
+                {
+                    var recoveryWindow = new Views.RecoveryWindow(recovery);
+                    if (recoveryWindow.ShowDialog() != true) { Shutdown(0); return; }
+                }
+            }
+            catch (Exception ex) { AppLog.Write(ex); }
         }
         if (uiTest) Environment.SetEnvironmentVariable("SENTINEL_UI_SMOKE", "1");
         if (!selfTest && !uiTest)
@@ -80,7 +95,7 @@ public partial class App : Application
             }
             provider = ServiceLocator.Build(Dispatcher); Services = provider;
             var shell = provider.GetRequiredService<Views.MainWindow>();
-            MainWindow = shell; shell.Show();
+            MainWindow = shell; shell.Show(); cleanRun = true;
             instance?.Listen(provider.GetRequiredService<IDesktopService>().ShowWindow);
             // The caretaker starts the phone link and the AI engine and keeps them running (it does nothing in the UI smoke test).
             if (!uiTest)
@@ -114,6 +129,7 @@ public partial class App : Application
     protected override void OnExit(ExitEventArgs e)
     {
         if (agentHost != null) try { agentHost.StopAsync().GetAwaiter().GetResult(); } catch { }
+        if (cleanRun && !Utilities.CrashLogger.Crashed) try { RunHealth.EndRun(AppPaths.Root, "ui"); } catch { }
         provider?.Dispose(); instance?.Dispose(); base.OnExit(e);
     }
     protected override void OnSessionEnding(SessionEndingCancelEventArgs e)
