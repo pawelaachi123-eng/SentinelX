@@ -37,6 +37,7 @@ public static class UiSmokeTestRunner
             await Tests.AiStreamRegression.RunAsync(Path.Combine(output, "ai-stream"));
             await Tests.UnderstandingRegression.RunAsync(Path.Combine(output, "understanding"));
             await Tests.UtilityRegression.RunAsync(Path.Combine(output, "utility"));
+            await Tests.InfoRegression.RunAsync(Path.Combine(output, "info"));
             await Tests.ForgeRegression.RunAsync(Path.Combine(output, "forge"));
             await Tests.RoutingRegression.RunAsync(Path.Combine(output, "routing"));
             await Tests.FileCleanupRegression.RunAsync(Path.Combine(output, "file-cleanup"));

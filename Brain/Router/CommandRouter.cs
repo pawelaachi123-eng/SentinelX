@@ -4,6 +4,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using SentinelX.Core;
+using SentinelX.Services.Info;
 using SentinelX.Services.Intent;
 
 namespace SentinelX;
@@ -48,6 +49,8 @@ public sealed class CommandRouter
         if (snapshotResponse != null) return snapshotResponse;
         string? utilityResponse = UtilityToolbox.Process(command.Trim(), text);
         if (utilityResponse != null) return utilityResponse;
+        string? infoResponse = await TryHandleInfoCommandAsync(command.Trim().TrimEnd('?', '!', '.', ' '), cancellationToken);
+        if (infoResponse != null) return infoResponse;
         string? metaResponse = TryHandleMetaCommand(text);
         if (metaResponse != null) return metaResponse;
         string? workspaceResponse = TryHandleWorkspaceCommand(command.Trim(), text);
@@ -625,5 +628,32 @@ public sealed class CommandRouter
     private static string Truncate(string text, int max) => text.Length <= max ? text : text[..(max - 1)] + "…";
     private string StorageResult(string success) => memory.LastStorageError == null ? success : memory.LastStorageError;
     internal static string Number(double value, string unit, int decimals = 0) => double.IsFinite(value) && value >= 0 ? value.ToString("F" + decimals, CultureInfo.GetCultureInfo("pl-PL")) + (unit == "%" ? "" : " ") + unit : "odczyt niedostępny";
+    // Polish letters are optional in the patterns, so "pokaż pogodę" and "pokaz pogode" both match.
+    private static readonly Regex WeatherCommand = new(
+        @"^(?:poka[żz] |sprawd[źz] |jaka jest )?pogod[aęy](?:\s+(?:w|dla)\s+(.+))?$",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+    private static readonly Regex CurrencyCommand = new(
+        @"^(?:kursy walut|kursy nbp|kurs walut|waluty|kurs\s+([a-z]{3}))$",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
+    /// <summary>Weather and NBP currency answers. Only these two read-only public services are called;
+    /// everything else falls through to the existing routing.</summary>
+    private static async Task<string?> TryHandleInfoCommandAsync(string command, CancellationToken cancellationToken)
+    {
+        Match weather = WeatherCommand.Match(command);
+        if (weather.Success)
+        {
+            string city = weather.Groups[1].Success ? weather.Groups[1].Value.Trim() : InfoService.DefaultCity;
+            return await InfoService.GetWeatherAsync(city, DateTime.Now, cancellationToken);
+        }
+        Match currency = CurrencyCommand.Match(command);
+        if (currency.Success)
+        {
+            string? code = currency.Groups[1].Success ? currency.Groups[1].Value : null;
+            return await InfoService.GetCurrencyRatesAsync(code, cancellationToken);
+        }
+        return null;
+    }
+
     internal static string Normalize(string text) => ConversationMemoryService.Normalize(text);
 }
