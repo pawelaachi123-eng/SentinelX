@@ -73,7 +73,7 @@ jobs:
           }
           dotnet restore SentinelX.WinUI/SentinelX.WinUI.csproj --nologo -v minimal 2>&1 | Tee-Object -FilePath restore-winui.log
           $rc = $LASTEXITCODE
-          dotnet build SentinelX.WinUI/SentinelX.WinUI.csproj --configuration Release --nologo -v minimal 2>&1 | Tee-Object -FilePath build-winui.log
+          dotnet build SentinelX.WinUI/SentinelX.WinUI.csproj --configuration Release -p:Platform=x64 --nologo -v minimal 2>&1 | Tee-Object -FilePath build-winui.log
           $bc = $LASTEXITCODE
           $n = 0
           if ($rc -ne 0) { $n += Emit-Errors 'restore-winui.log' }

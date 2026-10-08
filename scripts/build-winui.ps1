@@ -11,7 +11,7 @@ $ErrorActionPreference = 'Stop'
 Set-Location (Join-Path $PSScriptRoot '..')
 
 & (Join-Path $PSScriptRoot 'fetch-llama.ps1')
-dotnet publish SentinelX.WinUI/SentinelX.WinUI.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=false -o bin/portable-winui
+dotnet publish SentinelX.WinUI/SentinelX.WinUI.csproj -c Release -r win-x64 -p:Platform=x64 --self-contained true -p:PublishSingleFile=false -o bin/portable-winui
 if ($LASTEXITCODE -ne 0) { throw 'Budowanie nie powiodło się — komunikaty błędów są powyżej.' }
 
 if ($Test) {

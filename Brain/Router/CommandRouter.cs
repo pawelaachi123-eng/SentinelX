@@ -131,7 +131,10 @@ public sealed class CommandRouter
         if (text is "wersja" or "jaka wersja" or "wersja sentinel" or "wersja aplikacji")
             return "Sentinel X " + AppConstants.Version + " · " + systemInfo.GetWindowsVersion() + " · .NET " + Environment.Version;
         if (text is "co nowego" or "lista zmian" or "changelog" or "co sie zmienilo")
-            return "CO NOWEGO W 0.96 · KUŹNIA\n" +
+            return "CO NOWEGO W 0.99 · RDZEŃ\n" +
+                "· Nowa powłoka WinUI 3 w podglądzie: centralny animowany Rdzeń, panele zamiast zakładek, paleta komend (Ctrl+K), Mini Mode i nowoczesne powiadomienia — ten sam backend, co klasyczna aplikacja.\n" +
+                "· Klasyczny wygląd WPF działa bez zmian; przełącznik powłoki w Ustawieniach.\n" +
+                "\nCO NOWEGO W 0.96 · KUŹNIA\n" +
                 "· Podgląd decyzji: „jak to rozumiem: <polecenie>” pokazuje, co Sentinel by zrobił (literówka, narzędzie, pytanie, model AI) — niczego przy tym nie wykonuje ani nie zapisuje.\n" +
                 "· „szukaj w zadaniach: fraza” przeszukuje zadania (także zrobione) i przypomnienia; wcześniej przesłaniała je wyszukiwarka internetowa, a przypomnień nie obejmowało.\n" +
                 "· 11 nowych narzędzi w kategorii „Kuźnia 0.96”: nazwy zmiennych, kodowanie URL, czas Unix, najczęstsze słowa, rata kredytu, porównanie wersji, numerowanie i odwracanie wierszy, poprawa odstępów.\n" +
