@@ -91,24 +91,32 @@ jobs:
             $inJson = Get-ChildItem -Path SentinelX.WinUI/obj -Recurse -Filter input.json -ErrorAction SilentlyContinue | Select-Object -First 1
             if ($inJson) {
               $itxt = (Get-Content $inJson.FullName -Raw)
-              $B += "input: len=$($itxt.Length)"
-              $xp = [regex]::Matches($itxt, '"[^"]*\.xaml"') | ForEach-Object { $_.Value } | Select-Object -Unique
-              $B += "xaml-files($($xp.Count)): $($xp -join ' | ')"
-              $refs = [regex]::Matches($itxt, '"FullPath":"([^"]+)"') | ForEach-Object { $_.Groups[1].Value } | Select-Object -Unique
-              $missing = @(foreach ($r in $refs) { if (-not (Test-Path $r)) { $r } })
-              $B += "refs: $($refs.Count) total, $($missing.Count) missing"
-              foreach ($m in ($missing | Select-Object -First 8)) { $B += "  MISSING-REF: $m" }
-              $manualOut = Join-Path $env:TEMP 'xc-manual-out.json'
-              if (Test-Path $manualOut) { Remove-Item $manualOut -Force }
-              $manual = (& $xc $inJson.FullName $manualOut 2>&1 | Out-String); $xcc = $LASTEXITCODE
-              if ($manual.Length -gt 800) { $manual = $manual.Substring(0, 800) }
-              if (-not $manual.Trim()) { $manual = '(silent)' }
-              $B += "manual: exit=$xcc out=[$($manual.Trim())]"
-              if (Test-Path $manualOut) {
-                $mo = (Get-Content $manualOut -Raw)
-                if ($mo.Length -gt 2000) { $mo = $mo.Substring(0, 2000) + '…[trunc]' }
-                $B += "manual-out-file: $mo"
-              } else { $B += 'manual-out-file: (not written)' }
+              $B += "input: len=$($itxt.Length) cwd=$PWD"
+              $ij = (Get-Content $inJson.FullName -Raw) | ConvertFrom-Json
+              $B += ('input-keys: ' + (($ij.PSObject.Properties.Name) -join ','))
+              $pg = $ij.Pages; if (-not $pg) { $pg = $ij.Page }; if (-not $pg) { $pg = $ij.MarkupFiles }; if (-not $pg) { $pg = $ij.Files }
+              if ($pg -is [array]) { $B += "page-array: count=$($pg.Count)" } else { $B += ('page-array: type=' + ($pg.GetType().Name)) }
+              $first = ($pg | Select-Object -First 1 | ConvertTo-Json -Compress -Depth 6)
+              if ($first.Length -gt 900) { $first = $first.Substring(0, 900) }
+              $B += "page-first: $first"
+              # Timed manual runs: from repo root vs from project dir (relative paths in input!).
+              $tRoot = (Measure-Command { $m1 = (& $xc $inJson.FullName (Join-Path $env:TEMP 'xc-r1.json') 2>&1 | Out-String); $script:c1 = $LASTEXITCODE }).TotalSeconds
+              if ($m1.Length -gt 300) { $m1 = $m1.Substring(0, 300) }
+              if (-not $m1.Trim()) { $m1 = '(silent)' }
+              $B += "manual-root: exit=$script:c1 time=$([Math]::Round($tRoot,1))s out=[$($m1.Trim())] outfile=$((Test-Path (Join-Path $env:TEMP 'xc-r1.json')))"
+              Push-Location SentinelX.WinUI
+              try {
+                $tProj = (Measure-Command { $m2 = (& $xc $inJson.FullName (Join-Path $env:TEMP 'xc-r2.json') 2>&1 | Out-String); $script:c2 = $LASTEXITCODE }).TotalSeconds
+              } finally { Pop-Location }
+              if ($m2.Length -gt 300) { $m2 = $m2.Substring(0, 300) }
+              if (-not $m2.Trim()) { $m2 = '(silent)' }
+              $r2 = Test-Path (Join-Path $env:TEMP 'xc-r2.json')
+              $B += "manual-projdir: exit=$script:c2 time=$([Math]::Round($tProj,1))s out=[$($m2.Trim())] outfile=$r2"
+              if ($r2) {
+                $mo = (Get-Content (Join-Path $env:TEMP 'xc-r2.json') -Raw)
+                if ($mo.Length -gt 1500) { $mo = $mo.Substring(0, 1500) + '…[trunc]' }
+                $B += "projdir-out-file: $mo"
+              }
               $ix = Get-ChildItem -Path SentinelX.WinUI/obj -Recurse -Directory -Filter intermediatexaml -ErrorAction SilentlyContinue | Select-Object -First 1
               if ($ix) { $ixn = ((Get-ChildItem $ix.FullName -File | ForEach-Object { $_.Name }) -join ', '); if (-not $ixn) { $ixn = '(empty)' }; $B += "intermediatexaml: $ixn" }
             } else { $B += 'input: MISSING' }
