@@ -64,8 +64,8 @@ jobs:
           $script:errCount = 0
           function Emit-Errors([string]$log) {
             $withLoc = @(Select-String -Path $log -Pattern '^(.+?)\((\d+)(?:,(\d+))?\):\s*(?:[A-Za-z]+\s+)?error\s*(?:([A-Z]+\d+):)?\s*(.*)$')
-            $withLoc = @($withLoc | Sort-Object Line -Unique | Select-Object -First 6)
-            foreach ($m in $withLoc) {
+            $withLoc = @($withLoc | Sort-Object Line -Unique)
+            foreach ($m in ($withLoc | Select-Object -First 5)) {
               $g = $m.Matches[0].Groups
               $file = ($g[1].Value -replace '\\', '/') -replace [regex]::Escape($ws), ''
               $msg = ((($g[4].Value + ' ' + $g[5].Value) -replace '::', ';').Trim())
@@ -74,10 +74,15 @@ jobs:
               $script:errCount++
             }
             $bare = @((Select-String -Path $log -Pattern ':\s*(?:[A-Za-z]+\s+)?error\s*:|:\s*(?:[A-Za-z]+\s+)?error\s+[A-Z]+\d+:' | Where-Object { $_.Line -notmatch '\(\d+,\d*\):\s*error' } | Select-Object -First 10))
-            $bare = @($bare | Sort-Object Line -Unique | Select-Object -First 2)
-            foreach ($m in $bare) {
+            $bare = @($bare | Sort-Object Line -Unique)
+            foreach ($m in ($bare | Select-Object -First 2)) {
               Write-Output ('::error title=Restore/build failure::' + (($m.Line -replace '::', ';').Trim()))
               $script:errCount++
+            }
+            $allErr = @($withLoc + $bare | ForEach-Object { $_.Line.Trim() } | Sort-Object -Unique | Select-Object -First 40)
+            if ($allErr.Count -gt 0) {
+              $eb = ((($allErr | ForEach-Object { (($_ -replace "`r`n", chr(32)) -replace "`n", chr(32)) }) -join "%0A") -replace "::", ";")
+              Write-Output ("::error title=WinUI all errors (" + $log + ")::" + $eb)
             }
           }
           dotnet restore SentinelX.WinUI/SentinelX.WinUI.csproj --nologo -v minimal 2>&1 | Tee-Object -FilePath restore-winui.log

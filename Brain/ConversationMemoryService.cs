@@ -589,7 +589,7 @@ public sealed class ConversationMemoryService : Services.Memory.IConversationMem
             // Keep the newest turns inside the context budget, not the oldest turns of a long conversation.
             var lines = new List<string>();
             int budget = ContextBudget - builder.Length;
-            foreach (var entry in entries.Reverse())
+            foreach (var entry in Enumerable.Reverse(entries))
             {
                 string line = $"[{entry.Timestamp:yyyy-MM-dd HH:mm:ss}] {(entry.Role == "user" ? "Użytkownik" : "Sentinel")}: {entry.Text}";
                 if (line.Length > budget) line = line[..Math.Max(0, budget)] + " [skrócono]";
