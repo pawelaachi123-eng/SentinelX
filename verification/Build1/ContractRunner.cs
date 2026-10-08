@@ -157,7 +157,8 @@ Check(TextScrubber.Scrub("plain note")=="plain note","scrub keeps plain text");
     Check(AgentAuth.OwnerMutexName(troot).StartsWith(@"Local\SentinelX-BaseOwner-"), "owner mutex name");
     try
     {
-        using (var first = AgentAuth.TryOwnBase(troot)) { Check(first != null, "base owner acquired"); Check(AgentAuth.TryOwnBase(troot) == null, "second owner refused"); }
+        using (var first = AgentAuth.TryOwnBase(troot)) { Check(first != null, "base owner acquired");
+        var rival = await Task.Run(() => AgentAuth.TryOwnBase(troot)); Check(rival == null, "second owner refused"); }
         using (var again = AgentAuth.TryOwnBase(troot)) { Check(again != null, "owner released and reacquired"); }
     }
     catch (PlatformNotSupportedException) { Check(true, "named mutex unsupported on this runner"); }
