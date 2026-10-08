@@ -76,10 +76,12 @@ jobs:
           grep -q "versionName='1.0.0'" dist/ANDROID-BADGING.txt
           grep -q "versionCode='100'" dist/ANDROID-BADGING.txt
           if [ "$PRODUCTION" = true ]; then ! grep -q application-debuggable dist/ANDROID-BADGING.txt; fi
-          cp "$apk" dist/SentinelX-1.0.0-android.apk
+          name=SentinelX-1.0.0-android.apk
+          if [ "$PRODUCTION" != true ]; then name=SentinelX-1.0.0-android-debug.apk; fi
+          cp "$apk" "dist/$name"
           printf 'production=%s\n' "$PRODUCTION" > dist/ANDROID-BUILD.txt
-          python3 scripts/check-release-artifacts.py --android dist/SentinelX-1.0.0-android.apk
-          cd dist && sha256sum SentinelX-1.0.0-android.apk > ANDROID-SHA256SUMS.txt
+          python3 scripts/check-release-artifacts.py --android "dist/$name"
+          cd dist && sha256sum "$name" > ANDROID-SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
         with:
           name: android-1.0.0
