@@ -120,8 +120,8 @@ public final class BaseActivity extends Activity {
   BaseClient connection=client;int epoch=lifecycle.epoch();if(!active||connection==null||blocked){result.setText("Base offline. Sparuj urządzenie lub poczekaj na połączenie.");return;}
   if(!read)result.setText("Wysyłam jednorazowo…");
   worker.execute(()->{
-   try{Map<String,Object> reply=connection.request(type,data);ui.post(()->{
-    if(!active||epoch!=lifecycle.epoch())return;result.setText(StrictJson.encode(redact(reply.get("data"))));status.setText("Base połączona · "+networkLabel());
+   try{Map<String,Object> reply=connection.request(type,data);String text=StrictJson.encode(redact(reply.get("data")));ui.post(()->{
+    if(!active||epoch!=lifecycle.epoch())return;result.setText(text);status.setText("Base połączona · "+networkLabel());
     if(type.equals("status")){ui.removeCallbacks(poll);ui.postDelayed(poll,15000);}
    });}catch(Exception e){ui.post(()->{if(active&&epoch==lifecycle.epoch()){showError(e);if(!(e instanceof Sx4.Error)){disconnect();scheduleReconnect();}}});}
   });
