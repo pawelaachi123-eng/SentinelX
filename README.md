@@ -1,4 +1,4 @@
-# SENTINEL X 0.96 · KUŹNIA — Windows + telefon
+# SENTINEL X 0.99 · RDZEŃ — Windows + telefon
 
 Lokalny asystent Windows 10/11 (C# 14, .NET 10, WPF) z aplikacją na telefon. **Nic nie trzeba pilnować:** instalujesz raz, a Sentinel sam startuje z Windows, sam pobiera i naprawia swój silnik AI, sam pilnuje komputera i daje znać na telefon. Poprzedni interfejs jest nadal dostępny przez `--legacy`.
 
@@ -33,6 +33,12 @@ powershell -ExecutionPolicy Bypass -File scripts\build-local.ps1 -Test
 
 Aplikację na Androida najłatwiej zbudować w wydaniu na GitHubie (workflow **Release**); lokalnie potrzebny jest Android Studio — zob. [phone-android/README.md](phone-android/README.md).
 
+
+## Nowe w 0.99 — RDZEŃ: nowa powłoka WinUI 3 (podgląd)
+
+- **Nowy interfejs WinUI 3** (`SentinelX.WinUI/`, szczegóły w [docs/WINUI_SHELL.md](docs/WINUI_SHELL.md)): centralny animowany **Sentinel Core** (9 stanów), pasek komend z podpowiedziami i historią, **panele zamiast zakładek** (CPU/GPU/RAM/NET/AI/WATCH), Ustawienia w 6 sekcjach, paleta **Ctrl+K**, rozwijana Historia, **Mini Mode**, toasty i nowa ikona Rdzenia.
+- **Ten sam backend:** głos, wake word, silnik AI, Ollama API, Watch, telemetria, tray, autostart, logi, pamięć i przypomnienia działają w obu powłokach bez zmian.
+- Klasyczny interfejs WPF pozostaje głównym wydaniem do czasu weryfikacji nowej powłoki na Windows.
 
 ## Nowe w 0.96 — KUŹNIA: podgląd decyzji, szukanie w zadaniach i 11 nowych narzędzi
 

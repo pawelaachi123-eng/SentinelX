@@ -152,15 +152,7 @@ public sealed class CommandRouter
                 "\nCO NOWEGO W 0.92 · BEZPIECZNE PLIKI\n" +
                 "· Bezpieczne pliki: „duplikaty: folder” znajduje identyczne treści (SHA-256), „porzadki: folder” pokazuje, co zajmuje miejsce — oba tylko do odczytu.\n" +
                 "· „usuń do kosza: ścieżka” przenosi JEDEN plik do Kosza i dopiero po Twoim „potwierdz” — nic bez zgody.\n" +
-                "· Głos: polecenie działa tylko, gdy w zdaniu pada „sentinel” (w dowolnym miejscu); bez niego Sentinel tylko nasłuchuje.\n" +
-                "\nCO NOWEGO W 0.91 · CENTRUM\n" +
-                "· Jedna zakładka CENTRUM zamiast wielu kart — rozmowa plus ikony: 📓 zadania, 🕘 historia, 🎤 głos, 🖥 system, 🎮 gry, ✨ AI, ⚡ akcje, 🩺 diagnostyka.\n" +
-                "· Paleta // w polu wpisywania: wpisz „//”, a Tab wybiera polecenie.\n" +
-                "· Głos domyślnie nasłuchuje od startu (możesz wyłączyć jednym kliknięciem).\n" +
-                "· Gdy nie jestem pewien polecenia — pytam zamiast zgadywać.\n" +
-                "· Nowe narzędzia offline: PESEL, NIP, IBAN, morse, binarnie, hex, wielkanoc, dni robocze, świat, lotto i inne — wpisz „pomoc”.\n" +
-                "· „zrob zadanie: treść” dodaje zadanie wprost do zakładki 📓.\n" +
-                "· „lekcje” pokazuje, czego nauczyłem się z Twoich poprawek; „samokontrola” sprawdza moje pliki; „propozycje” podpowiada porządki — nic bez Twojej zgody.";
+                "· Głos: polecenie działa tylko, gdy w zdaniu pada „sentinel” (w dowolnym miejscu); bez niego Sentinel tylko nasłuchuje.";
         if (text is "lekcje" or "czego sie nauczyles" or "pokaz lekcje" or "uczenie")
             return journal?.Report() ?? "Dziennik lekcji nie jest dostępny w tym trybie.";
         if (text is "samokontrola" or "sprawdz sie" or "sprawdz sentinel" or "test sentinel")

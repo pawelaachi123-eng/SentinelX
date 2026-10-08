@@ -1,6 +1,6 @@
 ; Per-user installer. User data lives outside {app}; never delete it on uninstall.
 #ifndef AppVersion
-  #define AppVersion "0.94.0"
+  #define AppVersion "0.99.0"
 #endif
 [Setup]
 AppId={{8A74FE2D-DA3A-48B5-9A88-20C17E983E53}

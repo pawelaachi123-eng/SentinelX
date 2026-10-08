@@ -14,7 +14,7 @@
     <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
     <RootNamespace>SentinelX.WinUI</RootNamespace>
     <AssemblyName>SentinelX</AssemblyName>
-    <Version>0.96.0</Version>
+    <Version>0.99.0</Version>
     <Description>Sentinel X — lokalny asystent i diagnostyka Windows (WinUI 3)</Description>
 
     <Nullable>enable</Nullable>

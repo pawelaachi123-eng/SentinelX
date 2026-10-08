@@ -1,7 +1,7 @@
 ; Per-user installer for the WinUI 3 shell. User data lives outside {app}; never delete it on uninstall.
 ; During the migration period this installs next to the classic WPF build (separate folder, separate AppId).
 #ifndef AppVersion
-  #define AppVersion "0.96.0"
+  #define AppVersion "0.99.0"
 #endif
 [Setup]
 AppId={{57C43B63-7177-4F9B-93D4-7CD8C0ACA298}
