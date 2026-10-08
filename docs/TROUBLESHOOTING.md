@@ -8,3 +8,6 @@ Steam interaction_required oznacza tylko przekazanie do Steam; aplikacja nie pot
 Ollama unavailable: zainstaluj lokalnie i sprawdź loopback 11434; ensure nie ładuje modelu.
 Updater hash/signature/path/version/health: pakiet odrzucony, aktywna wersja zachowana. Nie wyłączaj weryfikacji, aby przepchnąć wadliwy pakiet.
 Debug APK nie aktualizuje starej instalacji podpisanej innym kluczem. Wersja produkcyjna wymaga własnego stałego klucza. Nie nazywaj debug APK produkcyjnym.
+Agent nie startuje / druga instancja: działa już proces `--agent` (mutex) — sprawdź `Logs/agent.log` i `Agent/heartbeat.json`; zatrzymanie: polecenie `stop` z UI albo koniec sesji. UI przy żywym Agencie pokazuje jego stan i niczego nie wykonuje podwójnie.
+Ekran odzyskiwania po starcie: poprzednie uruchomienie nie zamknęło się czysto — kontynuuj, cofnij aktualizację albo napraw z kopią; parowanie Base nie jest ruszane samo.
+Aktualizacja odrzucona `busy`/`agent_running`: poczekaj na koniec zadań albo zatrzymaj Agenta; `download`: sprawdź jawne adresy HTTPS i sumę w opisie.

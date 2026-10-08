@@ -41,7 +41,7 @@ Usuwanie pamięci (całość, historia rozmowy, dopasowanie tekstem, pojedyncze 
 
 ## Eksport i import
 
-Eksport zapisuje pełny stan JSON (zawiera prywatne treści — przechowuj jak wrażliwe). Import przyjmuje plik eksportu (obiekt z `Notes`/`Profile`): pokazuje podgląd zmian bez zapisu, dodaje tylko nowe wspomnienia i brakujące klucze profilu, pomija duplikaty (podobieństwo po znormalizowanej treści), odrzuca niepoprawne wiersze i **celowo nie importuje historii rozmów** (`Entries`).
+Eksport zapisuje pełny stan JSON (zawiera prywatne treści — przechowuj jak wrażliwe); przed zapisem treść przechodzi przez `TextScrubber` (klucze PEM, hashe 64-hex, pary sekret=wartość zamieniane na znaczniki, kształt JSON zachowany). Import przyjmuje plik eksportu (obiekt z `Notes`/`Profile`): pokazuje podgląd zmian bez zapisu, dodaje tylko nowe wspomnienia i brakujące klucze profilu, pomija duplikaty (podobieństwo po znormalizowanej treści), odrzuca niepoprawne wiersze i **celowo nie importuje historii rozmów** (`Entries`).
 
 ## Czego ten moduł (jeszcze) nie robi
 

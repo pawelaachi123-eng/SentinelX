@@ -1,6 +1,8 @@
 Sentinel X Build 1.0 / 1.0.0
 
-Dodano binarny SX4, pinned TLS, challenge/capabilities, szyfrowaną kolejkę PC Agenta z expiry/zgodami/audytem, heartbeat niezależny od mikrofonu i panel Base na Windows/Android. Zachowano dotychczasowy panel PC/PWA, głos, tray i silnik AI.
-Dodano lokalny resolver Steam, nadzór Ollamy bez autoload modelu, diagnostykę/naprawę oraz konsumenta zweryfikowanych pakietów ze staging, health i rollback. CI łączy EXE/APK/security przed publikacją.
-Manifest aktualizacji nie jest generowany na polecenie właściciela.
-APK z wydania verification jest **debug-signed**, Windows jest bez Authenticode. Produkcja wymaga zewnętrznego klucza Androida. Pełna próba z ESP32/relay/LTE i sprzętem użytkownika pozostaje osobnym testem; stock V4.2.1 musi wdrożyć rozszerzenie 201.
+Niezależny Agent PC: Base, kolejka zadań, heartbeat i diagnostyka działają bez otwartego okna; UI łączy się z Agentem uwierzytelnionym kanałem lokalnym (jeden pisarz kolejki, brak podwójnej egzekucji). Autostart Agenta jest dobrowolny (Ustawienia → Ogólne).
+Binarny SX4/TLS po stronie PC i Androida: ramka 49 B, HMAC, pin certyfikatu, challenge, capabilities, granty per-device, revocation, limity i audyt. Kolejka: TTL, zgody, stany, szyfrowanie. Opcode 201 wymaga wdrożenia rozszerzenia w Base; stock firmware 4.2.1 go nie zawiera.
+Aktualizacje: pobieranie HTTPS z resume i ponowieniami, weryfikacje (wersja, architektura, miejsce, SHA-256, podpis RSA-PSS), bezpieczny punkt, kopia ustawień i parowania, smoke-gate, handoff, realne potwierdzenie zdrowia oraz rollback do last-known-good. Manifest nie jest generowany (decyzja użytkownika).
+Odzyskiwanie po awarii: licznik nieczystych startów, czytelny ekran naprawy (kontynuacja, rollback, katalogi, autostart, reset ustawień z kopią, archiwizacja uszkodzonego parowania, logi) — bez samoczynnych restartów i bez rozparowania.
+Diagnostyka wykonuje rzeczywiste próby (m.in. DPAPI, ustawienia, router, DHCP, relay, kolejka, Base, logi) i rozróżnia awarię od braku konfiguracji; podgląd napraw i eksport po redakcji.
+APK z wydania verification jest **debug-signed** (nazwa `*-android-debug.apk`), Windows jest bez Authenticode. Produkcja wymaga zewnętrznego klucza Androida dostarczonego poza repo. Stabilne v1.0.0 wymaga weryfikacji sprzętowej: fizyczna Base z TLS i 201, relay/VPN z próbą Wi-Fi→LTE, mikrofon PL i sprzęt użytkownika (BLOCKERS.md).
