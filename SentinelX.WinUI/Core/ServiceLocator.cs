@@ -130,6 +130,9 @@ public static class ServiceLocator
         services.AddTransient<ShellWindow>();
         services.AddTransient<MiniModeWindow>();
         services.AddTransient<GamingOverlayWindow>();
+                // Shared Sentinel Brain runtime. Created only when requested.
+        services.AddSingleton<SentinelX.Core.Runtime.SentinelRuntime>(
+            _ => new SentinelX.Core.Runtime.SentinelRuntime());
         return services.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });
     }
 
@@ -166,6 +169,9 @@ public static class ServiceLocator
         services.AddSingleton<
             SentinelX.Services.Maintenance.MaintenanceService>();
 
+                // Shared Sentinel Brain runtime. Created only when requested.
+        services.AddSingleton<SentinelX.Core.Runtime.SentinelRuntime>(
+            _ => new SentinelX.Core.Runtime.SentinelRuntime());
         return services.BuildServiceProvider();
     }
     private static MemoryPrivacy MapPrivacy(MemorySettings s) =>
