@@ -103,6 +103,10 @@ public static class DecisionPreview
             "duplicates" or "clutter" => " Wykonanie przeczyta wskazany folder (tylko odczyt, niczego nie usuwa).",
             "openfolder" => " Wykonanie otworzy folder w Eksploratorze.",
             "snapshot" => " Wykonanie zapisze odczyt stanu komputera.",
+            "obj-model" => " Wykonanie wygeneruje nowy plik OBJ w folderze danych SentinelX\\CreatedModels (bez nadpisywania i bez uruchamiania programu 3D); podgląd niczego nie zapisuje.",
+            "roblox-game-project" => " Wykonanie utworzy lokalne źródła Luau, place .rbxlx i ZIP; jeśli Blender oraz Roblox Studio są zainstalowane, spróbuje wygenerować asset i otworzyć place. Nie opublikuje gry. Podgląd niczego nie zapisuje.",
+            "roblox-code" => " Wykonanie pokaże gotowy tekst szablonu do wklejenia; kod nie zostanie uruchomiony ani opublikowany.",
+            "luau-audit" => " Wykonanie zrobi heurystyczny przegląd tekstu, nie kompilację ani wykonanie kodu.",
             _ => " Wszystko dzieje się lokalnie, nic nie jest wysyłane."
         });
         string stem = ToolIndex.First(item => item.Entry == tool).Stem;

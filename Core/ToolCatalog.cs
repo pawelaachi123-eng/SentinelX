@@ -15,12 +15,24 @@ public static class ToolCatalog
 
     public static IReadOnlyList<string> Categories { get; } =
     [
-        AllCategories, "Kuźnia 0.96", "Warsztat 0.95", "Tekst i kody", "Liczby i czas", "Pliki i foldery",
+        AllCategories, "Roblox i modele 3D", "Kuźnia 0.96", "Warsztat 0.95", "Tekst i kody", "Liczby i czas", "Pliki i foldery",
         "Dokumenty PL", "System", "Losowe i rozrywka"
     ];
 
     public static IReadOnlyList<ToolEntry> Entries { get; } =
     [
+        // ---------------- Roblox Studio + local OBJ assets ----------------
+        new("roblox-help", "Roblox i modele 3D", "Pomoc Roblox / Luau", "Offline: szablony leaderstats, sprint, checkpoint i bezpieczny RemoteEvent oraz szybki audyt typowych ryzyk Luau",
+            "roblox pomoc", false, ""),
+        new("roblox-code", "Roblox i modele 3D", "Szablon kodu Roblox", "Kod źródłowy do wklejenia w Roblox Studio; Sentinel go nie uruchamia ani nie kompiluje",
+            "roblox kod:", true, "leaderstats"),
+        new("luau-audit", "Roblox i modele 3D", "Szybki audyt Luau", "Heurystycznie wykrywa kilka znanych ryzyk; to nie parser ani kompilator",
+            "luau sprawdz:", true, "while true do | task.wait(1) | end"),
+        new("obj-model", "Roblox i modele 3D", "Generuj siatkę 3D OBJ", "Lokalnie tworzy ograniczoną siatkę Wavefront OBJ; bez uruchamiania zewnętrznego programu",
+            "model 3d:", true, "cube 2 2 2"),
+        new("roblox-game-project", "Roblox i modele 3D", "Twórz prototyp gry Roblox", "Zwykły opis gry → plik .rbxlx, jednoplikowy Luau, projekt źródeł, design brief i build assetu Blender; bez specjalnej składni",
+            "stwórz grę na Robloxie:", true, "kooperacyjny wyścig przez neonowy kosmos, na telefon i PC; nazwij ją Starfall Rally"),
+
         // ---------------- 0.96 · KUŹNIA (nowe narzędzia) ----------------
         new("varnames", "Kuźnia 0.96", "Nazwy zmiennych", "camelCase, PascalCase, snake_case, kebab-case i UPPER_SNAKE z jednego zdania; polskie litery zamieniam na ASCII",
             "nazwa zmiennej:", true, "liczba użytkowników aktywnych"),

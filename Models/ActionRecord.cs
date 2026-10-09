@@ -1,3 +1,4 @@
+using System.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 namespace SentinelX.Models;
 
@@ -10,6 +11,13 @@ public partial class ActionRecord : ObservableObject
     [ObservableProperty] private string actionType = "REQUEST";
     [ObservableProperty] private RiskLevel risk;
     public string UserRequest { get; init; } = "";
+    private int requiresRedaction;
+    /// <summary>Sticky privacy latch: once a request touches private mode, toggling it off cannot persist that turn.</summary>
+    public bool RequiresRedaction
+    {
+        get => Volatile.Read(ref requiresRedaction) != 0;
+        set => Volatile.Write(ref requiresRedaction, value ? 1 : 0);
+    }
     public DateTime StartedAt { get; init; } = DateTime.Now;
     [ObservableProperty] private ActionStatus status = ActionStatus.Queued;
     [ObservableProperty] private string evidence = "";

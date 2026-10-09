@@ -43,6 +43,11 @@ internal static class AiStreamRegression
         Check(LocalAiService.ExtractStreamDelta("{\"error\":\"model not found\"}", out string streamError) == "" && streamError == "model not found",
             "a stream error line is reported instead of ignored");
         Check(LocalAiService.ExtractStreamDelta("to nie jest json", out _) == "", "a malformed line does not crash the stream");
+        string olderRecall = "[starszy trafiony fragment] Nebula decision: blue launch icon";
+        string oversizedFollowUp = AiContextFilter.Select("What did we decide about Nebula?",
+            olderRecall + "\n" + string.Join("\n", Enumerable.Range(0, 8).Select(i => "Recent unrelated line " + i + new string('x', 80))), 100);
+        Check(oversizedFollowUp.Contains("Nebula decision") && oversizedFollowUp.Length <= 100,
+            "A tight AI context budget must prioritize the specifically retrieved older exchange: " + oversizedFollowUp);
 
         // --- hidden reasoning never reaches the UI, even split across chunks ---
         var filter = new StreamThinkFilter();

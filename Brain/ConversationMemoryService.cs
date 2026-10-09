@@ -84,11 +84,23 @@ public sealed class ConversationMemoryService : Services.Memory.IConversationMem
     private const int MaxChanges = 200;
     private const int MaxConversations = 100;
     private const int ContextBudget = 12000;
+    private const int MaxRelevantNotes = 12;
+    private const int MaxRelevantConversationPairs = 4;
+    private static readonly HashSet<string> ContextStopWords = new(StringComparer.Ordinal)
+    {
+        "a", "albo", "ale", "bo", "by", "co", "czy", "do", "dla", "i", "jak", "jaka", "jaki", "jakie", "jest", "mam", "mi", "mnie",
+        "na", "nad", "o", "od", "oraz", "po", "pod", "proszę", "prosze", "się", "sie", "to", "w", "we", "z", "za", "że", "ze",
+        "the", "and", "are", "about", "but", "can", "did", "does", "for", "from", "have", "how", "is", "it", "my", "of", "or", "that", "this", "to", "was", "were", "what", "when", "where", "which", "who", "why", "with", "you", "your"
+    };
     public static readonly string[] Categories = ["notatka", "preferencja", "fakt", "decyzja", "zadanie", "narzędzie"];
     private readonly object syncRoot = new();
     private readonly string memoryPath;
     private readonly JsonSerializerOptions jsonOptions = new() { WriteIndented = true, PropertyNameCaseInsensitive = true };
     private ConversationMemoryState state = new();
+    // The private-mode baseline is an in-memory snapshot taken after any persisted draft is scrubbed.
+    // All changes made while private are discarded when private mode ends.
+    private ConversationMemoryState? privateModeBaseline;
+    private bool privateMode;
     private DateTime lastDraftSaveUtc = DateTime.MinValue;
     public string? LastStorageError { get; private set; }
     public string StoragePath => memoryPath;
@@ -97,8 +109,10 @@ public sealed class ConversationMemoryService : Services.Memory.IConversationMem
     /// <summary>Current project id supplied by the host (ProjectService). Null/empty = no project filtering.</summary>
     public Func<string?>? ActiveProjectIdProvider { get; set; }
     private string? ActiveProject => ActiveProjectIdProvider?.Invoke();
+    private static bool IsProjectVisible(string? activeProjectId, string itemProjectId) =>
+        string.IsNullOrEmpty(activeProjectId) || itemProjectId.Length == 0 || string.Equals(itemProjectId, activeProjectId, StringComparison.Ordinal);
     /// <summary>Runtime-only switch: nothing entered in private mode is written to disk or audits. Never persisted.</summary>
-    public bool PrivateMode { get; private set; }
+    public bool PrivateMode { get { lock (syncRoot) return privateMode; } }
     public string ActiveSessionId { get { lock (syncRoot) return state.ActiveSessionId; } }
     public int Count { get { lock (syncRoot) return state.Entries.Count + state.Notes.Count; } }
     public int NoteCount { get { lock (syncRoot) return state.Notes.Count; } }
@@ -123,18 +137,61 @@ public sealed class ConversationMemoryService : Services.Memory.IConversationMem
     public void SetPrivateMode(bool enabled)
     {
         bool fire = false;
+        bool sessionChanged = false;
         lock (syncRoot)
         {
-            if (PrivateMode == enabled) return;
-            PrivateMode = enabled;
+            if (privateMode == enabled) return;
+            privateMode = enabled;
             if (enabled)
             {
-                if (state.Draft.Length > 0) { state.Draft = ""; SaveLocked(); }
+                // A previously saved unsent draft should not reappear if the app exits during private mode.
+                if (state.Draft.Length > 0) { state.Draft = ""; SaveLocked(allowDuringPrivateMode: true); }
+                privateModeBaseline = CloneState(state);
+                LastContextTrace = []; LastContextBuiltAt = null;
+            }
+            else
+            {
+                // Private-mode calls are ephemeral. Restore exactly the state that existed on entry so an
+                // in-memory note/import/delete cannot be written later by an unrelated normal save.
+                if (privateModeBaseline != null)
+                {
+                    sessionChanged = state.ActiveSessionId != privateModeBaseline.ActiveSessionId;
+                    state = privateModeBaseline;
+                }
+                privateModeBaseline = null;
+                if (LastStorageError?.StartsWith("Pamięć nie jest modyfikowana ani eksportowana w trybie prywatnym.", StringComparison.Ordinal) == true)
+                    LastStorageError = null;
                 LastContextTrace = []; LastContextBuiltAt = null;
             }
             fire = true;
         }
+        if (sessionChanged) SessionChanged?.Invoke();
         if (fire) Changed?.Invoke();
+    }
+
+    private static ConversationMemoryState CloneState(ConversationMemoryState source) => new()
+    {
+        Version = source.Version,
+        ActiveSessionId = source.ActiveSessionId,
+        Entries = source.Entries.Select(Clone).ToList(),
+        Notes = source.Notes.Select(Clone).ToList(),
+        Profile = new Dictionary<string, string>(source.Profile, StringComparer.OrdinalIgnoreCase),
+        Conversations = source.Conversations.Select(x => new ConversationInfo
+        {
+            Id = x.Id, Title = x.Title, CreatedAt = x.CreatedAt, LastActiveAt = x.LastActiveAt, ProjectId = x.ProjectId
+        }).ToList(),
+        Changes = source.Changes.Select(x => new MemoryChange
+        {
+            NoteId = x.NoteId, Kind = x.Kind, OldText = x.OldText, NewText = x.NewText, Timestamp = x.Timestamp
+        }).ToList(),
+        Draft = source.Draft
+    };
+
+    private bool RefusePrivateMutationLocked()
+    {
+        if (!PrivateMode) return false;
+        LastStorageError = "Pamięć nie jest modyfikowana ani eksportowana w trybie prywatnym. Wyłącz tryb prywatny, aby zmienić zapisane dane.";
+        return true;
     }
 
     // ------------------------------ messages ------------------------------
@@ -202,6 +259,7 @@ public sealed class ConversationMemoryService : Services.Memory.IConversationMem
         NoteAddResult result;
         lock (syncRoot)
         {
+            if (RefusePrivateMutationLocked()) return NoteAddResult.Disabled;
             var privacy = Privacy;
             if (!privacy.SaveMemories) { LastStorageError = "Zapisywanie wspomnień jest wyłączone (Ustawienia → Pamięć i prywatność)."; return NoteAddResult.Disabled; }
             text = (text ?? "").Trim();
@@ -247,6 +305,7 @@ public sealed class ConversationMemoryService : Services.Memory.IConversationMem
         bool fire = false;
         lock (syncRoot)
         {
+            if (RefusePrivateMutationLocked()) return false;
             var note = state.Notes.FirstOrDefault(x => x.Id == id);
             newText = (newText ?? "").Trim();
             if (note == null || newText.Length == 0 || newText.Length > 4000) return false;
@@ -268,6 +327,7 @@ public sealed class ConversationMemoryService : Services.Memory.IConversationMem
         bool fire = false;
         lock (syncRoot)
         {
+            if (RefusePrivateMutationLocked()) return false;
             var note = state.Notes.FirstOrDefault(x => x.Id == id);
             if (note == null) return false;
             // Delete by stable identity only: similar texts elsewhere must survive.
@@ -301,6 +361,7 @@ public sealed class ConversationMemoryService : Services.Memory.IConversationMem
         bool fire = false;
         lock (syncRoot)
         {
+            if (RefusePrivateMutationLocked()) return false;
             var note = state.Notes.FirstOrDefault(x => x.Id == id);
             if (note == null || (note.SupersededAt != null) == stale) return false;
             note.SupersededAt = stale ? DateTime.Now : null; note.UpdatedAt = DateTime.Now;
@@ -331,9 +392,10 @@ public sealed class ConversationMemoryService : Services.Memory.IConversationMem
         if (key.Length < 3) return [];
         var tokens = key.Split(' ', StringSplitOptions.RemoveEmptyEntries).ToHashSet();
         var result = new List<ConversationMemoryEntry>();
+        string? project = ActiveProject;
         lock (syncRoot)
         {
-            foreach (var note in state.Notes)
+            foreach (var note in state.Notes.Where(x => IsProjectVisible(project, x.ProjectId)))
             {
                 string other = Normalize(note.Text);
                 if (other == key) continue;
@@ -447,6 +509,7 @@ public sealed class ConversationMemoryService : Services.Memory.IConversationMem
         bool fire = false;
         lock (syncRoot)
         {
+            if (RefusePrivateMutationLocked()) return false;
             var conversation = state.Conversations.FirstOrDefault(x => x.Id == sessionId);
             title = (title ?? "").Trim();
             if (conversation == null || title.Length == 0 || title.Length > 120) return false;
@@ -476,6 +539,7 @@ public sealed class ConversationMemoryService : Services.Memory.IConversationMem
         int removed;
         lock (syncRoot)
         {
+            if (RefusePrivateMutationLocked()) return 0;
             removed = state.Entries.RemoveAll(x => x.Timestamp < cutoff);
             if (removed > 0) SaveLocked();
         }
@@ -504,6 +568,7 @@ public sealed class ConversationMemoryService : Services.Memory.IConversationMem
         ConversationMemoryEntry[] turns;
         lock (syncRoot)
         {
+            if (PrivateMode) return new(null, "Tryb prywatny jest włączony — ta rozmowa nie jest nigdzie zapisywana, więc nie ma czego wyeksportować.");
             turns = state.Entries.Where(x => x.SessionId == state.ActiveSessionId).OrderBy(x => x.Timestamp).Select(Clone).ToArray();
             title = state.Conversations.FirstOrDefault(x => x.Id == state.ActiveSessionId)?.Title ?? "Nowa rozmowa";
         }
@@ -539,82 +604,164 @@ public sealed class ConversationMemoryService : Services.Memory.IConversationMem
         { return new(null, "", turns.Length, "Nie udało się zapisać eksportu: " + ex.Message); }
     }
 
-    public string GetRecentContext(int maxEntries = 24) => BuildAiContext(includeRecent: true, maxEntries);
-    public string GetStableContext() => BuildAiContext(includeRecent: false, 0);
+    public string GetRecentContext(int maxEntries = 24) => BuildAiContext(includeRecent: true, maxEntries, question: null);
+    public string GetStableContext() => BuildAiContext(includeRecent: false, 0, question: null);
+
+    /// <summary>Builds query-aware context from local explicit memories and, for follow-ups, relevant older turns
+    /// of the active conversation. Matching is lexical and explainable; no embeddings or network are used.</summary>
+    public string GetContextForQuestion(string question, bool includeRecentHistory, int maxEntries = 24) =>
+        BuildAiContext(includeRecentHistory, maxEntries, question);
 
     /// <summary>Assembles the model context per the privacy toggles and records an explainable trace (when enabled).</summary>
-    private string BuildAiContext(bool includeRecent, int maxEntries)
+    private string BuildAiContext(bool includeRecent, int maxEntries, string? question)
     {
         var privacy = Privacy;
         if (PrivateMode) { LastContextTrace = []; LastContextBuiltAt = null; return ""; }
         var trace = new List<ContextSlice>();
         var builder = new StringBuilder();
+        bool AppendBudgeted(string line)
+        {
+            int available = ContextBudget - builder.Length;
+            int lineBudget = available - Environment.NewLine.Length;
+            if (lineBudget <= 0) return false;
+            if (line.Length > lineBudget)
+                line = lineBudget == 1 ? "…" : line[..(lineBudget - 1)] + "…";
+            builder.AppendLine(line);
+            return true;
+        }
+
+        string normalizedQuestion = Normalize(question ?? "");
+        HashSet<string> queryTerms = ContextTerms(normalizedQuestion);
         if (privacy.UseMemoriesForAi)
         {
             ConversationMemoryEntry[] pinned;
             ConversationMemoryEntry[] recent;
+            (ConversationMemoryEntry Entry, int Matches, int Score)[] relevant;
             Dictionary<string, string> profile;
             string? project = ActiveProject;
             lock (syncRoot)
             {
                 profile = new Dictionary<string, string>(state.Profile, StringComparer.OrdinalIgnoreCase);
                 // With an active project only global and this project's memories apply — nothing leaks between projects.
-                var active = state.Notes.Where(x => x.SupersededAt == null && (project == null || project.Length == 0 || x.ProjectId.Length == 0 || x.ProjectId == project)).ToArray();
-                pinned = active.Where(x => x.Pinned).Select(Clone).ToArray();
+                var active = state.Notes.Where(x => x.SupersededAt == null && IsProjectVisible(project, x.ProjectId)).ToArray();
+                pinned = active.Where(x => x.Pinned).OrderByDescending(x => x.UpdatedAt ?? x.Timestamp).Select(Clone).ToArray();
                 recent = active.Where(x => !x.Pinned).OrderByDescending(x => x.UpdatedAt ?? x.Timestamp).Take(30).Select(Clone).ToArray();
+                relevant = queryTerms.Count == 0
+                    ? []
+                    : active.Where(x => !x.Pinned)
+                        .Select(x => (Entry: x, Match: ScoreText(x.Text, queryTerms)))
+                        .Where(x => x.Match.Matches > 0)
+                        .OrderByDescending(x => x.Match.Score)
+                        .ThenByDescending(x => x.Entry.UpdatedAt ?? x.Entry.Timestamp)
+                        .Take(MaxRelevantNotes)
+                        .Select(x => (Entry: Clone(x.Entry), Matches: x.Match.Matches, Score: x.Match.Score))
+                        .ToArray();
             }
-            if (profile.Count > 0)
+            if (profile.Count > 0 && AppendBudgeted("Zapisany profil użytkownika:"))
             {
-                builder.AppendLine("Zapisany profil użytkownika:");
-                foreach (var item in profile) builder.AppendLine($"- {item.Key}: {item.Value}");
-                trace.Add(new("profil", "profile", "Profil użytkownika", "trwałe preferencje i zapisane dane podstawowe"));
+                bool includedProfile = false;
+                foreach (var item in profile)
+                {
+                    if (!AppendBudgeted($"- {item.Key}: {item.Value}")) break;
+                    includedProfile = true;
+                }
+                if (includedProfile) trace.Add(new("profil", "profile", "Profil użytkownika", "trwałe preferencje i zapisane dane podstawowe"));
             }
-            if (pinned.Length + recent.Length > 0) builder.AppendLine("Trwałe wspomnienia:");
-            foreach (var note in pinned)
+
+            var noteCandidates = new List<(ConversationMemoryEntry Entry, string Reason)>();
+            noteCandidates.AddRange(pinned.Select(note => (note, "przypięte — trwałe wspomnienie")));
+            noteCandidates.AddRange(relevant.Select(note => (note.Entry, $"dopasowanie leksykalne do pytania: {note.Matches} terminów")));
+            noteCandidates.AddRange(recent.Select(note => (note, "jedno z 30 ostatnich aktywnych wspomnień")));
+            var addedNoteIds = new HashSet<string>(StringComparer.Ordinal);
+            if (noteCandidates.Count > 0 && AppendBudgeted("Trwałe wspomnienia:"))
             {
-                builder.AppendLine($"Wspomnienie: {note.Text}");
-                trace.Add(new("wspomnienie", note.Id, Short(note.Text), "przypięte — zawsze w budżecie kontekstu"));
-            }
-            foreach (var note in recent)
-            {
-                builder.AppendLine($"Wspomnienie: {note.Text}");
-                trace.Add(new("wspomnienie", note.Id, Short(note.Text), "ostatnie wspomnienie w budżecie"));
+                foreach (var candidate in noteCandidates)
+                {
+                    if (!addedNoteIds.Add(candidate.Entry.Id)) continue;
+                    if (!AppendBudgeted($"Wspomnienie: {candidate.Entry.Text}")) break;
+                    trace.Add(new("wspomnienie", candidate.Entry.Id, Short(candidate.Entry.Text), candidate.Reason));
+                }
             }
         }
+
         if (includeRecent && privacy.UseHistoryForAi && privacy.SaveConversations && ConversationMatchesActiveProject())
         {
-            ConversationMemoryEntry[] entries;
-            lock (syncRoot) entries = state.Entries.Where(x => x.SessionId == state.ActiveSessionId).TakeLast(Math.Clamp(maxEntries, 0, 120)).Select(Clone).ToArray();
-            if (entries.Length > 0) builder.AppendLine("Ostatnie wiadomości bieżącej rozmowy:");
-            // Keep the newest turns inside the context budget, not the oldest turns of a long conversation.
-            var lines = new List<string>();
-            int budget = ContextBudget - builder.Length;
-            foreach (var entry in Enumerable.Reverse(entries))
+            ConversationMemoryEntry[] allEntries;
+            string sessionId;
+            lock (syncRoot)
             {
-                string line = $"[{entry.Timestamp:yyyy-MM-dd HH:mm:ss}] {(entry.Role == "user" ? "Użytkownik" : "Sentinel")}: {entry.Text}";
-                if (line.Length > budget) line = line[..Math.Max(0, budget)] + " [skrócono]";
-                lines.Add(line);
-                budget -= line.Length;
-                if (budget <= 0) break;
+                sessionId = state.ActiveSessionId;
+                allEntries = state.Entries.Where(x => x.SessionId == sessionId).OrderBy(x => x.Timestamp).Select(Clone).ToArray();
             }
-            foreach (string line in Enumerable.Reverse(lines)) builder.AppendLine(line);
-            if (entries.Length > 0) trace.Add(new("rozmowa", state.ActiveSessionId, $"Rozmowa: {ActiveConversationTitle}", $"dopowiedzenie: {Math.Min(entries.Length, lines.Count)} ostatnich wypowiedzi z aktywnej rozmowy"));
+            int recentCount = Math.Clamp(maxEntries, 0, 120);
+            int recentStart = Math.Max(0, allEntries.Length - recentCount);
+            var selected = new SortedDictionary<int, (bool Retrieved, int Matches)>();
+            for (int i = recentStart; i < allEntries.Length; i++) selected[i] = (false, 0);
+
+            var olderMatches = new List<(int UserIndex, int AssistantIndex, int Matches, int Score)>();
+            if (queryTerms.Count > 0)
+            {
+                for (int i = 0; i < recentStart; i++)
+                {
+                    if (allEntries[i].Role != "user") continue;
+                    int assistantIndex = i + 1 < allEntries.Length && allEntries[i + 1].Role == "assistant" ? i + 1 : -1;
+                    string exchange = assistantIndex >= 0 ? allEntries[i].Text + "\n" + allEntries[assistantIndex].Text : allEntries[i].Text;
+                    var match = ScoreText(exchange, queryTerms);
+                    if (match.Matches > 0) olderMatches.Add((i, assistantIndex, match.Matches, match.Score));
+                }
+            }
+            var retrieved = olderMatches
+                .OrderByDescending(x => x.Score)
+                .ThenByDescending(x => allEntries[x.UserIndex].Timestamp)
+                .Take(MaxRelevantConversationPairs)
+                .ToArray();
+            foreach (var match in retrieved)
+            {
+                selected[match.UserIndex] = (true, match.Matches);
+                if (match.AssistantIndex >= 0 && match.AssistantIndex < recentStart)
+                    selected[match.AssistantIndex] = (true, match.Matches);
+            }
+
+            if (selected.Count > 0 && AppendBudgeted("Ostatnie wiadomości i dopasowane fragmenty bieżącej rozmowy:"))
+            {
+                var includedIndices = new HashSet<int>();
+                foreach (var item in selected)
+                {
+                    ConversationMemoryEntry entry = allEntries[item.Key];
+                    string line = $"[{entry.Timestamp:yyyy-MM-dd HH:mm:ss}] {(entry.Role == "user" ? "Użytkownik" : "Sentinel")}: {entry.Text}";
+                    if (item.Value.Retrieved) line = $"[starszy trafiony fragment] ({item.Value.Matches} dopasowanych terminów) " + line;
+                    if (AppendBudgeted(line)) includedIndices.Add(item.Key);
+                }
+                int retrievedUserTurns = retrieved.Count(x => includedIndices.Contains(x.UserIndex));
+                int recentIncluded = includedIndices.Count(index => index >= recentStart && !selected[index].Retrieved);
+                if (includedIndices.Count > 0)
+                    trace.Add(new("rozmowa", sessionId, $"Rozmowa: {ActiveConversationTitle}",
+                        $"ostatnie {recentIncluded} wypowiedzi oraz {retrievedUserTurns} starszych trafień leksykalnych w aktywnej rozmowie"));
+            }
         }
-        if (privacy.ContextPreview) { LastContextTrace = trace; LastContextBuiltAt = DateTime.Now; }
-        else { LastContextTrace = []; LastContextBuiltAt = null; }
+        lock (syncRoot)
+        {
+            // The mode may have changed while retrieval was being assembled. Do not return a context
+            // snapshot or retain an explanation trace if the user enabled private mode mid-request.
+            if (PrivateMode) { LastContextTrace = []; LastContextBuiltAt = null; return ""; }
+            if (privacy.ContextPreview) { LastContextTrace = trace; LastContextBuiltAt = DateTime.Now; }
+            else { LastContextTrace = []; LastContextBuiltAt = null; }
+        }
         return builder.ToString().Trim();
     }
 
     private bool ConversationMatchesActiveProject()
     {
         string? project = ActiveProject;
-        if (project == null || project.Length == 0) return true;
-        lock (syncRoot)
-        {
-            var conversation = state.Conversations.FirstOrDefault(x => x.Id == state.ActiveSessionId);
-            // An unassigned (global) conversation stays out of an active project's context by design.
-            return conversation != null && conversation.ProjectId == project;
-        }
+        lock (syncRoot) return ConversationMatchesProjectLocked(project);
+    }
+
+    private bool ConversationMatchesProjectLocked(string? project)
+    {
+        if (string.IsNullOrEmpty(project)) return true;
+        var conversation = state.Conversations.FirstOrDefault(x => x.Id == state.ActiveSessionId);
+        // An unassigned (global) conversation stays out of an active project's context by design.
+        return conversation != null && string.Equals(conversation.ProjectId, project, StringComparison.Ordinal);
     }
 
     /// <summary>Moves a conversation between projects (or detaches it back to global). Direct, low risk, but auditable via change events.</summary>
@@ -623,6 +770,7 @@ public sealed class ConversationMemoryService : Services.Memory.IConversationMem
         bool fire = false;
         lock (syncRoot)
         {
+            if (RefusePrivateMutationLocked()) return false;
             var conversation = state.Conversations.FirstOrDefault(x => x.Id == sessionId);
             if (conversation == null || conversation.ProjectId == projectId) return false;
             conversation.ProjectId = projectId;
@@ -667,7 +815,12 @@ public sealed class ConversationMemoryService : Services.Memory.IConversationMem
 
     public void FlushDraft()
     {
-        lock (syncRoot) { lastDraftSaveUtc = DateTime.MinValue; SaveLocked(); }
+        lock (syncRoot)
+        {
+            if (PrivateMode) return;
+            lastDraftSaveUtc = DateTime.MinValue;
+            SaveLocked();
+        }
     }
 
     // ------------------------------ summarizing / lookup ------------------------------
@@ -687,6 +840,7 @@ public sealed class ConversationMemoryService : Services.Memory.IConversationMem
         int count;
         lock (syncRoot)
         {
+            if (RefusePrivateMutationLocked()) return 0;
             string key = Normalize(text);
             if (key.Length == 0) return 0;
             // Deleting by text keeps working for the permission-gated command; page deletions use stable IDs.
@@ -723,14 +877,23 @@ public sealed class ConversationMemoryService : Services.Memory.IConversationMem
 
     public void Clear()
     {
-        lock (syncRoot) { state.Entries.Clear(); state.Draft = ""; state.ActiveSessionId = Guid.NewGuid().ToString("N"); EnsureConversationLocked(state.ActiveSessionId); SaveLocked(); }
+        lock (syncRoot)
+        {
+            if (RefusePrivateMutationLocked()) return;
+            state.Entries.Clear(); state.Draft = ""; state.ActiveSessionId = Guid.NewGuid().ToString("N");
+            EnsureConversationLocked(state.ActiveSessionId); SaveLocked();
+        }
         SessionChanged?.Invoke();
         Changed?.Invoke();
     }
 
     public void ClearAll()
     {
-        lock (syncRoot) { state = new(); SaveLocked(); }
+        lock (syncRoot)
+        {
+            if (RefusePrivateMutationLocked()) return;
+            state = new(); SaveLocked();
+        }
         SessionChanged?.Invoke();
         Changed?.Invoke();
     }
@@ -739,6 +902,7 @@ public sealed class ConversationMemoryService : Services.Memory.IConversationMem
     {
         lock (syncRoot)
         {
+            if (PrivateMode) { evidence = "Tryb prywatny: odczyt zwrotny pamięci jest zablokowany."; return false; }
             try
             {
                 if (LastStorageError != null) { evidence = LastStorageError; return false; }
@@ -758,6 +922,7 @@ public sealed class ConversationMemoryService : Services.Memory.IConversationMem
     {
         lock (syncRoot)
         {
+            if (PrivateMode) throw new InvalidOperationException("Tryb prywatny jest włączony — eksport pamięci został zablokowany.");
             string directory = Path.Combine(Path.GetDirectoryName(memoryPath)!, "Exports");
             Directory.CreateDirectory(directory);
             string path = Path.Combine(directory, $"pamiec-{DateTime.Now:yyyyMMdd-HHmmss}-{Guid.NewGuid().ToString("N")[..6]}.json");
@@ -784,8 +949,12 @@ public sealed class ConversationMemoryService : Services.Memory.IConversationMem
                     if (seen.Contains(key) || !incoming.Add(key)) { duplicates++; continue; }
                     fresh++;
                 }
+                int capacity = Math.Max(0, MaxNotes - state.Notes.Count);
+                int capacityLimited = Math.Max(0, fresh - capacity);
+                fresh = Math.Min(fresh, capacity);
                 int keys = profile.Keys.Count(k => !state.Profile.ContainsKey(k));
-                return new(true, $"Do dodania: {fresh} wspomnień, {keys} wpisów profilu. Pominięte duplikaty: {duplicates}. Niepoprawne: {invalid}.", fresh, duplicates, invalid, keys);
+                string capacityMessage = capacityLimited > 0 ? $" Limit 500 wpisów ograniczy import; pominięte unikalne wpisy: {capacityLimited}." : "";
+                return new(true, $"Do dodania: {fresh} wspomnień, {keys} wpisów profilu. Pominięte duplikaty: {duplicates}. Niepoprawne: {invalid}.{capacityMessage}", fresh, duplicates, invalid, keys);
             }
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException) { return new(false, "Nie można odczytać importu: " + ex.Message, 0, 0, 0, 0); }
@@ -794,6 +963,11 @@ public sealed class ConversationMemoryService : Services.Memory.IConversationMem
     /// <summary>Merges explicit memories and missing profile keys. Conversation history is deliberately not imported.</summary>
     public string ImportMemories(string path)
     {
+        lock (syncRoot)
+        {
+            if (PrivateMode) return "Tryb prywatny jest włączony — import wspomnień został zablokowany.";
+            if (!Privacy.SaveMemories) return "Zapisywanie wspomnień jest wyłączone (Ustawienia → Pamięć i prywatność).";
+        }
         int room;
         var preview = PreviewImport(path);
         if (!preview.Valid) return preview.Message;
@@ -801,6 +975,8 @@ public sealed class ConversationMemoryService : Services.Memory.IConversationMem
         bool fire = false;
         lock (syncRoot)
         {
+            if (RefusePrivateMutationLocked()) return LastStorageError!;
+            if (!Privacy.SaveMemories) return "Zapisywanie wspomnień jest wyłączone (Ustawienia → Pamięć i prywatność).";
             var seen = state.Notes.Select(x => Normalize(x.Text)).ToHashSet();
             var incoming = new HashSet<string>();
             int added = 0;
@@ -809,7 +985,7 @@ public sealed class ConversationMemoryService : Services.Memory.IConversationMem
                 string key = Normalize(note.Text ?? "");
                 if (key.Length == 0 || (note.Text ?? "").Length > 4000 || seen.Contains(key) || !incoming.Add(key)) continue;
                 if (state.Notes.Count >= MaxNotes) break;
-                var created = new ConversationMemoryEntry { Timestamp = note.Timestamp is { } t && t.Year > 2000 ? t : DateTime.Now, Role = "note", Text = (note.Text ?? "").Trim(), Source = "import: " + Path.GetFileName(path), Id = Guid.NewGuid().ToString("N")[..12], Category = ValidateCategory(note.Category) };
+                var created = new ConversationMemoryEntry { Timestamp = note.Timestamp is { } t && t.Year > 2000 ? t : DateTime.Now, Role = "note", Text = (note.Text ?? "").Trim(), Source = "import: " + Path.GetFileName(path), Id = Guid.NewGuid().ToString("N")[..12], Category = ValidateCategory(note.Category), ProjectId = ActiveProject ?? "" };
                 state.Notes.Add(created);
                 RecordChangeLocked(created, "zaimportowane", "", created.Text);
                 added++;
@@ -851,11 +1027,18 @@ public sealed class ConversationMemoryService : Services.Memory.IConversationMem
     {
         result = "";
         if (string.IsNullOrWhiteSpace(marker)) return false;
+        string? project = ActiveProject;
         lock (syncRoot)
         {
-            foreach (var entry in state.Entries.Concat(state.Notes).OrderByDescending(x => x.Timestamp))
+            // Explicit recall may inspect the active conversation and visible project memories only;
+            // older sessions from another project are never searched as a hidden fallback.
+            IEnumerable<ConversationMemoryEntry> conversationEntries = ConversationMatchesProjectLocked(project)
+                ? state.Entries.Where(x => x.SessionId == state.ActiveSessionId && x.Role == "user")
+                : Enumerable.Empty<ConversationMemoryEntry>();
+            IEnumerable<ConversationMemoryEntry> projectNotes = state.Notes.Where(x => IsProjectVisible(project, x.ProjectId));
+            foreach (var entry in conversationEntries.Concat(projectNotes).OrderByDescending(x => x.Timestamp))
             {
-                if (entry.Role is not ("user" or "note") || string.Equals(entry.Text, excludeText, StringComparison.OrdinalIgnoreCase)) continue;
+                if (string.Equals(entry.Text, excludeText, StringComparison.OrdinalIgnoreCase)) continue;
                 int index = entry.Text.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
                 if (index >= 0 && (result = entry.Text[(index + marker.Length)..].Trim()).Length > 0) return true;
             }
@@ -865,8 +1048,10 @@ public sealed class ConversationMemoryService : Services.Memory.IConversationMem
 
     public bool TryGetPreviousUserMessage(string? currentText, out string message)
     {
+        string? project = ActiveProject;
         lock (syncRoot)
         {
+            if (!ConversationMatchesProjectLocked(project)) { message = ""; return false; }
             var candidates = state.Entries.Where(x => x.Role == "user" && x.SessionId == state.ActiveSessionId).Reverse().ToList();
             // Exclude only the current turn, not every identical older message.
             if (candidates.Count > 0 && string.Equals(candidates[0].Text, currentText, StringComparison.OrdinalIgnoreCase)) candidates.RemoveAt(0);
@@ -879,10 +1064,13 @@ public sealed class ConversationMemoryService : Services.Memory.IConversationMem
     {
         message = "";
         if (ago < TimeSpan.Zero || ago > TimeSpan.FromDays(365)) return false;
+        string? project = ActiveProject;
         lock (syncRoot)
         {
+            if (!ConversationMatchesProjectLocked(project)) return false;
+            string sessionId = state.ActiveSessionId;
             DateTime target = DateTime.Now - ago;
-            var best = state.Entries.Where(x => x.Role == "user" && !string.Equals(x.Text, currentText, StringComparison.OrdinalIgnoreCase))
+            var best = state.Entries.Where(x => x.Role == "user" && x.SessionId == sessionId && !string.Equals(x.Text, currentText, StringComparison.OrdinalIgnoreCase))
                 .OrderBy(x => Math.Abs((x.Timestamp - target).TotalSeconds)).FirstOrDefault();
             // Do not present a message from hours ago as a match for "five minutes ago".
             if (best == null || (best.Timestamp - target).Duration() > TimeSpan.FromSeconds(Math.Clamp(ago.TotalSeconds * 0.25, 30, 120))) return false;
@@ -926,6 +1114,7 @@ public sealed class ConversationMemoryService : Services.Memory.IConversationMem
                     if (version < 3) { BackupBeforeMigration("v" + version); MigrateToV3Locked(); }
                     state.Version = 3;
                 }
+                state.Profile = NormalizeProfile(state.Profile);
                 if (string.IsNullOrWhiteSpace(state.ActiveSessionId)) state.ActiveSessionId = Guid.NewGuid().ToString("N");
                 EnsureConversationLocked(state.ActiveSessionId);
             }
@@ -938,6 +1127,21 @@ public sealed class ConversationMemoryService : Services.Memory.IConversationMem
                 catch (Exception copyEx) when (copyEx is IOException or UnauthorizedAccessException) { LastStorageError += " Nie udało się utworzyć kopii."; }
             }
         }
+    }
+
+    private static Dictionary<string, string> NormalizeProfile(IEnumerable<KeyValuePair<string, string>>? source)
+    {
+        var profile = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        if (source == null) return profile;
+        foreach (var item in source)
+        {
+            if (string.IsNullOrWhiteSpace(item.Key) || item.Key.Length > 128 || item.Value is null || item.Value.Length > 500) continue;
+            string key = item.Key.Trim();
+            if (key.Equals("name", StringComparison.OrdinalIgnoreCase)) key = "name";
+            else if (key.Equals("responseStyle", StringComparison.OrdinalIgnoreCase)) key = "responseStyle";
+            profile.TryAdd(key, item.Value);
+        }
+        return profile;
     }
 
     private void MigrateToV3Locked()
@@ -970,8 +1174,11 @@ public sealed class ConversationMemoryService : Services.Memory.IConversationMem
         state.Entries.RemoveAll(x => x.Timestamp < cutoff);
     }
 
-    private void SaveLocked()
+    private void SaveLocked(bool allowDuringPrivateMode = false)
     {
+        // Defence in depth: no future mutation path can accidentally persist state while private.
+        // The only exception is scrubbing a previously persisted draft on entry to private mode.
+        if (privateMode && !allowDuringPrivateMode) return;
         try
         {
             Directory.CreateDirectory(Path.GetDirectoryName(memoryPath)!);
@@ -985,6 +1192,31 @@ public sealed class ConversationMemoryService : Services.Memory.IConversationMem
 
     private static bool IsValid(ConversationMemoryEntry? entry) => entry != null && entry.Role is "user" or "assistant" or "note" && !string.IsNullOrWhiteSpace(entry.Text);
     private static ConversationMemoryEntry Clone(ConversationMemoryEntry x) => new() { Timestamp = x.Timestamp, Role = x.Role, Text = x.Text, Source = x.Source, SessionId = x.SessionId, Id = x.Id, Category = x.Category, Pinned = x.Pinned, UpdatedAt = x.UpdatedAt, SupersededAt = x.SupersededAt, ProjectId = x.ProjectId };
+    private static HashSet<string> ContextTerms(string text) => Regex.Matches(text ?? "", @"[\p{L}\p{N}]{3,}")
+        .Cast<Match>()
+        .Select(match => match.Value)
+        .Where(term => !ContextStopWords.Contains(term))
+        .Distinct(StringComparer.Ordinal)
+        .Take(24)
+        .ToHashSet(StringComparer.Ordinal);
+
+    private static (int Matches, int Score) ScoreText(string text, HashSet<string> queryTerms)
+    {
+        var words = Regex.Matches(Normalize(text), @"[\p{L}\p{N}]{3,}")
+            .Cast<Match>()
+            .Select(match => match.Value)
+            .ToHashSet(StringComparer.Ordinal);
+        int exact = 0, partialMatches = 0;
+        foreach (string term in queryTerms)
+        {
+            if (words.Contains(term)) exact++;
+            else if (term.Length >= 5 && words.Any(word => word.Length >= 5 &&
+                (word.StartsWith(term, StringComparison.Ordinal) || term.StartsWith(word, StringComparison.Ordinal) ||
+                 word.StartsWith(term[..5], StringComparison.Ordinal)))) partialMatches++;
+        }
+        return (exact + partialMatches, exact * 3 + partialMatches);
+    }
+
     internal static string Normalize(string text)
     {
         var result = new StringBuilder();

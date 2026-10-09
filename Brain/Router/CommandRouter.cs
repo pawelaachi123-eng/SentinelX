@@ -4,6 +4,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using SentinelX.Core;
+using SentinelX.Services.Creative;
 using SentinelX.Services.Info;
 using SentinelX.Services.Intent;
 
@@ -21,6 +22,9 @@ public sealed class CommandRouter
     private readonly MemoryArchiveService? archives;
     private readonly WorkspaceInsightsService? insights;
     private readonly UnderstandingJournal? journal;
+    private readonly ObjModelGenerator modelGenerator;
+    private readonly RobloxGameProjectGenerator gameProjectGenerator;
+    private readonly RobloxCreativeWorkflowService? creativeWorkflow;
     private string lastTopic = "";
     private DateTime lastTopicTime;
     private (string Text, DateTime When, string Description, DateTime Expires)? pendingReminder;
@@ -31,11 +35,15 @@ public sealed class CommandRouter
 
     public CommandRouter(SystemMonitor systemMonitor, SystemInfoService systemInfo, LocalAiService localAi, ConversationMemoryService memory,
         ProjectService? projects = null, TaskService? tasks = null, DiagnosticSnapshotService? snapshots = null,
-        MemoryArchiveService? archives = null, WorkspaceInsightsService? insights = null, UnderstandingJournal? journal = null)
+        MemoryArchiveService? archives = null, WorkspaceInsightsService? insights = null, UnderstandingJournal? journal = null,
+        ObjModelGenerator? modelGenerator = null, RobloxGameProjectGenerator? gameProjectGenerator = null,
+        RobloxCreativeWorkflowService? creativeWorkflow = null)
     {
         this.systemMonitor = systemMonitor; this.systemInfo = systemInfo; this.localAi = localAi; this.memory = memory;
         this.projects = projects; this.tasks = tasks; this.snapshots = snapshots; this.archives = archives; this.insights = insights;
-        this.journal = journal;
+        this.journal = journal; this.modelGenerator = modelGenerator ?? new ObjModelGenerator();
+        this.gameProjectGenerator = gameProjectGenerator ?? new RobloxGameProjectGenerator();
+        this.creativeWorkflow = creativeWorkflow;
     }
 
     public async Task<string> ProcessAsync(string command, CancellationToken cancellationToken = default, Action<string>? onDelta = null)
@@ -44,6 +52,7 @@ public sealed class CommandRouter
         if (string.IsNullOrWhiteSpace(command)) return "";
         string? previewResponse = DecisionPreview.TryExplain(command);
         if (previewResponse != null) return previewResponse;
+        if (AuthorizedUsePolicy.TryRefuse(command, out string safetyRefusal)) return safetyRefusal;
         string text = Normalize(command).TrimEnd('?', '!', '.', ' ');
         string? snapshotResponse = await TryHandleSnapshotCommandAsync(command.Trim(), text, cancellationToken);
         if (snapshotResponse != null) return snapshotResponse;
@@ -51,6 +60,10 @@ public sealed class CommandRouter
         if (conversionResponse != null) return conversionResponse;
         string? utilityResponse = UtilityToolbox.Process(command.Trim(), text);
         if (utilityResponse != null) return utilityResponse;
+        string? modelResponse = await TryHandleModelCommandAsync(command.Trim(), text, cancellationToken);
+        if (modelResponse != null) return modelResponse;
+        string? gameProjectResponse = await TryHandleRobloxGameCommandAsync(command.Trim(), text, cancellationToken);
+        if (gameProjectResponse != null) return gameProjectResponse;
         string? infoResponse = await TryHandleInfoCommandAsync(command.Trim().TrimEnd('?', '!', '.', ' '), cancellationToken);
         if (infoResponse != null) return infoResponse;
         string? metaResponse = TryHandleMetaCommand(text);
@@ -125,12 +138,33 @@ public sealed class CommandRouter
             return "Nie jestem pewien, o co chodzi. Czy chodziło Ci o:\n" + string.Join("\n", suggestions.Select(x => "· „" + x + "”")) +
                 "\nOdpisz „tak”, aby wykonać pierwszą opcję, albo napisz polecenie dokładniej. Niczego nie wykonałem.";
         }
-        return await localAi.AskAsync(command, BuildSystemContext(topicForContext, includeSystemFacts, includeRecentHistory), cancellationToken, onDelta);
+        return await localAi.AskAsync(command, BuildSystemContext(command, topicForContext, includeSystemFacts, includeRecentHistory), cancellationToken, onDelta);
+    }
+
+    private async Task<string?> TryHandleModelCommandAsync(string command, string text, CancellationToken cancellationToken)
+    {
+        if (!ObjModelGenerator.IsCommand(text)) return null;
+        var result = await modelGenerator.GenerateFromCommandAsync(command, cancellationToken);
+        return result.Message;
+    }
+
+    public async Task<string> CreateRobloxGameRequestAsync(RobloxGameProjectSpec spec, CancellationToken cancellationToken = default)
+    {
+        if (creativeWorkflow != null) return await creativeWorkflow.CreateAsync(spec, cancellationToken).ConfigureAwait(false);
+        RobloxGameProjectResult result = await gameProjectGenerator.GenerateAsync(spec, cancellationToken).ConfigureAwait(false);
+        return result.Message;
+    }
+
+    private async Task<string?> TryHandleRobloxGameCommandAsync(string command, string text, CancellationToken cancellationToken)
+    {
+        if (!RobloxGameProjectGenerator.IsCommand(text)) return null;
+        if (!RobloxGameProjectGenerator.TryParseCommand(command, out RobloxGameProjectSpec spec, out string parseError))
+            return parseError;
+        return await CreateRobloxGameRequestAsync(spec, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>0.91 · CENTRUM: Sentinel talking honestly about itself — version, changelog, lessons,
-    /// self-check, suggestions, capability boundaries. All read-only; refusals are intentional design,
-    /// not missing features.</summary>
+    /// self-check, suggestions and capability boundaries. All read-only except explicit routed tools.</summary>
     private string? TryHandleMetaCommand(string text)
     {
         if (text is "wersja" or "jaka wersja" or "wersja sentinel" or "wersja aplikacji")
@@ -168,11 +202,7 @@ public sealed class CommandRouter
         if (text is "propozycje" or "co proponujesz" or "sugestie")
             return insights?.Suggestions() ?? "Propozycje nie są dostępne w tym trybie.";
 
-        // Honest capability boundaries: these are deliberate refusals, not gaps.
-        if (text is "model 3d" or "zbuduj model 3d" or "modeluj 3d" or "generuj model 3d" or "zrob model 3d" or "druk 3d")
-            return "Uczciwie: nie buduję modeli 3D. Nie mam tu silnika graficznego ani narzędzi CAD i nie chcę udawać, że mam.\n" +
-                "Mogę za to: policzyć wymiary („policz”), przeliczyć jednostki („przelicz”), zapisać zadanie związane z projektem („zrob zadanie: …”) i przypomnieć o nim w terminie.\n" +
-                "Do samego modelowania polecam Blendera (darmowy) — mogę dodać zadanie „pobrać Blendera”, jeśli chcesz.";
+        // Honest capability boundaries: self-modification is a deliberate refusal, not an update mechanism.
         if (text is "zmien swoj kod" or "napraw swoj kod" or "napraw sie" or "zmodyfikuj swoj kod" or "ulepsz sie" or "zaktualizuj sie" or "przepisz sie")
             return "Nie modyfikuję własnego kodu — i to jest świadoma decyzja, nie brak umiejętności.\n" +
                 "Samodzielna zmiana kodu bez kontroli mogłaby zepsuć aplikację, w której masz swoje dane. Zamiast tego mam bezpieczny odpowiednik:\n" +
@@ -375,8 +405,8 @@ public sealed class CommandRouter
             bool enable = text == "tryb prywatny" ? !memory.PrivateMode : text == "wlacz tryb prywatny";
             memory.SetPrivateMode(enable);
             return enable
-                ? "Tryb prywatny WŁĄCZONY. Treść rozmowy nie jest nigdzie zapisywana — po zamknięciu nie będzie czego przywrócić. Trwałe wspomnienia i zgody działają bez zmian."
-                : "Tryb prywatny WYŁĄCZONY. Rozmowa jest zapisywana zgodnie z ustawieniami prywatności.";
+                ? "Tryb prywatny WŁĄCZONY. Nowe wiadomości i szkic nie są zapisywane; zapisane wspomnienia są tylko do odczytu, a edycja, usuwanie, import i eksport są zablokowane. Wcześniejsza pamięć pozostaje zachowana."
+                : "Tryb prywatny WYŁĄCZONY. Nowe wiadomości wracają do ustawień prywatności; żadne zmiany wykonane w trybie prywatnym nie są utrwalane.";
         }
         var searchMemory = Regex.Match(text, @"^(?:szukaj|znajdz) w pamieci (.+)$");
         if (searchMemory.Success)
@@ -427,7 +457,7 @@ public sealed class CommandRouter
         if (text is "eksportuj pamiec" or "eksportuj rozmowe")
         {
             try { return "Eksport lokalny zapisany: " + memory.Export(); }
-            catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException) { return "Nie udało się wyeksportować pamięci: " + ex.Message; }
+            catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException or InvalidOperationException) { return "Nie udało się wyeksportować pamięci: " + ex.Message; }
         }
         if (text is "eksportuj rozmowe markdown" or "zapisz rozmowe markdown" or "eksportuj rozmowe do pliku")
         {
@@ -462,7 +492,7 @@ public sealed class CommandRouter
         return null;
     }
 
-    private string BuildSystemContext(string topic, bool includeSystemFacts, bool includeRecentHistory)
+    private string BuildSystemContext(string question, string topic, bool includeSystemFacts, bool includeRecentHistory)
     {
         var parts = new List<string>();
         if (includeSystemFacts)
@@ -477,13 +507,13 @@ public sealed class CommandRouter
         if (!string.IsNullOrWhiteSpace(topic))
             parts.Add("Ostatni temat skrótu: " + topic + ".");
 
-        parts.Add(includeRecentHistory ? memory.GetRecentContext(12) : memory.GetStableContext());
+        parts.Add(memory.GetContextForQuestion(question, includeRecentHistory, maxEntries: 12));
         return string.Join("\n", parts.Where(x => !string.IsNullOrWhiteSpace(x)));
     }
 
     private static bool IsFollowUpQuestion(string text, string followUp, string topic) =>
-        !string.IsNullOrWhiteSpace(topic) && Regex.IsMatch(followUp, @"^(?:czy to|czy jest|a |a teraz|dlaczego|czemu|co z tym|ile|jaki procent|procent)") ||
-        Regex.IsMatch(text, @"\b(?:wczesniej|przed chwila|tamto|to samo|ten temat|ostatni temat|historia rozmowy)\b");
+        (!string.IsNullOrWhiteSpace(topic) && Regex.IsMatch(followUp, @"^(?:czy to|czy jest|a |a teraz|dlaczego|czemu|co z tym|ile|jaki procent|procent)")) ||
+        Regex.IsMatch(text, @"\b(?:wczesniej|przed chwila|tamto|to samo|ten temat|ostatni temat|historia rozmowy|co (?:mowilem|mowilismy|powiedzialem|powiedzielismy|ustalilem|ustalilismy|zdecydowalem|zdecydowalismy|pisalem|pisalismy|wspomnialem)|o czym rozmawialismy|what did (?:i|we)|what (?:was|were) we talking about|earlier|previously|last time)\b");
 
     private static bool MentionsComputerStateNoTopic(string text, string followUp) =>
         MentionedComputerState(text + " " + followUp);

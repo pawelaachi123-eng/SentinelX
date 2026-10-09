@@ -99,6 +99,13 @@ public partial class MemoryViewModel : ObservableObject, IDisposable
 
     private static string On(bool value) => value ? "wł" : "wył";
 
+    private bool RefusePrivateMemoryMutation()
+    {
+        if (!memory.PrivateMode) return false;
+        Status = "Tryb prywatny jest włączony — zapisane wspomnienia są tylko do odczytu. Wyłącz go, aby je zmieniać, usuwać lub importować.";
+        return true;
+    }
+
     private void RefreshItems()
     {
         IEnumerable<ConversationMemoryEntry> source = string.IsNullOrWhiteSpace(Search) ? memory.GetNotes() : memory.SearchNotes(Search);
@@ -127,6 +134,8 @@ public partial class MemoryViewModel : ObservableObject, IDisposable
     {
         string text = NewText.Trim();
         if (text.Length == 0) { Status = "Wpisz treść wspomnienia przed zapisaniem."; return; }
+        if (RefusePrivateMemoryMutation()) return;
+        if (!settings.Current.Memory.SaveMemories) { Status = "Zapisywanie wspomnień jest wyłączone w Ustawienia → Pamięć i prywatność."; return; }
         var similar = memory.FindSimilarNotes(text);
         Status = memoryActions.AddNoteVerified(text, NewCategory, "panel pamięci");
         NewText = "";
@@ -138,7 +147,7 @@ public partial class MemoryViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private void SaveEdit()
     {
-        if (SelectedItem == null) return;
+        if (SelectedItem == null || RefusePrivateMemoryMutation()) return;
         Status = memoryActions.UpdateNoteVerified(SelectedItem.Id, EditorText.Trim());
         Refresh();
     }
@@ -166,7 +175,7 @@ public partial class MemoryViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private void RequestDelete(MemoryItemViewModel? item)
     {
-        if (item == null) return;
+        if (item == null || RefusePrivateMemoryMutation()) return;
         Status = memoryActions.RequestDeleteNote(item.Id, item.Text)
             + " Usuwanie wymaga zgody — zatwierdź ją klawiaturą w Centrum.";
         Refresh();
@@ -203,11 +212,16 @@ public partial class MemoryViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private void TogglePrivateMode()
     {
-        memory.SetPrivateMode(!memory.PrivateMode);
-        Status = memory.PrivateMode
-            ? "Tryb prywatny WŁĄCZONY — treść rozmowy nie jest nigdzie zapisywana i nie wróci po restarcie."
-            : "Tryb prywatny WYŁĄCZONY — zapis zgodny z ustawieniami prywatności.";
-        Refresh();
+        bool enabled = !memory.PrivateMode;
+        memory.SetPrivateMode(enabled);
+        // SetPrivateMode raises Changed; queue our status after the refresh queued by that event.
+        dispatcher.Post(() =>
+        {
+            Refresh();
+            Status = enabled
+                ? "Tryb prywatny WŁĄCZONY — nowe wiadomości i szkic nie są zapisywane; trwałe wspomnienia są tylko do odczytu, a eksport i import są zablokowane. Wcześniejsza rozmowa pozostaje zachowana."
+                : "Tryb prywatny WYŁĄCZONY — zapis nowych wiadomości wraca do ustawień prywatności; prywatne zmiany nie zostały zachowane.";
+        });
     }
 
     [RelayCommand]
@@ -220,6 +234,7 @@ public partial class MemoryViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private void RunImport()
     {
+        if (RefusePrivateMemoryMutation()) return;
         ImportSummary = memoryActions.ImportVerified(ImportPath.Trim());
         Refresh();
     }
@@ -228,7 +243,7 @@ public partial class MemoryViewModel : ObservableObject, IDisposable
     private void ExportMemory()
     {
         try { Status = "Eksport lokalny zapisany: " + memory.Export(); }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { Status = "Nie udało się wyeksportować pamięci: " + ex.Message; }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException) { Status = "Nie udało się wyeksportować pamięci: " + ex.Message; }
     }
 
     public void Dispose() { memory.Changed -= Sync; memory.SessionChanged -= Sync; settings.Changed -= Sync; }

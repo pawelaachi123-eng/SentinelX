@@ -1,5 +1,6 @@
 using System;
 using System.Threading.Tasks;
+using SentinelX.Services.Intent;
 
 namespace SentinelX
 {
@@ -52,6 +53,8 @@ namespace SentinelX
                 string command, System.Threading.CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            if (AuthorizedUsePolicy.TryRefuse(command, out string safetyRefusal))
+                return ToolboxCommandResult.HandledWith(safetyRefusal);
             string query = Core.CommandText.Normalize(command ?? "");
             string? memoryResponse = memoryActions.TryRequest(command ?? "");
             if (memoryResponse != null) return ToolboxCommandResult.HandledWith(memoryResponse);

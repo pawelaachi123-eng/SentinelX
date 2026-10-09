@@ -63,7 +63,7 @@
                 <TextBlock Text="Centrum" Style="{StaticResource SxHeading}"/>
                 <DockPanel>
                     <TextBlock Text="{Binding ConversationTitle, StringFormat=Rozmowa: {0}}" Style="{StaticResource SxCaption}" VerticalAlignment="Center"/>
-                    <Button Content="Tryb prywatny" Command="{Binding TogglePrivateModeCommand}" Style="{StaticResource SxGhostButton}" FontSize="11" Margin="12,0,0,0" Padding="8,2" ToolTip="Rozmowa prywatna nie jest nigdzie zapisywana"/>
+                    <Button Content="Tryb prywatny" Command="{Binding TogglePrivateModeCommand}" Style="{StaticResource SxGhostButton}" FontSize="11" Margin="12,0,0,0" Padding="8,2" ToolTip="Nowe wiadomości i szkic nie są zapisywane; trwała pamięć jest tylko do odczytu"/>
                 </DockPanel>
             </StackPanel>
         </DockPanel>

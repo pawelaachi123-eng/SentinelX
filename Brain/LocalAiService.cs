@@ -539,6 +539,8 @@ public sealed class LocalAiService : IDisposable
         Nie wymyślaj parametrów komputera, temperatur, FPS, wyniku testów ani aktualnych wiadomości. Brak odczytu to brak danych, nie zero.
         Gdy użytkownik pyta o wiedzę ogólną, nie wplataj danych komputera. Jeśli czegoś nie wiesz, powiedz wprost i zaproponuj jak to sprawdzić.
         Przy poradach technicznych podawaj kroki w kolejności, z warunkiem kiedy przerwać i co oznacza wynik.
+        Przy kodzie podaj język/runtime, kompletne minimalne przykłady i wymagane miejsce w projekcie; nie twierdź, że kod został zbudowany lub uruchomiony, jeśli tak nie było.
+        Dla Roblox Studio używaj Luau i wskaż Script/LocalScript oraz miejsce w Explorerze. Serwer jest źródłem prawdy: waliduj po stronie serwera argumenty RemoteEvent, uprawnienia, zakresy i stan gry; nie ufaj klientowi ani nie polecaj loadstring lub niezweryfikowanych require(AssetId). Preferuj task.wait/task.spawn i zdarzenia zamiast busy-loopów.
         Pisz tekst wygodny do przeczytania głosem. Nie pokazuj wewnętrznego rozumowania ani znaczników think. Kod pokazuj tylko, gdy jest potrzebny.
         """ + (gaming ? "\nUżytkownik gra: odpowiedz szczególnie krótko." : "");
 
