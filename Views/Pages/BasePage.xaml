@@ -1,0 +1,42 @@
+<UserControl x:Class="SentinelX.Views.Pages.BasePage" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:core="clr-namespace:SentinelX.Core">
+ <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="28">
+  <TextBlock Text="Base i Agent" FontSize="28" FontWeight="Bold"/>
+  <TextBlock Text="{Binding Status}" Margin="0,10" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"/>
+  <Border Style="{StaticResource SxCard}" Margin="0,8"><StackPanel>
+   <TextBlock Text="Połączenie SX4" FontSize="18" FontWeight="SemiBold"/>
+   <TextBlock Text="Porównaj fingerprint i wpisz osobny sekret tego urządzenia z Base." TextWrapping="Wrap" Margin="0,8"/>
+   <Button Content="Znajdź Base w LAN" Command="{Binding DiscoverCommand}" HorizontalAlignment="Left"/>
+   <ComboBox ItemsSource="{Binding Bases}" SelectedItem="{Binding SelectedBase}" DisplayMemberPath="Name" Margin="0,8" AutomationProperties.Name="Odkryte Base"/>
+   <TextBlock Text="Adres Base / VPN / relay"/><TextBox Text="{Binding Host,UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Adres Base"/>
+   <TextBlock Text="Port"/><TextBox Text="{Binding Port}" AutomationProperties.Name="Port Base"/>
+   <TextBlock Text="Fingerprint SHA-256 (64 znaki)"/><TextBox Text="{Binding Fingerprint,UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Fingerprint Base"/>
+   <TextBlock Text="Sekret tego urządzenia (64 znaki hex)"/><PasswordBox core:PasswordBinding.Value="{Binding Secret,Mode=TwoWay}" AutomationProperties.Name="Sekret parowania"/>
+   <UniformGrid Columns="2"><StackPanel><TextBlock Text="Device ID PC"/><TextBox Text="{Binding DeviceId}" AutomationProperties.Name="Device ID"/></StackPanel><StackPanel><TextBlock Text="Base ID"/><TextBox Text="{Binding BaseId}" AutomationProperties.Name="Base ID"/></StackPanel></UniformGrid>
+   <ComboBox ItemsSource="{Binding Modes}" SelectedItem="{Binding Mode}" Margin="0,8" AutomationProperties.Name="Tryb połączenia"/>
+   <CheckBox Content="Zezwól na akcje zasilania i instalację Steam — każda wymaga lokalnej zgody" IsChecked="{Binding AllowPowerActions}" Margin="0,8"/>
+   <WrapPanel><Button Content="Sprawdź i sparuj" Command="{Binding PairCommand}" Margin="0,0,8,0"/><Button Content="Usuń parowanie z PC" Command="{Binding UnpairCommand}"/></WrapPanel>
+  </StackPanel></Border>
+  <Border Style="{StaticResource SxCard}" Margin="0,8"><StackPanel>
+   <TextBlock Text="Dom, komputer i zadania" FontSize="18" FontWeight="SemiBold"/>
+   <WrapPanel Margin="0,8">
+    <Button Content="Status" Command="{Binding QueryCommand}" CommandParameter="status" Margin="4"/>
+    <Button Content="Urządzenia" Command="{Binding QueryCommand}" CommandParameter="devices" Margin="4"/>
+    <Button Content="Sceny" Command="{Binding QueryCommand}" CommandParameter="scenes" Margin="4"/>
+    <Button Content="Powiadomienia" Command="{Binding QueryCommand}" CommandParameter="notifications" Margin="4"/>
+    <Button Content="Diagnostyka Base" Command="{Binding QueryCommand}" CommandParameter="diagnostics" Margin="4"/>
+    <Button Content="Logi Base" Command="{Binding QueryCommand}" CommandParameter="logs" Margin="4"/>
+   </WrapPanel>
+   <TextBlock Text="Identyfikator sceny / PC (z listy Base)"/><TextBox Text="{Binding TargetId,UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Cel operacji"/>
+   <WrapPanel Margin="0,8"><Button Content="Uruchom scenę" Command="{Binding RunSceneCommand}" Margin="4"/><Button Content="Wake-on-LAN" Command="{Binding WakeCommand}" Margin="4"/></WrapPanel>
+   <TextBlock Text="Timer: akcja, sekundy (1–300)"/><ComboBox ItemsSource="{Binding TimerOperations}" SelectedItem="{Binding TimerOperation}" AutomationProperties.Name="Operacja timera"/><TextBox Text="{Binding TimerSeconds}" AutomationProperties.Name="Sekundy timera"/>
+   <Button Content="Ustaw timer w Base" Command="{Binding SetTimerCommand}" HorizontalAlignment="Left" Margin="0,8"/>
+   <TextBlock Text="Steam: numeryczny AppID"/><TextBox Text="{Binding SteamAppId}" AutomationProperties.Name="Steam AppID"/><Button Content="Poproś PC o uruchomienie gry" Command="{Binding LaunchSteamCommand}" HorizontalAlignment="Left" Margin="0,8"/>
+  </StackPanel></Border>
+  <Border Style="{StaticResource SxCard}" Margin="0,8"><StackPanel>
+   <TextBlock Text="Kolejka Agenta" FontSize="18" FontWeight="SemiBold"/>
+   <WrapPanel Margin="0,8"><Button Content="Odśwież zadania" Command="{Binding RefreshTasksCommand}" Margin="4"/><Button Content="Napraw uszkodzoną kolejkę z kopią" Command="{Binding RepairQueueCommand}" Margin="4"/></WrapPanel>
+   <ItemsControl ItemsSource="{Binding Tasks}"><ItemsControl.ItemTemplate><DataTemplate><StackPanel Margin="0,4"><TextBlock Text="{Binding Operation}" FontWeight="SemiBold"/><TextBlock Text="{Binding State}"/><TextBlock Text="{Binding Code}" TextWrapping="Wrap"/></StackPanel></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+  </StackPanel></Border>
+  <TextBox Text="{Binding Result,Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" MinHeight="100" MaxHeight="420" VerticalScrollBarVisibility="Auto" AutomationProperties.Name="Wynik Base"/>
+ </StackPanel></ScrollViewer>
+</UserControl>

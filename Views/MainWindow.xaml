@@ -1,6 +1,8 @@
-<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:u="clr-namespace:SentinelX.Utilities" xmlns:controls="clr-namespace:SentinelX.Views.Controls" xmlns:vm="clr-namespace:SentinelX.ViewModels" xmlns:pages="clr-namespace:SentinelX.Views.Pages" x:Class="SentinelX.Views.MainWindow" Title="Sentinel X" Width="1400" Height="900" MinWidth="1100" MinHeight="700" WindowStartupLocation="CenterScreen" Background="{DynamicResource SxBackground}" FontFamily="{StaticResource SxFontFamily}" ThemeMode="Dark" Icon="/Assets/sentinel.ico" u:UiInteraction.LoadedCommand="{Binding InitializeCommand}">
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:u="clr-namespace:SentinelX.Utilities" xmlns:controls="clr-namespace:SentinelX.Views.Controls" xmlns:vm="clr-namespace:SentinelX.ViewModels" xmlns:pages="clr-namespace:SentinelX.Views.Pages" xmlns:r="clr-namespace:SentinelX.Resources" x:Class="SentinelX.Views.MainWindow" Title="Sentinel X" Width="1400" Height="900" MinWidth="1100" MinHeight="700" WindowStartupLocation="CenterScreen" Background="{DynamicResource SxBackground}" FontFamily="{StaticResource SxFontFamily}" ThemeMode="Dark" Icon="/Assets/sentinel.ico" u:UiInteraction.LoadedCommand="{Binding InitializeCommand}">
     <Window.InputBindings><KeyBinding Key="K" Modifiers="Control" Command="{Binding OpenPaletteCommand}"/></Window.InputBindings>
     <Window.Resources>
+        <DataTemplate DataType="{x:Type vm:MaintenanceViewModel}"><pages:MaintenancePage/></DataTemplate>
+        <DataTemplate DataType="{x:Type vm:BaseViewModel}"><pages:BasePage/></DataTemplate>
         <DataTemplate DataType="{x:Type vm:CommandCenterViewModel}">
             <pages:CommandCenterPage/>
         </DataTemplate>
@@ -74,11 +76,10 @@
                 <StackPanel DockPanel.Dock="Top" Margin="20,26,18,18">
                     <!-- 0.95: marka z gradientem akcentu zamiast jednolitego koloru -->
                     <TextBlock Text="◈  SENTINEL X" FontSize="19" FontWeight="Bold" Foreground="{StaticResource SxAccentGradient}"/>
-                    <TextBlock Text="{Binding Version}" Style="{StaticResource SxCaption}" Margin="26,4,0,18"/>
-                    <Button Content="⌕  Szukaj · Ctrl+K" Command="{Binding OpenPaletteCommand}" FontSize="12" Margin="0,0,0,10" AutomationProperties.Name="Otwórz paletę poleceń"/>
-                    <Button Content="🧰  Narzędzia" Command="{Binding OpenToolsCommand}" Style="{StaticResource SxGhostButton}" FontSize="12" Margin="0,0,0,16" AutomationProperties.Name="Otwórz katalog narzędzi"/>
+                    <Button Content="{x:Static r:Strings.SearchButton}" Command="{Binding OpenPaletteCommand}" FontSize="12" Margin="0,0,0,10" AutomationProperties.Name="{x:Static r:Strings.SearchHelp}"/>
+                    <Button Content="{x:Static r:Strings.ToolsButton}" Command="{Binding OpenToolsCommand}" Style="{StaticResource SxGhostButton}" FontSize="12" Margin="0,0,0,16" AutomationProperties.Name="{x:Static r:Strings.ToolsHelp}"/>
                     <!-- 0.95: żywe metryki zamiast pustego miejsca — ten sam odczyt co zakładka System -->
-                    <TextBlock Text="TERAZ NA KOMPUTERZE" FontSize="10" Foreground="{DynamicResource SxTextMuted}" Margin="2,0,0,8"/>
+                    <TextBlock Text="{x:Static r:Strings.NowOnPc}" FontSize="10" Foreground="{DynamicResource SxTextMuted}" Margin="2,0,0,8"/>
                     <UniformGrid Columns="3" Margin="0,0,0,8">
                         <Border Style="{StaticResource SxMetricCard}" Padding="8,6" Margin="0,0,6,0">
                             <StackPanel>
@@ -103,7 +104,7 @@
                 </StackPanel>
                 <StackPanel DockPanel.Dock="Bottom" Margin="16,0,16,16">
                     <!-- 0.95: motyw zmieniany jednym kliknięciem, zapisywany w ustawieniach -->
-                    <TextBlock Text="MOTYW" FontSize="10" Foreground="{DynamicResource SxTextMuted}" Margin="4,0,0,6"/>
+                    <TextBlock Text="{x:Static r:Strings.ThemeCaption}" FontSize="10" Foreground="{DynamicResource SxTextMuted}" Margin="4,0,0,6"/>
                     <ListBox ItemsSource="{Binding ThemeOptions}" SelectedItem="{Binding CurrentTheme, Mode=TwoWay}" ItemContainerStyle="{StaticResource ThemeTile}" Margin="0,0,0,12" AutomationProperties.Name="Wybór motywu">
                         <ListBox.ItemsPanel>
                             <ItemsPanelTemplate>
@@ -119,7 +120,7 @@
                             </DataTemplate>
                         </ListBox.ItemTemplate>
                     </ListBox>
-                    <Button Content="◇  Konfiguracja i gotowość" Command="{Binding OpenReadinessCommand}" Style="{StaticResource SxGhostButton}" FontSize="12" Margin="0,0,0,8"/>
+                    <Button Content="{x:Static r:Strings.ReadinessButton}" Command="{Binding OpenReadinessCommand}" Style="{StaticResource SxGhostButton}" FontSize="12" Margin="0,0,0,8"/>
                     <TextBlock Text="{Binding DesktopStatus}" Foreground="{DynamicResource SxWarning}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,12"/>
                     <Border Style="{StaticResource SxBadge}" Margin="0,0,0,12">
                         <StackPanel>
@@ -127,9 +128,10 @@
                             <TextBlock Text="{Binding Voice.Status}" Style="{StaticResource SxCaption}" Margin="0,6,0,0" MaxHeight="60" TextTrimming="CharacterEllipsis"/>
                         </StackPanel>
                     </Border>
-                    <Button Content="ϟ  EMERGENCY STOP" Command="{Binding EmergencyStopCommand}" Style="{StaticResource SxDangerButton}" FontSize="12" ToolTip="Ctrl+Shift+X · blokuje nowe akcje i wyłącza głos"/>
-                    <Button Content="Wznów Sentinel" Command="{Binding ResumeCommand}" Visibility="{Binding IsStopped, Converter={StaticResource BoolToVisibility}}" Margin="0,8,0,0"/>
-                    <Button Content="Wyjdź z aplikacji" Command="{Binding ExitCommand}" Style="{StaticResource SxGhostButton}" FontSize="11" Margin="0,8,0,0"/>
+                    <Button Content="{x:Static r:Strings.EmergencyStop}" Command="{Binding EmergencyStopCommand}" Style="{StaticResource SxDangerButton}" FontSize="12" ToolTip="{x:Static r:Strings.EmergencyStopTip}"/>
+                    <Button Content="{x:Static r:Strings.ResumeButton}" Command="{Binding ResumeCommand}" Visibility="{Binding IsStopped, Converter={StaticResource BoolToVisibility}}" Margin="0,8,0,0"/>
+                    <Button Content="{x:Static r:Strings.ExitButton}" Command="{Binding ExitCommand}" Style="{StaticResource SxGhostButton}" FontSize="11" Margin="0,8,0,0"/>
+                    <TextBlock Text="{Binding Version}" Opacity="0.8" Style="{StaticResource SxCaption}" Margin="4,0,0,8" AutomationProperties.Name="{x:Static r:Strings.VersionHelp}"/>
                 </StackPanel>
                 <ListBox ItemsSource="{Binding NavItems}" SelectedItem="{Binding SelectedItem}" ItemContainerStyle="{StaticResource SxSidebarItem}" Margin="8,0" VerticalAlignment="Top">
                     <ListBox.ItemTemplate>

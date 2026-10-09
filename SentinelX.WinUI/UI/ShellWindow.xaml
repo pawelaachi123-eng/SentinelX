@@ -1,0 +1,291 @@
+<Window
+    x:Class="SentinelX.WinUI.UI.ShellWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:SentinelX.WinUI.UI.Controls"
+    xmlns:panels="using:SentinelX.WinUI.UI.Panels"
+    xmlns:dialogs="using:SentinelX.WinUI.UI.Dialogs">
+
+    <Grid x:Name="Root">
+        <Grid.KeyboardAccelerators>
+            <KeyboardAccelerator Key="K" Modifiers="Control" Invoked="PaletteAccelerator_Invoked" />
+        </Grid.KeyboardAccelerators>
+
+        <VisualStateManager.VisualStateGroups>
+            <VisualStateGroup>
+                <VisualState x:Name="Narrow">
+                    <VisualState.StateTriggers>
+                        <AdaptiveTrigger MinWindowWidth="0" />
+                    </VisualState.StateTriggers>
+                    <VisualState.Setters>
+                        <Setter Target="Core.Width" Value="200" />
+                        <Setter Target="Core.Height" Value="200" />
+                        <Setter Target="CoreScale.ScaleX" Value="0.72" />
+                        <Setter Target="CoreScale.ScaleY" Value="0.72" />
+                        <Setter Target="NetChip.Visibility" Value="Collapsed" />
+                    </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="Wide">
+                    <VisualState.StateTriggers>
+                        <AdaptiveTrigger MinWindowWidth="820" />
+                    </VisualState.StateTriggers>
+                </VisualState>
+            </VisualStateGroup>
+        </VisualStateManager.VisualStateGroups>
+
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Custom title bar -->
+        <Grid Height="48" Padding="12,0,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="138" />
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                <Image Source="ms-appx:///Assets/AppIcon.png" Width="22" Height="22" />
+                <TextBlock Text="SENTINEL X" Style="{StaticResource SxSubtitle}" VerticalAlignment="Center" />
+                <Border Background="#3A2A10" BorderBrush="#6E5216" BorderThickness="1" CornerRadius="8"
+                        Padding="8,3" VerticalAlignment="Center"
+                        Visibility="{x:Bind ViewModel.GamingText, Mode=OneWay, Converter={StaticResource NullToVisibility}}">
+                    <TextBlock Text="{x:Bind ViewModel.GamingText, Mode=OneWay}" FontSize="11"
+                               FontWeight="SemiBold" Foreground="{StaticResource SxWarning}" />
+                </Border>
+            </StackPanel>
+
+            <Grid x:Name="DragZone" Grid.Column="1" Background="Transparent" />
+
+            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                <Button Content="Mini" Style="{StaticResource SxGhostButton}"
+                        Command="{x:Bind ViewModel.ToggleMiniModeCommand}" ToolTipService.ToolTip="Tryb Mini" />
+                <Button Content="⌕  Ctrl+K" Style="{StaticResource SxGhostButton}"
+                        Command="{x:Bind ViewModel.OpenPaletteCommand}" ToolTipService.ToolTip="Paleta komend" />
+                <Button Content="⚙" Style="{StaticResource SxGhostButton}" FontSize="16"
+                        Command="{x:Bind ViewModel.ToggleSettingsCommand}" ToolTipService.ToolTip="Ustawienia"
+                        AutomationProperties.Name="Ustawienia" />
+            </StackPanel>
+        </Grid>
+
+        <!-- Main area -->
+        <Grid Grid.Row="1">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="24,4,24,12">
+                <StackPanel Spacing="14" MaxWidth="780" HorizontalAlignment="Center">
+                    <!-- Core -->
+                    <controls:SentinelCore x:Name="Core" HorizontalAlignment="Center"
+                                           State="{x:Bind ViewModel.Core.State, Mode=OneWay}"
+                                           AudioLevel="{x:Bind ViewModel.Core.AudioLevel, Mode=OneWay}">
+                        <controls:SentinelCore.RenderTransform>
+                            <ScaleTransform x:Name="CoreScale" />
+                        </controls:SentinelCore.RenderTransform>
+                    </controls:SentinelCore>
+
+                    <!-- Status -->
+                    <StackPanel Spacing="4" Margin="0,-8,0,0">
+                        <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center">
+                            <Ellipse Width="9" Height="9"
+                                     Fill="{x:Bind ViewModel.Core.State, Mode=OneWay, Converter={StaticResource CoreStateToBrush}}" />
+                            <TextBlock Text="{x:Bind ViewModel.Core.State, Mode=OneWay, Converter={StaticResource CoreStateToLabel}}"
+                                       Style="{StaticResource SxSubtitle}" />
+                        </StackPanel>
+                        <TextBlock Text="{x:Bind ViewModel.Core.Detail, Mode=OneWay}" Style="{StaticResource SxCaption}"
+                                   HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center" />
+                        <TextBlock Text="{x:Bind ViewModel.Core.ActiveTask, Mode=OneWay}" FontSize="11"
+                                   Foreground="{StaticResource SxAccentSoft}" HorizontalAlignment="Center"
+                                   Visibility="{x:Bind ViewModel.Core.ActiveTask, Mode=OneWay, Converter={StaticResource NullToVisibility}}" />
+                    </StackPanel>
+
+                    <!-- Command bar -->
+                    <Border Style="{StaticResource SxCard}" Padding="14">
+                        <StackPanel Spacing="10">
+                            <Grid ColumnSpacing="8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <AutoSuggestBox x:Name="CommandBox" Style="{StaticResource SxSuggestBox}"
+                                                PlaceholderText="Wpisz polecenie…   (Ctrl+K — wszystkie funkcje)"
+                                                Text="{x:Bind ViewModel.Commands.Input, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                ItemsSource="{x:Bind ViewModel.Commands.Suggestions, Mode=OneWay}"
+                                                TextMemberPath="Text"
+                                                QuerySubmitted="CommandBox_QuerySubmitted"
+                                                KeyDown="CommandBox_KeyDown"
+                                                AutomationProperties.Name="Pole komendy">
+                                    <AutoSuggestBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Padding="0,6" Spacing="1">
+                                                <TextBlock Text="{Binding Text}" Style="{StaticResource SxBody}" />
+                                                <TextBlock Text="{Binding Hint}" Style="{StaticResource SxMuted}" />
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </AutoSuggestBox.ItemTemplate>
+                                </AutoSuggestBox>
+                                <Button Grid.Column="1" Content="Wyślij" Style="{StaticResource SxAccentButton}"
+                                        Command="{x:Bind ViewModel.Commands.SubmitCommand}" VerticalAlignment="Stretch" />
+                                <Button Grid.Column="2" Content="◉" FontSize="15" Style="{StaticResource SxGhostButton}"
+                                        Foreground="{x:Bind ViewModel.MicActive, Mode=OneWay, Converter={StaticResource OkBrush}}"
+                                        Command="{x:Bind ViewModel.MicClickCommand}" ToolTipService.ToolTip="Włącz / wyłącz mikrofon"
+                                        VerticalAlignment="Stretch" AutomationProperties.Name="Mikrofon" />
+                            </Grid>
+
+                            <TextBlock Text="{x:Bind ViewModel.Commands.StatusLine, Mode=OneWay}" Style="{StaticResource SxCaption}" />
+                            <StackPanel Orientation="Horizontal" Spacing="8"
+                                        Visibility="{x:Bind ViewModel.VoiceModelsMissing, Mode=OneWay, Converter={StaticResource BoolToVisibility}}">
+                                <TextBlock Text="Głos potrzebuje lokalnych modeli (jednorazowo, ~500 MB)." Style="{StaticResource SxCaption}" VerticalAlignment="Center" />
+                                <Button Content="Pobierz modele i włącz głos" Style="{StaticResource SxChipButton}"
+                                        Command="{x:Bind ViewModel.DownloadVoiceModelsCommand}" />
+                            </StackPanel>
+                            <TextBlock Text="{x:Bind ViewModel.Commands.ReplyLine, Mode=OneWay}" Style="{StaticResource SxBody}"
+                                       TextWrapping="Wrap" MaxLines="2"
+                                       Visibility="{x:Bind ViewModel.Commands.ReplyLine, Mode=OneWay, Converter={StaticResource NullToVisibility}}" />
+                            <Border Background="#3A2A10" BorderBrush="#6E5216" BorderThickness="1" CornerRadius="10" Padding="12,8"
+                                    Visibility="{x:Bind ViewModel.Commands.Executor.HasPendingPermission, Mode=OneWay, Converter={StaticResource BoolToVisibility}}">
+                                <StackPanel Spacing="8">
+                                    <TextBlock Text="WYMAGANA ZGODA" Style="{StaticResource SxEyebrow}" />
+                                    <TextBlock Text="{x:Bind ViewModel.Commands.Executor.PermissionSummary, Mode=OneWay}"
+                                               Style="{StaticResource SxBody}" TextWrapping="Wrap" />
+                                    <TextBlock Text="Ryzykowne akcje zatwierdza się tylko tutaj, jawnym przyciskiem." Style="{StaticResource SxCaption}" />
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <Button Content="Potwierdź" Style="{StaticResource SxAccentButton}"
+                                                Command="{x:Bind ViewModel.Commands.SubmitCommand}" CommandParameter="potwierdz" />
+                                        <Button Content="Odrzuć" Style="{StaticResource SxChipButton}"
+                                                Command="{x:Bind ViewModel.Commands.CancelCommand}" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+                            <Grid Visibility="{x:Bind ViewModel.Commands.Executor.IsBusy, Mode=OneWay, Converter={StaticResource BoolToVisibility}}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Spacing="2">
+                                    <TextBlock Text="{x:Bind ViewModel.Commands.Executor.Phase, Mode=OneWay}"
+                                               FontSize="11" Foreground="{StaticResource SxAccentSoft}" />
+                                    <TextBlock Text="{x:Bind ViewModel.Commands.Executor.StreamingText, Mode=OneWay}"
+                                               Style="{StaticResource SxCaption}" TextWrapping="Wrap" MaxLines="2"
+                                               Visibility="{x:Bind ViewModel.Commands.Executor.IsStreaming, Mode=OneWay, Converter={StaticResource BoolToVisibility}}" />
+                                </StackPanel>
+                                <Button Grid.Column="1" Content="Anuluj" Style="{StaticResource SxChipButton}"
+                                        Command="{x:Bind ViewModel.Commands.CancelCommand}" VerticalAlignment="Center" />
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Telemetry chips -->
+                    <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollMode="Disabled">
+                        <Grid ColumnSpacing="10" MinWidth="560">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Button Style="{StaticResource SxCardButton}" Command="{x:Bind ViewModel.OpenDetailsCommand}"
+                                    CommandParameter="Cpu" AutomationProperties.Name="Szczegóły CPU">
+                                <StackPanel Spacing="2">
+                                    <TextBlock Text="CPU" Style="{StaticResource SxEyebrow}" />
+                                    <TextBlock Text="{x:Bind ViewModel.Telemetry.Snapshot.CpuText, Mode=OneWay}"
+                                               FontSize="16" FontWeight="SemiBold" />
+                                </StackPanel>
+                            </Button>
+                            <Button Grid.Column="1" Style="{StaticResource SxCardButton}" Command="{x:Bind ViewModel.OpenDetailsCommand}"
+                                    CommandParameter="Gpu" AutomationProperties.Name="Szczegóły GPU">
+                                <StackPanel Spacing="2">
+                                    <TextBlock Text="GPU" Style="{StaticResource SxEyebrow}" />
+                                    <TextBlock Text="{x:Bind ViewModel.Telemetry.Snapshot.GpuText, Mode=OneWay}"
+                                               FontSize="16" FontWeight="SemiBold" />
+                                </StackPanel>
+                            </Button>
+                            <Button Grid.Column="2" Style="{StaticResource SxCardButton}" Command="{x:Bind ViewModel.OpenDetailsCommand}"
+                                    CommandParameter="Ram" AutomationProperties.Name="Szczegóły RAM">
+                                <StackPanel Spacing="2">
+                                    <TextBlock Text="RAM" Style="{StaticResource SxEyebrow}" />
+                                    <TextBlock Text="{x:Bind ViewModel.Telemetry.Snapshot.RamText, Mode=OneWay}"
+                                               FontSize="16" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                </StackPanel>
+                            </Button>
+                            <Button x:Name="NetChip" Grid.Column="3" Style="{StaticResource SxCardButton}"
+                                    Command="{x:Bind ViewModel.OpenDetailsCommand}"
+                                    CommandParameter="Net" AutomationProperties.Name="Szczegóły sieci">
+                                <StackPanel Spacing="2">
+                                    <TextBlock Text="NET" Style="{StaticResource SxEyebrow}" />
+                                    <TextBlock Text="{x:Bind ViewModel.Telemetry.Snapshot.Network, Mode=OneWay}"
+                                               FontSize="13" TextTrimming="CharacterEllipsis" MaxLines="1" VerticalAlignment="Center" Height="22" />
+                                </StackPanel>
+                            </Button>
+                        </Grid>
+                    </ScrollViewer>
+
+                    <!-- Status pills -->
+                    <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollMode="Disabled">
+                        <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+                            <controls:StatusPill Text="{x:Bind ViewModel.MicText, Mode=OneWay}"
+                                                 Accent="{x:Bind ViewModel.MicActive, Mode=OneWay, Converter={StaticResource OkBrush}}"
+                                                 PillCommand="{x:Bind ViewModel.MicClickCommand}" />
+                            <controls:StatusPill Text="{x:Bind ViewModel.AiText, Mode=OneWay}"
+                                                 Accent="{x:Bind ViewModel.AiOk, Mode=OneWay, Converter={StaticResource OkBrush}}"
+                                                 PillCommand="{x:Bind ViewModel.AiClickCommand}" />
+                            <controls:StatusPill Text="{x:Bind ViewModel.WatchText, Mode=OneWay}"
+                                                 Accent="{x:Bind ViewModel.WatchOk, Mode=OneWay, Converter={StaticResource OkBrush}}"
+                                                 PillCommand="{x:Bind ViewModel.WatchClickCommand}" />
+                            <controls:StatusPill Text="{x:Bind ViewModel.OllamaText, Mode=OneWay}"
+                                                 Accent="{x:Bind ViewModel.OllamaOk, Mode=OneWay, Converter={StaticResource OkBrush}}"
+                                                 PillCommand="{x:Bind ViewModel.OllamaClickCommand}" />
+                            <controls:StatusPill Text="{x:Bind ViewModel.PcText, Mode=OneWay}"
+                                                 Accent="{x:Bind ViewModel.PcOk, Mode=OneWay, Converter={StaticResource OkBrush}}"
+                                                 PillCommand="{x:Bind ViewModel.PcClickCommand}" />
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <TextBlock Text="{x:Bind ViewModel.DesktopStatus, Mode=OneWay}" FontSize="11"
+                               Foreground="{StaticResource SxWarning}" TextWrapping="Wrap" HorizontalAlignment="Center"
+                               Visibility="{x:Bind ViewModel.DesktopStatus, Mode=OneWay, Converter={StaticResource NullToVisibility}}" />
+
+                    <!-- History -->
+                    <panels:HistoryPanel DataContext="{x:Bind ViewModel.History, Mode=OneWay}" />
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- Slide-in panels (overlay, right side) -->
+            <panels:DetailPanel DataContext="{x:Bind ViewModel.Details, Mode=OneWay}"
+                                Telemetry="{x:Bind ViewModel.Telemetry, Mode=OneWay}"
+                                QuickCommand="{x:Bind ViewModel.QuickCommandCommand, Mode=OneWay}"
+                                HorizontalAlignment="Right" Margin="0,8,0,8" Canvas.ZIndex="10" />
+            <panels:SettingsPanel DataContext="{x:Bind ViewModel.SettingsPanel, Mode=OneWay}"
+                                  CloseCommand="{x:Bind ViewModel.ToggleSettingsCommand, Mode=OneWay}"
+                                  HorizontalAlignment="Right" Margin="0,8,0,8" Canvas.ZIndex="11"
+                                  Visibility="{x:Bind ViewModel.IsSettingsOpen, Mode=OneWay, Converter={StaticResource BoolToVisibility}}" />
+        </Grid>
+
+        <!-- Bottom bar -->
+        <Grid Grid.Row="2" Padding="16,6,16,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel Opacity="0.55">
+                <TextBlock Text="{x:Bind ViewModel.ProductName, Mode=OneWay}" Style="{StaticResource SxMuted}" />
+                <TextBlock Text="{x:Bind ViewModel.VersionLine, Mode=OneWay}" Style="{StaticResource SxMuted}" />
+            </StackPanel>
+            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                <Button Content="Wznów Sentinel" Style="{StaticResource SxChipButton}"
+                        Command="{x:Bind ViewModel.ResumeCommand}"
+                        Visibility="{x:Bind ViewModel.Commands.Executor.IsStopped, Mode=OneWay, Converter={StaticResource BoolToVisibility}}" />
+                <Button Content="STOP" Style="{StaticResource SxDangerButton}"
+                        Command="{x:Bind ViewModel.EmergencyStopCommand}" ToolTipService.ToolTip="Ctrl+Shift+X"
+                        Visibility="{x:Bind ViewModel.Commands.Executor.IsStopped, Mode=OneWay, Converter={StaticResource BoolToVisibility}, ConverterParameter=invert}" />
+                <Button Content="Wyjdź" Style="{StaticResource SxGhostButton}" Command="{x:Bind ViewModel.ExitCommand}" />
+            </StackPanel>
+        </Grid>
+
+        <!-- Command palette overlay -->
+        <dialogs:CommandPalette Grid.RowSpan="3" DataContext="{x:Bind ViewModel.Palette, Mode=OneWay}" Canvas.ZIndex="20" />
+    </Grid>
+</Window>

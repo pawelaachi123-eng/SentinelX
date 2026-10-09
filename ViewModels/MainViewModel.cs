@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SentinelX.Core;
+using SentinelX.Resources;
 using SentinelX.Services.Actions;
 using SentinelX.Services.Desktop;
 using SentinelX.Services.Settings;
@@ -24,10 +25,10 @@ public partial class MainViewModel : ObservableObject, IDisposable
     public ToolsViewModel Tools { get; }
     public IReadOnlyList<ThemeOption> ThemeOptions { get; } =
     [
-        new("Dark", "🌙", "Ciemny"),
-        new("Deep Dark", "⚫", "Czarny"),
-        new("Light", "☀", "Jasny"),
-        new("System", "🖥", "Jak Windows")
+        new("Dark", "🌙", Strings.ThemeDark),
+        new("Deep Dark", "⚫", Strings.ThemeDeepDark),
+        new("Light", "☀", Strings.ThemeLight),
+        new("System", "🖥", Strings.ThemeSystem)
     ];
     [ObservableProperty] private ThemeOption? currentTheme;
     public CommandPaletteViewModel Palette { get; }
@@ -50,18 +51,20 @@ public partial class MainViewModel : ObservableObject, IDisposable
         CommandCenterViewModel command, SystemViewModel system, GamingViewModel gaming,
         VoiceViewModel voice, AiViewModel ai, ActionsViewModel actions, HistoryViewModel history, SettingsViewModel settings,
         CommandPaletteViewModel palette, ReadinessViewModel readiness, MemoryViewModel memory, ProjectViewModel projects, TaskViewModel tasks,
-        DiagnosticViewModel diagnostics, ToolsViewModel tools, ISettingsService settingsService)
+        DiagnosticViewModel diagnostics, ToolsViewModel tools, ISettingsService settingsService, BaseViewModel? basePanel = null, MaintenanceViewModel? maintenance = null)
     {
         this.engine = engine; this.desktop = desktop; this.dispatcher = dispatcher; this.settings = settingsService;
         Voice = voice; Palette = palette; Readiness = readiness; commandCenter = command; System = system; Tools = tools;
         Palette.Chosen += PaletteChosen; Readiness.OpenSectionRequested += Navigate; commandCenter.NavigationRequested += Navigate;
         NavItems =
         [
-            new NavItem("command", "⌘", "Centrum", command),
-            new NavItem("tools", "🧰", "Narzędzia", tools),
-            new NavItem("memory", "▤", "Pamięć", memory),
-            new NavItem("projects", "▣", "Projekty", projects),
-            new NavItem("settings", "⚙", "Ustawienia", settings)
+            new NavItem("command", "⌘", Strings.NavCenter, command),
+            new NavItem("base", "⌁", Strings.NavBase, (object?)basePanel ?? tools),
+            new NavItem("maintenance", "◇", Strings.NavMaintenance, (object?)maintenance ?? tools),
+            new NavItem("tools", "🧰", Strings.NavTools, tools),
+            new NavItem("memory", "▤", Strings.NavMemory, memory),
+            new NavItem("projects", "▣", Strings.NavProjects, projects),
+            new NavItem("settings", "⚙", Strings.NavSettings, settings)
         ];
         CurrentTheme = ThemeOptions.FirstOrDefault(option => option.Value == settingsService.Current.Ui.Theme) ?? ThemeOptions[0];
         SelectedItem = NavItems[0]; Readiness.IsOpen = command.Messages.Count == 0; engine.Changed += Sync; desktop.StatusChanged += DesktopChanged;

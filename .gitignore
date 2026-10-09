@@ -437,3 +437,13 @@ test-results/
 
 # Bundled AI engine binaries are fetched by CI / scripts/fetch-llama.ps1, never committed
 Engine/llama/
+
+# Device and release private keys stay outside source control
+*.p12
+*.pfx
+*.keystore
+*.jks
+**/.gradle/
+**/build/
+phone-android/local.properties
+*.log

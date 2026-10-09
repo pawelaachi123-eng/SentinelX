@@ -1,0 +1,47 @@
+<Window
+    x:Class="SentinelX.WinUI.UI.MiniModeWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid Padding="16">
+        <StackPanel Spacing="10">
+            <StackPanel Orientation="Horizontal" Spacing="10">
+                <Ellipse Width="9" Height="9"
+                         Fill="{x:Bind ViewModel.Core.State, Mode=OneWay, Converter={StaticResource CoreStateToBrush}}" />
+                <TextBlock Text="{x:Bind ViewModel.Core.State, Mode=OneWay, Converter={StaticResource CoreStateToLabel}}"
+                           Style="{StaticResource SxSubtitle}" />
+            </StackPanel>
+
+            <TextBlock Style="{StaticResource SxCaption}">
+                <Run Text="CPU " /><Run Text="{x:Bind ViewModel.Telemetry.Snapshot.CpuText, Mode=OneWay}" /><Run Text="   |   RAM " /><Run Text="{x:Bind ViewModel.Telemetry.Snapshot.RamText, Mode=OneWay}" />
+            </TextBlock>
+
+            <AutoSuggestBox PlaceholderText="wpisz polecenie…"
+                            Text="{x:Bind ViewModel.Input, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                            ItemsSource="{x:Bind ViewModel.Suggestions, Mode=OneWay}"
+                            QuerySubmitted="CommandBox_QuerySubmitted"
+                            KeyDown="CommandBox_KeyDown"
+                            AutomationProperties.Name="Polecenie Mini Mode" />
+
+            <TextBlock Text="{x:Bind ViewModel.StatusLine, Mode=OneWay}" Style="{StaticResource SxCaption}"
+                       Visibility="{x:Bind ViewModel.StatusLine, Mode=OneWay, Converter={StaticResource NullToVisibility}}" />
+            <TextBlock Text="{x:Bind ViewModel.ReplyLine, Mode=OneWay}" Style="{StaticResource SxBody}"
+                       TextWrapping="Wrap" MaxLines="2"
+                       Visibility="{x:Bind ViewModel.ReplyLine, Mode=OneWay, Converter={StaticResource NullToVisibility}}" />
+
+            <Grid ColumnSpacing="8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <Button Content="Anuluj" Style="{StaticResource SxChipButton}"
+                        Command="{x:Bind ViewModel.CancelCommand}"
+                        Visibility="{x:Bind ViewModel.Executor.IsBusy, Mode=OneWay, Converter={StaticResource BoolToVisibility}}" />
+                <CheckBox Grid.Column="1" Content="Zawsze na wierzchu" FontSize="11"
+                          IsChecked="{x:Bind ViewModel.AlwaysOnTop, Mode=TwoWay}" VerticalAlignment="Center" />
+                <Button Grid.Column="2" Content="Rozwiń" Style="{StaticResource SxChipButton}"
+                        Command="{x:Bind ViewModel.ExpandCommand}" />
+            </Grid>
+        </StackPanel>
+    </Grid>
+</Window>

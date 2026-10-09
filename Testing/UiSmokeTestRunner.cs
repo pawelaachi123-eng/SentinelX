@@ -37,6 +37,7 @@ public static class UiSmokeTestRunner
             await Tests.AiStreamRegression.RunAsync(Path.Combine(output, "ai-stream"));
             await Tests.UnderstandingRegression.RunAsync(Path.Combine(output, "understanding"));
             await Tests.UtilityRegression.RunAsync(Path.Combine(output, "utility"));
+            await Tests.InfoRegression.RunAsync(Path.Combine(output, "info"));
             await Tests.ForgeRegression.RunAsync(Path.Combine(output, "forge"));
             await Tests.RoutingRegression.RunAsync(Path.Combine(output, "routing"));
             await Tests.FileCleanupRegression.RunAsync(Path.Combine(output, "file-cleanup"));
@@ -156,7 +157,7 @@ public static class UiSmokeTestRunner
                 ("pierwiastek 144", "= 12"), ("silnia 10", "3628800"), ("nwd 12 8", "= 4"),
                 ("palindrom: kajak", "palindromem"), ("morse: sos", "... --- ..."),
                 ("pesel: 90010112349", "PESEL poprawny"), ("wielkanoc 2027", "28.03.2027"),
-                ("lotto", "Lotto (6 z 49)"), ("wersja", "0.96"), ("co nowego", "KUŹNIA"),
+                ("lotto", "Lotto (6 z 49)"), ("wersja", "1.0.0"), ("co nowego", "KUŹNIA"),
                 ("nazwa komputera", "Komputer:"), ("samokontrola", "SAMOKONTROLA"),
                 // 0.95 · WARSZTAT: the new tools through the real pipeline (the QR check stays in UtilityRegression, it writes a file)
                 ("porownaj teksty: ala ma kota ||| ala ma psa", "tylko w drugim"), ("regex: \\d+ ||| mam 12 kotów", "dopasowania: 1"),

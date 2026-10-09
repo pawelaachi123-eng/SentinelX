@@ -1,0 +1,20 @@
+<Window
+    x:Class="SentinelX.WinUI.UI.GamingOverlayWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <StackPanel Orientation="Horizontal" Spacing="14" Padding="14,10"
+                Background="{StaticResource SxAcrylicBar}">
+        <TextBlock Style="{StaticResource SxBody}">
+            <Run Text="CPU " Foreground="{StaticResource SxTextMuted}" /><Run Text="{x:Bind ViewModel.System.Snapshot.CpuText, Mode=OneWay}" FontWeight="SemiBold" />
+        </TextBlock>
+        <TextBlock Style="{StaticResource SxBody}">
+            <Run Text="RAM " Foreground="{StaticResource SxTextMuted}" /><Run Text="{x:Bind ViewModel.System.Snapshot.RamText, Mode=OneWay}" FontWeight="SemiBold" />
+        </TextBlock>
+        <TextBlock Style="{StaticResource SxBody}">
+            <Run Text="GPU " Foreground="{StaticResource SxTextMuted}" /><Run Text="{x:Bind ViewModel.System.Snapshot.GpuText, Mode=OneWay}" FontWeight="SemiBold" />
+        </TextBlock>
+        <TextBlock Text="{x:Bind ViewModel.System.Snapshot.Game, Mode=OneWay}" FontSize="11"
+                   Foreground="{StaticResource SxWarning}" VerticalAlignment="Center"
+                   Visibility="{x:Bind ViewModel.System.Snapshot.Game, Mode=OneWay, Converter={StaticResource NullToVisibility}}" />
+    </StackPanel>
+</Window>

@@ -1,4 +1,3 @@
-using System.Windows.Threading;
 using SentinelX.Core;
 using SentinelX.Models;
 using SentinelX.Services.Actions;
@@ -12,7 +11,9 @@ public sealed class VoiceService : IVoiceService, IDisposable
     private readonly IActionEngine engine;
     private readonly IUiDispatcher dispatcher;
     private readonly SpeechOutputService speech;
-    private readonly DispatcherTimer timer = new() { Interval = TimeSpan.FromMilliseconds(100) };
+    // UI-agnostic timer (works the same on WPF and WinUI): the callback hops to the UI thread,
+    // so Tick keeps the exact semantics the WPF DispatcherTimer had.
+    private Timer? timer;
     private CancellationTokenSource? starting;
     private DateTime activeUntil;
     private int generation;
@@ -33,7 +34,6 @@ public sealed class VoiceService : IVoiceService, IDisposable
         settings.Changed += ApplySettings;
         engine.Changed += EngineChanged;
         speech.Completed += SpeechCompleted;
-        timer.Tick += Tick;
     }
     private void SetStatus(string status) => dispatcher.Post(() => { if (!disposed) { Status = status; Changed?.Invoke(); } });
     private void ApplySettings() => capture.ApplySettings();
@@ -53,7 +53,7 @@ public sealed class VoiceService : IVoiceService, IDisposable
             source.Token.ThrowIfCancellationRequested();
             if (version != generation || disposed || engine.IsStopped) return;
             capture.SetWakeOnlyMode(true); capture.StartListening(device);
-            State = VoiceState.Standby; timer.Start();
+            State = VoiceState.Standby; StartTimer();
             SetStatus("STANDBY · powiedz Sentinel");
         }
         finally { if (ReferenceEquals(starting, source)) starting = null; }
@@ -76,7 +76,17 @@ public sealed class VoiceService : IVoiceService, IDisposable
             if (command.Length > 0) CommandRecognized?.Invoke(command);
         });
     }
-    private void Tick(object? sender, EventArgs args)
+    private void StartTimer()
+    {
+        StopTimer();
+        timer = new Timer(_ => dispatcher.Post(() => { if (!disposed) Tick(); }), null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+    }
+    private void StopTimer()
+    {
+        try { timer?.Dispose(); } catch { }
+        timer = null;
+    }
+    private void Tick()
     {
         if (!capture.IsListening) { Stop(); return; }
         if (State == VoiceState.Active && DateTime.Now > activeUntil && !engine.IsBusy)
@@ -86,7 +96,7 @@ public sealed class VoiceService : IVoiceService, IDisposable
     }
     public void Stop()
     {
-        generation++; starting?.Cancel(); capture.StopListening(); speech.Stop(); timer.Stop();
+        generation++; starting?.Cancel(); capture.StopListening(); speech.Stop(); StopTimer();
         State = VoiceState.Off; SetStatus("Mikrofon wyłączony");
         MetricsUpdated?.Invoke(new(State, 0, 0, 0, 0, 0, false, ""));
     }
@@ -103,7 +113,7 @@ public sealed class VoiceService : IVoiceService, IDisposable
     {
         if (disposed) return;
         Stop(); disposed = true;
-        timer.Tick -= Tick; capture.SpeechRecognized -= Recognized; capture.StatusChanged -= SetStatus;
+        capture.SpeechRecognized -= Recognized; capture.StatusChanged -= SetStatus;
         capture.ErrorOccurred -= SetStatus; settings.Changed -= ApplySettings; engine.Changed -= EngineChanged;
         speech.Completed -= SpeechCompleted;
     }

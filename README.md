@@ -1,11 +1,15 @@
-# SENTINEL X 0.96 · KUŹNIA — Windows + telefon
+# SENTINEL X 1.0 · BASE — Windows + telefon
 
 Lokalny asystent Windows 10/11 (C# 14, .NET 10, WPF) z aplikacją na telefon. **Nic nie trzeba pilnować:** instalujesz raz, a Sentinel sam startuje z Windows, sam pobiera i naprawia swój silnik AI, sam pilnuje komputera i daje znać na telefon. Poprzedni interfejs jest nadal dostępny przez `--legacy`.
+
+> 🆕 **Nowy interfejs WinUI 3 (podgląd):** katalog `SentinelX.WinUI/` zawiera przebudowaną powłokę — centralny animowany Sentinel Core, panele zamiast zakładek, paletę komend (Ctrl+K), Mini Mode, toasty i nową ikonę. Korzysta z tego samego backendu, co klasyczna aplikacja.
+> Budowanie (Windows, .NET 10 SDK): `dotnet build SentinelX.WinUI/SentinelX.WinUI.csproj -c Release`.
+> Szczegóły architektury: [docs/WINUI_SHELL.md](docs/WINUI_SHELL.md).
 
 ## Szybki start (trzy kroki)
 
 1. **Komputer.** Z [najnowszego wydania](https://github.com/pawelaachi123-eng/SentinelX/releases) pobierz `SentinelX-<wersja>-win-x64-setup.exe` i kliknij go dwa razy (bez uprawnień administratora). Gdy Windows zapyta o zaporę, wybierz **Zezwól** (sieć prywatna) — to potrzebne tylko po to, żeby telefon mógł się połączyć.
-2. **Telefon z Androidem 7+.** Z tego samego wydania pobierz `SentinelX-Phone-<wersja>.apk`, zainstaluj (Android poprosi o zgodę na instalację z nieznanego źródła) i otwórz. Aplikacja **sama znajdzie komputer** w sieci Wi‑Fi. Na komputerze pojawi się okno z kodem — kliknij **Zezwól**. Robisz to raz.
+2. **Telefon z Androidem 7+.** Z tego samego wydania pobierz `SentinelX-<wersja>-android.apk` (albo verification `SentinelX-<wersja>-android-debug.apk`), zainstaluj (Android poprosi o zgodę na instalację z nieznanego źródła) i otwórz. Aplikacja **sama znajdzie komputer** w sieci Wi‑Fi. Na komputerze pojawi się okno z kodem — kliknij **Zezwól**. Robisz to raz.
 3. **iPhone lub dowolna przeglądarka.** W zasobniku Windows wybierz **Telefon…** — zobaczysz kod QR i adres. Zeskanuj aparatem telefonu (przeglądarka ostrzeże o własnym certyfikacie — to normalne, bo działa tylko w Twojej sieci).
 
 Telefon pokazuje **to samo co komputer**: ten sam czat z Sentinelem (polecenia, pytania do AI, odpowiedzi na żywo), stan komputera (CPU, RAM, GPU, dyski, procesy, gra), zadania i przypomnienia, notatki z pamięci oraz alerty. Polecenia z telefonu działają jak polecenia głosowe: potencjalnie ryzykowne akcje (np. zamknięcie programu) można zaproponować z telefonu, ale **zatwierdza się je tylko na komputerze**.
@@ -18,7 +22,7 @@ Telefon pokazuje **to samo co komputer**: ten sam czat z Sentinelem (polecenia, 
 - **Opiekun** sprawdza co minutę, czy łącze z telefonem i silnik AI działają, i uruchamia je ponownie, gdy trzeba. Jedna linia statusu mówi „Wszystko działa samo” albo — uczciwie — co wymaga Twojej uwagi.
 - **Wake-on-LAN:** aplikacja na Androida może wybudzić komputer (o ile karta sieciowa i BIOS na to pozwalają).
 
-Szczegóły techniczne: [docs/PHONE-LINK.md](docs/PHONE-LINK.md) (protokół i bezpieczeństwo), [docs/ENGINE.md](docs/ENGINE.md) (silnik AI), [docs/TOOLS.md](docs/TOOLS.md) (katalog narzędzi), [docs/RELEASE-0.96.md](docs/RELEASE-0.96.md) (notatki wydania i ograniczenia).
+Szczegóły techniczne: [docs/PHONE-LINK.md](docs/PHONE-LINK.md) (protokół i bezpieczeństwo), [docs/ENGINE.md](docs/ENGINE.md) (silnik AI), [docs/TOOLS.md](docs/TOOLS.md) (katalog narzędzi), [docs/RELEASE_NOTES.md](docs/RELEASE_NOTES.md) (notatki wydania i ograniczenia).
 
 ### Plan B: zbuduj instalator u siebie (bez GitHub Actions)
 
@@ -29,6 +33,21 @@ powershell -ExecutionPolicy Bypass -File scripts\build-local.ps1 -Test
 
 Aplikację na Androida najłatwiej zbudować w wydaniu na GitHubie (workflow **Release**); lokalnie potrzebny jest Android Studio — zob. [phone-android/README.md](phone-android/README.md).
 
+
+## Nowe w 1.0 — BASE: niezależny Agent, transakcyjne aktualizacje, odzyskiwanie
+
+- **Niezależny Agent PC** (`SentinelX.exe --agent`): Base, kolejka zadań, heartbeat i diagnostyka bez otwartego okna; uwierzytelniony kanał do UI, jeden pisarz kolejki, dobrowolny autostart (Ustawienia → Ogólne). Szczegóły: [docs/AGENT.md](docs/AGENT.md).
+- **Aktualizacje jak transakcja:** pobieranie HTTPS z resume, weryfikacje i podpis, bezpieczny punkt, kopia stanu, smoke-gate, realne potwierdzenie zdrowia i rollback. Bez generowanego manifestu (decyzja użytkownika).
+- **Odzyskiwanie po awarii:** czytelny ekran naprawy z kopiami bezpieczeństwa; licznik obejmuje też zwykłe starty.
+- **Diagnostyka z próbami:** router, DHCP, relay, DPAPI, kolejka, Base, logi; podgląd napraw i redagowany eksport.
+- **Android rozmawia z Base bezpośrednio** (bez PC): status, urządzenia, sceny, WoL, zadania i timery; APK verification to jawny `*-android-debug.apk`.
+- Macierz dowodów: [docs/VERIFICATION.md](docs/VERIFICATION.md); zewnętrzne blokery stabilności: [BLOCKERS.md](BLOCKERS.md).
+
+## Nowe w 0.99 — RDZEŃ: nowa powłoka WinUI 3 (podgląd)
+
+- **Nowy interfejs WinUI 3** (`SentinelX.WinUI/`, szczegóły w [docs/WINUI_SHELL.md](docs/WINUI_SHELL.md)): centralny animowany **Sentinel Core** (9 stanów), pasek komend z podpowiedziami i historią, **panele zamiast zakładek** (CPU/GPU/RAM/NET/AI/WATCH), Ustawienia w 6 sekcjach, paleta **Ctrl+K**, rozwijana Historia, **Mini Mode**, toasty i nowa ikona Rdzenia.
+- **Ten sam backend:** głos, wake word, silnik AI, Ollama API, Watch, telemetria, tray, autostart, logi, pamięć i przypomnienia działają w obu powłokach bez zmian.
+- Klasyczny interfejs WPF pozostaje głównym wydaniem do czasu weryfikacji nowej powłoki na Windows.
 
 ## Nowe w 0.96 — KUŹNIA: podgląd decyzji, szukanie w zadaniach i 11 nowych narzędzi
 

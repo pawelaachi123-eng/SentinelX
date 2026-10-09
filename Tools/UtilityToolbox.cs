@@ -818,7 +818,7 @@ public static partial class UtilityToolbox
     {
         var letters = text.Where(char.IsLetterOrDigit).Select(char.ToLowerInvariant).ToArray();
         if (letters.Length == 0) return "Podaj tekst z literami lub cyframi.";
-        bool isPalindrome = letters.SequenceEqual(letters.Reverse());
+        bool isPalindrome = letters.SequenceEqual(Enumerable.Reverse(letters));
         return "„" + text.Trim() + "” " + (isPalindrome ? "jest palindromem." : "nie jest palindromem.") + " (sprawdzam litery i cyfry, bez spacji i znaków)";
     }
 

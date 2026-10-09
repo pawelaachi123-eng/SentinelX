@@ -1,0 +1,24 @@
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" x:Class="SentinelX.Views.RecoveryWindow" Title="Sentinel X — odzyskiwanie" Width="640" Height="560" MinWidth="520" MinHeight="480" WindowStartupLocation="CenterScreen" Background="{DynamicResource SxBackground}" FontFamily="{StaticResource SxFontFamily}" ThemeMode="Dark" ResizeMode="CanResize">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="24">
+        <StackPanel>
+            <TextBlock Text="Sentinel nie zamknął się poprawnie" Style="{StaticResource SxHeading}"/>
+            <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" Style="{StaticResource SxCaption}" Margin="0,8,0,0"/>
+            <TextBlock Text="Co wykryto" Style="{StaticResource SxSectionTitle}" Margin="0,16,0,4"/>
+            <TextBlock Text="{Binding Details}" TextWrapping="Wrap" Style="{StaticResource SxCaption}"/>
+            <TextBlock Text="{Binding LastErrorText}" TextWrapping="Wrap" Style="{StaticResource SxCaption}" Margin="0,8,0,0"/>
+            <TextBlock Text="Naprawa" Style="{StaticResource SxSectionTitle}" Margin="0,16,0,4"/>
+            <WrapPanel>
+                <Button Content="Uruchom normalnie" Style="{StaticResource SxPrimaryButton}" Margin="0,4,8,4" Command="{Binding ContinueCommand}"/>
+                <Button Content="Wycofaj aktualizację" Style="{StaticResource SxGhostButton}" Margin="0,4,8,4" Command="{Binding RollbackCommand}"/>
+                <Button Content="Napraw katalogi" Style="{StaticResource SxGhostButton}" Margin="0,4,8,4" Command="{Binding RepairDirsCommand}"/>
+                <Button Content="Napraw autostart" Style="{StaticResource SxGhostButton}" Margin="0,4,8,4" Command="{Binding RepairAutostartCommand}"/>
+                <Button Content="Resetuj ustawienia" Style="{StaticResource SxDangerButton}" Margin="0,4,8,4" Command="{Binding ResetSettingsCommand}"/>
+                <Button Content="Archiwizuj uszkodzone parowanie" Style="{StaticResource SxGhostButton}" Margin="0,4,8,4" Command="{Binding BackupIdentityCommand}"/>
+                <Button Content="Otwórz logi" Style="{StaticResource SxGhostButton}" Margin="0,4,8,4" Command="{Binding OpenLogsCommand}"/>
+                <Button Content="Zamknij" Style="{StaticResource SxGhostButton}" Margin="0,4,8,4" Command="{Binding CloseCommand}"/>
+            </WrapPanel>
+            <TextBlock Text="Wynik" Style="{StaticResource SxSectionTitle}" Margin="0,16,0,4"/>
+            <TextBlock Text="{Binding Result}" TextWrapping="Wrap" Style="{StaticResource SxCaption}"/>
+        </StackPanel>
+    </ScrollViewer>
+</Window>

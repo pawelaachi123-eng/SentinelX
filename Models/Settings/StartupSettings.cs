@@ -8,6 +8,9 @@ public sealed class StartupSettings
     /// <summary>ON by default since 0.94 ("autopilot"): Sentinel starts quietly with Windows so the phone can always reach it.
     /// Turn it off in Settings → Ogólne.</summary>
     public bool StartWithWindows { get; set; } = true;
+    /// <summary>Independent headless Agent (Base + queue + heartbeat without an open window).
+    /// Opt-in: the user enables it in Settings → Ogólne; never turned on silently.</summary>
+    public bool AgentAutostart { get; set; }
     /// <summary>Default ON since 0.91 (explicit user decision): Sentinel listens right after launch.
     /// The indicator in the Centrum header shows the microphone state at all times and one click stops it.
     /// Existing settings files keep whatever the user already chose; new installs start listening.</summary>

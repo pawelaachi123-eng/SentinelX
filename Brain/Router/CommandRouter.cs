@@ -4,6 +4,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using SentinelX.Core;
+using SentinelX.Services.Info;
 using SentinelX.Services.Intent;
 
 namespace SentinelX;
@@ -46,8 +47,12 @@ public sealed class CommandRouter
         string text = Normalize(command).TrimEnd('?', '!', '.', ' ');
         string? snapshotResponse = await TryHandleSnapshotCommandAsync(command.Trim(), text, cancellationToken);
         if (snapshotResponse != null) return snapshotResponse;
+        string? conversionResponse = await TryHandleCurrencyConversionAsync(command.Trim().TrimEnd('?', '!', '.', ' '), cancellationToken);
+        if (conversionResponse != null) return conversionResponse;
         string? utilityResponse = UtilityToolbox.Process(command.Trim(), text);
         if (utilityResponse != null) return utilityResponse;
+        string? infoResponse = await TryHandleInfoCommandAsync(command.Trim().TrimEnd('?', '!', '.', ' '), cancellationToken);
+        if (infoResponse != null) return infoResponse;
         string? metaResponse = TryHandleMetaCommand(text);
         if (metaResponse != null) return metaResponse;
         string? workspaceResponse = TryHandleWorkspaceCommand(command.Trim(), text);
@@ -131,7 +136,10 @@ public sealed class CommandRouter
         if (text is "wersja" or "jaka wersja" or "wersja sentinel" or "wersja aplikacji")
             return "Sentinel X " + AppConstants.Version + " · " + systemInfo.GetWindowsVersion() + " · .NET " + Environment.Version;
         if (text is "co nowego" or "lista zmian" or "changelog" or "co sie zmienilo")
-            return "CO NOWEGO W 0.96 · KUŹNIA\n" +
+            return "CO NOWEGO W 0.99 · RDZEŃ\n" +
+                "· Nowa powłoka WinUI 3 w podglądzie: centralny animowany Rdzeń, panele zamiast zakładek, paleta komend (Ctrl+K), Mini Mode i nowoczesne powiadomienia — ten sam backend, co klasyczna aplikacja.\n" +
+                "· Klasyczny wygląd WPF działa bez zmian; przełącznik powłoki w Ustawieniach.\n" +
+                "\nCO NOWEGO W 0.96 · KUŹNIA\n" +
                 "· Podgląd decyzji: „jak to rozumiem: <polecenie>” pokazuje, co Sentinel by zrobił (literówka, narzędzie, pytanie, model AI) — niczego przy tym nie wykonuje ani nie zapisuje.\n" +
                 "· „szukaj w zadaniach: fraza” przeszukuje zadania (także zrobione) i przypomnienia; wcześniej przesłaniała je wyszukiwarka internetowa, a przypomnień nie obejmowało.\n" +
                 "· 11 nowych narzędzi w kategorii „Kuźnia 0.96”: nazwy zmiennych, kodowanie URL, czas Unix, najczęstsze słowa, rata kredytu, porównanie wersji, numerowanie i odwracanie wierszy, poprawa odstępów.\n" +
@@ -152,15 +160,7 @@ public sealed class CommandRouter
                 "\nCO NOWEGO W 0.92 · BEZPIECZNE PLIKI\n" +
                 "· Bezpieczne pliki: „duplikaty: folder” znajduje identyczne treści (SHA-256), „porzadki: folder” pokazuje, co zajmuje miejsce — oba tylko do odczytu.\n" +
                 "· „usuń do kosza: ścieżka” przenosi JEDEN plik do Kosza i dopiero po Twoim „potwierdz” — nic bez zgody.\n" +
-                "· Głos: polecenie działa tylko, gdy w zdaniu pada „sentinel” (w dowolnym miejscu); bez niego Sentinel tylko nasłuchuje.\n" +
-                "\nCO NOWEGO W 0.91 · CENTRUM\n" +
-                "· Jedna zakładka CENTRUM zamiast wielu kart — rozmowa plus ikony: 📓 zadania, 🕘 historia, 🎤 głos, 🖥 system, 🎮 gry, ✨ AI, ⚡ akcje, 🩺 diagnostyka.\n" +
-                "· Paleta // w polu wpisywania: wpisz „//”, a Tab wybiera polecenie.\n" +
-                "· Głos domyślnie nasłuchuje od startu (możesz wyłączyć jednym kliknięciem).\n" +
-                "· Gdy nie jestem pewien polecenia — pytam zamiast zgadywać.\n" +
-                "· Nowe narzędzia offline: PESEL, NIP, IBAN, morse, binarnie, hex, wielkanoc, dni robocze, świat, lotto i inne — wpisz „pomoc”.\n" +
-                "· „zrob zadanie: treść” dodaje zadanie wprost do zakładki 📓.\n" +
-                "· „lekcje” pokazuje, czego nauczyłem się z Twoich poprawek; „samokontrola” sprawdza moje pliki; „propozycje” podpowiada porządki — nic bez Twojej zgody.";
+                "· Głos: polecenie działa tylko, gdy w zdaniu pada „sentinel” (w dowolnym miejscu); bez niego Sentinel tylko nasłuchuje.";
         if (text is "lekcje" or "czego sie nauczyles" or "pokaz lekcje" or "uczenie")
             return journal?.Report() ?? "Dziennik lekcji nie jest dostępny w tym trybie.";
         if (text is "samokontrola" or "sprawdz sie" or "sprawdz sentinel" or "test sentinel")
@@ -630,5 +630,59 @@ public sealed class CommandRouter
     private static string Truncate(string text, int max) => text.Length <= max ? text : text[..(max - 1)] + "…";
     private string StorageResult(string success) => memory.LastStorageError == null ? success : memory.LastStorageError;
     internal static string Number(double value, string unit, int decimals = 0) => double.IsFinite(value) && value >= 0 ? value.ToString("F" + decimals, CultureInfo.GetCultureInfo("pl-PL")) + (unit == "%" ? "" : " ") + unit : "odczyt niedostępny";
+    // Polish letters are optional in the patterns, so "pokaż pogodę" and "pokaz pogode" both match.
+    private static readonly Regex WeatherCommand = new(
+        @"^(?:poka[żz] |sprawd[źz] |jaka jest )?pogod[aęy](?:\s+(?:w|dla)\s+(.+))?$",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+    private static readonly Regex CurrencyCommand = new(
+        @"^(?:kursy walut|kursy nbp|kurs walut|waluty|kurs\s+([a-z]{3}))$",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
+    private static readonly Regex WeekCommand = new(
+        @"^(?:poka[żz] |sprawd[źz] )?(?:prognoz[aęy] (?:na )?(?:tydzie[ńn]|7 dni)|pogod[aęy] (?:na )?(?:tydzie[ńn]|7 dni))(?:\s+(?:w|dla)\s+(.+))?$",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+    private static readonly Regex ConvertCommand = new(
+        @"^przelicz (\d+(?:[.,]\d{1,4})?) ([a-z]{3})(?: na ([a-z]{3}))?$",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
+    /// <summary>„przelicz 100 eur” or „przelicz 100 eur na usd”: only for known currency codes, so unit conversions
+    /// such as „przelicz 5 km na mile” keep going to the unit converter.</summary>
+    private static async Task<string?> TryHandleCurrencyConversionAsync(string command, CancellationToken cancellationToken)
+    {
+        Match match = ConvertCommand.Match(command);
+        if (!match.Success) return null;
+        string from = match.Groups[2].Value.ToUpperInvariant();
+        string to = match.Groups[3].Success ? match.Groups[3].Value.ToUpperInvariant() : "PLN";
+        if (!InfoParsers.KnownCurrencies.Contains(from) || !InfoParsers.KnownCurrencies.Contains(to)) return null;
+        string amountText = match.Groups[1].Value.Replace(',', '.');
+        if (!decimal.TryParse(amountText, NumberStyles.Number, CultureInfo.InvariantCulture, out decimal amount)) return null;
+        return await InfoService.ConvertCurrencyAsync(amount, from, to, cancellationToken);
+    }
+
+    /// <summary>Weather and NBP currency answers. Only these two read-only public services are called;
+    /// everything else falls through to the existing routing.</summary>
+    private static async Task<string?> TryHandleInfoCommandAsync(string command, CancellationToken cancellationToken)
+    {
+        Match week = WeekCommand.Match(command);
+        if (week.Success)
+        {
+            string weekCity = week.Groups[1].Success ? week.Groups[1].Value.Trim() : InfoService.DefaultCity;
+            return await InfoService.GetWeekAsync(weekCity, cancellationToken);
+        }
+        Match weather = WeatherCommand.Match(command);
+        if (weather.Success)
+        {
+            string city = weather.Groups[1].Success ? weather.Groups[1].Value.Trim() : InfoService.DefaultCity;
+            return await InfoService.GetWeatherAsync(city, DateTime.Now, cancellationToken);
+        }
+        Match currency = CurrencyCommand.Match(command);
+        if (currency.Success)
+        {
+            string? code = currency.Groups[1].Success ? currency.Groups[1].Value : null;
+            return await InfoService.GetCurrencyRatesAsync(code, cancellationToken);
+        }
+        return null;
+    }
+
     internal static string Normalize(string text) => ConversationMemoryService.Normalize(text);
 }

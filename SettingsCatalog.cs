@@ -75,6 +75,7 @@ public static class SettingsCatalog
         Toggle("Wygląd", "Animacje", "Wyłączane także automatycznie podczas gry.", () => S().Ui.AnimationsEnabled, x => S().Ui.AnimationsEnabled = x);
         Toggle("Ogólne", "Zamknij do zasobnika", "Przycisk X chowa okno, Wyjdź w zasobniku kończy aplikację.", () => S().Ui.CloseToTray, x => S().Ui.CloseToTray = x);
         Toggle("Ogólne", "Start z Windows", "Autostart tylko dla bieżącego użytkownika.", () => S().Startup.StartWithWindows, x => S().Startup.StartWithWindows = x);
+        Toggle("Ogólne", "Agent w tle (bez okna)", "Niezależny proces: Base, kolejka i heartbeat działają bez otwartego UI. Działa po zalogowaniu.", () => S().Startup.AgentAutostart, x => S().Startup.AgentAutostart = x);
         Toggle("Ogólne", "Uruchom zminimalizowany", "Przy starcie schowaj okno do zasobnika.", () => S().Startup.StartMinimized, x => S().Startup.StartMinimized = x);
         Toggle("Ogólne", "Głos przy uruchomieniu", "Domyślnie WŁĄCZONE (0.91): Sentinel nasłuchuje od startu — wskaźnik 🎤 w Centrum pokazuje stan, jeden klik wyłącza. Wymaga już pobranych modeli i dostępnego mikrofonu.", () => S().Startup.StartVoiceOnLaunch, x => S().Startup.StartVoiceOnLaunch = x);
         Toggle("Głos", "Odpowiedzi głosowe", "Synteza lokalna Windows dla poleceń głosowych.", () => S().Voice.SpeakResponses, x => S().Voice.SpeakResponses = x);

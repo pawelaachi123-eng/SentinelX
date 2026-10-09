@@ -1,0 +1,107 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    SENTINEL X · WinUI 3 shell (Windows App SDK, unpackaged).
+    The backend (Services, Brain, Models, Tools, root services) is shared with the
+    classic WPF project via source linking below — no backend rewrite, one logic.
+    WPF-only files (Views, Themes, window code-behind, WPF helpers) are excluded
+    and replaced by WinUI counterparts inside this project.
+  -->
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows10.0.22621.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <RootNamespace>SentinelX.WinUI</RootNamespace>
+    <AssemblyName>SentinelX</AssemblyName>
+    <Version>0.99.0</Version>
+    <Description>Sentinel X — lokalny asystent i diagnostyka Windows (WinUI 3)</Description>
+
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>14.0</LangVersion>
+    <PlatformTarget>x64</PlatformTarget>
+    <Prefer32Bit>false</Prefer32Bit>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+
+    <!-- WinUI 3 / Windows App SDK, unpackaged (portable + Inno Setup, like the WPF build). -->
+    <UseWinUI>true</UseWinUI>
+    <EnableMsixTooling>true</EnableMsixTooling>
+    <WindowsPackageType>None</WindowsPackageType>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\sentinel.ico</ApplicationIcon>
+    <StartupObject>SentinelX.WinUI.AppBootstrap</StartupObject>
+    <NoWarn>$(NoWarn);WFO1001</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.5.240627000" />
+    <PackageReference Include="NAudio" Version="2.2.1" />
+    <PackageReference Include="org.k2fsa.sherpa.onnx" Version="1.13.5" />
+    <PackageReference Include="QRCoder" Version="1.6.0" />
+    <PackageReference Include="SharpCompress" Version="0.50.4" />
+    <PackageReference Include="System.Diagnostics.PerformanceCounter" Version="8.0.0" />
+    <PackageReference Include="Whisper.net" Version="1.9.1" />
+    <PackageReference Include="Whisper.net.Runtime" Version="1.9.1" />
+  </ItemGroup>
+
+  <!-- Shared backend sources from the repository root (same logic as the WPF build). -->
+  <ItemGroup>
+    <Compile Include="..\**\*.cs"
+             Exclude="..\obj\**\*.cs;..\bin\**\*.cs;
+                      ..\SentinelX.WinUI\**\*.cs;
+                      ..\App.xaml.cs;
+                      ..\AssemblyInfo.cs;
+                      ..\Converters\**\*.cs;
+                      ..\Core\ServiceLocator.cs;
+                      ..\Core\IUiDispatcher.cs;
+                      ..\GlobalHotkeyService.cs;
+                      ..\MainWindow.Commands.cs;
+                      ..\MainWindow.Settings.cs;
+                      ..\MainWindow.Voice.cs;
+                      ..\MainWindow.xaml.cs;
+                      ..\MetricOverlay.cs;
+                      ..\Services\Desktop\**\*.cs;
+                      ..\SettingsEditorView.cs;
+                      ..\SpeechOutputService.cs;
+                      ..\ThemeService.cs;
+                      ..\TrayService.cs;
+                      ..\Utilities\**\*.cs;
+                      ..\Views\**\*.cs;
+                      ..\Testing\**\*.cs;
+                      ..\tests\**\*.cs;
+                      ..\ViewModels\ActionsViewModel.cs;
+                      ..\ViewModels\CommandCenterViewModel.cs;
+                      ..\ViewModels\DiagnosticViewModel.cs;
+                      ..\ViewModels\HistoryViewModel.cs;
+                      ..\ViewModels\MainViewModel.cs;
+                      ..\ViewModels\MemoryViewModel.cs;
+                      ..\ViewModels\ProjectViewModel.cs;
+                      ..\ViewModels\ReadinessViewModel.cs;
+                      ..\ViewModels\SettingsViewModel.cs;
+                      ..\ViewModels\TaskViewModel.cs;
+                      ..\ViewModels\ToolsViewModel.cs"
+             Link="Shared\%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The phone UI ships inside the exe and is served by the PC itself (Services/Link). -->
+    <EmbeddedResource Include="..\Phone\web\*" LogicalName="phone/%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- CI drops llama-server.exe and its DLLs into Engine/llama before publishing (scripts/fetch-llama.ps1). -->
+    <Content Include="..\Engine\llama\**\*" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest"
+             Link="Engine\llama\%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Assets\sentinel.ico" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\AppIcon.png" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\TrayIcon.png" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

@@ -1,38 +1,94 @@
-name: Build Windows app
-
+name: Build Windows app (manual)
 on:
-  push:
-  pull_request:
-
+  workflow_dispatch:
+permissions:
+  contents: read
 jobs:
   build:
+    uses: ./.github/workflows/ci-windows.yml
+  winui:
+    # Build przez pełny MSBuild (in-proc XAML compiler); `dotnet build` wymusza milczący XamlCompiler.exe (microsoft-ui-xaml#8871).
     runs-on: windows-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up .NET 10
+      - name: Set up .NET (10 SDK + 8 runtime for smoke)
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '10.0.x'
+          dotnet-version: |
+            10.0.x
+            8.0.x
 
-      - name: Restore and build
+      - name: Set up MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Restore and build WinUI shell
         shell: pwsh
         run: |
-          $solution = Get-ChildItem -Path . -File -Filter *.sln | Select-Object -First 1
-
-          if ($solution) {
-            $target = $solution.FullName
-          } else {
-            $projects = @(Get-ChildItem -Path . -File -Filter *.csproj)
-
-            if ($projects.Count -ne 1) {
-              throw "Nie znaleziono jednej solucji .sln ani jednego projektu .csproj w głównym katalogu repozytorium."
+          # NOTE: Emit-Errors must be invoked as a bare statement (never in an expression),
+          # otherwise its Write-Output is captured and the runner never sees the ::error lines.
+          $ws = ($env:GITHUB_WORKSPACE -replace '\\', '/') + '/'
+          $script:errCount = 0
+          function Emit-Errors([string]$log) {
+            $withLoc = @(Select-String -Path $log -Pattern '^(.+?)\((\d+)(?:,(\d+))?\):\s*(?:[A-Za-z]+\s+)?error\s*(?:([A-Z]+\d+):)?\s*(.*)$')
+            $withLoc = @($withLoc | Sort-Object Line -Unique)
+            foreach ($m in ($withLoc | Select-Object -First 5)) {
+              $g = $m.Matches[0].Groups
+              $file = ($g[1].Value -replace '\\', '/') -replace [regex]::Escape($ws), ''
+              $msg = ((($g[4].Value + ' ' + $g[5].Value) -replace '::', ';').Trim())
+              if ($g[3].Value) { Write-Output "::error file=$file,line=$($g[2].Value),col=$($g[3].Value)::$msg" }
+              else { Write-Output "::error file=$file,line=$($g[2].Value)::$msg" }
+              $script:errCount++
             }
-
-            $target = $projects[0].FullName
+            $bare = @((Select-String -Path $log -Pattern ':\s*(?:[A-Za-z]+\s+)?error\s*:|:\s*(?:[A-Za-z]+\s+)?error\s+[A-Z]+\d+:' | Where-Object { $_.Line -notmatch '\(\d+,\d*\):\s*error' } | Select-Object -First 10))
+            $bare = @($bare | Sort-Object Line -Unique)
+            foreach ($m in ($bare | Select-Object -First 2)) {
+              Write-Output ('::error title=Restore/build failure::' + (($m.Line -replace '::', ';').Trim()))
+              $script:errCount++
+            }
+            $allErr = @($withLoc + $bare | ForEach-Object { $_.Line.Trim() } | Sort-Object -Unique | Select-Object -First 40)
+            if ($allErr.Count -gt 0) {
+              $eb = ((($allErr | ForEach-Object { (($_ -replace "`r`n", ' ') -replace "`n", ' ') }) -join "%0A") -replace "::", ";")
+              Write-Output ("::error title=WinUI all errors (" + $log + ")::" + $eb)
+            }
           }
+          dotnet restore SentinelX.WinUI/SentinelX.WinUI.csproj --nologo -v minimal 2>&1 | Tee-Object -FilePath restore-winui.log
+          $rc = $LASTEXITCODE
+          # Full-framework MSBuild runs the XAML compiler IN-PROC (CompileXaml task).
+          # `dotnet build` forces the out-of-proc net472 XamlCompiler.exe, which dies with a
+          # silent exit code 1 on this project (microsoft-ui-xaml#8871) and hides all diagnostics.
+          msbuild SentinelX.WinUI/SentinelX.WinUI.csproj /t:Build /p:Configuration=Release /p:Platform=x64 /v:minimal /nologo 2>&1 | Tee-Object -FilePath build-winui.log
+          $bc = $LASTEXITCODE
+          if ($rc -ne 0) { Emit-Errors 'restore-winui.log' }
+          if ($bc -ne 0) { Emit-Errors 'build-winui.log' }
+          if ($bc -ne 0) {
+            $tail = ((Get-Content build-winui.log -Tail 25) -join '%0A' -replace '::', ';')
+            Write-Output "::error title=WinUI build failed (exit $bc) - raw tail::$tail"
+          }
+          if ($rc -ne 0) { exit $rc } else { exit $bc }
 
-          dotnet restore $target
-          dotnet build $target --configuration Release --no-restore
+      - name: Upload WinUI build logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: winui-logs
+          path: |
+            restore-winui.log
+            build-winui.log
+          if-no-files-found: warn
+          retention-days: 3
+
+      - name: WinUI smoke test (headless)
+        shell: pwsh
+        run: |
+          $exe = 'SentinelX.WinUI/bin/Release/net8.0-windows10.0.22621.0/win-x64/SentinelX.exe'
+          if (-not (Test-Path $exe)) { $exe = Get-ChildItem -Path SentinelX.WinUI/bin/Release -Recurse -Filter SentinelX.exe | Select-Object -First 1 -ExpandProperty FullName }
+          if (-not $exe) { throw 'Nie znaleziono zbudowanego SentinelX.exe (WinUI).' }
+          $output = Join-Path $PWD 'test-results/winui'
+          $p = Start-Process $exe -ArgumentList '--ui-smoke', $output -PassThru
+          if (-not $p.WaitForExit(240000)) { $p.Kill(); throw 'Test WinUI przekroczył czas.' }
+          if (Test-Path (Join-Path $output 'SMOKE.txt')) { Get-Content (Join-Path $output 'SMOKE.txt') }
+          if ($p.ExitCode -ne 0) { throw "Test WinUI nie przeszedł (kod $($p.ExitCode)); szczegóły: $output" }
+          Write-Output 'Test WinUI: OK'

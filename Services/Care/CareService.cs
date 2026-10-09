@@ -17,6 +17,7 @@ public sealed class CareService : IDisposable
     private readonly IEngineService engine;
     private readonly AlertFeed alerts;
     private readonly TaskService tasks;
+    private readonly Services.Base.OllamaSupervisor? ollama;
     private readonly object gate = new();
     private readonly SemaphoreSlim tick = new(1, 1);
     private Timer? timer;
@@ -31,13 +32,13 @@ public sealed class CareService : IDisposable
     private DateTime lastEngineAlert = DateTime.MinValue;
     private DateTime lastDiskAlert = DateTime.MinValue;
 
-    public CareService(ISettingsService settings, LinkService link, IEngineService engine, AlertFeed alerts, TaskService tasks)
+    public CareService(ISettingsService settings, LinkService link, IEngineService engine, AlertFeed alerts, TaskService tasks, Services.Base.OllamaSupervisor? ollama = null)
     {
         this.settings = settings;
         this.link = link;
         this.engine = engine;
         this.alerts = alerts;
-        this.tasks = tasks;
+        this.tasks = tasks; this.ollama = ollama;
     }
 
     public event Action? Changed;
@@ -104,6 +105,7 @@ public sealed class CareService : IDisposable
         try
         {
             await EnsureLinkAsync().ConfigureAwait(false);
+            if (settings.Current.Ai.EnsureOllamaServer && ollama != null) await ollama.EnsureAsync(CancellationToken.None).ConfigureAwait(false);
             engine.Start();
             CheckEngine();
             CheckDisk();

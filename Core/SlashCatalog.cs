@@ -35,7 +35,7 @@ public static class SlashCatalog
         new("propozycje", "Propozycje", "co warto zrobić — decyzja należy do Ciebie", SlashKind.Command, "propozycje"),
         new("lekcje", "Lekcje", "czego nauczyłem się z Twoich poprawek", SlashKind.Command, "lekcje"),
         new("wersja", "Wersja", "wersja aplikacji i systemu", SlashKind.Command, "wersja"),
-        new("nowego", "Co nowego", "skrócona lista zmian 0.96", SlashKind.Command, "co nowego"),
+        new("nowego", "Co nowego", "skrócona lista zmian 0.99", SlashKind.Command, "co nowego"),
         // everyday helpers
         new("pomoc", "Pomoc", "pełna lista poleceń", SlashKind.Command, "pomoc"),
         new("skroty", "Skróty", "tabelka skrótów klawiszowych", SlashKind.Command, "skróty"),

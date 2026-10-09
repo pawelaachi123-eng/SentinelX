@@ -1,243 +1,71 @@
-name: Release (EXE installer, portable ZIP, phone APK, checksums)
-
-# Publikacja plików na GitHubie — TYLKO na żądanie (decyzja użytkownika 2026-09-25: wydanie „rolling” przy każdym pushu wyłączone).
-#   - push tagu v*.*.*   → wydanie milowe (np. v0.94.0) z pełną walidacją.
-#   - workflow_dispatch  → ręczne wydanie pod wskazanym tagiem (puste pole = v<wersja z SENTINEL-X.csproj>).
-#   - push na gałąź arena/** z napisem [release] w komunikacie commita → wydanie przedpremierowe v<wersja>
-#     (dla agentów i skryptów, które mogą pushować, ale nie mogą uruchamiać workflowów ręcznie).
-#     Push bez tego napisu nie robi nic — zadania są pomijane i nie zużywają minut.
-# Jedno wydanie zawiera komplet: instalator EXE, wersję przenośną ZIP, aplikację na Androida (APK) i sumy kontrolne.
-# Zadania Windows (EXE) i Linux (APK) są niezależne i dokładają pliki do tego samego wydania (nic nie jest kasowane).
-# Nic nie jest publikowane bez zielonych testów: architektura, kompilacja, smoke UI, testy silnika AI i łącza z telefonem, regresja.
+name: Release gated EXE and APK
 on:
   push:
-    tags: ['v*.*.*']
-    branches: ['arena/**']
+    tags: ['v1.0.0']
   workflow_dispatch:
     inputs:
-      tag:
-        description: 'Tag wydania (puste = v<wersja z SENTINEL-X.csproj>)'
-        required: false
-        default: ''
-      prerelease:
-        description: 'Wydanie przedpremierowe (nie zabiera etykiety „Latest” poprzedniej wersji)'
+      production:
+        description: 'Production APK with external signing secrets'
         type: boolean
-        required: false
-        default: true
-
+        default: false
+      hardware_verified:
+        description: 'Real ESP32, Windows login/tray and Android hardware tests completed'
+        type: boolean
+        default: false
 permissions:
-  contents: write
-
+  contents: read
 concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
-
 jobs:
+  security:
+    uses: ./.github/workflows/security-check.yml
   windows:
-    if: github.event_name != 'push' || startsWith(github.ref, 'refs/tags/') || contains(github.event.head_commit.message, '[release]')
-    runs-on: windows-latest
-    timeout-minutes: 45
-    steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-dotnet@v5
-        with:
-          dotnet-version: 10.0.x
-      - name: Portable architecture checks
-        run: python scripts/check-architecture.py
-      - name: Bundled AI engine (llama.cpp - pinned, SHA-256 verified, started with --version)
-        shell: pwsh
-        run: ./scripts/fetch-llama.ps1
-      - name: Restore
-        shell: pwsh
-        run: |
-          dotnet restore SENTINEL-X.csproj -r win-x64 2>&1 | Tee-Object restore.log
-          if ($LASTEXITCODE -ne 0) {
-            $detail = (Get-Content restore.log -Raw).Replace("`r", '').Replace("`n", '%0A')
-            Write-Output "::error::$detail"
-            exit 1
-          }
-      - name: Publish portable (self-contained win-x64) - also the compile check
-        shell: pwsh
-        run: |
-          dotnet publish SENTINEL-X.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=false --no-restore -o bin/portable 2>&1 | Tee-Object publish.log
-          if ($LASTEXITCODE -ne 0) {
-            $errors = Get-Content publish.log | Where-Object { $_ -match ' error ' } | Select-Object -Unique -First 40
-            $detail = ($errors -join "`n").Replace("`r", '').Replace("`n", '%0A')
-            Write-Output "::error title=Kompilacja nie powiodła się::$detail"
-            exit 1
-          }
-          if (-not (Test-Path 'bin/portable/coreclr.dll')) { throw 'Missing self-contained .NET runtime' }
-          if (-not (Get-ChildItem 'bin/portable/Engine' -Recurse -Filter 'llama-server.exe' -ErrorAction SilentlyContinue)) { throw 'The AI engine was not bundled into the package' }
-      - name: MVVM UI smoke + engine and phone-link regression (on the exact files that ship)
-        shell: pwsh
-        run: |
-          $exe = Resolve-Path 'bin/portable/SentinelX.exe'
-          $output = Join-Path $PWD 'test-results/ui'
-          $p = Start-Process $exe -ArgumentList '--ui-smoke', $output -PassThru
-          if (-not $p.WaitForExit(240000)) { $p.Kill(); throw 'UI smoke timeout' }
-          if ($p.ExitCode -ne 0 -or -not (Test-Path "$output/ui-smoke.txt")) {
-            Get-ChildItem $output -Recurse -Include FAILED.txt,errors.log,bindings.log | ForEach-Object {
-              $detail = (Get-Content $_.FullName -Raw).Replace("`r", '').Replace("`n", '%0A')
-              Write-Output "::error::$detail"
-            }
-            throw "UI smoke failed: exit $($p.ExitCode)"
-          }
-          Get-Content "$output/ui-smoke.txt"
-      - name: Existing regression suite
-        shell: pwsh
-        run: |
-          $exe = Resolve-Path 'bin/portable/SentinelX.exe'
-          $output = Join-Path $PWD 'test-results/regression'
-          $p = Start-Process $exe -ArgumentList '--self-test', $output -PassThru
-          if (-not $p.WaitForExit(300000)) { $p.Kill(); throw 'Regression timeout' }
-          if ($p.ExitCode -ne 0) {
-            Get-ChildItem $output -Recurse -Include FAILED.txt,errors.log | ForEach-Object {
-              $detail = (Get-Content $_.FullName -Raw).Replace("`r", '').Replace("`n", '%0A')
-              Write-Output "::error::$detail"
-            }
-            throw "Regression failed: exit $($p.ExitCode)"
-          }
-          Get-ChildItem $output
-      - name: Build per-user EXE installer
-        shell: pwsh
-        run: |
-          $compiler = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
-          if (-not (Test-Path $compiler)) { throw 'Inno Setup compiler missing from Windows runner image' }
-          [xml]$project = Get-Content SENTINEL-X.csproj
-          $version = $project.Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
-          & $compiler "/DAppVersion=$version" 'installer/SentinelX.iss'
-          if ($LASTEXITCODE -ne 0) { throw 'Installer compilation failed' }
-      - name: Assemble release assets
-        shell: pwsh
-        run: |
-          [xml]$project = Get-Content SENTINEL-X.csproj
-          $version = $project.Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
-          $commit = (git rev-parse --short HEAD)
-          New-Item -ItemType Directory -Force dist | Out-Null
-          Compress-Archive -Path 'bin/portable/*' -DestinationPath "dist/SentinelX-$version-win-x64-portable.zip" -Force
-          $installer = Get-ChildItem 'bin/installer/*.exe' | Select-Object -First 1
-          Copy-Item $installer.FullName "dist/SentinelX-$version-win-x64-setup.exe"
-          @(
-            "SENTINEL X $version",
-            "commit: $commit",
-            "runtime: .NET 10 Desktop (wbudowany w paczce)",
-            "platforma: Windows 10/11 x64",
-            "podpis: BRAK — pliki nie są podpisane cyfrowo, SmartScreen pokaże ostrzeżenie",
-            "dane: wszystko zostaje lokalnie w %LocalAppData%\SentinelX (rozmowy, wspomnienia, raporty, archiwa)",
-            "AI: wbudowany silnik (llama.cpp) — modele Qwen3 pobierają się same, bez Ollamy i bez chmury",
-            "telefon: aplikacja na Androida (SentinelX-Phone-$version.apk) albo przeglądarka; zgoda to jedno kliknięcie na komputerze",
-            "portable: rozpakuj ZIP i uruchom SentinelX.exe (bez instalacji)",
-            "instalator: instalacja per-user, bez uprawnień administratora"
-          ) | Set-Content 'dist/BUILD.txt' -Encoding utf8
-          Get-ChildItem 'dist' -File | ForEach-Object {
-            "$((Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant())  $($_.Name)"
-          } | Set-Content 'dist/SHA256SUMS.txt'
-          Get-Content 'dist/SHA256SUMS.txt'
-          Get-Content 'dist/SHA256SUMS.txt' | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
-      - name: Publish milestone release (version tag)
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
-        with:
-          files: dist/*
-          generate_release_notes: true
-          body: |
-            ## Pliki do pobrania
-
-            | Plik | Co to jest |
-            | --- | --- |
-            | `SentinelX-*-win-x64-setup.exe` | **Instalator na komputer** (per-user, bez uprawnień administratora). Dwuklik i gotowe — reszta dzieje się sama. |
-            | `SentinelX-Phone-*.apk` | **Aplikacja na telefon z Androidem 7+.** Otwórz ją przy włączonym Sentinel X na komputerze — sama znajdzie komputer. |
-            | `SentinelX-*-win-x64-portable.zip` | Wersja przenośna: rozpakuj i uruchom `SentinelX.exe`. |
-            | `SHA256SUMS.txt`, `BUILD.txt` | Sumy kontrolne i metryka buildu. |
-
-            ## Uczciwie o ograniczeniach
-
-            - **Pliki nie są podpisane cyfrowo.** Windows SmartScreen pokaże ostrzeżenie „Nieznany wydawca”, a Android zapyta o instalację z nieznanego źródła.
-            - Silnik AI jest wbudowany (llama.cpp). Modele Qwen3 (ok. 1,1 GB i ok. 2,5 GB na mocniejszych komputerach) pobierają się same w tle po pierwszym uruchomieniu.
-            - Telefon łączy się z komputerem w sieci domowej (Wi‑Fi). Przez internet — tylko przez własną sieć prywatną (np. Tailscale).
-            - Wersja testowana w CI na `windows-latest` (Windows Server 2022). Telefon i prawdziwy komputer użytkownika potwierdzą resztę.
-      - name: Publish release on demand (workflow_dispatch or a branch push marked [release])
-        if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/'))
-        shell: pwsh
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          [xml]$project = Get-Content SENTINEL-X.csproj
-          $version = $project.Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
-          $commit = (git rev-parse --short HEAD)
-          $tag = '${{ inputs.tag }}'
-          if ([string]::IsNullOrWhiteSpace($tag)) { $tag = "v$version" }
-          $prerelease = '${{ inputs.prerelease }}' -ne 'false'
-          $files = @(Get-ChildItem dist -File | ForEach-Object { $_.FullName })
-          Write-Output "release: tag=$tag version=$version commit=$commit prerelease=$prerelease"
-          Write-Output "assets: $($files -join ', ')"
-          if ($files.Count -lt 4) { throw 'Missing release assets in dist/' }
-          $notes = @(
-            "Sentinel X **$version** · commit ``$commit``",
-            '',
-            '| Plik | Co to jest |',
-            '| --- | --- |',
-            "| ``SentinelX-$version-win-x64-setup.exe`` | **Instalator na komputer** (per-user, bez uprawnień administratora) — dwuklik i gotowe. |",
-            "| ``SentinelX-Phone-$version.apk`` | **Aplikacja na telefon z Androidem 7+** — sama znajdzie komputer w sieci. |",
-            "| ``SentinelX-$version-win-x64-portable.zip`` | Wersja przenośna (rozpakuj i uruchom ``SentinelX.exe``). |",
-            '| ``SHA256SUMS.txt`` / ``BUILD.txt`` | Sumy kontrolne i metryka buildu. |',
-            '',
-            'Bez podpisu cyfrowego — SmartScreen pokaże „Nieznany wydawca”, Android zapyta o instalację z nieznanego źródła.',
-            'Silnik AI jest wbudowany (bez Ollamy); modele pobierają się same po pierwszym uruchomieniu. Dane zostają lokalnie w %LOCALAPPDATA%\SentinelX.'
-          ) -join "`n"
-          # Zadanie Androida może już było utworzyć to wydanie: wtedy tylko dokładamy pliki (nic nie kasujemy).
-          gh release view $tag *> $null
-          if ($LASTEXITCODE -ne 0) {
-            $create = @('release', 'create', $tag, '--target', $env:GITHUB_SHA, '--title', "SentinelX $version ($commit)", '--notes', $notes)
-            if ($prerelease) { $create += '--prerelease' }
-            & gh @create
-            if ($LASTEXITCODE -ne 0) {
-              gh release view $tag *> $null
-              if ($LASTEXITCODE -ne 0) { throw "Nie udało się utworzyć wydania $tag" }
-            }
-          } else {
-            gh release edit $tag --notes $notes | Out-Null
-          }
-          & gh release upload $tag @files --clobber
-          if ($LASTEXITCODE -ne 0) { throw "Nie udało się wgrać plików do wydania $tag" }
-          $assets = gh release view $tag --json assets --jq '.assets[].name' 2>&1
-          Write-Output "assets in release: $($assets -join ', ')"
-      - uses: actions/upload-artifact@v4
-        continue-on-error: true  # limit magazynu artefaktów nie może zamieniać wyników testów na czerwone
-        if: always()
-        with:
-          name: sentinel-release-validation
-          path: test-results/
-          retention-days: 2
-
+    uses: ./.github/workflows/ci-windows.yml
   android:
-    if: github.event_name != 'push' || startsWith(github.ref, 'refs/tags/') || contains(github.event.head_commit.message, '[release]')
+    uses: ./.github/workflows/ci-android.yml
+    with:
+      production: ${{ startsWith(github.ref, 'refs/tags/') || inputs.production == true }}
+    secrets: inherit
+  publish:
+    needs: [security, windows, android]
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 10
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v5
-      - id: build
-        uses: ./.github/actions/build-apk
-      - name: Publish the APK to the release
+      - uses: actions/download-artifact@v4
+        with:
+          name: windows-1.0.0
+          path: dist/
+      - uses: actions/download-artifact@v4
+        with:
+          name: android-1.0.0
+          path: dist/
+      - name: Validate all assets together
+        run: |
+          set -euo pipefail
+          apk=$(echo dist/SentinelX-1.0.0-android*.apk)
+          python3 scripts/check-release-artifacts.py --windows dist/SentinelX-1.0.0-win-x64-setup.exe --portable dist/SentinelX-1.0.0-win-x64-portable.zip --android "$apk"
+          cd dist
+          sha256sum SentinelX-1.0.0-win-x64-setup.exe SentinelX-1.0.0-win-x64-portable.zip SentinelX-1.0.0-android*.apk > SHA256SUMS.txt
+          sha256sum -c SHA256SUMS.txt
+      - name: Publish after all build gates
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-          INPUT_TAG: ${{ inputs.tag }}
-          INPUT_PRERELEASE: ${{ inputs.prerelease }}
+          PRODUCTION: ${{ startsWith(github.ref, 'refs/tags/') || inputs.production == true }}
+          HARDWARE: ${{ inputs.hardware_verified }}
         run: |
           set -euo pipefail
-          version=$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' SENTINEL-X.csproj | head -n 1)
-          tag="${INPUT_TAG:-}"
-          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then tag="${GITHUB_REF_NAME}"; fi
-          if [ -z "$tag" ]; then tag="v$version"; fi
-          apk="SentinelX-Phone-$version.apk"
-          cp "${{ steps.build.outputs.apk }}" "$apk"
-          sha256sum "$apk" > "$apk.sha256"
-          if ! gh release view "$tag" >/dev/null 2>&1; then
-            flag=""
-            if [ "${INPUT_PRERELEASE:-true}" != "false" ]; then flag="--prerelease"; fi
-            # the Windows job may create the same release at the same moment: whoever is second just uploads
-            gh release create "$tag" --target "$GITHUB_SHA" --title "SentinelX $version" --notes "Wydanie w przygotowaniu — pliki dołączają się automatycznie." $flag || gh release view "$tag" >/dev/null
+          if [ "$PRODUCTION" = true ]; then
+            test "$HARDWARE" = true || { echo "::error::Hardware verification required before a stable release"; exit 1; }
+            tag=v1.0.0
+            gh release create "$tag" --target "$GITHUB_SHA" --title "Sentinel X Build 1.0" --notes-file docs/RELEASE_NOTES.md dist/SentinelX* dist/SHA256SUMS.txt
+            git tag -f latest "$GITHUB_SHA"
+            git push origin refs/tags/latest --force
+          else
+            tag="v1.0.0-verification.${GITHUB_SHA:0:8}"
+            gh release create "$tag" --target "$GITHUB_SHA" --prerelease --latest=false --title "Sentinel X 1.0.0 — verification/debug APK" --notes-file docs/RELEASE_NOTES.md dist/SentinelX* dist/SHA256SUMS.txt
           fi
-          gh release upload "$tag" "$apk" "$apk.sha256" --clobber
-          echo "::notice title=APK w wydaniu::$tag → $apk"

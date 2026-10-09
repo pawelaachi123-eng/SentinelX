@@ -521,7 +521,7 @@ public sealed class ConversationMemoryService : Services.Memory.IConversationMem
             string who = turn.Role == "user" ? "Ja" : "Sentinel X";
             builder.AppendLine("**" + who + "** · " + turn.Timestamp.ToString("dd.MM.yyyy HH:mm") + " · " + turn.Source);
             builder.AppendLine();
-            builder.AppendLine(turn.Text);
+            builder.AppendLine(TextScrubber.Scrub(turn.Text));
             builder.AppendLine();
         }
         markdown = builder.ToString();
@@ -589,7 +589,7 @@ public sealed class ConversationMemoryService : Services.Memory.IConversationMem
             // Keep the newest turns inside the context budget, not the oldest turns of a long conversation.
             var lines = new List<string>();
             int budget = ContextBudget - builder.Length;
-            foreach (var entry in entries.Reverse())
+            foreach (var entry in Enumerable.Reverse(entries))
             {
                 string line = $"[{entry.Timestamp:yyyy-MM-dd HH:mm:ss}] {(entry.Role == "user" ? "Użytkownik" : "Sentinel")}: {entry.Text}";
                 if (line.Length > budget) line = line[..Math.Max(0, budget)] + " [skrócono]";
@@ -761,7 +761,7 @@ public sealed class ConversationMemoryService : Services.Memory.IConversationMem
             string directory = Path.Combine(Path.GetDirectoryName(memoryPath)!, "Exports");
             Directory.CreateDirectory(directory);
             string path = Path.Combine(directory, $"pamiec-{DateTime.Now:yyyyMMdd-HHmmss}-{Guid.NewGuid().ToString("N")[..6]}.json");
-            File.WriteAllText(path, JsonSerializer.Serialize(state, jsonOptions), Encoding.UTF8);
+            File.WriteAllText(path, TextScrubber.Scrub(JsonSerializer.Serialize(state, jsonOptions)), Encoding.UTF8);
             return path;
         }
     }

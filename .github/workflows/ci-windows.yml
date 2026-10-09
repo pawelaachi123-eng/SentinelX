@@ -1,0 +1,72 @@
+name: CI Windows 1.0
+on:
+  push:
+    branches: [main, 'arena/**']
+  pull_request:
+  workflow_dispatch:
+  workflow_call:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+      - name: Architecture and portable contracts
+        shell: pwsh
+        run: |
+          python scripts/check-architecture.py
+          if ($LASTEXITCODE -ne 0) { throw 'Architecture' }
+          dotnet run --project verification/Build1/Build1.csproj -c Release
+          if ($LASTEXITCODE -ne 0) { throw 'Contracts' }
+      - name: Fetch and verify bundled engine
+        shell: pwsh
+        run: ./scripts/fetch-llama.ps1
+      - name: Publish Release x64 with runtime
+        shell: pwsh
+        run: |
+          dotnet publish SENTINEL-X.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=false -o bin/portable
+          if ($LASTEXITCODE -ne 0) { throw 'Publish' }
+          if (-not (Test-Path bin/portable/coreclr.dll)) { throw 'Runtime missing' }
+      - name: WPF smoke and regression on shipped files
+        shell: pwsh
+        run: |
+          $exe = (Resolve-Path bin/portable/SentinelX.exe).Path
+          foreach ($mode in @('ui-smoke', 'self-test', 'agent-smoke')) {
+            $result = Join-Path $PWD "test-results/$mode"
+            $p = Start-Process $exe -ArgumentList "--$mode", $result -PassThru
+            if (-not $p.WaitForExit(300000)) { $p.Kill(); throw "$mode timeout" }
+            if ($p.ExitCode -ne 0) {
+              Get-ChildItem $result -Recurse -Include FAILED.txt,errors.log,bindings.log -ErrorAction SilentlyContinue | ForEach-Object { Get-Content $_.FullName }
+              $detail = Get-ChildItem $result -Recurse -Include FAILED.txt -ErrorAction SilentlyContinue | Select-Object -First 1 | ForEach-Object { Get-Content $_.FullName -Raw }
+              if ($detail) { $detail = ($detail -replace "`r", "") -replace "`n", "%0A"; if ($detail.Length -gt 2800) { $detail = $detail.Substring(0, 2800) }; echo "::error::$mode exit=$($p.ExitCode): $detail" }
+              else { echo "::error::$mode failed with exit=$($p.ExitCode), no FAILED.txt under $result" }
+              throw "$mode failed"
+            }
+          }
+          if (-not (Test-Path test-results/ui-smoke/ui-smoke.txt)) { throw 'Smoke proof missing' }
+      - name: Installer, portable and checksums
+        shell: pwsh
+        run: |
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" "/DAppVersion=1.0.0" installer/SentinelX.iss
+          if ($LASTEXITCODE -ne 0) { throw 'Installer' }
+          New-Item dist -ItemType Directory -Force | Out-Null
+          Copy-Item (Get-ChildItem bin/installer/*.exe | Select-Object -First 1).FullName dist/SentinelX-1.0.0-win-x64-setup.exe
+          Compress-Archive bin/portable/* dist/SentinelX-1.0.0-win-x64-portable.zip
+          python scripts/check-release-artifacts.py --windows dist/SentinelX-1.0.0-win-x64-setup.exe --portable dist/SentinelX-1.0.0-win-x64-portable.zip
+          if ($LASTEXITCODE -ne 0) { throw 'Artifact validation' }
+          Get-ChildItem dist -File | ForEach-Object { "$((Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant())  $($_.Name)" } | Set-Content dist/WINDOWS-SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-1.0.0
+          path: dist/
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-validation
+          path: test-results/

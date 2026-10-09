@@ -1,0 +1,99 @@
+<UserControl
+    x:Class="SentinelX.WinUI.UI.Panels.SettingsPanel"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Width="600">
+
+    <UserControl.Resources>
+        <Storyboard x:Name="SlideIn">
+            <DoubleAnimation Storyboard.TargetName="Slide" Storyboard.TargetProperty="X"
+                             From="64" To="0" Duration="0:0:0.24" />
+            <DoubleAnimation Storyboard.TargetName="PanelBorder" Storyboard.TargetProperty="Opacity"
+                             From="0" To="1" Duration="0:0:0.24" />
+        </Storyboard>
+    </UserControl.Resources>
+
+    <Border x:Name="PanelBorder" Background="{StaticResource SxAcrylicPanel}"
+            BorderBrush="{StaticResource SxBorderSubtle}" BorderThickness="1,0,0,0"
+            CornerRadius="20,0,0,20" Padding="24">
+        <Border.RenderTransform>
+            <TranslateTransform x:Name="Slide" />
+        </Border.RenderTransform>
+        <Border.Shadow>
+            <ThemeShadow />
+        </Border.Shadow>
+
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <Grid Margin="0,0,0,16">
+                <TextBlock Text="Ustawienia" Style="{StaticResource SxTitle}" VerticalAlignment="Center" />
+                <Button Content="✕" Style="{StaticResource SxGhostButton}" HorizontalAlignment="Right"
+                        Command="{x:Bind CloseCommand, Mode=OneWay}" AutomationProperties.Name="Zamknij ustawienia" />
+            </Grid>
+
+            <Grid Grid.Row="1" ColumnSpacing="20">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="150" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <ListView ItemsSource="{Binding Sections}" SelectedItem="{Binding SelectedSection, Mode=TwoWay}"
+                          SelectionMode="Single">
+                    <ListView.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Label}" Style="{StaticResource SxBody}" Padding="4,8" />
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
+
+                <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto">
+                    <ListView ItemsSource="{Binding Rows}" SelectionMode="None">
+                        <ListView.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Padding="0,0,0,16" Spacing="6">
+                                    <TextBlock Text="{Binding Label}" Style="{StaticResource SxBody}" FontWeight="SemiBold" />
+                                    <TextBlock Text="{Binding Description}" Style="{StaticResource SxCaption}" TextWrapping="Wrap" />
+                                    <ToggleSwitch IsOn="{Binding BoolValue, Mode=TwoWay}"
+                                                  Visibility="{Binding IsToggle, Converter={StaticResource BoolToVisibility}}"
+                                                  OnContent="" OffContent="" />
+                                    <ComboBox ItemsSource="{Binding Choices}" SelectedItem="{Binding TextValue, Mode=TwoWay}"
+                                              HorizontalAlignment="Stretch"
+                                              Visibility="{Binding ShowChoices, Converter={StaticResource BoolToVisibility}}" />
+                                    <Grid Visibility="{Binding ShowText, Converter={StaticResource BoolToVisibility}}" ColumnSpacing="8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox Text="{Binding TextValue, Mode=TwoWay}" Style="{StaticResource SxField}"
+                                                 KeyDown="Field_KeyDown" />
+                                        <Button Grid.Column="1" Content="Zapisz" Style="{StaticResource SxChipButton}"
+                                                Command="{Binding ApplyCommand}" />
+                                    </Grid>
+                                    <TextBlock Text="{Binding Error}" FontSize="11" Foreground="{StaticResource SxError}"
+                                               TextWrapping="Wrap"
+                                               Visibility="{Binding Error, Converter={StaticResource NullToVisibility}}" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+                </ScrollViewer>
+            </Grid>
+
+            <StackPanel Grid.Row="2" Spacing="8" Margin="0,16,0,0">
+                <TextBlock Text="{Binding StoreError}" FontSize="11" Foreground="{StaticResource SxError}"
+                           TextWrapping="Wrap"
+                           Visibility="{Binding StoreError, Converter={StaticResource NullToVisibility}}" />
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Button Content="Przywróć sekcję" Style="{StaticResource SxChipButton}" Command="{Binding ResetSectionCommand}" />
+                    <Button Content="Folder danych" Style="{StaticResource SxGhostButton}" Command="{Binding OpenDataFolderCommand}" />
+                    <Button Content="Logi" Style="{StaticResource SxGhostButton}" Command="{Binding OpenLogsFolderCommand}" />
+                </StackPanel>
+            </StackPanel>
+        </Grid>
+    </Border>
+</UserControl>
