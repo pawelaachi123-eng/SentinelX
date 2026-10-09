@@ -1,0 +1,80 @@
+name: Sentinel X 1.0.0 Downloads
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Build actual WinUI 3 app
+        shell: pwsh
+        run: |
+          dotnet publish SentinelX.WinUI/SentinelX.WinUI.csproj -c Release -r win-x64 --self-contained true -p:Platform=x64 -p:Version=1.0.0 -p:LangVersion=12.0 -p:UseXamlCompilerExecutable=true -p:WindowsAppSDKSelfContained=true -o bin/portable
+          if ($LASTEXITCODE -ne 0) { throw 'WinUI publish failed' }
+          if (!(Test-Path bin/portable/SentinelX.exe)) { throw 'EXE missing' }
+
+      - name: Create EXE installer and portable ZIP
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (!(Test-Path $iscc)) { throw 'Inno Setup not found' }
+          & $iscc '/DAppVersion=1.0.0' 'installer/SentinelX.iss'
+          if ($LASTEXITCODE -ne 0) { throw 'Installer failed' }
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Copy-Item (Get-ChildItem bin/installer/*.exe | Select-Object -First 1).FullName dist/SentinelX-1.0.0-WinUI3-Setup.exe
+          Compress-Archive bin/portable/* dist/SentinelX-1.0.0-WinUI3-Portable.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SentinelX-1.0.0-Windows
+          path: dist/
+          if-no-files-found: error
+
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          path: android-source
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: android-actions/setup-android@v3
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Build Android APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd android-source/phone-android
+          test -f settings.gradle.kts -o -f settings.gradle || { echo "::error::Android settings file missing on main"; exit 1; }
+          test -f gradlew || { echo "::error::Gradle wrapper missing"; exit 1; }
+          chmod +x gradlew
+          ./gradlew --no-daemon assembleDebug
+          apk=$(find . -path '*/build/outputs/apk/debug/*.apk' -type f | head -1)
+          test -n "$apk" || { echo "::error::APK missing"; exit 1; }
+          mkdir -p "$GITHUB_WORKSPACE/dist-android"
+          cp "$apk" "$GITHUB_WORKSPACE/dist-android/SentinelX-1.0.0-debug.apk"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SentinelX-1.0.0-Android
+          path: dist-android/
+          if-no-files-found: error
