@@ -86,6 +86,7 @@ public partial class App : Application
             var desktop = provider.GetRequiredService<IDesktopService>();
             shell = provider.GetRequiredService<ShellWindow>();
             desktop.Attach(shell);
+            SentinelX.Services.Maintenance.WinUiFileDialog.MainWindow = shell;
             shell.Activate();
             try
             {

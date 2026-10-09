@@ -20,6 +20,12 @@ public sealed partial class ShellWindow : Window
         ViewModel = viewModel;
         InitializeComponent();
 
+            // DataContext for WinUI Window content.
+            Root.Loaded += (_, _) =>
+            {
+                Root.DataContext = ViewModel;
+            };
+
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(DragZone);
         SystemBackdrop = new MicaBackdrop();

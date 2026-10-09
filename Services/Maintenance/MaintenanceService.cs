@@ -4,8 +4,13 @@ using System.Net.Http;
 using System.Net.NetworkInformation;
 using System.Security.Cryptography;
 using System.Text.Json;
+#if !WINUI3
 using System.Windows;
+#endif
 using Microsoft.Win32;
+#if WINUI3
+using SentinelX.Services.Maintenance;
+#endif
 using SentinelX.Core;
 using SentinelX.Services.Agent;
 using SentinelX.Services.Base;
@@ -111,11 +116,17 @@ public sealed class MaintenanceService(IBaseControl agent,OllamaSupervisor ollam
   return plan;
  }
  public async Task<string> ExportDiagnosticsAsync(CancellationToken cancel){
+  #if WINUI3
+  var dialogPath = await WinUiFileDialog.SaveJsonAsync();
+  if (dialogPath == null) return "Anulowano";
+#else
   var dialog=new SaveFileDialog{Filter="Diagnostyka|*.json",FileName="sentinel-diagnostics.json"};if(dialog.ShowDialog()!=true)return "Anulowano";
+  var dialogPath = dialog.FileName;
+#endif
   var checks=await DiagnoseAsync("",cancel);
   string json=JsonSerializer.Serialize(new{time=DateTimeOffset.UtcNow,version=AppConstants.SemanticVersion,checks},new JsonSerializerOptions{WriteIndented=true});
-  await File.WriteAllTextAsync(dialog.FileName,DiagnosticRedaction.Redact(json),cancel);
-  return "Zapisano zredagowaną diagnostykę: "+dialog.FileName;
+  await File.WriteAllTextAsync(dialogPath,DiagnosticRedaction.Redact(json),cancel);
+  return "Zapisano zredagowaną diagnostykę: "+dialogPath;
  }
  public async Task<string> RepairDirectoriesAsync()=>await Task.Run(()=>"Sprawdzono katalogi. Kopia i dziennik: "+DirectoryRepair.Run([AppPaths.SettingsDirectory,AppPaths.LogsDirectory,AppPaths.HistoryDirectory,AppPaths.MemoryDirectory,AppPaths.CacheDirectory],AppPaths.BackupsDirectory));
  public string RepairAutostart(){
@@ -145,9 +156,21 @@ public sealed class MaintenanceService(IBaseControl agent,OllamaSupervisor ollam
   catch(OperationCanceledException){if(!p.HasExited)p.Kill(true);return false;}
  }
  public async Task<string> StageUpdateAsync(string publicPem,bool requireSignature,CancellationToken cancel){
+  #if WINUI3
+  var zipPath = await WinUiFileDialog.OpenFileAsync(".zip");
+  if (zipPath == null) return "Anulowano";
+#else
   var zip=new OpenFileDialog{Filter="Portable package|*.zip",CheckFileExists=true};if(zip.ShowDialog()!=true)return "Anulowano";
+  var zipPath = zip.FileName;
+#endif
+  #if WINUI3
+  var metadataPath = await WinUiFileDialog.OpenFileAsync(".json");
+  if (metadataPath == null) return "Anulowano";
+#else
   var metadata=new OpenFileDialog{Filter="Opis aktualizacji|*.json",CheckFileExists=true};if(metadata.ShowDialog()!=true)return "Anulowano";
-  return await InstallUpdateAsync(zip.FileName,metadata.FileName,publicPem,requireSignature,cancel);
+  var metadataPath = metadata.FileName;
+#endif
+  return await InstallUpdateAsync(zipPath,metadataPath,publicPem,requireSignature,cancel);
  }
  public async Task<string> DownloadUpdateAsync(string packageUrl,string descriptorUrl,string publicPem,bool requireSignature,IProgress<double>? progress,CancellationToken cancel){
   UpdateDownloader.ValidateUrl(packageUrl);UpdateDownloader.ValidateUrl(descriptorUrl);

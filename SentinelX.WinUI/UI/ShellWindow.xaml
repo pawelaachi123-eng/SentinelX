@@ -53,8 +53,8 @@
                 <TextBlock Text="SENTINEL X" Style="{StaticResource SxSubtitle}" VerticalAlignment="Center" />
                 <Border Background="#3A2A10" BorderBrush="#6E5216" BorderThickness="1" CornerRadius="8"
                         Padding="8,3" VerticalAlignment="Center"
-                        Visibility="{x:Bind ViewModel.GamingText, Mode=OneWay, Converter={StaticResource NullToVisibility}}">
-                    <TextBlock Text="{x:Bind ViewModel.GamingText, Mode=OneWay}" FontSize="11"
+                        Visibility="{Binding Path=GamingText, Mode=OneWay, Converter={StaticResource NullToVisibility}}">
+                    <TextBlock Text="{Binding Path=GamingText, Mode=OneWay}" FontSize="11"
                                FontWeight="SemiBold" Foreground="{StaticResource SxWarning}" />
                 </Border>
             </StackPanel>
@@ -63,11 +63,11 @@
 
             <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                 <Button Content="Mini" Style="{StaticResource SxGhostButton}"
-                        Command="{x:Bind ViewModel.ToggleMiniModeCommand}" ToolTipService.ToolTip="Tryb Mini" />
+                        Command="{Binding ToggleMiniModeCommand}" ToolTipService.ToolTip="Tryb Mini" />
                 <Button Content="⌕  Ctrl+K" Style="{StaticResource SxGhostButton}"
-                        Command="{x:Bind ViewModel.OpenPaletteCommand}" ToolTipService.ToolTip="Paleta komend" />
+                        Command="{Binding OpenPaletteCommand}" ToolTipService.ToolTip="Paleta komend" />
                 <Button Content="⚙" Style="{StaticResource SxGhostButton}" FontSize="16"
-                        Command="{x:Bind ViewModel.ToggleSettingsCommand}" ToolTipService.ToolTip="Ustawienia"
+                        Command="{Binding ToggleSettingsCommand}" ToolTipService.ToolTip="Ustawienia"
                         AutomationProperties.Name="Ustawienia" />
             </StackPanel>
         </Grid>
@@ -78,8 +78,8 @@
                 <StackPanel Spacing="14" MaxWidth="780" HorizontalAlignment="Center">
                     <!-- Core -->
                     <controls:SentinelCore x:Name="Core" HorizontalAlignment="Center"
-                                           State="{x:Bind ViewModel.Core.State, Mode=OneWay}"
-                                           AudioLevel="{x:Bind ViewModel.Core.AudioLevel, Mode=OneWay}">
+                                           State="{Binding Path=Core.State, Mode=OneWay}"
+                                           AudioLevel="{Binding Path=Core.AudioLevel, Mode=OneWay}">
                         <controls:SentinelCore.RenderTransform>
                             <ScaleTransform x:Name="CoreScale" />
                         </controls:SentinelCore.RenderTransform>
@@ -89,15 +89,15 @@
                     <StackPanel Spacing="4" Margin="0,-8,0,0">
                         <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center">
                             <Ellipse Width="9" Height="9"
-                                     Fill="{x:Bind ViewModel.Core.State, Mode=OneWay, Converter={StaticResource CoreStateToBrush}}" />
-                            <TextBlock Text="{x:Bind ViewModel.Core.State, Mode=OneWay, Converter={StaticResource CoreStateToLabel}}"
+                                     Fill="{Binding Path=Core.State, Mode=OneWay, Converter={StaticResource CoreStateToBrush}}" />
+                            <TextBlock Text="{Binding Path=Core.State, Mode=OneWay, Converter={StaticResource CoreStateToLabel}}"
                                        Style="{StaticResource SxSubtitle}" />
                         </StackPanel>
-                        <TextBlock Text="{x:Bind ViewModel.Core.Detail, Mode=OneWay}" Style="{StaticResource SxCaption}"
+                        <TextBlock Text="{Binding Path=Core.Detail, Mode=OneWay}" Style="{StaticResource SxCaption}"
                                    HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center" />
-                        <TextBlock Text="{x:Bind ViewModel.Core.ActiveTask, Mode=OneWay}" FontSize="11"
+                        <TextBlock Text="{Binding Path=Core.ActiveTask, Mode=OneWay}" FontSize="11"
                                    Foreground="{StaticResource SxAccentSoft}" HorizontalAlignment="Center"
-                                   Visibility="{x:Bind ViewModel.Core.ActiveTask, Mode=OneWay, Converter={StaticResource NullToVisibility}}" />
+                                   Visibility="{Binding Path=Core.ActiveTask, Mode=OneWay, Converter={StaticResource NullToVisibility}}" />
                     </StackPanel>
 
                     <!-- Command bar -->
@@ -111,8 +111,8 @@
                                 </Grid.ColumnDefinitions>
                                 <AutoSuggestBox x:Name="CommandBox" Style="{StaticResource SxSuggestBox}"
                                                 PlaceholderText="Wpisz polecenie…   (Ctrl+K — wszystkie funkcje)"
-                                                Text="{x:Bind ViewModel.Commands.Input, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                ItemsSource="{x:Bind ViewModel.Commands.Suggestions, Mode=OneWay}"
+                                                Text="{Binding Commands.Input, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                ItemsSource="{Binding Path=Commands.Suggestions, Mode=OneWay}"
                                                 TextMemberPath="Text"
                                                 QuerySubmitted="CommandBox_QuerySubmitted"
                                                 KeyDown="CommandBox_KeyDown"
@@ -127,52 +127,52 @@
                                     </AutoSuggestBox.ItemTemplate>
                                 </AutoSuggestBox>
                                 <Button Grid.Column="1" Content="Wyślij" Style="{StaticResource SxAccentButton}"
-                                        Command="{x:Bind ViewModel.Commands.SubmitCommand}" VerticalAlignment="Stretch" />
+                                        Command="{Binding Commands.SubmitCommand}" VerticalAlignment="Stretch" />
                                 <Button Grid.Column="2" Content="◉" FontSize="15" Style="{StaticResource SxGhostButton}"
-                                        Foreground="{x:Bind ViewModel.MicActive, Mode=OneWay, Converter={StaticResource OkBrush}}"
-                                        Command="{x:Bind ViewModel.MicClickCommand}" ToolTipService.ToolTip="Włącz / wyłącz mikrofon"
+                                        Foreground="{Binding Path=MicActive, Mode=OneWay, Converter={StaticResource OkBrush}}"
+                                        Command="{Binding MicClickCommand}" ToolTipService.ToolTip="Włącz / wyłącz mikrofon"
                                         VerticalAlignment="Stretch" AutomationProperties.Name="Mikrofon" />
                             </Grid>
 
-                            <TextBlock Text="{x:Bind ViewModel.Commands.StatusLine, Mode=OneWay}" Style="{StaticResource SxCaption}" />
+                            <TextBlock Text="{Binding Path=Commands.StatusLine, Mode=OneWay}" Style="{StaticResource SxCaption}" />
                             <StackPanel Orientation="Horizontal" Spacing="8"
-                                        Visibility="{x:Bind ViewModel.VoiceModelsMissing, Mode=OneWay, Converter={StaticResource BoolToVisibility}}">
+                                        Visibility="{Binding Path=VoiceModelsMissing, Mode=OneWay, Converter={StaticResource BoolToVisibility}}">
                                 <TextBlock Text="Głos potrzebuje lokalnych modeli (jednorazowo, ~500 MB)." Style="{StaticResource SxCaption}" VerticalAlignment="Center" />
                                 <Button Content="Pobierz modele i włącz głos" Style="{StaticResource SxChipButton}"
-                                        Command="{x:Bind ViewModel.DownloadVoiceModelsCommand}" />
+                                        Command="{Binding DownloadVoiceModelsCommand}" />
                             </StackPanel>
-                            <TextBlock Text="{x:Bind ViewModel.Commands.ReplyLine, Mode=OneWay}" Style="{StaticResource SxBody}"
+                            <TextBlock Text="{Binding Path=Commands.ReplyLine, Mode=OneWay}" Style="{StaticResource SxBody}"
                                        TextWrapping="Wrap" MaxLines="2"
-                                       Visibility="{x:Bind ViewModel.Commands.ReplyLine, Mode=OneWay, Converter={StaticResource NullToVisibility}}" />
+                                       Visibility="{Binding Path=Commands.ReplyLine, Mode=OneWay, Converter={StaticResource NullToVisibility}}" />
                             <Border Background="#3A2A10" BorderBrush="#6E5216" BorderThickness="1" CornerRadius="10" Padding="12,8"
-                                    Visibility="{x:Bind ViewModel.Commands.Executor.HasPendingPermission, Mode=OneWay, Converter={StaticResource BoolToVisibility}}">
+                                    Visibility="{Binding Path=Commands.Executor.HasPendingPermission, Mode=OneWay, Converter={StaticResource BoolToVisibility}}">
                                 <StackPanel Spacing="8">
                                     <TextBlock Text="WYMAGANA ZGODA" Style="{StaticResource SxEyebrow}" />
-                                    <TextBlock Text="{x:Bind ViewModel.Commands.Executor.PermissionSummary, Mode=OneWay}"
+                                    <TextBlock Text="{Binding Path=Commands.Executor.PermissionSummary, Mode=OneWay}"
                                                Style="{StaticResource SxBody}" TextWrapping="Wrap" />
                                     <TextBlock Text="Ryzykowne akcje zatwierdza się tylko tutaj, jawnym przyciskiem." Style="{StaticResource SxCaption}" />
                                     <StackPanel Orientation="Horizontal" Spacing="8">
                                         <Button Content="Potwierdź" Style="{StaticResource SxAccentButton}"
-                                                Command="{x:Bind ViewModel.Commands.SubmitCommand}" CommandParameter="potwierdz" />
+                                                Command="{Binding Commands.SubmitCommand}" CommandParameter="potwierdz" />
                                         <Button Content="Odrzuć" Style="{StaticResource SxChipButton}"
-                                                Command="{x:Bind ViewModel.Commands.CancelCommand}" />
+                                                Command="{Binding Commands.CancelCommand}" />
                                     </StackPanel>
                                 </StackPanel>
                             </Border>
-                            <Grid Visibility="{x:Bind ViewModel.Commands.Executor.IsBusy, Mode=OneWay, Converter={StaticResource BoolToVisibility}}">
+                            <Grid Visibility="{Binding Path=Commands.Executor.IsBusy, Mode=OneWay, Converter={StaticResource BoolToVisibility}}">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
                                 <StackPanel Spacing="2">
-                                    <TextBlock Text="{x:Bind ViewModel.Commands.Executor.Phase, Mode=OneWay}"
+                                    <TextBlock Text="{Binding Path=Commands.Executor.Phase, Mode=OneWay}"
                                                FontSize="11" Foreground="{StaticResource SxAccentSoft}" />
-                                    <TextBlock Text="{x:Bind ViewModel.Commands.Executor.StreamingText, Mode=OneWay}"
+                                    <TextBlock Text="{Binding Path=Commands.Executor.StreamingText, Mode=OneWay}"
                                                Style="{StaticResource SxCaption}" TextWrapping="Wrap" MaxLines="2"
-                                               Visibility="{x:Bind ViewModel.Commands.Executor.IsStreaming, Mode=OneWay, Converter={StaticResource BoolToVisibility}}" />
+                                               Visibility="{Binding Path=Commands.Executor.IsStreaming, Mode=OneWay, Converter={StaticResource BoolToVisibility}}" />
                                 </StackPanel>
                                 <Button Grid.Column="1" Content="Anuluj" Style="{StaticResource SxChipButton}"
-                                        Command="{x:Bind ViewModel.Commands.CancelCommand}" VerticalAlignment="Center" />
+                                        Command="{Binding Commands.CancelCommand}" VerticalAlignment="Center" />
                             </Grid>
                         </StackPanel>
                     </Border>
@@ -186,36 +186,36 @@
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
-                            <Button Style="{StaticResource SxCardButton}" Command="{x:Bind ViewModel.OpenDetailsCommand}"
+                            <Button Style="{StaticResource SxCardButton}" Command="{Binding OpenDetailsCommand}"
                                     CommandParameter="Cpu" AutomationProperties.Name="Szczegóły CPU">
                                 <StackPanel Spacing="2">
                                     <TextBlock Text="CPU" Style="{StaticResource SxEyebrow}" />
-                                    <TextBlock Text="{x:Bind ViewModel.Telemetry.Snapshot.CpuText, Mode=OneWay}"
+                                    <TextBlock Text="{Binding Path=Telemetry.Snapshot.CpuText, Mode=OneWay}"
                                                FontSize="16" FontWeight="SemiBold" />
                                 </StackPanel>
                             </Button>
-                            <Button Grid.Column="1" Style="{StaticResource SxCardButton}" Command="{x:Bind ViewModel.OpenDetailsCommand}"
+                            <Button Grid.Column="1" Style="{StaticResource SxCardButton}" Command="{Binding OpenDetailsCommand}"
                                     CommandParameter="Gpu" AutomationProperties.Name="Szczegóły GPU">
                                 <StackPanel Spacing="2">
                                     <TextBlock Text="GPU" Style="{StaticResource SxEyebrow}" />
-                                    <TextBlock Text="{x:Bind ViewModel.Telemetry.Snapshot.GpuText, Mode=OneWay}"
+                                    <TextBlock Text="{Binding Path=Telemetry.Snapshot.GpuText, Mode=OneWay}"
                                                FontSize="16" FontWeight="SemiBold" />
                                 </StackPanel>
                             </Button>
-                            <Button Grid.Column="2" Style="{StaticResource SxCardButton}" Command="{x:Bind ViewModel.OpenDetailsCommand}"
+                            <Button Grid.Column="2" Style="{StaticResource SxCardButton}" Command="{Binding OpenDetailsCommand}"
                                     CommandParameter="Ram" AutomationProperties.Name="Szczegóły RAM">
                                 <StackPanel Spacing="2">
                                     <TextBlock Text="RAM" Style="{StaticResource SxEyebrow}" />
-                                    <TextBlock Text="{x:Bind ViewModel.Telemetry.Snapshot.RamText, Mode=OneWay}"
+                                    <TextBlock Text="{Binding Path=Telemetry.Snapshot.RamText, Mode=OneWay}"
                                                FontSize="16" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
                                 </StackPanel>
                             </Button>
                             <Button x:Name="NetChip" Grid.Column="3" Style="{StaticResource SxCardButton}"
-                                    Command="{x:Bind ViewModel.OpenDetailsCommand}"
+                                    Command="{Binding OpenDetailsCommand}"
                                     CommandParameter="Net" AutomationProperties.Name="Szczegóły sieci">
                                 <StackPanel Spacing="2">
                                     <TextBlock Text="NET" Style="{StaticResource SxEyebrow}" />
-                                    <TextBlock Text="{x:Bind ViewModel.Telemetry.Snapshot.Network, Mode=OneWay}"
+                                    <TextBlock Text="{Binding Path=Telemetry.Snapshot.Network, Mode=OneWay}"
                                                FontSize="13" TextTrimming="CharacterEllipsis" MaxLines="1" VerticalAlignment="Center" Height="22" />
                                 </StackPanel>
                             </Button>
@@ -225,42 +225,42 @@
                     <!-- Status pills -->
                     <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollMode="Disabled">
                         <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
-                            <controls:StatusPill Text="{x:Bind ViewModel.MicText, Mode=OneWay}"
-                                                 Accent="{x:Bind ViewModel.MicActive, Mode=OneWay, Converter={StaticResource OkBrush}}"
-                                                 PillCommand="{x:Bind ViewModel.MicClickCommand}" />
-                            <controls:StatusPill Text="{x:Bind ViewModel.AiText, Mode=OneWay}"
-                                                 Accent="{x:Bind ViewModel.AiOk, Mode=OneWay, Converter={StaticResource OkBrush}}"
-                                                 PillCommand="{x:Bind ViewModel.AiClickCommand}" />
-                            <controls:StatusPill Text="{x:Bind ViewModel.WatchText, Mode=OneWay}"
-                                                 Accent="{x:Bind ViewModel.WatchOk, Mode=OneWay, Converter={StaticResource OkBrush}}"
-                                                 PillCommand="{x:Bind ViewModel.WatchClickCommand}" />
-                            <controls:StatusPill Text="{x:Bind ViewModel.OllamaText, Mode=OneWay}"
-                                                 Accent="{x:Bind ViewModel.OllamaOk, Mode=OneWay, Converter={StaticResource OkBrush}}"
-                                                 PillCommand="{x:Bind ViewModel.OllamaClickCommand}" />
-                            <controls:StatusPill Text="{x:Bind ViewModel.PcText, Mode=OneWay}"
-                                                 Accent="{x:Bind ViewModel.PcOk, Mode=OneWay, Converter={StaticResource OkBrush}}"
-                                                 PillCommand="{x:Bind ViewModel.PcClickCommand}" />
+                            <controls:StatusPill Text="{Binding Path=MicText, Mode=OneWay}"
+                                                 Accent="{Binding Path=MicActive, Mode=OneWay, Converter={StaticResource OkBrush}}"
+                                                 PillCommand="{Binding MicClickCommand}" />
+                            <controls:StatusPill Text="{Binding Path=AiText, Mode=OneWay}"
+                                                 Accent="{Binding Path=AiOk, Mode=OneWay, Converter={StaticResource OkBrush}}"
+                                                 PillCommand="{Binding AiClickCommand}" />
+                            <controls:StatusPill Text="{Binding Path=WatchText, Mode=OneWay}"
+                                                 Accent="{Binding Path=WatchOk, Mode=OneWay, Converter={StaticResource OkBrush}}"
+                                                 PillCommand="{Binding WatchClickCommand}" />
+                            <controls:StatusPill Text="{Binding Path=OllamaText, Mode=OneWay}"
+                                                 Accent="{Binding Path=OllamaOk, Mode=OneWay, Converter={StaticResource OkBrush}}"
+                                                 PillCommand="{Binding OllamaClickCommand}" />
+                            <controls:StatusPill Text="{Binding Path=PcText, Mode=OneWay}"
+                                                 Accent="{Binding Path=PcOk, Mode=OneWay, Converter={StaticResource OkBrush}}"
+                                                 PillCommand="{Binding PcClickCommand}" />
                         </StackPanel>
                     </ScrollViewer>
 
-                    <TextBlock Text="{x:Bind ViewModel.DesktopStatus, Mode=OneWay}" FontSize="11"
+                    <TextBlock Text="{Binding Path=DesktopStatus, Mode=OneWay}" FontSize="11"
                                Foreground="{StaticResource SxWarning}" TextWrapping="Wrap" HorizontalAlignment="Center"
-                               Visibility="{x:Bind ViewModel.DesktopStatus, Mode=OneWay, Converter={StaticResource NullToVisibility}}" />
+                               Visibility="{Binding Path=DesktopStatus, Mode=OneWay, Converter={StaticResource NullToVisibility}}" />
 
                     <!-- History -->
-                    <panels:HistoryPanel DataContext="{x:Bind ViewModel.History, Mode=OneWay}" />
+                    <panels:HistoryPanel DataContext="{Binding Path=History, Mode=OneWay}" />
                 </StackPanel>
             </ScrollViewer>
 
             <!-- Slide-in panels (overlay, right side) -->
-            <panels:DetailPanel DataContext="{x:Bind ViewModel.Details, Mode=OneWay}"
-                                Telemetry="{x:Bind ViewModel.Telemetry, Mode=OneWay}"
-                                QuickCommand="{x:Bind ViewModel.QuickCommandCommand, Mode=OneWay}"
+            <panels:DetailPanel DataContext="{Binding Path=Details, Mode=OneWay}"
+                                Telemetry="{Binding Path=Telemetry, Mode=OneWay}"
+                                QuickCommand="{Binding Path=QuickCommandCommand, Mode=OneWay}"
                                 HorizontalAlignment="Right" Margin="0,8,0,8" Canvas.ZIndex="10" />
-            <panels:SettingsPanel DataContext="{x:Bind ViewModel.SettingsPanel, Mode=OneWay}"
-                                  CloseCommand="{x:Bind ViewModel.ToggleSettingsCommand, Mode=OneWay}"
+            <panels:SettingsPanel DataContext="{Binding Path=SettingsPanel, Mode=OneWay}"
+                                  CloseCommand="{Binding Path=ToggleSettingsCommand, Mode=OneWay}"
                                   HorizontalAlignment="Right" Margin="0,8,0,8" Canvas.ZIndex="11"
-                                  Visibility="{x:Bind ViewModel.IsSettingsOpen, Mode=OneWay, Converter={StaticResource BoolToVisibility}}" />
+                                  Visibility="{Binding Path=IsSettingsOpen, Mode=OneWay, Converter={StaticResource BoolToVisibility}}" />
         </Grid>
 
         <!-- Bottom bar -->
@@ -271,21 +271,21 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <StackPanel Opacity="0.55">
-                <TextBlock Text="{x:Bind ViewModel.ProductName, Mode=OneWay}" Style="{StaticResource SxMuted}" />
-                <TextBlock Text="{x:Bind ViewModel.VersionLine, Mode=OneWay}" Style="{StaticResource SxMuted}" />
+                <TextBlock Text="{Binding Path=ProductName, Mode=OneWay}" Style="{StaticResource SxMuted}" />
+                <TextBlock Text="{Binding Path=VersionLine, Mode=OneWay}" Style="{StaticResource SxMuted}" />
             </StackPanel>
             <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                 <Button Content="Wznów Sentinel" Style="{StaticResource SxChipButton}"
-                        Command="{x:Bind ViewModel.ResumeCommand}"
-                        Visibility="{x:Bind ViewModel.Commands.Executor.IsStopped, Mode=OneWay, Converter={StaticResource BoolToVisibility}}" />
+                        Command="{Binding ResumeCommand}"
+                        Visibility="{Binding Path=Commands.Executor.IsStopped, Mode=OneWay, Converter={StaticResource BoolToVisibility}}" />
                 <Button Content="STOP" Style="{StaticResource SxDangerButton}"
-                        Command="{x:Bind ViewModel.EmergencyStopCommand}" ToolTipService.ToolTip="Ctrl+Shift+X"
-                        Visibility="{x:Bind ViewModel.Commands.Executor.IsStopped, Mode=OneWay, Converter={StaticResource BoolToVisibility}, ConverterParameter=invert}" />
-                <Button Content="Wyjdź" Style="{StaticResource SxGhostButton}" Command="{x:Bind ViewModel.ExitCommand}" />
+                        Command="{Binding EmergencyStopCommand}" ToolTipService.ToolTip="Ctrl+Shift+X"
+                        Visibility="{Binding Commands.Executor.IsStopped, Mode=OneWay, Converter={StaticResource BoolToVisibility}, ConverterParameter=invert}" />
+                <Button Content="Wyjdź" Style="{StaticResource SxGhostButton}" Command="{Binding ExitCommand}" />
             </StackPanel>
         </Grid>
 
         <!-- Command palette overlay -->
-        <dialogs:CommandPalette Grid.RowSpan="3" DataContext="{x:Bind ViewModel.Palette, Mode=OneWay}" Canvas.ZIndex="20" />
+        <dialogs:CommandPalette Grid.RowSpan="3" DataContext="{Binding Path=Palette, Mode=OneWay}" Canvas.ZIndex="20" />
     </Grid>
 </Window>

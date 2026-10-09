@@ -6,8 +6,8 @@
         <StackPanel Spacing="10">
             <StackPanel Orientation="Horizontal" Spacing="10">
                 <Ellipse Width="9" Height="9"
-                         Fill="{x:Bind ViewModel.Core.State, Mode=OneWay, Converter={StaticResource CoreStateToBrush}}" />
-                <TextBlock Text="{x:Bind ViewModel.Core.State, Mode=OneWay, Converter={StaticResource CoreStateToLabel}}"
+                         Fill="{Binding Path=Core.State, Mode=OneWay, Converter={StaticResource CoreStateToBrush}}" />
+                <TextBlock Text="{Binding Path=Core.State, Mode=OneWay, Converter={StaticResource CoreStateToLabel}}"
                            Style="{StaticResource SxSubtitle}" />
             </StackPanel>
 
@@ -23,10 +23,10 @@
                             AutomationProperties.Name="Polecenie Mini Mode" />
 
             <TextBlock Text="{x:Bind ViewModel.StatusLine, Mode=OneWay}" Style="{StaticResource SxCaption}"
-                       Visibility="{x:Bind ViewModel.StatusLine, Mode=OneWay, Converter={StaticResource NullToVisibility}}" />
+                       Visibility="{Binding Path=StatusLine, Mode=OneWay, Converter={StaticResource NullToVisibility}}" />
             <TextBlock Text="{x:Bind ViewModel.ReplyLine, Mode=OneWay}" Style="{StaticResource SxBody}"
                        TextWrapping="Wrap" MaxLines="2"
-                       Visibility="{x:Bind ViewModel.ReplyLine, Mode=OneWay, Converter={StaticResource NullToVisibility}}" />
+                       Visibility="{Binding Path=ReplyLine, Mode=OneWay, Converter={StaticResource NullToVisibility}}" />
 
             <Grid ColumnSpacing="8">
                 <Grid.ColumnDefinitions>
@@ -36,7 +36,7 @@
                 </Grid.ColumnDefinitions>
                 <Button Content="Anuluj" Style="{StaticResource SxChipButton}"
                         Command="{x:Bind ViewModel.CancelCommand}"
-                        Visibility="{x:Bind ViewModel.Executor.IsBusy, Mode=OneWay, Converter={StaticResource BoolToVisibility}}" />
+                        Visibility="{Binding Path=Executor.IsBusy, Mode=OneWay, Converter={StaticResource BoolToVisibility}}" />
                 <CheckBox Grid.Column="1" Content="Zawsze na wierzchu" FontSize="11"
                           IsChecked="{x:Bind ViewModel.AlwaysOnTop, Mode=TwoWay}" VerticalAlignment="Center" />
                 <Button Grid.Column="2" Content="Rozwiń" Style="{StaticResource SxChipButton}"

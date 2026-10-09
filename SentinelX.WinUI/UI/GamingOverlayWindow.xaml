@@ -15,6 +15,6 @@
         </TextBlock>
         <TextBlock Text="{x:Bind ViewModel.System.Snapshot.Game, Mode=OneWay}" FontSize="11"
                    Foreground="{StaticResource SxWarning}" VerticalAlignment="Center"
-                   Visibility="{x:Bind ViewModel.System.Snapshot.Game, Mode=OneWay, Converter={StaticResource NullToVisibility}}" />
+                   Visibility="{Binding Path=System.Snapshot.Game, Mode=OneWay, Converter={StaticResource NullToVisibility}}" />
     </StackPanel>
 </Window>

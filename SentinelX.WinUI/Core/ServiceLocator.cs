@@ -133,6 +133,41 @@ public static class ServiceLocator
         return services.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });
     }
 
+    
+    /// <summary>
+    /// Independent headless PC Agent.
+    /// No window, no automatic privileged approvals.
+    /// </summary>
+    public static ServiceProvider BuildAgent()
+    {
+        var services = new ServiceCollection();
+
+        services.AddSingleton<SystemMonitor>();
+        services.AddSingleton<GamingModeService>();
+
+        services.AddSingleton<
+            SentinelX.Services.Base.OllamaSupervisor>();
+
+        services.AddSingleton<
+            SentinelX.Services.Link.AlertFeed>();
+
+        services.AddSingleton<
+            SentinelX.Services.Desktop.IDesktopService,
+            SentinelX.Services.Agent.HeadlessDesktopService>();
+
+        services.AddSingleton<
+            SentinelX.Services.Base.WindowsBaseService>();
+
+        services.AddSingleton<
+            SentinelX.Services.Base.IBaseControl>(
+            sp => sp.GetRequiredService<
+                SentinelX.Services.Base.WindowsBaseService>());
+
+        services.AddSingleton<
+            SentinelX.Services.Maintenance.MaintenanceService>();
+
+        return services.BuildServiceProvider();
+    }
     private static MemoryPrivacy MapPrivacy(MemorySettings s) =>
         new(s.SaveConversations, s.UseHistoryForAi, s.SaveMemories, s.UseMemoriesForAi, s.RetentionDays, s.ContextPreviewEnabled);
 }
