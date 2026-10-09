@@ -244,8 +244,8 @@ public partial class CommandCenterViewModel : ObservableObject, IDisposable
     {
         memory.SetPrivateMode(!memory.PrivateMode);
         Status = memory.PrivateMode
-            ? "Tryb prywatny WŁĄCZONY. Treść rozmowy nie jest zapisywana — po restarcie nie będzie czego przywrócić."
-            : "Tryb prywatny WYŁĄCZONY. Zapis rozmów zgodny z ustawieniami prywatności.";
+            ? "Tryb prywatny WŁĄCZONY. Nowe wiadomości, szkic i treść audytu nie są zapisywane; trwałe wspomnienia są tylko do odczytu, a ich mutacje, import i eksport są zablokowane. Wcześniejsza pamięć pozostaje zachowana."
+            : "Tryb prywatny WYŁĄCZONY. Nowe wiadomości wracają do ustawień prywatności; treść z sesji prywatnej nie została utrwalona.";
     }
     private async Task SubmitAsync(string input, bool fromVoice = false, bool isRetry = false, string? displayText = null)
     {

@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using Microsoft.Win32;
+using SentinelX.Services.Intent;
 
 namespace SentinelX;
 public partial class MainWindow
@@ -18,6 +19,7 @@ public partial class MainWindow
         if (normalized is "anuluj" or "przerwij" or "przerwij odpowiedz") { CancelCurrent(); toolbox.CancelPendingAction(); UpdatePermission(); return "Przerwano. Akcje już ukończone nie są cofane."; }
         if (emergency) { string msg = "STOP awaryjny blokuje nowe zadania. Wpisz „wznów Sentinel”."; AddMessage("SENTINEL", msg); return msg; }
         if (string.IsNullOrWhiteSpace(command)) return "Słucham.";
+        if (AuthorizedUsePolicy.TryRefuse(command, out string safetyRefusal)) return safetyRefusal;
         if (fromVoice && Core.CommandText.IsApproval(normalized))
         { AddMessage("SENTINEL", "Potwierdź akcję przyciskiem lub wpisz potwierdzenie. Sam głos jej nie zatwierdza."); ShowFromTray(); return "Potwierdź w oknie."; }
         if (busy || installing)

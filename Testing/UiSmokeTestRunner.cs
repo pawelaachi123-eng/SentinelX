@@ -64,10 +64,22 @@ public static class UiSmokeTestRunner
             var memoryService = services.GetRequiredService<ConversationMemoryService>();
             if (memoryService.ActiveConversationTitle.Length == 0)
                 throw new InvalidOperationException("Conversation title must be available.");
+            int privateBaselineNotes = memoryService.NoteCount;
+            const string privateCanary = "UI_PRIVATE_MODE_CANARY_7F19";
             chat.TogglePrivateModeCommand.Execute(null);
             if (!memoryService.PrivateMode) throw new InvalidOperationException("Private mode toggle must apply immediately.");
+            memoryVm.NewText = privateCanary;
+            memoryVm.AddNoteCommand.Execute(null);
+            if (memoryVm.NewText != privateCanary || memoryService.NoteCount != privateBaselineNotes)
+                throw new InvalidOperationException("The Memory page must not clear or persist a rejected private note.");
+            memoryService.AddUserMessage(privateCanary, "ui-smoke");
+            memoryService.AddAssistantMessage(privateCanary);
+            memoryService.FlushDraft();
             chat.TogglePrivateModeCommand.Execute(null);
             if (memoryService.PrivateMode) throw new InvalidOperationException("Private mode toggle must turn back off.");
+            if (memoryService.NoteCount != privateBaselineNotes || File.ReadAllText(memoryService.StoragePath).Contains(privateCanary))
+                throw new InvalidOperationException("Private session notes/messages must not survive a later normal save.");
+            memoryVm.NewText = "";
             // Projects roundtrip through the real DI graph and the real page VM.
             var projectService = services.GetRequiredService<ProjectService>();
             var projectVm = services.GetRequiredService<ProjectViewModel>();
@@ -226,10 +238,13 @@ public static class UiSmokeTestRunner
             string suggestions = (await memoryEngine.ExecuteAsync("propozycje")).Text;
             if (!suggestions.Contains("PROPOZYCJE") || !suggestions.Contains("czeka na Twoją decyzję"))
                 throw new InvalidOperationException("Suggestions must stay informational only: " + suggestions);
-            // 0.91: honest capability boundaries — refusals instead of invented abilities.
-            string modelRefusal = (await memoryEngine.ExecuteAsync("zbuduj model 3d")).Text;
-            if (!modelRefusal.Contains("nie buduję modeli 3D"))
-                throw new InvalidOperationException("3D modeling must be refused honestly: " + modelRefusal);
+            // Creative tools stay honest: OBJ output is a real local artifact; bare 3D commands show safe usage.
+            string modelHelp = (await memoryEngine.ExecuteAsync("zbuduj model 3d")).Text;
+            if (!modelHelp.Contains("model 3d: cube") || !modelHelp.Contains("CreatedModels"))
+                throw new InvalidOperationException("A bare 3D-model command must show the supported local OBJ workflow: " + modelHelp);
+            string robloxTemplate = (await memoryEngine.ExecuteAsync("roblox kod: leaderstats")).Text;
+            if (!robloxTemplate.Contains("ServerScriptService/Leaderstats.server.lua") || !robloxTemplate.Contains("nie kompilował go ani nie uruchamiał"))
+                throw new InvalidOperationException("The Roblox Luau helper must show a source-only template with honest limits: " + robloxTemplate);
             string selfModRefusal = (await memoryEngine.ExecuteAsync("ulepsz sie")).Text;
             if (!selfModRefusal.Contains("Nie modyfikuję własnego kodu"))
                 throw new InvalidOperationException("Self-code modification must be refused honestly: " + selfModRefusal);

@@ -1,4 +1,5 @@
 using SentinelX.Core;
+using SentinelX.Services.Creative;
 
 namespace SentinelX.Services.Intent;
 
@@ -58,6 +59,24 @@ public sealed class IntentRouter : IIntentRouter
             return await ProcessAsync(suggested, token, onDelta);
         }
         pendingSuggestion = null;
+
+        // Block high-confidence actionable requests for illegal harm before files, utilities, apps or AI can act.
+        if (AuthorizedUsePolicy.TryRefuse(input, out string safetyRefusal)) return safetyRefusal;
+
+        // Natural-language Roblox creation is an intent, not a magic command string. Route before typo repair
+        // so the user's full brief, title, theme and constraints stay intact and never reach a text-rewrite step.
+        if (RobloxGameRequestAnalyzer.TryAnalyze(input, out RobloxGameProjectSpec gameRequest))
+        {
+            pendingSuggestion = null;
+            return await router.CreateRobloxGameRequestAsync(gameRequest, token).ConfigureAwait(false);
+        }
+
+        // Preserve source/mesh arguments byte-for-byte. Typo repair is unsafe for code payloads and
+        // can silently alter a model dimension or a Luau identifier before the deterministic tool sees it.
+        string normalizedCreativeInput = CommandText.Normalize(input).Trim();
+        if (RobloxLuauTools.IsCommand(normalizedCreativeInput) || ObjModelGenerator.IsCommand(normalizedCreativeInput) ||
+            RobloxGameProjectGenerator.IsCommand(normalizedCreativeInput))
+            return await router.ProcessAsync(input, token, onDelta);
 
         // Typos and short forms: repair only rewrites the text, then the normal pipeline decides.
         var repair = CommandUnderstanding.Repair(input);

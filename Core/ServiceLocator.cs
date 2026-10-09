@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using SentinelX.Services.Actions;
 using SentinelX.Services.AI;
 using SentinelX.Services.Desktop;
+using SentinelX.Services.Creative;
 using SentinelX.Services.History;
 using SentinelX.Services.Intent;
 using SentinelX.Services.Monitoring;
@@ -66,6 +67,11 @@ public static class ServiceLocator
             { EngineDescribe = engine.Describe, RepairHandler = engine.RepairAsync };
         });
         services.AddSingleton<IAiService, AiService>();
+        services.AddSingleton<ObjModelGenerator>();
+        services.AddSingleton<RobloxGameProjectGenerator>();
+        services.AddSingleton<BlenderAutomationService>();
+        services.AddSingleton<RobloxStudioLauncher>();
+        services.AddSingleton<RobloxCreativeWorkflowService>();
         services.AddSingleton<CommandRouter>();
         services.AddSingleton<SentinelToolboxService>(sp => new(() => sp.GetRequiredService<ISettingsService>().Current.Ui.DefaultBrowserPreference, sp.GetRequiredService<ActionHistoryService>(),
             sp.GetRequiredService<Services.Permissions.IPermissionService>(), sp.GetRequiredService<Services.Apps.IAppLauncherService>(),

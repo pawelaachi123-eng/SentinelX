@@ -38,11 +38,19 @@ public sealed class ActionEngine(IIntentRouter router, SentinelToolboxService to
         if (fromVoice && CommandText.IsApproval(normalized))
             return new("Potwierdzenie jest możliwe wyłącznie przyciskiem lub klawiaturą.");
         CancellationTokenSource source;
-        var record = new ActionRecord { UserRequest = input, Status = ActionStatus.Running, Phase = "Przygotowanie polecenia" };
+        bool startedEphemeral = memory.IsEphemeral;
+        var record = new ActionRecord { UserRequest = input, RequiresRedaction = startedEphemeral, Status = ActionStatus.Running, Phase = "Przygotowanie polecenia" };
+        void ObservePrivacyTransition()
+        {
+            try { if (memory.IsEphemeral) record.RequiresRedaction = true; }
+            catch { record.RequiresRedaction = true; } // If privacy cannot be read, fail closed for durable logging.
+        }
+        memory.Changed += ObservePrivacyTransition;
+        ObservePrivacyTransition();
         lock (gate)
         {
-            if (stopped) return new("STOP blokuje nowe akcje. Użyj przycisku Wznów.");
-            if (active != null) return new("Trwa zadanie. Poczekaj lub je anuluj.");
+            if (stopped) { memory.Changed -= ObservePrivacyTransition; return new("STOP blokuje nowe akcje. Użyj przycisku Wznów."); }
+            if (active != null) { memory.Changed -= ObservePrivacyTransition; return new("Trwa zadanie. Poczekaj lub je anuluj."); }
             source = active = CancellationTokenSource.CreateLinkedTokenSource(token);
             currentAction = record;
             tracked.Add(record); if (tracked.Count > 100) tracked.RemoveAt(0);
@@ -55,7 +63,12 @@ public sealed class ActionEngine(IIntentRouter router, SentinelToolboxService to
             lock (gate) { first = !streaming; streaming = true; }
             if (first) PublishChanged();
             try { StreamDelta?.Invoke(chunk); onDelta?.Invoke(chunk); }
-            catch (Exception observerError) { AppLog.Write(observerError); }
+            catch (Exception observerError)
+            {
+                if (record.RequiresRedaction || memory.IsEphemeral)
+                    AppLog.Write(new InvalidOperationException("Prywatny strumień odpowiedzi napotkał błąd obserwatora; szczegóły pominięto."));
+                else AppLog.Write(observerError);
+            }
         }
         using var tickerStop = new CancellationTokenSource();
         var ticker = UpdateElapsedAsync(record, clock, tickerStop.Token);
@@ -67,14 +80,15 @@ public sealed class ActionEngine(IIntentRouter router, SentinelToolboxService to
             record.Phase = "Wykonywanie polecenia · możesz je przerwać";
             response = await Task.Run(async () =>
             {
-                history.AddRunning(record.ActionId, "REQUEST", AuditText(input));
+                history.AddRunning(record.ActionId, "REQUEST", AuditText(input, record.RequiresRedaction || memory.IsEphemeral));
                 memory.AddUserMessage(input, fromVoice ? "voice" : "keyboard");
                 using var approval = ApprovalContext.Begin(input, fromVoice);
                 using var scope = ActionEvidenceCapture.Begin(record.ActionId);
                 capture = scope;
                 var text = await router.ProcessAsync(input, source.Token, onDelta == null ? null : Publish);
                 source.Token.ThrowIfCancellationRequested();
-                memory.AddAssistantMessage(text);
+                // Any private interval latches redaction for the whole turn, even if the router or UI turns privacy back off.
+                if (!record.RequiresRedaction && !memory.IsEphemeral) memory.AddAssistantMessage(text);
                 return text;
             }, source.Token);
             record.Status = ActionStatus.Verifying;
@@ -95,17 +109,21 @@ public sealed class ActionEngine(IIntentRouter router, SentinelToolboxService to
             {
                 response = partial + "\n\n[Przerwano generowanie po " + partial.Length +
                     " znakach. Powyższy tekst może urywać się w połowie zdania — to wszystko, co model zdążył wygenerować.]";
-                memory.AddAssistantMessage(response);
+                if (!record.RequiresRedaction && !memory.IsEphemeral) memory.AddAssistantMessage(response);
             }
             else response = record.Evidence;
             return new(response, record);
         }
         catch (Exception ex)
         {
-            AppLog.Write(ex); record.Status = ActionStatus.Failed; record.Error = ex.Message;
+            bool ephemeral = record.RequiresRedaction || memory.IsEphemeral;
+            if (ephemeral) AppLog.Write(new InvalidOperationException("Prywatne/niezapisywane polecenie zakończyło się błędem; szczegóły pominięto."));
+            else AppLog.Write(ex);
+            record.Status = ActionStatus.Failed;
+            record.Error = ephemeral ? "Szczegóły błędu prywatnego polecenia nie zostały zapisane." : ex.Message;
             record.ToolResults = capture?.Snapshot() ?? [];
             record.Evidence = "Polecenie zakończone błędem. Sprawdź ukończone kroki przed ponowieniem." + FormatProof(record.ToolResults);
-            response = "Nie udało się wykonać polecenia: " + ex.Message;
+            response = ephemeral ? "Nie udało się wykonać polecenia w trybie prywatnym. Szczegóły błędu nie zostały zapisane." : "Nie udało się wykonać polecenia: " + ex.Message;
             return new(response, record);
         }
         finally
@@ -127,13 +145,20 @@ public sealed class ActionEngine(IIntentRouter router, SentinelToolboxService to
             };
             try
             {
-                await Task.Run(() => Persist(record, response));
+                await Task.Run(() => { ObservePrivacyTransition(); Persist(record, response); });
                 record.StorageWarning = history.LastStorageError ?? memory.LastStorageError ?? "";
                 if (IsStopped || record.Status == ActionStatus.Cancelled) toolbox.CancelPendingAction();
             }
-            catch (Exception ex) { AppLog.Write(ex); record.StorageWarning = "Nie zapisano audytu: " + ex.Message; }
+            catch (Exception ex)
+            {
+                if (record.RequiresRedaction || memory.IsEphemeral)
+                    AppLog.Write(new InvalidOperationException("Prywatny audyt nie został zapisany; szczegóły pominięto."));
+                else AppLog.Write(ex);
+                record.StorageWarning = record.RequiresRedaction || memory.IsEphemeral ? "Audyt prywatnego polecenia nie został zapisany." : "Nie zapisano audytu: " + ex.Message;
+            }
             finally
             {
+                memory.Changed -= ObservePrivacyTransition;
                 // Audit failures or UI observers must NEVER leave the execution lane locked.
                 lock (gate) { active = null; source.Dispose(); }
                 PublishChanged();
@@ -172,20 +197,21 @@ public sealed class ActionEngine(IIntentRouter router, SentinelToolboxService to
         "\n\n" + string.Join("\n\n", entries.Select(x => $"{x.ActionId} [{x.Status}]\n{x.Message}\n{x.Evidence}"));
     private void Persist(ActionRecord record, string response)
     {
+        bool ephemeral = record.RequiresRedaction || memory.IsEphemeral;
+        string evidence = ephemeral ? "Szczegóły dowodu z prywatnego polecenia nie zostały zapisane." : record.Evidence;
         if (record.Status == ActionStatus.WaitingPermission)
-        { history.AddPending(record.ActionId, "REQUEST", AuditText(record.UserRequest), record.Evidence); return; }
-        bool ephemeral = memory.IsEphemeral;
+        { history.AddPending(record.ActionId, "REQUEST", AuditText(record.UserRequest, ephemeral), evidence); return; }
         var result = record.Status switch
         {
-            // A private session must not persist the command text or the reply text anywhere, including the audit file.
-            ActionStatus.Verified => ActionExecutionResult.VerifiedSuccess(ephemeral ? "[treść niezapisana]" : response, record.Evidence),
-            ActionStatus.Cancelled => ActionExecutionResult.Cancelled(record.Evidence),
-            ActionStatus.Failed => ActionExecutionResult.Failure(ephemeral ? "[treść niezapisana]" : record.Error, record.Evidence),
-            _ => ActionExecutionResult.UnverifiedSuccess(ephemeral ? "[treść niezapisana]" : response, record.Evidence)
+            // A private or unsaved turn must not persist the command, reply, error or tool evidence anywhere, including the audit file.
+            ActionStatus.Verified => ActionExecutionResult.VerifiedSuccess(ephemeral ? "[treść niezapisana]" : response, evidence),
+            ActionStatus.Cancelled => ActionExecutionResult.Cancelled(evidence),
+            ActionStatus.Failed => ActionExecutionResult.Failure(ephemeral ? "[treść niezapisana]" : record.Error, evidence),
+            _ => ActionExecutionResult.UnverifiedSuccess(ephemeral ? "[treść niezapisana]" : response, evidence)
         };
-        history.AddResult(record.ActionId, "REQUEST", AuditText(record.UserRequest), result, record.ElapsedMilliseconds);
+        history.AddResult(record.ActionId, "REQUEST", AuditText(record.UserRequest, ephemeral), result, record.ElapsedMilliseconds);
     }
-    private string AuditText(string text) => memory.IsEphemeral ? "[rozmowa prywatna lub zapis wyłączony — treść niezapisana]" : text;
+    private static string AuditText(string text, bool ephemeral) => ephemeral ? "[rozmowa prywatna lub zapis wyłączony — treść niezapisana]" : text;
     private void UpdateWaitingRequests(IReadOnlyList<ActionHistoryEntry> proof)
     {
         ActionRecord[] waiting;

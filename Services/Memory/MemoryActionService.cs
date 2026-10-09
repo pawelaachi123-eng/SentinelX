@@ -20,6 +20,7 @@ public sealed class MemoryActionService(ConversationMemoryService memory, IPermi
     {
         var mutation = Parse(input);
         if (mutation.Type == null) return null;
+        if (memory.PrivateMode) return "Tryb prywatny jest włączony — zmiany zapisanej pamięci są zablokowane. Wyłącz go, aby wykonać tę operację.";
         if (mutation.Type == "MEMORY_FORGET" && (mutation.Argument.Length == 0 || mutation.Argument.Length > 500))
             return "Podaj fragment wspomnienia (1–500 znaków).";
         string id = history.CreateActionId();
@@ -30,6 +31,10 @@ public sealed class MemoryActionService(ConversationMemoryService memory, IPermi
             CancellableExecutor = token =>
             {
                 token.ThrowIfCancellationRequested();
+                // The user may switch privacy mode after approving but before this executor starts.
+                if (memory.PrivateMode)
+                    return Task.FromResult(ActionExecutionResult.Failure("Tryb prywatny włączył się przed wykonaniem — pamięci nie zmieniono.",
+                        "Operacja została ponownie sprawdzona tuż przed mutacją i zablokowana."));
                 if (mutation.Type == "MEMORY_CLEAR_ALL") memory.ClearAll();
                 else if (mutation.Type == "MEMORY_CLEAR_CHAT") memory.Clear();
                 else memory.Forget(mutation.Argument);
@@ -47,6 +52,7 @@ public sealed class MemoryActionService(ConversationMemoryService memory, IPermi
     /// <summary>Deleting one explicit memory by stable ID is still HIGH risk and goes through the same approval flow.</summary>
     public string RequestDeleteNote(string noteId, string preview)
     {
+        if (memory.PrivateMode) return "Tryb prywatny jest włączony — zmiany zapisanej pamięci są zablokowane. Wyłącz go, aby wykonać tę operację.";
         var note = memory.FindNote(noteId);
         if (note == null) return "Wspomnienie już nie istnieje. Odśwież listę.";
         string id = history.CreateActionId();
@@ -59,8 +65,12 @@ public sealed class MemoryActionService(ConversationMemoryService memory, IPermi
             CancellableExecutor = token =>
             {
                 token.ThrowIfCancellationRequested();
+                if (memory.PrivateMode)
+                    return Task.FromResult(ActionExecutionResult.Failure("Tryb prywatny włączył się przed wykonaniem — wspomnienia nie usunięto.",
+                        "Operacja została ponownie sprawdzona tuż przed mutacją i zablokowana."));
                 if (!memory.DeleteNote(noteId))
-                    return Task.FromResult(ActionExecutionResult.Failure("Wspomnienie nie istniało w chwili zatwierdzenia. Nic nie usunięto.", "Odczyt przed wykonaniem nie znalazł wpisu o tym identyfikatorze."));
+                    return Task.FromResult(ActionExecutionResult.Failure(memory.LastStorageError ?? "Wspomnienie nie istniało w chwili zatwierdzenia. Nic nie usunięto.",
+                        memory.LastStorageError ?? "Odczyt przed wykonaniem nie znalazł wpisu o tym identyfikatorze."));
                 bool verified = memory.VerifyPersistedState(out string evidence);
                 return Task.FromResult(verified
                     ? ActionExecutionResult.VerifiedSuccess("Usunięto jedno wspomnienie i sprawdzono zapis. Pozostałe wpisy i audyt zachowane.", evidence)
@@ -93,15 +103,16 @@ public sealed class MemoryActionService(ConversationMemoryService memory, IPermi
     public string SetPinnedVerified(string noteId, bool pinned)
         => Audited(history.CreateActionId(), "MEMORY_PIN", "przypnij wspomnienie", memory.SetPinned(noteId, pinned),
             pinned ? "Przypięto wspomnienie — trafia do kontekstu w pierwszej kolejności." : "Odpięto wspomnienie.",
-            "Nie znaleziono wspomnienia.");
+            memory.LastStorageError ?? "Nie znaleziono wspomnienia.");
 
     public string SetStaleVerified(string noteId, bool stale)
         => Audited(history.CreateActionId(), "MEMORY_STALE", "oznacz aktualność", memory.SetStale(noteId, stale),
             stale ? "Oznaczono jako nieaktualne — wspomnienie nie trafia już do kontekstu AI, ale nie jest skasowane." : "Przywrócono wspomnienie jako aktualne.",
-            "Nie znaleziono wspomnienia.");
+            memory.LastStorageError ?? "Nie znaleziono wspomnienia.");
 
     public string ImportVerified(string path)
     {
+        if (memory.PrivateMode) return "Tryb prywatny jest włączony — import wspomnień został zablokowany.";
         string id = history.CreateActionId();
         string summary = memory.ImportMemories(path);
         bool ok = summary.StartsWith("Zaimportowano", StringComparison.Ordinal);

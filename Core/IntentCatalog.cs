@@ -92,7 +92,11 @@ public static class IntentCatalog
             "porownaj teksty", "diff", "regex", "sprawdz wzor", "sha256 pliku", "md5 pliku", "hash pliku",
             "wyciagnij", "wyciagnij z tekstu", "posortuj linie", "posortuj wiersze",
             "unikalne linie", "tylko unikalne linie", "kwota slownie", "slownie",
-            "sekundy", "na sekundy", "ile to sekund", "moc hasla", "sila hasla", "qr", "qr wifi", "narzedzia"
+            "sekundy", "na sekundy", "ile to sekund", "moc hasla", "sila hasla", "qr", "qr wifi", "narzedzia",
+            // Roblox/Luau source templates, heuristic audits and offline OBJ primitives.
+            "roblox", "roblox pomoc", "roblox szablony", "roblox kod", "roblox gra", "roblox projekt", "szablony roblox", "luau pomoc",
+            "stworz gre na robloxie", "zrob gre na robloxie", "zbuduj gre na robloxie", "stworz gre roblox", "create a roblox game", "build a roblox game",
+            "luau sprawdz", "sprawdz luau", "model 3d", "modeluj 3d", "druk 3d", "zbuduj model 3d", "generuj model 3d", "zrob model 3d"
         ];
         foreach (string phrase in extra) phrases.Add(phrase);
         return phrases.OrderBy(x => x, StringComparer.Ordinal).ToArray();
@@ -100,6 +104,8 @@ public static class IntentCatalog
 
     /// <summary>Every word that appears in a known phrase — the vocabulary used for word-level repair.</summary>
     public static IReadOnlySet<string> Vocabulary { get; } = new HashSet<string>(
-        Phrases.SelectMany(phrase => phrase.Split(' ', StringSplitOptions.RemoveEmptyEntries)),
+        Phrases.SelectMany(phrase => phrase.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+            .Concat(["leaderstats", "sprint", "checkpoint", "remote", "remoteevent", "shop", "cube", "box", "plane", "sphere", "cylinder", "cone", "kostka", "klocek", "kula", "walec", "stozek", "platforma",
+                "simulator", "symulator", "sim", "obby", "parkour", "tycoon", "magnat", "rounds", "survival", "przetrwanie", "rundy", "custom", "wlasna", "sandbox", "crystal", "miner"]),
         StringComparer.Ordinal);
 }

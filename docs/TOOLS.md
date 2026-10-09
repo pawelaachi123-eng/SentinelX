@@ -9,6 +9,29 @@ Każde narzędzie działa też z czatu: wystarczy wpisać jego polecenie. Urucho
 ścieżką silnika, więc obowiązują te same zasady co wszędzie: STOP awaryjny blokuje akcje, wynik ma dowód,
 a polecenia zmieniające stan systemu wymagają zgody.
 
+## Roblox Studio / Luau i modele 3D
+
+| Polecenie | Co robi | Granice i zapis |
+| --- | --- | --- |
+| `roblox pomoc` | Pokazuje dostępne szablony Luau i zasady audytu. | Offline; bez logowania do Roblox. |
+| `roblox kod: leaderstats` | Tekst serwerowego skryptu sesyjnych Coins. | Wklej ręcznie do `ServerScriptService`; Sentinel nie kompiluje ani nie publikuje kodu. |
+| `roblox kod: sprint` | Tekst `LocalScript` sprintu na Shift. | Wklej ręcznie do `StarterPlayerScripts`; prędkości dostosuj do gry. Klient nie jest granicą antycheat — w grze rywalizacyjnej serwer musi egzekwować dozwolony ruch. |
+| `roblox kod: checkpoint` | Tekst sesyjnych checkpointów obby. | Wymaga `workspace.Checkpoints` z ponumerowanymi częściami; testuj na kopii gry. |
+| `roblox kod: remote` | Przykład sklepu: serwer posiada listę dozwolonych produktów, cenę, saldo i limit żądań; klient wysyła tylko klucz produktu. | Tekst źródłowy. Dodaj nagrodę po stronie serwera i testuj w prywatnej sesji Studio. |
+| `luau sprawdz: <kod>` | Heurystycznie wykrywa kilka wzorców (np. `loadstring`, `require(AssetId)`, pętle, `RemoteEvent`, DataStore); pomija komentarze i zwykłe/długie literały, skanuje template stringi konserwatywnie i zachowuje numery linii. | To nie parser, type-checker ani kompilator. Brak zgłoszeń nie dowodzi, że kod jest bezpieczny ani poprawny. |
+| `model 3d: cube 2 2 2` | Zapisuje tekstową siatkę Wavefront OBJ. Dostępne: `cube`, `plane`, `sphere`, `cylinder`, `cone` (oraz kilka polskich aliasów). | Nowy plik w `%LocalAppData%\SentinelX\CreatedModels`; polecenie nie przyjmuje ścieżki ani nie nadpisuje pliku. Sentinel nie uruchamia Blendera i nie sprawdza renderu. |
+| „Stwórz mi grę na Robloxie: kooperacyjny wyścig w neonowym kosmosie; nazwij ją Starfall Rally” | Naturalny opis (bez obowiązkowej składni) uruchamia analizę intencji i lokalny projekt z 12 wpisami: standalone Luau, tekstowy `.rbxlx`, modularne źródła Rojo, briefy oraz dwa skrypty Blender. Profile prototypu obejmują `simulator`, `obby`, `tycoon`, `rounds`, `racing` i `custom`. | Zapis do `%LocalAppData%\SentinelX\CreatedGames`; bez ścieżki od użytkownika i bez nadpisywania. Workflow może uruchomić zainstalowany Blender i przekazać place do Roblox Studio w Windows. Weryfikacja ZIP/hash nie dowodzi, że Luau lub `.rbxlx` otworzy się i zadziała w Studio ani że geometria jest gotowym assetem. Nie loguje się i nie publikuje. |
+
+Kostka przyjmuje bok albo 3 wymiary; płaszczyzna 1–2 wymiary; sfera promień, 8–96 segmentów i 4–96 pierścieni; walec/stożek promień, wysokość i 8–96 segmentów. Wymiary muszą należeć do zakresu 0,001–100000 jednostek. Wynik jest prostą geometrią, bez materiałów, tekstur ani jednostek sceny. Polecenie `jak to rozumiem: model 3d: ...` jedynie opisuje zapis — nie tworzy pliku.
+
+### Projekt gry Roblox / Rojo
+
+Naturalny przykład: „Stwórz mi grę na Robloxie: kooperacyjny wyścig w neonowym kosmosie; nazwij ją Starfall Rally”. Sentinel sam wykrywa zamiar, gatunek, temat, tytuł i urządzenia; nie trzeba wpisywać prefiksu ani znać składni. Dostępne prototypy: `simulator`, `obby`, `tycoon`, `rounds`, `racing`, `custom`. To lokalny punkt startu z samodzielnym skryptem gry, nie gotowa produkcja komercyjna. Serwer weryfikuje progres i zapisuje go przez DataStore, który wymaga ręcznej konfiguracji testowego experience i API Services.
+
+Projekt powstaje jako folder, ZIP, `.lua` i tekstowy `.rbxlx`. Gdy aplikacje są dostępne, workflow próbuje uruchomić Blender w trybie headless, zapisać `.blend` i FBX, otworzyć scenę oraz przekazać place do Roblox Studio (Windows). Proces Studio lub rozmiar pliku nie potwierdza poprawnego importu ani działania gry — sprawdź Output, Errors i Play ręcznie. Modularne źródła Rojo można rozwijać w `rojo serve`; zachowaj kopię przed synchronizacją do testowego place. Skrypt `tools/blender/create_blockout.py` nadal jest ręcznym, nieinwazyjnym blockoutem; `tools/blender/build_scene.py` buduje dodatkową scenę i eksportuje FBX bez usuwania istniejących kolekcji.
+
+To grywalny prototyp do ręcznej weryfikacji, nie pełna gra komercyjna ani obietnica FPS, popularności czy zarobków. Weryfikacja SHA-256 potwierdza wyłącznie odczyt ZIP-a i plików; nie potwierdza składni Luau, poprawności Rojo, akceptacji `.rbxlx` przez Studio, działania gameplayu, importu FBX, wyglądu, wydajności ani zapisu DataStore. Przed wdrożeniem przejrzyj źródła, testuj i ręcznie sprawdź bieżące zasady Roblox.
+
 ## Kuźnia 0.96 — nowe narzędzia
 
 | Polecenie | Co robi |
@@ -61,4 +84,5 @@ pełny katalog, a „Wyczyść filtry” wraca do początku.
 
 - **Zip/rozpakowywanie** — planowane, ale wymaga ścieżki zgód dla zapisu plików; na razie świadomie pominięte.
 - **Schowek i zrzuty ekranu** — także planowane; wolimy je dodać razem z widocznym podglądem niż po cichu.
+- **Nielegalne działania** — Sentinel nie ma pomagać w nieautoryzowanym dostępie, kradzieży danych, oszustwach, tworzeniu malware, zacieraniu śladów ani wyrządzaniu szkody. Konserwatywna reguła blokuje część jawnych próśb operacyjnych; nie jest pełnym klasyfikatorem prawa. Dozwolone pozostają obrona, edukacja, odzyskiwanie dostępu i testy systemów, do których użytkownik ma upoważnienie.
 - **Cokolwiek, co wymaga chmury albo konta** — nie ma i nie będzie: wszystko liczy się na tym komputerze.

@@ -23,6 +23,8 @@ public static partial class UtilityToolbox
     public static string? Process(string command, string text)
     {
         string raw = command ?? "";
+        string? creator = RobloxLuauTools.Process(raw, text);
+        if (creator != null) return creator;
         // Order matters: the specific tools are matched first, the generic calculator last, so that
         // „policz slowa: …” and „ile to procent 30 z 240” are not swallowed by the arithmetic parser.
         var words = Regex.Match(text, @"^(?:ile slow|policz slowa|ile wyrazow)[:\s]+(.+)$");
