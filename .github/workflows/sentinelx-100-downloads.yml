@@ -20,7 +20,7 @@ jobs:
       - name: Build actual WinUI 3 app
         shell: pwsh
         run: |
-          dotnet publish SentinelX.WinUI/SentinelX.WinUI.csproj -c Release -r win-x64 --self-contained true -p:Platform=x64 -p:Version=1.0.0 -p:LangVersion=12.0 -p:UseXamlCompilerExecutable=true -p:WindowsAppSDKSelfContained=true -o bin/portable
+          dotnet publish SentinelX.WinUI/SentinelX.WinUI.csproj -c Release -r win-x64 --self-contained true -p:Platform=x64 -p:Version=1.0.0 -p:LangVersion=12.0 -p:UseXamlCompilerExecutable=true -[...]
           if ($LASTEXITCODE -ne 0) { throw 'WinUI publish failed' }
           if (!(Test-Path bin/portable/SentinelX.exe)) { throw 'EXE missing' }
 
@@ -56,6 +56,11 @@ jobs:
           java-version: '17'
 
       - uses: android-actions/setup-android@v3
+        with:
+          packages: |
+            platform-tools
+            platforms;android-34
+            build-tools;34.0.0
 
       - uses: gradle/actions/setup-gradle@v4
 
