@@ -1,0 +1,27 @@
+@import url("https://fonts.googleapis.com/css2?family=Syne:wght@500;600;700;800&family=Figtree:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap");
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #050b13;
+  --acc-a: #59dceb;
+  --acc-b: #8279e8;
+  --ink: #e7eef8;
+  --ink-2: #9fb0c6;
+  --ink-3: #62738a;
+  --glass: 0.5;
+  --blur: 20px;
+  --line: rgba(170, 205, 240, 0.12);
+  --r-lg: 26px;
+  --r-md: 18px;
+}
+html, body, #root { height: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink); overflow: hidden;
+  font-family: "Figtree", system-ui, sans-serif; -webkit-font-smoothing: antialiased;
+}
+::selection { background: color-mix(in srgb, var(--acc-a) 35%, transparent); color: #fff; }
+* { scrollbar-width: thin; scrollbar-color: rgba(160, 190, 230, 0.2) transparent; }
+:focus-visible { outline: 1.5px solid color-mix(in srgb, var(--acc-a) 80%, white); outline-offset: 3px; border-radius: 12px; }
+.mono { font-family: "JetBrains Mono", monospace; font-size: 0.78rem; }
