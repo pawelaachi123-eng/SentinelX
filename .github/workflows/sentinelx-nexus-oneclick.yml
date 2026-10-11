@@ -1,0 +1,160 @@
+name: Sentinel X Nexus - One Click
+
+on:
+  push:
+    branches:
+      - 'integrate/nexus-oneclick-*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sentinel-nexus-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  ui:
+    name: Build Nexus React UI
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout saved ui branch
+        uses: actions/checkout@v4
+        with:
+          ref: ui
+          path: nexus-ui
+          persist-credentials: false
+      - name: Log exact UI commit
+        run: git -C nexus-ui rev-parse HEAD
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install UI dependencies
+        working-directory: nexus-ui/frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Preview-only Emergent tooling is not required in production builds.
+          node - <<'NODE'
+          const fs = require('fs');
+          const p = 'package.json';
+          const pkg = JSON.parse(fs.readFileSync(p, 'utf8'));
+          delete pkg.devDependencies['@emergentbase/overlay'];
+          delete pkg.devDependencies['@emergentbase/visual-edits'];
+          fs.writeFileSync(p, JSON.stringify(pkg, null, 2));
+          NODE
+          npm install --legacy-peer-deps --no-audit --no-fund
+      - name: Compile production UI
+        working-directory: nexus-ui/frontend
+        env:
+          CI: 'false'
+          REACT_APP_BACKEND_URL: ''
+          GENERATE_SOURCEMAP: 'false'
+        run: npm run build
+      - name: Verify UI bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s nexus-ui/frontend/build/index.html
+          test -d nexus-ui/frontend/build/static/js
+          grep -q 'id="root"' nexus-ui/frontend/build/index.html
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nexus-ui-production
+          path: nexus-ui/frontend/build/
+          if-no-files-found: error
+          retention-days: 14
+
+  windows:
+    name: Windows WinUI 3 + Nexus (EXE and installer)
+    needs: ui
+    runs-on: windows-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          ref: ui
+          path: nexus-ui
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: nexus-ui-production
+          path: nexus-production
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Prepare secured Nexus host
+        shell: pwsh
+        run: ./scripts/prepare-nexus.ps1 -UiRoot nexus-ui
+      - name: Compile and publish WinUI 3
+        shell: pwsh
+        run: |
+          dotnet publish SentinelX.WinUI/SentinelX.WinUI.csproj -c Release -r win-x64 --self-contained true -p:Platform=x64 -p:Version=1.0.0 -p:LangVersion=12.0 -p:UseXamlCompilerExecutable=true -o bin/portable
+          if ($LASTEXITCODE -ne 0) { throw 'WinUI3 compile/publish failed' }
+          if (!(Test-Path 'bin/portable/SentinelX.exe')) { throw 'Missing Windows executable' }
+      - name: Bundle offline UI assets
+        shell: pwsh
+        run: |
+          $target = 'bin/portable/nexus'
+          New-Item -Path $target -ItemType Directory -Force | Out-Null
+          Copy-Item -Path 'nexus-production/*' -Destination $target -Recurse -Force
+          if (!(Test-Path "$target/index.html")) { throw 'Offline UI missing in portable build' }
+          if (!(Get-ChildItem "$target/static/js" -Filter '*.js' -ErrorAction SilentlyContinue)) { throw 'Compiled JavaScript missing' }
+      - name: Windows smoke test (native services)
+        shell: pwsh
+        run: |
+          $out = Join-Path $PWD 'smoke-results'
+          New-Item $out -ItemType Directory -Force | Out-Null
+          $p = Start-Process -FilePath (Resolve-Path 'bin/portable/SentinelX.exe').Path -ArgumentList @('--ui-smoke', $out) -PassThru
+          if (-not $p.WaitForExit(120000)) { $p.Kill(); throw 'Native WinUI smoke timed out' }
+          if ($p.ExitCode -ne 0) {
+            Get-ChildItem $out -Recurse -File | ForEach-Object { Get-Content $_.FullName -ErrorAction SilentlyContinue }
+            throw "Native WinUI smoke failed: exit=$($p.ExitCode)"
+          }
+      - name: Create installer, ZIP and SHA256
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (!(Test-Path $iscc)) { throw 'Inno Setup 6 missing' }
+          & $iscc '/DAppVersion=1.0.0' 'installer/SentinelX.iss'
+          if ($LASTEXITCODE -ne 0) { throw 'Installer compile failed' }
+          New-Item dist -ItemType Directory -Force | Out-Null
+          Copy-Item (Get-ChildItem 'bin/installer/*.exe' | Select-Object -First 1).FullName 'dist/SentinelX-Nexus-1.0.0-Setup.exe'
+          Compress-Archive 'bin/portable/*' 'dist/SentinelX-Nexus-1.0.0-Portable.zip'
+          Get-ChildItem dist -File | ForEach-Object { "$( (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant())  $($_.Name)" } | Set-Content 'dist/SHA256SUMS.txt'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sentinel-nexus-windows
+          path: dist/
+          if-no-files-found: error
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: sentinel-nexus-windows-diagnostics
+          path: smoke-results/
+          if-no-files-found: ignore
+
+  android:
+    name: Android APK and tests (existing app)
+    uses: ./.github/workflows/ci-android.yml
+
+  result:
+    name: Overall status
+    if: always()
+    needs: [ui, windows, android]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Summary / gate
+        shell: bash
+        env:
+          UI: ${{ needs.ui.result }}
+          WIN: ${{ needs.windows.result }}
+          APK: ${{ needs.android.result }}
+        run: |
+          echo "## Sentinel X Nexus — verification" >> "$GITHUB_STEP_SUMMARY"
+          echo "UI: $UI | Windows: $WIN | Android: $APK" >> "$GITHUB_STEP_SUMMARY"
+          echo "*The Nexus browser/API modules require additional functional testing on the real Windows host; green compilation alone does not prove all device features.*" >> "$GITHUB_STEP_SUMMARY"
+          test "$UI" = success && test "$WIN" = success && test "$APK" = success
