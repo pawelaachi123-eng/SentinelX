@@ -28,7 +28,7 @@ function AddForm({ onDone }) {
 export default function DevicesPanel({ devices, onClose, onChanged }) {
   const [adding, setAdding] = useState(false);
   const cmd = async (d, action) => { play("send"); await api.post(`/devices/${d.id}/command`, { action }).catch(() => play("error")); };
-  const toggleAuth = async (d) => { await api.patch(`/devices/${d.id}`, { name: d.name, kind: d.kind, address: d.address, authorized: !d.authorized }); onChanged(); };
+  const toggleAuth = async (d) => { await api.patch(`/devices/${d.id}`, { authorized: !d.authorized }); onChanged(); };
   const remove = async (d) => { await api.del(`/devices/${d.id}`); onChanged(); };
   return (
     <ContextPanel id="devices" title="Device Control" icon={IconDevices} onClose={onClose} className="panel-left"

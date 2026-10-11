@@ -47,6 +47,13 @@ class DeviceIn(BaseModel):
     authorized: bool = True
 
 
+class DevicePatch(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=60)
+    kind: str | None = Field(default=None, max_length=30)
+    address: str | None = Field(default=None, max_length=120)
+    authorized: bool | None = None
+
+
 class CommandIn(BaseModel):
     action: str = Field(min_length=1, max_length=40)
     args: dict[str, Any] = {}
@@ -138,8 +145,11 @@ async def add_device(body: DeviceIn):
 
 
 @router.patch("/devices/{dev_id}")
-async def patch_device(dev_id: str, body: DeviceIn):
-    r = await db.devices.update_one({"id": dev_id}, {"$set": body.model_dump()})
+async def patch_device(dev_id: str, body: DevicePatch):
+    patch = body.model_dump(exclude_none=True)
+    if not patch:
+        raise HTTPException(400, "empty patch")
+    r = await db.devices.update_one({"id": dev_id}, {"$set": patch})
     if not r.matched_count:
         raise HTTPException(404, "unknown device")
     await bus.emit("devices.changed", {})
