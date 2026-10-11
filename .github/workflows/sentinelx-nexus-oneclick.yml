@@ -19,6 +19,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
+      - name: Checkout integration tools
+        uses: actions/checkout@v4
       - name: Checkout saved ui branch
         uses: actions/checkout@v4
         with:
@@ -45,6 +47,13 @@ jobs:
           fs.writeFileSync(p, JSON.stringify(pkg, null, 2));
           NODE
           npm install --legacy-peer-deps --no-audit --no-fund
+          # AJV v8 is required by ajv-keywords v5 used by schema-utils/webpack.
+          npm install --legacy-peer-deps --no-audit --no-fund --save-dev ajv@8.17.1 ajv-keywords@5.1.0
+          node -e "require('ajv/dist/compile/codegen'); console.log('AJV v8 resolved')"
+      - name: Patch standalone UI for native host
+        run: python3 scripts/patch-nexus-ui.py nexus-ui/frontend
+      - name: Check Nexus contracts
+        run: python3 scripts/test-nexus-contract.py nexus-ui/frontend
       - name: Compile production UI
         working-directory: nexus-ui/frontend
         env:
@@ -88,6 +97,9 @@ jobs:
       - name: Prepare secured Nexus host
         shell: pwsh
         run: ./scripts/prepare-nexus.ps1 -UiRoot nexus-ui
+      - name: Integrate native tasks and voice bridge
+        shell: pwsh
+        run: ./scripts/prepare-nexus-functional.ps1
       - name: Compile and publish WinUI 3
         shell: pwsh
         run: |
@@ -102,6 +114,13 @@ jobs:
           Copy-Item -Path 'nexus-production/*' -Destination $target -Recurse -Force
           if (!(Test-Path "$target/index.html")) { throw 'Offline UI missing in portable build' }
           if (!(Get-ChildItem "$target/static/js" -Filter '*.js' -ErrorAction SilentlyContinue)) { throw 'Compiled JavaScript missing' }
+      - name: Validate bundled native bridge and asset contracts
+        shell: pwsh
+        run: |
+          if (!(Select-String 'bin/portable/nexus/static/js/*.js' -Pattern 'host.api.request' -Quiet -SimpleMatch)) {
+            throw 'No host.api.request in production UI; native API bridge missing'
+          }
+          if (!(Test-Path 'bin/portable/nexus/index.html')) { throw 'Nexus HTML not bundled' }
       - name: Windows smoke test (native services)
         shell: pwsh
         run: |
