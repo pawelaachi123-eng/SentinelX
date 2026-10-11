@@ -7,7 +7,7 @@ export const STATE_PARAMS = {
   executing: { speed: 1.45, macro: 1.1,  meso: 1.3,  micro: 1.2, energy: 1.0,  glow: 0.85, tension: 0, sat: 1.0, pulse: 1.0, err: 0 },
   success:   { speed: 1.1,  macro: 1.05, meso: 1.1,  micro: 1.0, energy: 0.9,  glow: 1.0,  tension: 0, sat: 1.0, pulse: 0, err: 0 },
   error:     { speed: 0.85, macro: 0.9,  meso: 1.2,  micro: 1.9, energy: 0.55, glow: 0.6,  tension: 1, sat: 0.9, pulse: 0, err: 1 },
-  offline:   { speed: 0.45, macro: 0.8,  meso: 0.7,  micro: 0.6, energy: 0.15, glow: 0.3,  tension: 0, sat: 0.35, pulse: 0, err: 0 },
+  offline:   { speed: 0.45, macro: 0.8,  meso: 0.7,  micro: 0.6, energy: 0.25, glow: 0.4,  tension: 0, sat: 0.85, pulse: 0, err: 0 },
 };
 STATE_PARAMS.recognizing = STATE_PARAMS.listening;
 STATE_PARAMS.warning = { ...STATE_PARAMS.error, tension: 0.5, err: 0.5 };

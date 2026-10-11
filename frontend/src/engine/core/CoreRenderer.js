@@ -57,7 +57,7 @@ export class CoreRenderer {
     const gl = r.getContext();
     const ext = gl.getExtension("WEBGL_debug_renderer_info");
     this.stats.gpu = ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : "WebGL2";
-    r.setClearColor("#050B13", 1);
+    r.setClearColor("#030D1A", 1);
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(32, 1, 0.1, 50);
     this.camera.position.set(0, 0, 6.2);
@@ -67,7 +67,7 @@ export class CoreRenderer {
     if (prev) { Object.assign(this.choreo.clock, prev.clock); this.choreo.setState(prev.state); this.choreo.custom = prev.custom; }
 
     const bgMat = new THREE.ShaderMaterial({ vertexShader: bgVertex, fragmentShader: bgFragment, depthTest: false, depthWrite: false,
-      uniforms: { uT: { value: 0 }, uRes: { value: new THREE.Vector2(1, 1) }, uColA: this.u.uColA, uColB: this.u.uColB, uBg: { value: hex("#050B13") }, uGlow: this.u.uGlow, uCenter: { value: new THREE.Vector2(0.5, 0.52) }, uSat: this.u.uSat } });
+      uniforms: { uT: { value: 0 }, uRes: { value: new THREE.Vector2(1, 1) }, uColA: this.u.uColA, uColB: this.u.uColB, uBg: { value: hex("#030D1A") }, uCenter: { value: new THREE.Vector2(0.5, 0.52) } } });
     this.bg = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), bgMat);
     this.bg.frustumCulled = false; this.bg.renderOrder = -10;
     this.scene.add(this.bg);
@@ -98,10 +98,9 @@ export class CoreRenderer {
   _buildMeshes() {
     this.group.children.slice().forEach((c) => { c.geometry.dispose(); c.material.dispose(); this.group.remove(c); });
     const T = TIERS[this.tier];
-    this.inner = this._layer(2, 0.5, Math.round(T.detail * 0.35), THREE.AdditiveBlending, 1);
     this.body = this._layer(0, 1, T.detail, THREE.NormalBlending, 2);
     this.veil = this._layer(1, 1.14, Math.round(T.detail * 0.5), THREE.AdditiveBlending, 3);
-    const n = Math.round(1800 * T.particles * this.opts.particles);
+    const n = Math.round(900 * T.particles * this.opts.particles);
     const pos = new Float32Array(n * 3), seed = new Float32Array(n * 4);
     for (let i = 0; i < n; i++) {
       const v = new THREE.Vector3().randomDirection();
@@ -114,7 +113,7 @@ export class CoreRenderer {
     this.particles = new THREE.Points(pg, new THREE.ShaderMaterial({ vertexShader: particleVertex, fragmentShader: particleFragment,
       transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, uniforms: { ...this.u, uScale: { value: 1 }, uSeed: { value: 0 } } }));
     this.particles.renderOrder = 4; this.particles.frustumCulled = false;
-    this.group.add(this.inner, this.body, this.veil, this.particles);
+    this.group.add(this.body, this.veil, this.particles);
     this.stats.vertices = this.body.geometry.attributes.position.count;
   }
 
@@ -186,7 +185,7 @@ export class CoreRenderer {
     this.group.position.y = 0.04 * Math.sin(t * 0.21);
     this.bg.material.uniforms.uT.value = this.choreo.clock.wall;
     const useBloom = this.opts.bloom && TIERS[this.tier].bloom;
-    if (useBloom) { this.bloom.strength = 0.35 + 0.45 * p.glow; this.composer.render(); }
+    if (useBloom) { this.bloom.strength = 0.18 + 0.2 * p.glow; this.composer.render(); }
     else this.renderer.render(this.scene, this.camera);
     this._adapt(dt);
   };

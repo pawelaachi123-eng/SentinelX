@@ -64,7 +64,7 @@ float field(vec3 p){
   float pulse = uPulseAmt*exp(-pow((dot(p,uPulseAxis)-(fract(uPulse)*2.6-1.3))*5.0,2.0));
   float audio = 0.0;
   if(uAudio.x+uAudio.y+uAudio.z > 0.002) audio = uAudio.x*0.16*snoise(s*2.4+vec3(uTB*2.0)) + uAudio.y*0.07*snoise(s*5.0-vec3(uTC)) + uAudio.z*0.035*snoise(s*10.0+vec3(uTC*3.0));
-  return 0.36*uMacro*macro + limbs + 0.22*uMeso*meso + 0.016*uMicro*micro
+  return 0.36*uMacro*macro + limbs + 0.22*uMeso*meso + 0.009*uMicro*micro
        + 0.10*ptr + 0.07*rip + 0.085*pulse + 0.09*uImpulse*macro + audio;
 }
 vec3 deform(vec3 p){ return p*(1.0+field(p))*uAniso; }
