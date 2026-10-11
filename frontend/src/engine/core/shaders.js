@@ -16,7 +16,7 @@ void main(){
   vec3 p = normalize(position);
   vec3 t1 = normalize(cross(p, abs(p.y)<0.99 ? vec3(0.0,1.0,0.0) : vec3(1.0,0.0,0.0)));
   vec3 t2 = cross(p, t1);
-  float e = 0.012;
+  float e = 0.035;
   vec3 P  = deform(p);
   vec3 Pa = deform(normalize(p+t1*e));
   vec3 Pb = deform(normalize(p+t2*e));
@@ -64,7 +64,7 @@ void main(){
     col += colA*vein*uEnergy*(0.45+0.3*cav);
     col += colA*band*0.45;
     col += colA*uImpulse*0.5*fres;
-    col *= 0.92+0.16*vCurv;
+    
     col = desat(col, uSat);
     float alpha = mix(0.9, 1.0, fres);
     gl_FragColor = vec4(col, clamp(alpha,0.0,1.0));
@@ -121,8 +121,8 @@ varying vec2 vUv;
 void main(){
   vec2 asp = vec2(uRes.x/uRes.y,1.0);
   float r = length((vUv-uCenter)*asp);
-  vec3 col = uBg + vec3(0.004,0.012,0.022)*(1.0-vUv.y);
-  col += vec3(0.020,0.075,0.110)*exp(-r*r*2.6);
+  vec3 col = uBg + vec3(0.0,0.010,0.020)*(1.0-vUv.y);
+  col += vec3(0.010,0.050,0.080)*exp(-r*r*2.2);
   col *= 1.0-0.45*smoothstep(0.6,1.5,length((vUv-0.5)*asp));
   float g = fract(sin(dot(vUv*uRes,vec2(12.9898,78.233)))*43758.5453);
   col += (g-0.5)*0.008;

@@ -45,7 +45,8 @@ float field(vec3 p){
   vec3 s = p + vec3(uSeed);
   // L1 macro morphing: domain-warped low frequency
   vec3 w = vec3(snoise(s*0.8+vec3(uTA,0.0,0.0)), snoise(s*0.8+vec3(0.0,uTA*0.9,4.1)), snoise(s*0.8+vec3(7.3,0.0,uTA*1.1)));
-  float macro = fbm3(s*1.05 + w*0.55 + vec3(0.0,uTA*0.6,0.0));
+  vec3 mq = s*0.95 + w*0.45 + vec3(0.0,uTA*0.6,0.0);
+  float macro = snoise(mq)*0.7 + snoise(mq*1.9+vec3(3.1))*0.2;
   // asymmetric base limbs (structure is asymmetric before any animation)
   float limbs = 0.0;
   for(int i=0;i<3;i++){ float d=max(dot(p,uLobe[i].xyz),0.0); limbs += uLobe[i].w*(pow(d,4.0)*0.55+pow(d,16.0)*0.8); }
@@ -53,7 +54,7 @@ float field(vec3 p){
   // L2 meso: independent localized deformation fields
   float meso = 0.0;
   for(int i=0;i<5;i++){ float c=dot(p,uAttr[i].xyz); meso += uAttr[i].w*exp((c-1.0)*5.5); }
-  meso += 0.45*fbm3(s*1.7 + vec3(uTB*0.7,-uTB*0.4,uTB*0.3) + w*0.3);
+  meso += 0.18*snoise(s*1.4 + vec3(uTB*0.7,-uTB*0.4,uTB*0.3) + w*0.3);
   // L3 micro: travelling surface ripples
   float micro = snoise(s*4.0 + vec3(uTC*1.3,uTC*0.7,-uTC)) * 0.7 + snoise(s*7.5 - vec3(uTC*1.9)) * 0.25;
   micro *= 1.0 + uTension*1.4;
@@ -64,7 +65,7 @@ float field(vec3 p){
   float pulse = uPulseAmt*exp(-pow((dot(p,uPulseAxis)-(fract(uPulse)*2.6-1.3))*5.0,2.0));
   float audio = 0.0;
   if(uAudio.x+uAudio.y+uAudio.z > 0.002) audio = uAudio.x*0.16*snoise(s*2.4+vec3(uTB*2.0)) + uAudio.y*0.07*snoise(s*5.0-vec3(uTC)) + uAudio.z*0.035*snoise(s*10.0+vec3(uTC*3.0));
-  return 0.36*uMacro*macro + limbs + 0.22*uMeso*meso + 0.009*uMicro*micro
+  return 0.36*uMacro*macro + limbs + 0.22*uMeso*meso + 0.004*uMicro*micro
        + 0.10*ptr + 0.07*rip + 0.085*pulse + 0.09*uImpulse*macro + audio;
 }
 vec3 deform(vec3 p){ return p*(1.0+field(p))*uAniso; }

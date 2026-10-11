@@ -57,7 +57,7 @@ export class CoreRenderer {
     const gl = r.getContext();
     const ext = gl.getExtension("WEBGL_debug_renderer_info");
     this.stats.gpu = ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : "WebGL2";
-    r.setClearColor("#030D1A", 1);
+    r.setClearColor("#04162A", 1);
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(32, 1, 0.1, 50);
     this.camera.position.set(0, 0, 6.2);
@@ -67,7 +67,7 @@ export class CoreRenderer {
     if (prev) { Object.assign(this.choreo.clock, prev.clock); this.choreo.setState(prev.state); this.choreo.custom = prev.custom; }
 
     const bgMat = new THREE.ShaderMaterial({ vertexShader: bgVertex, fragmentShader: bgFragment, depthTest: false, depthWrite: false,
-      uniforms: { uT: { value: 0 }, uRes: { value: new THREE.Vector2(1, 1) }, uColA: this.u.uColA, uColB: this.u.uColB, uBg: { value: hex("#030D1A") }, uCenter: { value: new THREE.Vector2(0.5, 0.52) } } });
+      uniforms: { uT: { value: 0 }, uRes: { value: new THREE.Vector2(1, 1) }, uColA: this.u.uColA, uColB: this.u.uColB, uBg: { value: hex("#04162A") }, uCenter: { value: new THREE.Vector2(0.5, 0.52) } } });
     this.bg = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), bgMat);
     this.bg.frustumCulled = false; this.bg.renderOrder = -10;
     this.scene.add(this.bg);
