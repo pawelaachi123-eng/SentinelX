@@ -100,6 +100,20 @@ jobs:
       - name: Integrate native tasks and voice bridge
         shell: pwsh
         run: ./scripts/prepare-nexus-functional.ps1
+      # SentinelX.WinUI.csproj compiles ..\**\*.cs, including nested checkouts.
+      # The host classes are already copied and patched by prepare-nexus scripts.
+      # Remove only the extra CI checkout, never the source ui branch on GitHub.
+      - name: Prevent duplicate Nexus host compilation
+        shell: pwsh
+        run: |
+          foreach ($file in @('SentinelX.WinUI/UI/Nexus/NexusBridge.cs', 'SentinelX.WinUI/UI/Nexus/NexusWindow.cs')) {
+            if (!(Test-Path $file)) { throw "Prepared native host file missing: $file" }
+          }
+          if (!(Test-Path 'nexus-production/index.html')) { throw 'Built React UI artifact missing' }
+          if (!(Test-Path 'nexus-ui/windows-host/SentinelX.WinUI/UI/Nexus/NexusBridge.cs')) { throw 'Source Nexus checkout missing before cleanup' }
+          Remove-Item -LiteralPath 'nexus-ui' -Recurse -Force
+          if (Test-Path 'nexus-ui') { throw 'Nested checkout still present; C# compile would duplicate classes' }
+          Write-Host 'One copy of NexusBridge and NexusWindow remains; build can proceed.'
       - name: Compile and publish WinUI 3
         shell: pwsh
         run: |
