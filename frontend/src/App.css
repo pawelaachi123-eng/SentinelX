@@ -152,7 +152,7 @@
 .msg-who em { font-style: normal; color: var(--ink-3); }
 .msg-who time { font-family: "JetBrains Mono", monospace; letter-spacing: 0; color: var(--ink-3); font-size: .64rem; }
 .msg-copy { margin-left: auto; display: inline-flex; color: var(--ink-3); background: none; border: 0; cursor: pointer; font-family: "Figtree", sans-serif; letter-spacing: 0; text-transform: none; font-size: .66rem; opacity: 0; transition: opacity .2s, color .2s; }
-.msg:hover .msg-copy { opacity: 1; } .msg-copy:hover { color: var(--ink); }
+.msg:hover .msg-copy { opacity: 1; } .msg-say + .msg-copy { margin-left: 4px; } .msg-copy:hover { color: var(--ink); }
 .msg-voice { display: inline-block; margin-top: 4px; font-size: .62rem; color: var(--ink-3); letter-spacing: .1em; text-transform: uppercase; }
 .msg-assistant p { white-space: normal; }
 .md-p, .md-h, .md-li { display: block; min-height: .6em; }

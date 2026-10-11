@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Row, Toggle, Slider, Segmented } from "./controls";
 import { PALETTES, DEFAULTS } from "@/context/SettingsContext";
 import { api } from "@/lib/api";
+import { speak } from "@/lib/speech";
 
 const pct = (v) => `${Math.round(v * 100)}%`;
 
@@ -76,6 +77,12 @@ export function Voice({ s, up, micStatus }) {
     <Row label="Wymagaj komendy aktywacyjnej" hint="Polecenie zostanie wykonane tylko, gdy zaczyna się od słowa aktywacyjnego"><Toggle testid="set-voice-require-wake" value={s.requireWake} onChange={(v) => up({ requireWake: v })} /></Row>
     <Row label="Słowo aktywacyjne"><input className="text-in" data-testid="set-voice-wake-word" value={s.wakeWord} maxLength={24} onChange={(e) => up({ wakeWord: e.target.value })} /></Row>
     <Row label="Język mowy"><Segmented testid="set-voice-language" value={s.language} onChange={(v) => up({ language: v })} options={[["pl", "Polski"], ["en", "English"], ["de", "Deutsch"]]} /></Row>
+    <Row label="Głos Sentinela" hint="Odpowiedzi są czytane spokojnym głosem (OpenAI TTS). Głosy są zoptymalizowane pod angielski — w języku polskim słychać lekki akcent"><Toggle testid="set-voice-speak" value={s.speakReplies} onChange={(v) => up({ speakReplies: v })} /></Row>
+    <Row label="Barwa głosu"><Segmented testid="set-voice-tts" value={s.ttsVoice} onChange={(v) => up({ ttsVoice: v })} options={[["sage", "Sage · spokojny"], ["echo", "Echo · gładki"], ["onyx", "Onyx · głęboki"], ["alloy", "Alloy"], ["coral", "Coral"]]} /></Row>
+    <Row label="Tempo mowy"><Slider testid="set-voice-tts-speed" value={s.ttsSpeed} min={0.7} max={1.2} step={0.05} onChange={(v) => up({ ttsSpeed: v })} fmt={(v) => `${v.toFixed(2)}×`} /></Row>
+    <Row label="Głośność głosu"><Slider testid="set-voice-tts-volume" value={s.ttsVolume} min={0} max={1} onChange={(v) => up({ ttsVolume: v })} fmt={pct} /></Row>
+    <Row label="Jakość głosu"><Segmented testid="set-voice-tts-model" value={s.ttsModel} onChange={(v) => up({ ttsModel: v })} options={[["tts-1", "Szybka"], ["tts-1-hd", "HD"]]} /></Row>
+    <Row label="Próbka"><button className="btn" data-testid="set-voice-tts-test" onClick={() => speak("Jestem Sentinel. Wszystkie systemy działają spokojnie i stabilnie.", { voice: s.ttsVoice, speed: s.ttsSpeed, model: s.ttsModel, volume: s.ttsVolume }).catch(() => {})}>Odsłuchaj</button></Row>
     <Row label="Wskaźnik prywatności" hint="Dyskretna kropka w prawym górnym rogu, gdy mikrofon jest aktywny"><Toggle testid="set-voice-privacy" value={s.privacyIndicator} onChange={(v) => up({ privacyIndicator: v })} /></Row>
   </>);
 }

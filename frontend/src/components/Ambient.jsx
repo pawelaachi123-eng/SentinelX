@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
-const WORDS = { listening: "Słucham", recognizing: "Rozpoznaję", thinking: "Analizuję", executing: "Wykonuję", success: "Gotowe", warning: "Uwaga", error: "Coś poszło nie tak", offline: "Offline" };
+const WORDS = { listening: "Słucham", recognizing: "Rozpoznaję", speaking: "Mówię", thinking: "Analizuję", executing: "Wykonuję", success: "Gotowe", warning: "Uwaga", error: "Coś poszło nie tak", offline: "Offline" };
 
 /** One discreet word under the core — only when the core is not idle. */
 export function StateCaption({ state }) {

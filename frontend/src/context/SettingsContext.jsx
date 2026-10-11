@@ -16,7 +16,7 @@ export const DEFAULTS = {
   appearance: { palette: "ocean", glass: 0.5, blur: 20, uiScale: 1 },
   core: { vitality: 0.5, deform: 1, macro: 1, meso: 1, micro: 1, light: 1, energy: 1, particles: 1, bloom: true, quality: "auto" },
   motion: { speed: 1, uiSpring: "balanced", reduced: "system" },
-  voice: { listening: false, sensitivity: 1, privacyIndicator: true, recognition: false, wakeWord: "Sentinel", requireWake: true, language: "pl" },
+  voice: { listening: false, sensitivity: 1, privacyIndicator: true, recognition: false, wakeWord: "Sentinel", requireWake: true, language: "pl", speakReplies: true, ttsVoice: "sage", ttsSpeed: 0.95, ttsModel: "tts-1", ttsVolume: 0.85 },
   devices: { refreshS: 10 },
   base: { offline_after_s: 60 },
   notifications: { sounds: true, volume: 0.25, toasts: "all" },

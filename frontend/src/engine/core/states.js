@@ -10,6 +10,7 @@ export const STATE_PARAMS = {
   offline:   { speed: 0.45, macro: 0.8,  meso: 0.7,  micro: 0.6, energy: 0.25, glow: 0.4,  tension: 0, sat: 0.85, pulse: 0, err: 0 },
 };
 STATE_PARAMS.recognizing = STATE_PARAMS.listening;
+STATE_PARAMS.speaking = { speed: 0.9, macro: 1.0, meso: 1.1, micro: 0.9, energy: 0.65, glow: 0.7, tension: 0, sat: 1.0, pulse: 0, err: 0 };
 STATE_PARAMS.warning = { ...STATE_PARAMS.error, tension: 0.5, err: 0.5 };
 
 export const BLEND_RATE = { default: 2.2, success: 4.0, error: 1.6 };

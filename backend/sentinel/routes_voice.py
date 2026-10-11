@@ -1,8 +1,12 @@
 import io
 import os
 import logging
+import re
+from typing import Literal
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
-from emergentintegrations.llm.openai import OpenAISpeechToText
+from fastapi.responses import Response
+from pydantic import BaseModel, Field
+from emergentintegrations.llm.openai import OpenAISpeechToText, OpenAITextToSpeech
 
 from .bus import bus
 
@@ -32,3 +36,31 @@ async def transcribe(audio: UploadFile = File(...), language: str = Form("pl"), 
     finally:
         if bus.core_state == "recognizing":
             await bus.set_core("idle")
+
+
+class SpeakIn(BaseModel):
+    text: str = Field(min_length=1, max_length=20000)
+    voice: Literal["alloy", "ash", "coral", "echo", "fable", "nova", "onyx", "sage", "shimmer"] = "sage"
+    speed: float = Field(default=0.95, ge=0.5, le=1.5)
+    model: Literal["tts-1", "tts-1-hd"] = "tts-1"
+
+
+def _plain(text: str) -> str:
+    text = re.sub(r"```.*?```", " ", text, flags=re.S)
+    text = re.sub(r"[#*`>_]+", "", text)
+    text = re.sub(r"^\s*[-•]\s+", "", text, flags=re.M)
+    return re.sub(r"\s+", " ", text).strip()[:4000]
+
+
+@router.post("/speak")
+async def speak(body: SpeakIn):
+    text = _plain(body.text)
+    if not text:
+        raise HTTPException(400, "nothing to speak")
+    try:
+        tts = OpenAITextToSpeech(api_key=os.environ["EMERGENT_LLM_KEY"])
+        audio = await tts.generate_speech(text=text, model=body.model, voice=body.voice, speed=body.speed, response_format="mp3")
+    except Exception as e:  # noqa: BLE001
+        log.exception("tts failed")
+        raise HTTPException(502, f"tts failed: {str(e)[:200]}")
+    return Response(content=audio, media_type="audio/mpeg", headers={"Cache-Control": "no-store"})

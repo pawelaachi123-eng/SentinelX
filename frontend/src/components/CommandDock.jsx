@@ -4,6 +4,7 @@ import { IconSend, IconStop, IconCopy, IconPlus } from "./icons";
 import { api, streamChat } from "@/lib/api";
 import { isHost, hostRequest, hostPost } from "@/lib/host";
 import { play } from "@/lib/sound";
+import { speak, stopSpeaking } from "@/lib/speech";
 import { useSettings } from "@/context/SettingsContext";
 
 const SID_KEY = "sentinel.session";
@@ -26,6 +27,7 @@ function Message({ m }) {
     <motion.div className={`msg msg-${m.role}`} data-testid={`msg-${m.role}`} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ type: "spring", stiffness: 380, damping: 32 }}>
       {m.role === "assistant" && (
         <span className="msg-who">Sentinel{m.via === "host" && <em> · PC</em>}<time>{hhmm(m.created_at)}</time>
+          {!m.streaming && m.content && <button className="msg-copy msg-say" data-testid="msg-speak" onClick={(e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent("sentinel:speak", { detail: m.content })); }} aria-label="Odtwórz głosem">odtwórz</button>}
           {!m.streaming && m.content && <button className="msg-copy" data-testid="msg-copy" onClick={copy} aria-label="Kopiuj">{copied ? "skopiowano" : <IconCopy size={13} />}</button>}
         </span>
       )}
@@ -37,7 +39,10 @@ function Message({ m }) {
 }
 
 export default function CommandDock({ onLocalState }) {
-  const { motion: mt } = useSettings();
+  const { motion: mt, settings } = useSettings();
+  const vs = settings.voice;
+  const voiceRef = useRef(vs);
+  voiceRef.current = vs;
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
   const [msgs, setMsgs] = useState([]);
@@ -53,9 +58,18 @@ export default function CommandDock({ onLocalState }) {
   const patchLive = (fn) => setMsgs((m) => m.map((x) => (x.id === "live" ? fn(x) : x)));
   const finishLive = (extra) => patchLive((x) => ({ ...x, id: `a${Date.now()}`, streaming: false, created_at: new Date().toISOString(), ...extra }));
 
+  const say = useCallback((reply) => {
+    const v = voiceRef.current;
+    if (!v.speakReplies || !reply) return;
+    speak(reply, { voice: v.ttsVoice, speed: v.ttsSpeed, model: v.ttsModel, volume: v.ttsVolume },
+      { onStart: () => onLocalState?.("speaking"), onEnd: () => onLocalState?.(null) }).catch(() => onLocalState?.(null));
+  }, [onLocalState]);
+
   const send = useCallback(async (raw, fromVoice = false) => {
     const t = (raw ?? "").trim();
     if (!t || busyRef.current) return;
+    stopSpeaking();
+    let reply = "";
     busyRef.current = true; setBusy(true);
     play("send"); onLocalState?.("thinking");
     if (fromVoice) setOpen(true);
@@ -63,33 +77,35 @@ export default function CommandDock({ onLocalState }) {
     try {
       if (isHost()) {
         const res = await hostRequest("command.submit", { text: t, fromVoice });
-        finishLive({ content: res?.text || "Wykonano.", via: "host" }); play("success");
+        reply = res?.text || "Wykonano.";
+        finishLive({ content: reply, via: "host" }); play("success");
       } else {
         const ac = new AbortController(); abortRef.current = ac;
         await streamChat(sid.current, t, (ev) => {
           if (ev.type === "delta") patchLive((x) => ({ ...x, content: x.content + ev.content }));
-          if (ev.type === "done") { patchLive(() => ({ ...ev.message, streaming: false })); play("success"); }
+          if (ev.type === "done") { reply = ev.message.content; patchLive(() => ({ ...ev.message, streaming: false })); play("success"); }
           if (ev.type === "error") { finishLive({ error: "Nie udało się uzyskać odpowiedzi." }); play("error"); }
         }, ac.signal);
       }
     } catch (e) {
       finishLive({ error: e.name === "AbortError" ? "Przerwano." : isHost() ? e.message : "Brak połączenia z backendem." });
-    } finally { busyRef.current = false; setBusy(false); onLocalState?.(null); }
-  }, [onLocalState]);
+    } finally { busyRef.current = false; setBusy(false); onLocalState?.(null); say(reply); }
+  }, [onLocalState, say]);
 
   useEffect(() => {
     const k = (e) => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") { e.preventDefault(); setOpen(true); inputRef.current?.focus(); } };
     const v = (e) => send(e.detail.text, e.detail.fromVoice);
-    window.addEventListener("keydown", k); window.addEventListener("sentinel:command", v);
-    return () => { window.removeEventListener("keydown", k); window.removeEventListener("sentinel:command", v); };
-  }, [send]);
+    const sp = (e) => { const cur = voiceRef.current; speak(e.detail, { voice: cur.ttsVoice, speed: cur.ttsSpeed, model: cur.ttsModel, volume: cur.ttsVolume }, { onStart: () => onLocalState?.("speaking"), onEnd: () => onLocalState?.(null) }).catch(() => {}); };
+    window.addEventListener("keydown", k); window.addEventListener("sentinel:command", v); window.addEventListener("sentinel:speak", sp);
+    return () => { window.removeEventListener("keydown", k); window.removeEventListener("sentinel:command", v); window.removeEventListener("sentinel:speak", sp); };
+  }, [send, onLocalState]);
 
   const submit = () => { const t = text; setText(""); send(t); };
   const stop = (e) => { e.stopPropagation(); abortRef.current?.abort(); if (isHost()) hostPost("command.cancel"); };
   const newChat = async (e) => { e.stopPropagation(); if (busy) return; await api.del(`/chat/sessions/${sid.current}`).catch(() => {}); sid.current = newSid(); setMsgs([]); play("tap"); inputRef.current?.focus(); };
   const onKey = (e) => {
     if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); submit(); }
-    if (e.key === "Escape" && !busy) { setOpen(false); inputRef.current?.blur(); }
+    if (e.key === "Escape" && !busy) { stopSpeaking(); setOpen(false); inputRef.current?.blur(); }
   };
 
   return (

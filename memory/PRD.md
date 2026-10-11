@@ -11,6 +11,8 @@ Choices: Claude Sonnet 4.5 (Emergent key), mic-level-only voice reaction, ESP32 
 
 - Round 3: core vitality slider (calm↔lively), Deep Ocean palette (default) for core + glass + dock, speech recognition (VAD + Whisper whisper-1 via /api/voice/transcribe, wake word gate, language), WinUI 3 host files in /app/windows-host (NexusWindow + NexusBridge, not compiled), UI polish (state caption, voice caption, signal bars, device dots, dock suggestions, new chat, copy, timestamps)
 
+- Round 4: Sentinel voice output (OpenAI TTS tts-1/tts-1-hd, voice sage default, /api/voice/speak), core reacts to speech audio, "speaking" state, replay button, VAD paused while speaking
+
 ## Backlog
 - P1: compile & verify windows-host on Windows
 - P2: speech recognition, Windows icon .ico export

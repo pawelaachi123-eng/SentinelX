@@ -48,7 +48,7 @@ export function useMicLevel(enabled, sensitivity, onBands, { recognition = false
         an.getByteFrequencyData(bins);
         const g = 1.6 * sensitivity;
         cb.current?.(Math.min(band(1, 16) * g, 1), Math.min(band(16, 80) * g * 1.4, 1), Math.min(band(80, 240) * g * 2.2, 1));
-        if (canRecord && !document.hidden) {
+        if (canRecord && !document.hidden && !window.__sentinelSpeaking) {
           an.getFloatTimeDomainData(wave);
           let sum = 0; for (let i = 0; i < wave.length; i++) sum += wave[i] * wave[i];
           const rms = Math.sqrt(sum / wave.length);
