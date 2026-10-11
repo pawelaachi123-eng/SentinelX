@@ -13,6 +13,8 @@ Choices: Claude Sonnet 4.5 (Emergent key), mic-level-only voice reaction, ESP32 
 
 - Round 4: Sentinel voice output (OpenAI TTS tts-1/tts-1-hd, voice sage default, /api/voice/speak), core reacts to speech audio, "speaking" state, replay button, VAD paused while speaking
 
+- Round 5: Morning briefing (/api/briefing, real facts → Claude 3–5 spoken sentences, deterministic fallback, auto once/day in time window, manual triggers), interrupt speech by saying wake word (VAD during TTS, higher threshold, Whisper check, remainder executed)
+
 ## Backlog
 - P1: compile & verify windows-host on Windows
 - P2: speech recognition, Windows icon .ico export

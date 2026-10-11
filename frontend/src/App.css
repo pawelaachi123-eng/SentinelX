@@ -254,3 +254,5 @@
 .text-in { background: rgba(2, 14, 28, .5); border: 1px solid var(--line); border-radius: 10px; padding: 7px 10px; color: var(--ink); font: inherit; font-size: .84rem; outline: none; width: 180px; transition: border-color .2s; }
 .text-in:focus { border-color: color-mix(in srgb, var(--acc-a) 45%, transparent); }
 .settings-scrim { background: rgba(2, 12, 24, 0.5) !important; }
+.dock-suggest .sug-accent { color: var(--acc-a); border-color: color-mix(in srgb, var(--acc-a) 28%, transparent); background: color-mix(in srgb, var(--acc-a) 8%, transparent); }
+.dock-bar > span { flex: 1; } .dock-bar .dock-new + .dock-new { margin-left: 6px; }

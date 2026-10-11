@@ -68,7 +68,7 @@ function Nexus() {
 
   const v = settings.voice;
   const voice = useVoiceCommands({ wakeWord: v.wakeWord, requireWake: v.requireWake, language: v.language, onState: setVoiceState });
-  const mic = useMicLevel(v.listening || v.recognition, v.sensitivity, (a, b, c) => core.current?.setAudio(a, b, c), { recognition: v.recognition, onSegment: voice.handle });
+  const mic = useMicLevel(v.listening || v.recognition, v.sensitivity, (a, b, c) => core.current?.setAudio(a, b, c), { recognition: v.recognition, onSegment: voice.handle, interrupt: v.interruptByName, onInterrupt: voice.handleInterrupt });
 
   const hostOnline = isHost();
   const state = !connected && !hostOnline ? "offline"
@@ -76,6 +76,15 @@ function Nexus() {
     : voiceState || localState || (mic.speaking ? "listening" : mic.status === "active" ? "listening" : "idle");
 
   useEffect(() => { const t = boot && setTimeout(() => setBoot(false), 2600); return () => clearTimeout(t); }, [boot]);
+  useEffect(() => {
+    const g = settings.general;
+    if (boot || !loaded || !g.firstRunDone || !g.morningBriefing) return;
+    const now = new Date(), today = now.toDateString();
+    if (now.getHours() < g.briefingFrom || now.getHours() >= g.briefingTo || localStorage.getItem("sentinel.lastBriefing") === today) return;
+    localStorage.setItem("sentinel.lastBriefing", today);
+    const t = setTimeout(() => window.dispatchEvent(new Event("sentinel:briefing")), 900);
+    return () => clearTimeout(t);
+  }, [boot, loaded, settings.general]);
   useEffect(() => {
     let off; const t = setInterval(() => { if (core.current?.onStats) { off = core.current.onStats(setRender); clearInterval(t); } }, 200);
     return () => { clearInterval(t); off?.(); };

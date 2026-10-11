@@ -12,11 +12,11 @@ export const PALETTES = {
 };
 
 export const DEFAULTS = {
-  general: { bootIntro: true, firstRunDone: false, desktopNotifications: false, confirmClear: true },
+  general: { bootIntro: true, firstRunDone: false, desktopNotifications: false, confirmClear: true, morningBriefing: true, briefingFrom: 5, briefingTo: 12 },
   appearance: { palette: "ocean", glass: 0.5, blur: 20, uiScale: 1 },
   core: { vitality: 0.5, deform: 1, macro: 1, meso: 1, micro: 1, light: 1, energy: 1, particles: 1, bloom: true, quality: "auto" },
   motion: { speed: 1, uiSpring: "balanced", reduced: "system" },
-  voice: { listening: false, sensitivity: 1, privacyIndicator: true, recognition: false, wakeWord: "Sentinel", requireWake: true, language: "pl", speakReplies: true, ttsVoice: "sage", ttsSpeed: 0.95, ttsModel: "tts-1", ttsVolume: 0.85 },
+  voice: { listening: false, sensitivity: 1, privacyIndicator: true, recognition: false, wakeWord: "Sentinel", requireWake: true, language: "pl", speakReplies: true, ttsVoice: "sage", ttsSpeed: 0.95, ttsModel: "tts-1", ttsVolume: 0.85, interruptByName: true },
   devices: { refreshS: 10 },
   base: { offline_after_s: 60 },
   notifications: { sounds: true, volume: 0.25, toasts: "all" },

@@ -17,6 +17,9 @@ export function General({ s, up }) {
   return (<>
     <Row label="Animacja startowa" hint="Sekwencja inicjalizacji rdzenia przy uruchomieniu"><Toggle testid="set-boot-intro" value={s.bootIntro} onChange={(v) => up({ bootIntro: v })} /></Row>
     <Row label="Powiadomienia systemowe" hint="Informuj o zakończonych zadaniach, gdy okno jest w tle"><Toggle testid="set-desktop-notify" value={s.desktopNotifications} onChange={askNotify} /></Row>
+    <Row label="Poranny raport" hint="Przy pierwszym uruchomieniu w wybranych godzinach Sentinel podsumuje na głos stan Base, urządzeń i dzisiejszych zadań"><Toggle testid="set-morning-briefing" value={s.morningBriefing} onChange={(v) => up({ morningBriefing: v })} /></Row>
+    <Row label="Okno porannego raportu"><Segmented testid="set-briefing-window" value={`${s.briefingFrom}-${s.briefingTo}`} onChange={(v) => { const [a, b] = v.split("-").map(Number); up({ briefingFrom: a, briefingTo: b }); }} options={[["5-10", "5–10"], ["5-12", "5–12"], ["0-24", "Zawsze"]]} /></Row>
+    <Row label="Raport teraz"><button className="btn" data-testid="set-briefing-now" onClick={() => window.dispatchEvent(new Event("sentinel:briefing"))}>Uruchom</button></Row>
     <Row label="Potwierdzaj czyszczenie historii"><Toggle testid="set-confirm-clear" value={s.confirmClear} onChange={(v) => up({ confirmClear: v })} /></Row>
     <Row label="Ekran pierwszego uruchomienia" hint="Pokaż ponownie przewodnik startowy"><button className="btn" data-testid="set-rerun-onboarding" onClick={() => up({ firstRunDone: false })}>Pokaż</button></Row>
   </>);
@@ -78,6 +81,7 @@ export function Voice({ s, up, micStatus }) {
     <Row label="Słowo aktywacyjne"><input className="text-in" data-testid="set-voice-wake-word" value={s.wakeWord} maxLength={24} onChange={(e) => up({ wakeWord: e.target.value })} /></Row>
     <Row label="Język mowy"><Segmented testid="set-voice-language" value={s.language} onChange={(v) => up({ language: v })} options={[["pl", "Polski"], ["en", "English"], ["de", "Deutsch"]]} /></Row>
     <Row label="Głos Sentinela" hint="Odpowiedzi są czytane spokojnym głosem (OpenAI TTS). Głosy są zoptymalizowane pod angielski — w języku polskim słychać lekki akcent"><Toggle testid="set-voice-speak" value={s.speakReplies} onChange={(v) => up({ speakReplies: v })} /></Row>
+    <Row label="Przerywanie imieniem" hint="Gdy Sentinel mówi, wypowiedz słowo aktywacyjne, aby go przerwać (wymaga włączonego nasłuchu). Dalsza część zdania zostanie wykonana jako nowe polecenie"><Toggle testid="set-voice-interrupt" value={s.interruptByName} onChange={(v) => up({ interruptByName: v })} /></Row>
     <Row label="Barwa głosu"><Segmented testid="set-voice-tts" value={s.ttsVoice} onChange={(v) => up({ ttsVoice: v })} options={[["sage", "Sage · spokojny"], ["echo", "Echo · gładki"], ["onyx", "Onyx · głęboki"], ["alloy", "Alloy"], ["coral", "Coral"]]} /></Row>
     <Row label="Tempo mowy"><Slider testid="set-voice-tts-speed" value={s.ttsSpeed} min={0.7} max={1.2} step={0.05} onChange={(v) => up({ ttsSpeed: v })} fmt={(v) => `${v.toFixed(2)}×`} /></Row>
     <Row label="Głośność głosu"><Slider testid="set-voice-tts-volume" value={s.ttsVolume} min={0} max={1} onChange={(v) => up({ ttsVolume: v })} fmt={pct} /></Row>

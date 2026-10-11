@@ -92,6 +92,24 @@ export default function CommandDock({ onLocalState }) {
     } finally { busyRef.current = false; setBusy(false); onLocalState?.(null); say(reply); }
   }, [onLocalState, say]);
 
+  const briefing = useCallback(async () => {
+    if (busyRef.current) return;
+    busyRef.current = true; setBusy(true); stopSpeaking(); setOpen(true); onLocalState?.("thinking");
+    setMsgs((m) => [...m, { id: "live", role: "assistant", content: "", streaming: true }]);
+    let reply = "";
+    try {
+      const r = await api.post("/briefing", { session_id: sid.current, tz_offset_min: new Date().getTimezoneOffset() });
+      reply = r.message.content;
+      patchLive(() => ({ ...r.message, streaming: false }));
+    } catch { finishLive({ error: "Nie udało się przygotować raportu." }); }
+    finally { busyRef.current = false; setBusy(false); onLocalState?.(null); say(reply); }
+  }, [onLocalState, say]);
+
+  useEffect(() => {
+    window.addEventListener("sentinel:briefing", briefing);
+    return () => window.removeEventListener("sentinel:briefing", briefing);
+  }, [briefing]);
+
   useEffect(() => {
     const k = (e) => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") { e.preventDefault(); setOpen(true); inputRef.current?.focus(); } };
     const v = (e) => send(e.detail.text, e.detail.fromVoice);
@@ -118,6 +136,7 @@ export default function CommandDock({ onLocalState }) {
               <>
                 <div className="dock-bar">
                   <span>Rozmowa{isHost() ? " · Sentinel PC" : ""}</span>
+                  <button className="dock-new" data-testid="chat-briefing" onClick={(e) => { e.stopPropagation(); briefing(); }} disabled={busy}>Raport</button>
                   <button className="dock-new" data-testid="chat-new" onClick={newChat} disabled={busy}><IconPlus size={13} />Nowa</button>
                 </div>
                 <div className="dock-log" ref={logRef} data-testid="conversation-log" aria-live="polite">
@@ -126,6 +145,8 @@ export default function CommandDock({ onLocalState }) {
               </>
             ) : (
               <div className="dock-suggest" data-testid="dock-suggestions">
+                <motion.button data-testid="suggestion-briefing" className="sug-accent" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+                  onMouseDown={(e) => e.preventDefault()} onClick={(e) => { e.stopPropagation(); briefing(); }}>Poranny raport</motion.button>
                 {SUGGEST.map((s, i) => (
                   <motion.button key={s} data-testid={`suggestion-${i}`} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 + i * mt.stagger }}
                     onMouseDown={(e) => e.preventDefault()} onClick={(e) => { e.stopPropagation(); send(s); }}>{s}</motion.button>

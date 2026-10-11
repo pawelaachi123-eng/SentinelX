@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
 import { api } from "@/lib/api";
+import { stopSpeaking } from "@/lib/speech";
 
 const norm = (s) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\p{L}\p{N}\s]/gu, " ").replace(/\s+/g, " ").trim();
 
@@ -35,5 +36,25 @@ export function useVoiceCommands({ wakeWord, requireWake, language, onState }) {
     }
   }, [wakeWord, requireWake, language, onState]);
 
-  return { handle, caption, clearCaption: () => setCaption(null) };
+  // While Sentinel speaks: saying the wake word stops speech; anything after it becomes a new command.
+  const handleInterrupt = useCallback(async (blob) => {
+    const fd = new FormData();
+    fd.append("audio", blob, blob.type.includes("mp4") ? "speech.m4a" : "speech.webm");
+    fd.append("language", language);
+    fd.append("wake_word", wakeWord);
+    try {
+      const r = await fetch(`${api.base}/voice/transcribe`, { method: "POST", body: fd });
+      if (!r.ok) return;
+      const { text } = await r.json();
+      const w = norm(wakeWord), t = norm(text || "");
+      const at = w ? t.indexOf(w) : -1;
+      if (at < 0) return;
+      stopSpeaking();
+      const rest = t.slice(at + w.length).trim();
+      setCaption({ text: rest || "Przerwano", kind: "heard" });
+      if (rest.split(" ").length >= 2) window.dispatchEvent(new CustomEvent("sentinel:command", { detail: { text: rest, fromVoice: true } }));
+    } catch { /* ignore: interruption is best-effort */ }
+  }, [wakeWord, language]);
+
+  return { handle, handleInterrupt, caption, clearCaption: () => setCaption(null) };
 }
