@@ -42,9 +42,10 @@ const CoreStage = forwardRef(function CoreStage({ state }, ref) {
 
   useEffect(() => {
     const c = settings.core;
+    const v = c.vitality ?? 0.5;
     rendererRef.current?.setOptions({
       palette, quality: c.quality, bloom: c.bloom, particles: c.particles, prCap: settings.advanced.prCap,
-      custom: { deform: c.deform, macro: c.macro, meso: c.meso, micro: c.micro, light: c.light, energy: c.energy, speed: settings.motion.speed, reduced: motion.reduced },
+      custom: { deform: c.deform * (0.5 + v), macro: c.macro, meso: c.meso, micro: c.micro, light: c.light, energy: c.energy * (0.45 + 1.1 * v), speed: settings.motion.speed * (0.35 + 1.3 * v), reduced: motion.reduced },
     });
   }, [settings.core, settings.advanced.prCap, settings.motion.speed, motion.reduced, palette]);
 

@@ -5,14 +5,15 @@
 
 :root {
   --bg: #04162a;
-  --acc-a: #59dceb;
-  --acc-b: #8279e8;
-  --ink: #e7eef8;
-  --ink-2: #9fb0c6;
-  --ink-3: #62738a;
+  --acc-a: #4cc6d8;
+  --acc-b: #5e7fd8;
+  --deep: #072642;
+  --ink: #e4eef6;
+  --ink-2: #98b0c4;
+  --ink-3: #5d7891;
   --glass: 0.5;
   --blur: 20px;
-  --line: rgba(170, 205, 240, 0.12);
+  --line: rgba(110, 185, 225, 0.12);
   --r-lg: 26px;
   --r-md: 18px;
 }

@@ -5,7 +5,9 @@ import "@/App.css";
 import { SettingsProvider, useSettings } from "@/context/SettingsContext";
 import { useSentinelEvents } from "@/hooks/useSentinelEvents";
 import { useMicLevel } from "@/hooks/useMicLevel";
+import { useVoiceCommands } from "@/hooks/useVoiceCommands";
 import { api } from "@/lib/api";
+import { isHost, hostRequest } from "@/lib/host";
 import { play } from "@/lib/sound";
 import CoreStage from "@/components/CoreStage";
 import { Logo } from "@/components/Logo";
@@ -16,6 +18,7 @@ import DevicesPanel from "@/components/panels/DevicesPanel";
 import TasksPanel from "@/components/panels/TasksPanel";
 import SettingsPanel from "@/components/settings/SettingsPanel";
 import { BootSequence, FirstRun } from "@/components/Intro";
+import { StateCaption, VoiceCaption, SignalBars, DeviceDots } from "@/components/Ambient";
 import { IconBase, IconDevices, IconTasks, IconGear } from "@/components/icons";
 
 function usePolling(fn, ms) {
@@ -32,6 +35,7 @@ function Nexus() {
   const [devices, setDevices] = useState([]);
   const [base, setBase] = useState(null);
   const [localState, setLocalState] = useState(null);
+  const [voiceState, setVoiceState] = useState(null);
   const [render, setRender] = useState({});
 
   const loadTasks = useCallback(() => api.get("/tasks").then(setTasks).catch(() => {}), []);
@@ -46,7 +50,7 @@ function Nexus() {
     const isErr = t.status === "error";
     if (level === "none" || (level === "errors" && !isErr)) return;
     (isErr ? toast.error : toast.success)(t.title, { description: isErr ? t.error : "Zadanie zakończone" });
-    if (settings.general.desktopNotifications && document.hidden && Notification?.permission === "granted") new Notification("SENTINEL X", { body: `${isErr ? "Błąd" : "Gotowe"}: ${t.title}`, icon: "/brand/sentinel-mark.svg" });
+    if (settings.general.desktopNotifications && document.hidden && window.Notification?.permission === "granted") new Notification("SENTINEL X", { body: `${isErr ? "Błąd" : "Gotowe"}: ${t.title}`, icon: "/brand/sentinel-mark.svg" });
   }, [settings.notifications.toasts, settings.general.desktopNotifications]);
 
   const { connected, coreState } = useSentinelEvents((ev) => {
@@ -57,10 +61,19 @@ function Nexus() {
     if (ev.type === "tasks.cleared") loadTasks();
     if (ev.type === "devices.changed") loadDevices();
     if (ev.type === "base.report") { loadBase(); loadDevices(); }
+    if (ev.type === "host.audio") core.current?.setAudio(ev.data.level, ev.data.level * 0.6, ev.data.level * 0.3);
   });
 
-  const micStatus = useMicLevel(settings.voice.listening, settings.voice.sensitivity, (a, b, c) => core.current?.setAudio(a, b, c));
-  const state = !connected ? "offline" : coreState !== "idle" ? coreState : localState || (micStatus === "active" ? "listening" : "idle");
+  useEffect(() => { if (isHost()) hostRequest("host.hello", {}, 5000).catch(() => {}); }, []);
+
+  const v = settings.voice;
+  const voice = useVoiceCommands({ wakeWord: v.wakeWord, requireWake: v.requireWake, language: v.language, onState: setVoiceState });
+  const mic = useMicLevel(v.listening || v.recognition, v.sensitivity, (a, b, c) => core.current?.setAudio(a, b, c), { recognition: v.recognition, onSegment: voice.handle });
+
+  const hostOnline = isHost();
+  const state = !connected && !hostOnline ? "offline"
+    : coreState !== "idle" ? coreState
+    : voiceState || localState || (mic.speaking ? "listening" : mic.status === "active" ? "listening" : "idle");
 
   useEffect(() => { const t = boot && setTimeout(() => setBoot(false), 2600); return () => clearTimeout(t); }, [boot]);
   useEffect(() => {
@@ -77,11 +90,12 @@ function Nexus() {
     <div className="nexus" data-testid="nexus-root" data-core-state={state}>
       <CoreStage ref={core} state={state} />
       <div className="ambient" aria-hidden="true" />
+      <StateCaption state={state} />
       <LayoutGroup>
         <motion.header className="top-left" {...enter(0.05)}><Logo /></motion.header>
 
         <motion.div className="top-right" {...enter(0.12)}>
-          {settings.voice.privacyIndicator && micStatus === "active" && <span className="privacy" data-testid="privacy-indicator" title="Mikrofon aktywny"><i /></span>}
+          {v.privacyIndicator && mic.status === "active" && <span className={`privacy ${mic.speaking ? "hot" : ""}`} data-testid="privacy-indicator" title={v.recognition ? "Mikrofon aktywny · rozpoznawanie mowy" : "Mikrofon aktywny"}><i /></span>}
           {settings.advanced.showFps && <span className="fps mono" data-testid="fps-counter">{render.fps ?? "—"} fps · {render.tier}</span>}
           {panel !== "tasks" && <ModuleTile id="tasks" icon={IconTasks} title="Tasks" className="tile-sm" onOpen={() => toggle("tasks")}
             meta={running.length ? `${running.length} aktywne` : tasks.length ? "bezczynny" : "brak zadań"} pulse={running.length ? "run" : null} />}
@@ -91,8 +105,10 @@ function Nexus() {
 
         <motion.div className="bottom-left" {...enter(0.2)}>
           {panel !== "base" && <ModuleTile id="base" icon={IconBase} title="Sentinel Base" onOpen={() => toggle("base")}
+            visual={<SignalBars rssi={base?.online ? base.last?.rssi : null} />}
             meta={!base ? "…" : base.online ? `online · ${Object.keys(base.last?.sensors || {}).length} czujn.` : base.configured ? "offline" : "oczekiwanie"} pulse={base?.online ? "ok" : base?.configured ? "warn" : "off"} />}
           {panel !== "devices" && <ModuleTile id="devices" icon={IconDevices} title="Device Control" className="tile-alt" onOpen={() => toggle("devices")}
+            visual={<DeviceDots devices={devices} />}
             meta={devices.length ? `${online}/${devices.length} online` : "brak urządzeń"} pulse={devices.length ? (online ? "ok" : "off") : null} />}
         </motion.div>
 
@@ -103,9 +119,12 @@ function Nexus() {
         </AnimatePresence>
       </LayoutGroup>
 
-      <motion.div className="bottom-center" {...enter(0.28)}><CommandDock onLocalState={setLocalState} /></motion.div>
+      <motion.div className="bottom-center" {...enter(0.28)}>
+        <VoiceCaption caption={voice.caption} onDone={voice.clearCaption} />
+        <CommandDock onLocalState={setLocalState} />
+      </motion.div>
 
-      <AnimatePresence>{settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} diag={{ render, connected, mic: micStatus }} />}</AnimatePresence>
+      <AnimatePresence>{settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} diag={{ render, connected, mic: mic.status }} />}</AnimatePresence>
       <AnimatePresence>{!boot && loaded && !settings.general.firstRunDone && <FirstRun />}</AnimatePresence>
       <AnimatePresence>{boot && <BootSequence />}</AnimatePresence>
       <Toaster position="top-center" theme="dark" toastOptions={{ className: "sx-toast" }} />

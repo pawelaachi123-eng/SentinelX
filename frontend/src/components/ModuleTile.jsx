@@ -3,7 +3,7 @@ import { useSettings } from "@/context/SettingsContext";
 import { play } from "@/lib/sound";
 
 /** Glass module tile that morphs (shared layoutId) into its contextual panel. */
-export default function ModuleTile({ id, icon: Icon, title, meta, pulse, onOpen, open, className = "" }) {
+export default function ModuleTile({ id, icon: Icon, title, meta, pulse, onOpen, open, className = "", visual }) {
   const { motion: m } = useSettings();
   return (
     <motion.button
@@ -29,6 +29,7 @@ export default function ModuleTile({ id, icon: Icon, title, meta, pulse, onOpen,
           {pulse && <i className={`dot dot-${pulse}`} />}{meta}
         </span>
       </span>
+      {visual && <span className="tile-visual">{visual}</span>}
     </motion.button>
   );
 }

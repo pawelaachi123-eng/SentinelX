@@ -46,7 +46,7 @@ export class CoreRenderer {
       uPulseAxis: { value: new THREE.Vector3(0, 1, 0) }, uPulse: { value: 0 }, uPulseAmt: { value: 0 }, uImpulse: { value: 0 },
       uAudio: { value: new THREE.Vector3() }, uAniso: { value: new THREE.Vector3(1, 1, 1) },
       uLayer: { value: 0 }, uScale: { value: 1 }, uEnergy: { value: 0.5 }, uGlow: { value: 0.5 }, uSat: { value: 1 }, uErr: { value: 0 }, uLightDyn: { value: 1 },
-      uColA: { value: hex(pal?.a || "#59DCEB") }, uColB: { value: hex(pal?.b || "#8279E8") }, uColDeep: { value: hex("#0A1626") }, uColErr: { value: hex("#E88AA0") },
+      uColA: { value: hex(pal?.a || "#4CC6D8") }, uColB: { value: hex(pal?.b || "#5E7FD8") }, uColDeep: { value: hex(pal?.deep || "#072642") }, uColErr: { value: hex("#E88AA0") },
       uKey: { value: new THREE.Vector3(0.5, 0.8, 0.8) }, uPx: { value: 2 },
     };
   }
@@ -120,7 +120,7 @@ export class CoreRenderer {
   setOptions(o) {
     const prev = this.opts;
     this.opts = { ...prev, ...o };
-    if (o.palette) { this.u.uColA.value.set(o.palette.a); this.u.uColB.value.set(o.palette.b); }
+    if (o.palette) { this.u.uColA.value.set(o.palette.a); this.u.uColB.value.set(o.palette.b); if (o.palette.deep) this.u.uColDeep.value.set(o.palette.deep); }
     if (o.custom) Object.assign(this.choreo.custom, o.custom);
     if (o.quality && o.quality !== prev.quality && o.quality !== "auto") this._setTier(o.quality);
     if (o.particles !== undefined && o.particles !== prev.particles) this._buildMeshes();

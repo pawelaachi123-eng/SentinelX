@@ -13,12 +13,13 @@ from sentinel.routes_events import router as events_router
 from sentinel.routes_chat import router as chat_router
 from sentinel.routes_base import router as base_router
 from sentinel.routes_system import router as system_router
+from sentinel.routes_voice import router as voice_router
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
 app = FastAPI(title="Sentinel X Nexus Bridge")
 api = APIRouter(prefix="/api")
-for r in (events_router, chat_router, base_router, system_router):
+for r in (events_router, chat_router, base_router, system_router, voice_router):
     api.include_router(r)
 app.include_router(api)
 

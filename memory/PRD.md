@@ -9,6 +9,8 @@ Choices: Claude Sonnet 4.5 (Emergent key), mic-level-only voice reaction, ESP32 
 - Settings: 10 categories persisted
 - User feedback round: removed inner "brain" layer, toned down core & dock effects, static deep-ocean background (#04162A), smoother surface
 
+- Round 3: core vitality slider (calm↔lively), Deep Ocean palette (default) for core + glass + dock, speech recognition (VAD + Whisper whisper-1 via /api/voice/transcribe, wake word gate, language), WinUI 3 host files in /app/windows-host (NexusWindow + NexusBridge, not compiled), UI polish (state caption, voice caption, signal bars, device dots, dock suggestions, new chat, copy, timestamps)
+
 ## Backlog
-- P1: WinUI 3 WebView2 host wiring to CoreStateService (bridge contract ready: window.chrome.webview messages {type,data})
+- P1: compile & verify windows-host on Windows
 - P2: speech recognition, Windows icon .ico export

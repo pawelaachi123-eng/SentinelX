@@ -35,7 +35,15 @@ export function Appearance({ s, up }) {
 }
 
 export function Core({ s, up }) {
+  const v = s.vitality ?? 0.5;
   return (<>
+    <Row label="Charakter rdzenia" hint="Jeden suwak: od spokojnego, powolnego oddechu do żywej, energicznej ewolucji">
+      <div className="vitality" data-testid="set-core-vitality-wrap">
+        <span>Spokojny</span>
+        <Slider testid="set-core-vitality" value={v} min={0} max={1} step={0.01} onChange={(x) => up({ vitality: x })} fmt={(x) => (x < 0.34 ? "spokój" : x < 0.67 ? "balans" : "żywy")} />
+        <span>Żywy</span>
+      </div>
+    </Row>
     <Row label="Intensywność deformacji" hint="Globalny mnożnik wszystkich pól"><Slider testid="set-core-deform" value={s.deform} max={1.8} onChange={(v) => up({ deform: v })} fmt={pct} /></Row>
     <Row label="Macro morphing" hint="Wolna zmiana sylwetki"><Slider testid="set-core-macro" value={s.macro} onChange={(v) => up({ macro: v })} fmt={pct} /></Row>
     <Row label="Meso deformation" hint="Niezależne wypukłości i zapadnięcia"><Slider testid="set-core-meso" value={s.meso} onChange={(v) => up({ meso: v })} fmt={pct} /></Row>
@@ -61,9 +69,13 @@ export function Motion({ s, up }) {
 export function Voice({ s, up, micStatus }) {
   const label = { off: "Wyłączony", requesting: "Prośba o dostęp…", active: "Aktywny", denied: "Odmowa dostępu", unavailable: "Mikrofon niedostępny" }[micStatus];
   return (<>
-    <Row label="Nasłuchiwanie" hint="Rdzeń reaguje na rzeczywisty sygnał audio. Rozpoznawanie mowy nie jest jeszcze włączone."><Toggle testid="set-voice-listening" value={s.listening} onChange={(v) => up({ listening: v })} /></Row>
+    <Row label="Nasłuchiwanie" hint="Rdzeń reaguje na rzeczywisty sygnał audio z mikrofonu"><Toggle testid="set-voice-listening" value={s.listening} onChange={(v) => up({ listening: v })} /></Row>
     <Row label="Stan mikrofonu"><span className={`state-tag st-${micStatus}`} data-testid="voice-mic-status">{label}</span></Row>
     <Row label="Czułość"><Slider testid="set-voice-sensitivity" value={s.sensitivity} min={0.3} max={2.5} onChange={(v) => up({ sensitivity: v })} fmt={(v) => `${v.toFixed(1)}×`} /></Row>
+    <Row label="Rozpoznawanie mowy" hint="Wypowiedzi są wykrywane lokalnie (VAD) i transkrybowane modelem Whisper (whisper-1), a następnie wykonywane jako polecenia"><Toggle testid="set-voice-recognition" value={s.recognition} onChange={(v) => up({ recognition: v, listening: v ? true : s.listening })} /></Row>
+    <Row label="Wymagaj komendy aktywacyjnej" hint="Polecenie zostanie wykonane tylko, gdy zaczyna się od słowa aktywacyjnego"><Toggle testid="set-voice-require-wake" value={s.requireWake} onChange={(v) => up({ requireWake: v })} /></Row>
+    <Row label="Słowo aktywacyjne"><input className="text-in" data-testid="set-voice-wake-word" value={s.wakeWord} maxLength={24} onChange={(e) => up({ wakeWord: e.target.value })} /></Row>
+    <Row label="Język mowy"><Segmented testid="set-voice-language" value={s.language} onChange={(v) => up({ language: v })} options={[["pl", "Polski"], ["en", "English"], ["de", "Deutsch"]]} /></Row>
     <Row label="Wskaźnik prywatności" hint="Dyskretna kropka w prawym górnym rogu, gdy mikrofon jest aktywny"><Toggle testid="set-voice-privacy" value={s.privacyIndicator} onChange={(v) => up({ privacyIndicator: v })} /></Row>
   </>);
 }
@@ -103,7 +115,7 @@ export function Diagnostics({ diag }) {
     ["FPS", r.fps], ["Czas klatki", r.frameMs != null ? `${r.frameMs} ms` : "—"], ["Poziom jakości", r.tier], ["Wierzchołki rdzenia", r.vertices?.toLocaleString()],
     ["GPU", r.gpu], ["Utracone konteksty GPU", r.contextLosses], ["Strumień zdarzeń", diag.connected ? "połączony" : "rozłączony"],
     ["Backend", d?.backend || (err ? "błąd" : "…")], ["Baza danych", d?.database], ["Model AI", d?.llm_model], ["Klucz LLM", d ? (d.llm_configured ? "skonfigurowany" : "brak") : "—"],
-    ["Subskrybenci zdarzeń", d?.event_subscribers], ["Zadania / błędy", d ? `${d.tasks_total} / ${d.tasks_failed}` : "—"], ["Raporty Base", d?.base_reports], ["Mikrofon", diag.mic],
+    ["Subskrybenci zdarzeń", d?.event_subscribers], ["Host natywny", window.chrome?.webview ? "WinUI 3 · WebView2" : "przeglądarka"], ["Zadania / błędy", d ? `${d.tasks_total} / ${d.tasks_failed}` : "—"], ["Raporty Base", d?.base_reports], ["Mikrofon", diag.mic],
   ];
   return (<div className="diag-grid" data-testid="diagnostics-grid">{items.map(([k, v]) => <div key={k}><span>{k}</span><b>{v ?? "—"}</b></div>)}{err && <p className="task-err">{err}</p>}</div>);
 }
