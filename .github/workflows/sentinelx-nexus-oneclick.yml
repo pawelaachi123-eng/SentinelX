@@ -180,6 +180,13 @@ jobs:
             throw "Native WinUI smoke failed: exit=$($p.ExitCode)"
           }
           if (!(Test-Path (Join-Path $out 'SMOKE.txt'))) { throw 'Smoke returned zero but missing smoke report!' }
+      - name: Publish verified Windows package
+        uses: actions/upload-artifact@v4
+        with:
+          name: sentinel-nexus-windows-verified
+          path: dist/
+          if-no-files-found: error
+          retention-days: 14
       - uses: actions/upload-artifact@v4
         if: always()
         with:

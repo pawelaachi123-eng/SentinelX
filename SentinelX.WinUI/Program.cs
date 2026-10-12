@@ -1,39 +1,17 @@
-using System.Runtime.InteropServices;
-using Microsoft.Windows.ApplicationModel.DynamicDependency;
 using WinRT;
 
 namespace SentinelX.WinUI;
 
 /// <summary>
-/// Entry point of the unpackaged WinUI 3 build. Takes the Windows App SDK runtime
-/// dependency explicitly (so the portable EXE and the Inno Setup installer work
-/// without a separately installed runtime) and then starts the XAML application.
+/// Entry point for the unpackaged WinUI 3 host. This project uses self-contained
+/// Windows App SDK deployment, so a framework-package bootstrap dependency must
+/// not be initialized here.
 /// </summary>
 internal static class AppBootstrap
 {
-    // Windows App SDK 1.5 → major 1, minor 5.
-    private const uint MajorMinorVersion = 0x00010005;
-
-    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
-    private static extern int MessageBoxW(IntPtr hWnd, string text, string caption, uint type);
-
     [STAThread]
     private static void Main(string[] args)
     {
-        try
-        {
-            Bootstrap.Initialize(MajorMinorVersion);
-        }
-        catch (Exception ex)
-        {
-            MessageBoxW(IntPtr.Zero,
-                "Nie można uruchomić środowiska Windows App SDK 1.5, którego potrzebuje Sentinel X.\n\n" +
-                ex.Message,
-                "Sentinel X", 0x10 /* MB_ICONERROR */);
-            Environment.Exit(1);
-            return;
-        }
-
         ComWrappersSupport.InitializeComWrappers();
 
         global::Microsoft.UI.Xaml.Application.Start(p =>
@@ -43,7 +21,5 @@ internal static class AppBootstrap
             global::System.Threading.SynchronizationContext.SetSynchronizationContext(sync);
             _ = new App();
         });
-
-        Bootstrap.Shutdown();
     }
 }
