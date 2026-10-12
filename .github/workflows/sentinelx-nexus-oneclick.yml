@@ -114,6 +114,9 @@ jobs:
           Remove-Item -LiteralPath 'nexus-ui' -Recurse -Force
           if (Test-Path 'nexus-ui') { throw 'Nested checkout still present; C# compile would duplicate classes' }
           Write-Host 'One copy of NexusBridge and NexusWindow remains; build can proceed.'
+      - name: Add smoke diagnostics to native host
+        shell: pwsh
+        run: ./scripts/patch-nexus-smoke-diagnostics.ps1
       - name: Compile and publish WinUI 3
         shell: pwsh
         run: |
@@ -135,17 +138,7 @@ jobs:
             throw 'No host.api.request in production UI; native API bridge missing'
           }
           if (!(Test-Path 'bin/portable/nexus/index.html')) { throw 'Nexus HTML not bundled' }
-      - name: Windows smoke test (native services)
-        shell: pwsh
-        run: |
-          $out = Join-Path $PWD 'smoke-results'
-          New-Item $out -ItemType Directory -Force | Out-Null
-          $p = Start-Process -FilePath (Resolve-Path 'bin/portable/SentinelX.exe').Path -ArgumentList @('--ui-smoke', $out) -PassThru
-          if (-not $p.WaitForExit(120000)) { $p.Kill(); throw 'Native WinUI smoke timed out' }
-          if ($p.ExitCode -ne 0) {
-            Get-ChildItem $out -Recurse -File | ForEach-Object { Get-Content $_.FullName -ErrorAction SilentlyContinue }
-            throw "Native WinUI smoke failed: exit=$($p.ExitCode)"
-          }
+
       - name: Create installer, ZIP and SHA256
         shell: pwsh
         run: |
@@ -157,14 +150,38 @@ jobs:
           Copy-Item (Get-ChildItem 'bin/installer/*.exe' | Select-Object -First 1).FullName 'dist/SentinelX-Nexus-1.0.0-Setup.exe'
           Compress-Archive 'bin/portable/*' 'dist/SentinelX-Nexus-1.0.0-Portable.zip'
           Get-ChildItem dist -File | ForEach-Object { "$( (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant())  $($_.Name)" } | Set-Content 'dist/SHA256SUMS.txt'
+      # This artifact proves compilation/packaging ONLY. A failed UI smoke keeps
+      # the overall workflow red, but no longer destroys the downloadable build.
       - uses: actions/upload-artifact@v4
         with:
-          name: sentinel-nexus-windows
+          name: sentinel-nexus-windows-UNVERIFIED
           path: dist/
           if-no-files-found: error
           retention-days: 14
+      - name: Backend source contracts (headless)
+        shell: pwsh
+        run: |
+          dotnet run --project verification/Build1/Build1.csproj -c Release
+          if ($LASTEXITCODE -ne 0) { throw 'Backend contracts failed' }
+      - name: Windows smoke test (native services)
+        shell: pwsh
+        run: |
+          $out = Join-Path $PWD 'smoke-results'
+          New-Item $out -ItemType Directory -Force | Out-Null
+          $p = Start-Process -FilePath (Resolve-Path 'bin/portable/SentinelX.exe').Path -ArgumentList @('--ui-smoke', $out) -PassThru
+          if (-not $p.WaitForExit(60000)) {
+            try { $p.Kill() } catch { }
+            Write-Host 'UI smoke TIMED OUT (60s). Diagnostic breadcrumbs:'
+            Get-ChildItem $out -File -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "--- $($_.Name)"; Get-Content $_.FullName -ErrorAction SilentlyContinue }
+            throw 'Native WinUI smoke timed out. Candidate build remains UNVERIFIED.'
+          }
+          if ($p.ExitCode -ne 0) {
+            Get-ChildItem $out -Recurse -File | ForEach-Object { Write-Host "--- $($_.Name)"; Get-Content $_.FullName -ErrorAction SilentlyContinue }
+            throw "Native WinUI smoke failed: exit=$($p.ExitCode)"
+          }
+          if (!(Test-Path (Join-Path $out 'SMOKE.txt'))) { throw 'Smoke returned zero but missing smoke report!' }
       - uses: actions/upload-artifact@v4
-        if: failure()
+        if: always()
         with:
           name: sentinel-nexus-windows-diagnostics
           path: smoke-results/
