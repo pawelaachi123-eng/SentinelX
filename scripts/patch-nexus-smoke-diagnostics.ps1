@@ -5,7 +5,13 @@ Set-StrictMode -Version Latest
 $root=(Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $utf8=[Text.UTF8Encoding]::new($false)
 function ReplaceOne([string]$text,[string]$from,[string]$to) {
-  if (([regex]::Matches($text,[regex]::Escape($from))).Count -ne 1) { throw "Source drift: $from" }
+  # Normalize line endings on both sides before exact matching. Windows runners
+  # may check out CRLF files while PowerShell here-strings have different endings.
+  $text = $text.Replace("`r`n","`n").Replace("`r","`n")
+  $from = $from.Replace("`r`n","`n").Replace("`r","`n")
+  $to = $to.Replace("`r`n","`n").Replace("`r","`n")
+  $count = ([regex]::Matches($text,[regex]::Escape($from))).Count
+  if ($count -ne 1) { throw "Source drift (expected one occurrence, found $count): $($from.Trim())" }
   return $text.Replace($from,$to)
 }
 $progFile=Join-Path $root 'SentinelX.WinUI/Program.cs'
