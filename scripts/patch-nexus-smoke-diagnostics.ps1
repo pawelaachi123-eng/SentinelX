@@ -15,77 +15,61 @@ function ReplaceOne([string]$text,[string]$from,[string]$to) {
   return $text.Replace($from,$to)
 }
 $progFile=Join-Path $root 'SentinelX.WinUI/Program.cs'
-$prog=[IO.File]::ReadAllText($progFile).Replace("`r`n","`n")
-$prog=ReplaceOne $prog 'using System.Runtime.InteropServices;' @'
-using System.Runtime.InteropServices;
-using System.IO;
-'@
-$from1=@'
-    private static void Main(string[] args)
-    {
-        try
-'@
-$to1=@'
-    private static void Main(string[] args)
-    {
-        string? smokeFolder = args.Length >= 2 && args[0] == "--ui-smoke" ? Path.GetFullPath(args[1]) : null;
-        void Trace(string stage)
-        {
-            if (smokeFolder == null) return;
-            try
-            {
-                Directory.CreateDirectory(smokeFolder);
-                File.AppendAllText(Path.Combine(smokeFolder, "BOOTSTRAP.log"),
-                    DateTimeOffset.UtcNow.ToString("O") + " " + stage + Environment.NewLine);
-            }
-            catch { }
-        }
-        Trace("program.entry");
-        try
-'@
-$prog=ReplaceOne $prog $from1 $to1
-$prog=ReplaceOne $prog '            Bootstrap.Initialize(MajorMinorVersion);' @'
-            Trace("bootstrap.begin");
-            Bootstrap.Initialize(MajorMinorVersion);
-            Trace("bootstrap.ok");
-'@
-$from2=@'
-        catch (Exception ex)
-        {
-            MessageBoxW(IntPtr.Zero,
-'@
-$to2=@'
-        catch (Exception ex)
-        {
-            Trace("bootstrap.error " + ex);
-            if (smokeFolder != null)
-            {
-                Environment.ExitCode = 2;
-                return; // Never display modal MessageBox on unattended CI runner.
-            }
-            MessageBoxW(IntPtr.Zero,
-'@
-$prog=ReplaceOne $prog $from2 $to2
-$prog=ReplaceOne $prog '        ComWrappersSupport.InitializeComWrappers();' @'
-        Trace("winrt.begin");
-        ComWrappersSupport.InitializeComWrappers();
-        Trace("winrt.ok");
-'@
-$prog=ReplaceOne $prog '        global::Microsoft.UI.Xaml.Application.Start(p =>' @'
-        Trace("xaml.application.start.begin");
-        global::Microsoft.UI.Xaml.Application.Start(p =>
-'@
-$prog=ReplaceOne $prog '            _ = new App();' @'
-            Trace("app.constructor.begin");
-            _ = new App();
-            Trace("app.constructor.returned");
-'@
-$prog=ReplaceOne $prog '        Bootstrap.Shutdown();' @'
-        Trace("xaml.application.start.returned");
-        Bootstrap.Shutdown();
-'@
-[IO.File]::WriteAllText($progFile,$prog,$utf8)
-
+$prog=[IO.File]::ReadAllText($progFile)
+if ($prog.Contains('string? smokeFolder =')) {
+    Write-Host 'Program.cs smoke breadcrumbs already present; preserving existing instrumentation.'
+}
+else {
+    if (-not $prog.Contains('ComWrappersSupport.InitializeComWrappers();')) {
+        throw 'Unexpected WinUI entry point: ComWrappersSupport initialization not found.'
+    }
+    if (-not $prog.Contains('using System.IO;')) {
+        $prog=ReplaceOne $prog 'using WinRT;' "using WinRT;`nusing System.IO;"
+    }
+    $mainOld = "    private static void Main(string[] args)`n    {"
+    $mainNew = @(
+        '    private static void Main(string[] args)',
+        '    {',
+        '        string? smokeFolder = args.Length >= 2 && args[0] == "--ui-smoke" ? Path.GetFullPath(args[1]) : null;',
+        '        void Trace(string stage)',
+        '        {',
+        '            if (smokeFolder == null) return;',
+        '            try',
+        '            {',
+        '                Directory.CreateDirectory(smokeFolder);',
+        '                File.AppendAllText(Path.Combine(smokeFolder, "BOOTSTRAP.log"),',
+        '                    DateTimeOffset.UtcNow.ToString("O") + " " + stage + Environment.NewLine);',
+        '            }',
+        '            catch { }',
+        '        }',
+        '        Trace("program.entry");'
+    ) -join "`n"
+    $prog=ReplaceOne $prog $mainOld $mainNew
+    $initNew = @(
+        '        Trace("winrt.begin");',
+        '        ComWrappersSupport.InitializeComWrappers();',
+        '        Trace("winrt.ok");'
+    ) -join "`n"
+    $prog=ReplaceOne $prog '        ComWrappersSupport.InitializeComWrappers();' $initNew
+    $startNew = @(
+        '        Trace("xaml.application.start.begin");',
+        '        global::Microsoft.UI.Xaml.Application.Start(p =>'
+    ) -join "`n"
+    $prog=ReplaceOne $prog '        global::Microsoft.UI.Xaml.Application.Start(p =>' $startNew
+    $appNew = @(
+        '            Trace("app.constructor.begin");',
+        '            _ = new App();',
+        '            Trace("app.constructor.returned");'
+    ) -join "`n"
+    $prog=ReplaceOne $prog '            _ = new App();' $appNew
+    $endNew = @(
+        '        });',
+        '        Trace("xaml.application.start.returned");'
+    ) -join "`n"
+    $prog=ReplaceOne $prog '        });' $endNew
+    [IO.File]::WriteAllText($progFile,$prog,$utf8)
+    Write-Host 'Added smoke breadcrumbs to the self-contained WinUI entry point.' -ForegroundColor Green
+}
 $appFile=Join-Path $root 'SentinelX.WinUI/App.xaml.cs'
 $app=[IO.File]::ReadAllText($appFile).Replace("`r`n","`n")
 $app=ReplaceOne $app '            Environment.SetEnvironmentVariable("SENTINEL_DATA_DIR", Path.Combine(Path.GetFullPath(cmd[2]), "data"));' @'
