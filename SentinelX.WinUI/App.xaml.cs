@@ -72,8 +72,34 @@ public partial class App : Application
 
         try
         {
+            if (!smoke)
+            {
+                bool ollamaReady = false;
+                try
+                {
+                    using var ollamaBootstrap = new SentinelX.Services.Base.OllamaSupervisor();
+                    using var ollamaTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+                    ollamaReady = await ollamaBootstrap.EnsureAsync(ollamaTimeout.Token);
+                }
+                catch (Exception ex) { AppLog.Write(ex); }
+                Environment.SetEnvironmentVariable("SENTINEL_OLLAMA_STARTUP_STATUS", ollamaReady ? "ready" : "not-ready");
+                try
+                {
+                    string logDirectory = Path.Combine(AppPaths.Root, "Logs");
+                    Directory.CreateDirectory(logDirectory);
+                    File.AppendAllText(Path.Combine(logDirectory, "startup.log"), DateTimeOffset.UtcNow.ToString("O") + " Ollama-before-UI=" + (ollamaReady ? "ready" : "not-ready") + Environment.NewLine);
+                }
+                catch { }
+                if (!ollamaReady)
+                    AppLog.Write(new InvalidOperationException("Ollama nie odpowiedziała przed uruchomieniem interfejsu. Sprawdź instalację Ollama i lokalne modele; Sentinel kontynuuje uruchamianie."));
+            }
             provider = ServiceLocator.Build(DispatcherQueue.GetForCurrentThread());
             Services = provider;
+            if (!smoke)
+            {
+                ApplyWatchPrivacyMigration(provider.GetRequiredService<SentinelX.Services.Settings.ISettingsService>());
+                SeedInitialMemory(provider.GetRequiredService<ConversationMemoryService>());
+            }
 
             if (smoke)
             {
@@ -132,6 +158,42 @@ public partial class App : Application
                 Exit();
             }
         }
+    }
+
+    private static void ApplyWatchPrivacyMigration(SentinelX.Services.Settings.ISettingsService settings)
+    {
+        try
+        {
+            if (settings.Current.Startup.WatchPrivacyMigrationApplied) return;
+            settings.Current.Watch.Enabled = false;
+            settings.Current.Startup.WatchPrivacyMigrationApplied = true;
+            settings.Save();
+        }
+        catch (Exception ex) { AppLog.Write(ex); }
+    }
+
+    private static void SeedInitialMemory(ConversationMemoryService memory)
+    {
+        try
+        {
+            // Stable project and interaction preferences, stored locally using the configured memory/privacy policy.
+            var notes = new (string Text, string Category)[]
+            {
+            ("Projekt Sentinela użytkownika: Sentinel X to lokalny asystent Windows. Przy wydaniach użytkownik oczekuje prawdziwego builda EXE i APK, raportu testów oraz jasnego oddzielenia funkcji zweryfikowanych od niedokończonych.", "fakt"),
+            ("Sentinel Base użytkownika: hub ESP32-WROOM-32 DevKit w Wi-Fi STA. Docelowe połączenie z komputerem używa SX4/TLS, przypięcia fingerprintu SHA-256, challenge i negocjowanych capabilities. Zwykłe HTTP nie jest protokołem SX4.", "fakt"),
+            ("Preferencja AI użytkownika: pierwszeństwo ma AI lokalne/offline. Podczas CS2 i innych gier trzeba ograniczać użycie RAM, VRAM i CPU oraz nie ładować ciężkiego modelu, dopóki nie jest potrzebny.", "preferencja"),
+            ("Preferencje komunikacji: odpowiadaj po polsku, prosto i zwięźle domyślnie; rozwijaj na prośbę. Wykonuj jasne polecenia bez ponownego pytania. Koryguj wyłącznie oczywiste literówki; pełnych pytań nie zamieniaj w podobne komendy.", "preferencja"),
+            ("Prywatność Sentinela: nasłuch mikrofonu ma mieć widoczny status. Podgląd lub przechwycenie ekranu jest dozwolone tylko po wyraźnym poleceniu użytkownika; nie prowadź ukrytego, stałego podglądu ekranu.", "decyzja"),
+            ("Preferencja interfejsu: nowoczesny minimalistyczny WinUI 3/Nexus, centralny animowany rdzeń, szklane panele, ustawienia zamiast zakładek i poprawne przywracanie fokusu po zamknięciu panelu.", "preferencja")
+        };
+            var existing = new HashSet<string>(memory.GetNotes().Select(n => ConversationMemoryService.Normalize(n.Text)), StringComparer.Ordinal);
+            foreach (var note in notes)
+            {
+                string normalized = ConversationMemoryService.Normalize(note.Text);
+                if (existing.Add(normalized)) memory.AddNote(note.Text, note.Category, "initial-project-profile");
+            }
+        }
+        catch (Exception ex) { AppLog.Write(ex); }
     }
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]

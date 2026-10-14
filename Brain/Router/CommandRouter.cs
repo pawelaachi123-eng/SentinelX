@@ -477,7 +477,7 @@ public sealed class CommandRouter
         if (!string.IsNullOrWhiteSpace(topic))
             parts.Add("Ostatni temat skrótu: " + topic + ".");
 
-        parts.Add(includeRecentHistory ? memory.GetRecentContext(12) : memory.GetStableContext());
+        parts.Add(includeRecentHistory ? memory.GetRecentContext(20) : memory.GetStableContext());
         return string.Join("\n", parts.Where(x => !string.IsNullOrWhiteSpace(x)));
     }
 

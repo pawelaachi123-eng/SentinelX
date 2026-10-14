@@ -17,5 +17,6 @@ public sealed class StartupSettings
     public bool StartVoiceOnLaunch { get; set; } = true;
     /// <summary>Set once, the first time a build with the autopilot runs on an existing settings file (see CareService).</summary>
     public bool AutopilotApplied { get; set; }
+    /// <summary>One-time migration: background Watch alerts are opt-in, never silently enabled.</summary>
+    public bool WatchPrivacyMigrationApplied { get; set; }
 }
-

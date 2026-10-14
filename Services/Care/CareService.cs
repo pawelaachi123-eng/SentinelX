@@ -78,7 +78,7 @@ public sealed class CareService : IDisposable
         SentinelSettings current = settings.Current;
         if (current.Startup.AutopilotApplied) return;
         current.Startup.StartWithWindows = true;
-        current.Watch.Enabled = true;
+
         current.Link.Enabled = true;
         current.Startup.AutopilotApplied = true;
         settings.Save();

@@ -9,8 +9,8 @@ checks = {
     'hooks/useSentinelEvents.js': ['window.chrome?.webview', 'host?.addEventListener("message", onHost)'],
     'components/CommandDock.jsx': ['sentinel:host-voice', 'if (isHost() || !v.speakReplies', 'hostRequest("command.submit"', 'return; }'],
     'App.js': ['useMicLevel(!isHost()', 'host.voice.result', 'wymaga integracji natywnej', 'useSentinelEvents'],
-    'components/panels/BasePanel.jsx': ['base-native-pending', 'isHost()', 'SX4'],
-    'components/panels/DevicesPanel.jsx': ['devices-native-pending', 'isHost()', 'autoryzacji urządzenia'],
+    'components/panels/BasePanel.jsx': ['base-discover', 'base-pair', 'api.post("/base/pair"', 'isHost()', 'SX4'],
+    'components/panels/DevicesPanel.jsx': ['devices-native-pending', 'isHost()', 'SX4 / TLS', 'base.capabilities'],
 }
 for path, needles in checks.items():
     p = src / path

@@ -15,10 +15,31 @@ public sealed class OllamaSupervisor : IDisposable
     public async Task<bool> EnsureAsync(CancellationToken cancel)
     {
         await gate.WaitAsync(cancel);try{
-            if(await probe(cancel))return true;
-            long now=Environment.TickCount64;if(lastLaunch!=long.MinValue&&now-lastLaunch<30000)return false;
-            lastLaunch=now;if(!launch())return false;
-            for(int i=0;i<10;i++){await Task.Delay(300,cancel);if(await probe(cancel))return true;}return false;
+            if (await probe(cancel)) return true;
+            long now = Environment.TickCount64;
+            if (lastLaunch != long.MinValue && now - lastLaunch < 30000)
+            {
+                // A prior launch may still be becoming ready. Probe it; never spawn a duplicate.
+                if (!HasOllamaProcess()) return false;
+            }
+            else
+            {
+                lastLaunch = now;
+                bool launched = launch();
+                if (!launched && !HasOllamaProcess()) return false;
+            }
+
+            // Start the local Ollama server before the UI asks for models. Bound startup to
+            // 18 seconds, probe /api/tags until it responds, and never auto-load a model.
+            using var startupDeadline = CancellationTokenSource.CreateLinkedTokenSource(cancel);
+            startupDeadline.CancelAfter(TimeSpan.FromSeconds(18));
+            while (!startupDeadline.IsCancellationRequested)
+            {
+                if (await probe(startupDeadline.Token)) return true;
+                try { await Task.Delay(250, startupDeadline.Token); }
+                catch (OperationCanceledException) when (!cancel.IsCancellationRequested) { break; }
+            }
+            return false;
         }finally{gate.Release();}
     }
     public Task<bool> StatusAsync(CancellationToken cancel)=>probe(cancel);
@@ -66,12 +87,72 @@ public sealed class OllamaSupervisor : IDisposable
             using var json=JsonDocument.Parse(output.ToArray());return json.RootElement.GetProperty("models").ValueKind==JsonValueKind.Array;
         }catch(Exception e)when(e is HttpRequestException or TaskCanceledException or JsonException or KeyNotFoundException){return false;}
     }
+    private static bool HasOllamaProcess()
+    {
+        foreach (string name in new[] { "ollama", "ollama app" })
+        {
+            Process[] processes;
+            try { processes = Process.GetProcessesByName(name); }
+            catch { continue; }
+            foreach (Process process in processes)
+            {
+                using (process)
+                {
+                    try { if (!process.HasExited) return true; }
+                    catch { }
+                }
+            }
+        }
+        return false;
+    }
+
     private static bool Launch()
     {
-        string exe=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"Programs","Ollama","ollama.exe");
-        if(!File.Exists(exe))return false;
-        if(Process.GetProcessesByName("ollama").Any())return false;
-        Process.Start(new ProcessStartInfo(exe,"serve"){UseShellExecute=false,CreateNoWindow=true});return true;
+        try
+        {
+            // Do not create duplicate Ollama servers, including when the tray app is starting.
+            if (HasOllamaProcess()) return false;
+            string local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            string programFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
+            string programFilesX86 = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86);
+            var candidates = new List<string>();
+            string? configured = Environment.GetEnvironmentVariable("OLLAMA_EXE");
+            if (!string.IsNullOrWhiteSpace(configured)) candidates.Add(configured.Trim().Trim('"'));
+            candidates.Add(Path.Combine(local, "Programs", "Ollama", "ollama.exe"));
+            if (!string.IsNullOrWhiteSpace(programFiles)) candidates.Add(Path.Combine(programFiles, "Ollama", "ollama.exe"));
+            if (!string.IsNullOrWhiteSpace(programFilesX86)) candidates.Add(Path.Combine(programFilesX86, "Ollama", "ollama.exe"));
+            foreach (string folder in (Environment.GetEnvironmentVariable("PATH") ?? "").Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries))
+            {
+                string dir = folder.Trim().Trim('"');
+                if (dir.Length > 0)
+                {
+                    try { candidates.Add(Path.Combine(dir, "ollama.exe")); } catch { }
+                }
+            }
+
+            string? exe = null;
+            foreach (string candidate in candidates)
+            {
+                try { if (File.Exists(candidate)) { exe = Path.GetFullPath(candidate); break; } }
+                catch { }
+            }
+            if (string.IsNullOrWhiteSpace(exe)) return false;
+            var start = new ProcessStartInfo(exe, "serve")
+            {
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                WindowStyle = ProcessWindowStyle.Hidden,
+                WorkingDirectory = Path.GetDirectoryName(exe) ?? Environment.CurrentDirectory
+            };
+            var process = Process.Start(start);
+            if (process == null) return false;
+            process.Dispose();
+            return true;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or System.ComponentModel.Win32Exception or ArgumentException)
+        {
+            return false;
+        }
     }
     public void Dispose()=>gate.Dispose();
 }
