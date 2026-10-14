@@ -145,6 +145,10 @@ public static class CommandUnderstanding
     /// <summary>At or above this similarity the command is executed (repair band) instead of asked about.</summary>
     public const double SuggestCeiling = 0.80;
     /// <summary>Stems that may never be guessed: a suggestion must not steer towards anything destructive.</summary>
+    // Natural questions are conversation, not near-miss command candidates. In particular,
+    // "jak powstaje rak" must never be redirected to an unrelated "jaki procent RAM".
+    private static readonly HashSet<string> QuestionOpeners = new(StringComparer.Ordinal)
+    { "jak", "co", "kto", "czy", "ile", "jaki", "jaka", "jakie", "jaką", "gdzie", "kiedy", "dlaczego", "czemu", "skad", "dokad", "ktory", "ktora", "ktore" };
     private static readonly string[] DestructiveStems = ["usun", "zamknij", "wylacz", "czysc", "kill", "sformatuj", "potwierdz", "zatrzymaj", "skasuj"];
 
     /// <summary>The grey zone between "understood" and "no idea": Sentinel proposes up to three known commands
@@ -161,6 +165,7 @@ public static class CommandUnderstanding
         if (DestructiveStems.Any(stem => normalized.Contains(stem, StringComparison.Ordinal))) return [];
 
         string firstWord = Words(normalized).FirstOrDefault() ?? "";
+        if (firstWord.Length < 4 || QuestionOpeners.Contains(firstWord)) return [];
         var ranked = catalogue
             .Select(phrase => (Phrase: phrase, Score: PhraseSimilarity(normalized, phrase)))
             .Where(x => x.Score >= SuggestFloor && x.Score < SuggestCeiling)

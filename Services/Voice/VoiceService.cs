@@ -49,7 +49,9 @@ public sealed class VoiceService : IVoiceService, IDisposable
         try
         {
             SetStatus(downloadModels ? "Pobieranie modeli — może potrwać kilka minut…" : "Ładowanie lokalnych modeli…");
-            await capture.InitializeAsync(downloadModels, source.Token);
+            try { await capture.InitializeAsync(downloadModels, source.Token); }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception ex) { SetStatus("Błąd mikrofonu: " + ex.Message); throw; }
             source.Token.ThrowIfCancellationRequested();
             if (version != generation || disposed || engine.IsStopped) return;
             capture.SetWakeOnlyMode(true); capture.StartListening(device);
